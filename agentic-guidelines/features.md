@@ -1,21 +1,29 @@
 # Describes naming & functionality guides to develope features referenced on sections.md
 
 ## getUserIdea
+
 This only captures the text content from `IdeaInput`. It can be added by the user in three ways:
+
 - pasting text from clipboard,
 - writing with device's keyboard
 - using device's microphone. In this case we have to call transcriptUserIdea
 
+La Home may show a brief, temporary client-side synthesis beside the mascot while the idea is being written. This preview is presentation only: it is not evaluated, sent, or persisted.
+
 ## transcriptUserIdea
+
 Forma parte de la primera entrega. Solicita permiso de micrófono, transcribe temporalmente y vuelca el texto en `IdeaInput` para revisión antes del envío. Si falla o se deniega el permiso, conserva el texto existente y permite escribir. No se persiste el audio.
 
 ## getIdeaListWorstAll
+
 Returns `IdeaListItemWorstAll` entries for rejected ideas received in the current ISO week in `Europe/Madrid`, ordered by the lowest score from rubric v1. The public response contains only title and weekly reception count, never author or original text.
 
 ## getIdeaListWorstUser
+
 Returns private `IdeaListItemWorstUser` entries from the authenticated user's submissions. Anonymous visitors have no personal idea history.
 
 ## searchSimilarRecordedIdea
+
 - Entrada: idea de aplicación web o móvil previamente validada.
 - Genera un embedding con la versión activa del modelo y busca en PostgreSQL/`pgvector` la idea canónica evaluada más cercana. Solo compara vectores del mismo modelo y dimensión.
 - Similitud v1: `1 - distancia_coseno`, acotada a `[0, 1]`. Si el mayor valor es **estrictamente mayor que 0,90**, devuelve la idea canónica y su evaluación base; `0,90` exacto devuelve `null`.
@@ -31,14 +39,14 @@ Evalúa solo ideas de **aplicaciones web o móviles**. Produce una evaluación b
 
 Seis criterios reciben una nota entera de 0 a 4: `0` = muy débil o riesgo grave, `1` = débil, `2` = incierto o dato no aportado, `3` = razonable, `4` = bien fundamentado por el texto. Una nota de 2 por falta de datos debe señalarse como supuesto; no se inventan hechos de mercado.
 
-| Criterio | Peso | Aspectos de una app web/móvil |
-| --- | ---: | --- |
-| Problema y usuario | 25 | Usuario objetivo, necesidad concreta, frecuencia e intensidad. |
-| Diferenciación | 15 | Alternativas y ventaja propuesta. |
-| Captación y adopción | 15 | Canal plausible para llegar al usuario y fricción de uso. |
-| Viabilidad técnica y operativa | 20 | Desarrollo, integraciones, mantenimiento, dependencia de IA/APIs y escalado inicial. |
-| Economía | 15 | Costes de construcción y operación frente al posible valor o ingreso. |
-| Privacidad, seguridad y cumplimiento | 10 | Datos sensibles, permisos, abuso y obligaciones previsibles. |
+| Criterio                             | Peso | Aspectos de una app web/móvil                                                        |
+| ------------------------------------ | ---: | ------------------------------------------------------------------------------------ |
+| Problema y usuario                   |   25 | Usuario objetivo, necesidad concreta, frecuencia e intensidad.                       |
+| Diferenciación                       |   15 | Alternativas y ventaja propuesta.                                                    |
+| Captación y adopción                 |   15 | Canal plausible para llegar al usuario y fricción de uso.                            |
+| Viabilidad técnica y operativa       |   20 | Desarrollo, integraciones, mantenimiento, dependencia de IA/APIs y escalado inicial. |
+| Economía                             |   15 | Costes de construcción y operación frente al posible valor o ingreso.                |
+| Privacidad, seguridad y cumplimiento |   10 | Datos sensibles, permisos, abuso y obligaciones previsibles.                         |
 
 `score = round(sum(peso * nota / 4))`, entre 0 y 100. `0–39 = reject`, `40–69 = review`, `70–100 = promising`. Si faltan datos en dos o más criterios, el veredicto máximo es `review`, aunque el score sea superior. Se mantiene el score numérico y se explican las incógnitas. Un posible daño grave o tratamiento delicado de datos genera una advertencia y recomendación de revisión humana, sin afirmar ilegalidad sin evidencia.
 

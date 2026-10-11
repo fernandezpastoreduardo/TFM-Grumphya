@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("web serves the prototype and reaches the API and pgvector database", async ({
+test("home captures ideas safely and reaches the API and pgvector database", async ({
   page,
   request,
 }) => {
@@ -26,10 +26,29 @@ test("web serves the prototype and reaches the API and pgvector database", async
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /antes de construirla/i }),
+    page.getByRole("heading", { name: /venga, al lío/i }),
   ).toBeVisible();
   await expect(page.getByText(/servicios listos · postgresql/i)).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: /qué aplicación/i }),
   ).toBeVisible();
+  const resultRegion = page.getByRole("region", {
+    name: /resultado de la evaluación/i,
+  });
+  await expect(resultRegion).toBeEmpty();
+
+  await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
+  await expect(page.getByRole("alert")).toContainText(/hay aire/i);
+
+  await page
+    .getByRole("textbox", { name: /qué aplicación/i })
+    .fill('<img src=x onerror="alert(1)">');
+  await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
+  await expect(resultRegion).toContainText(
+    /el análisis aún no está conectado/i,
+  );
+  await expect(page.locator("img")).toHaveCount(0);
+
+  await page.getByRole("button", { name: /activar modo oscuro/i }).click();
+  await expect(page.locator(".home-page")).toHaveClass(/theme-dark/);
 });

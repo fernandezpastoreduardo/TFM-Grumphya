@@ -10,7 +10,10 @@ describe("App", () => {
     );
     render(<App />);
     expect(
-      screen.getByRole("heading", { name: /antes de construirla/i }),
+      screen.getByRole("heading", { name: /venga, al lío/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /grumphya, inicio/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("textbox", { name: /qué aplicación/i }),

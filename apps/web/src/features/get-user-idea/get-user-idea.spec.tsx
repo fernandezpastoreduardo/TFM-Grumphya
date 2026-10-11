@@ -1,0 +1,165 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { GetUserIdea } from "./get-user-idea";
+import { MAX_IDEA_LENGTH } from "./idea-input-rules";
+
+const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
+const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
+const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
+const INPUT_LABEL = /qué aplicación tienes en mente/i;
+const SUBMIT_LABEL = /^a ver qué tienes/i;
+
+describe("GetUserIdea", () => {
+  it("sends trimmed text and the selected tone when submitted", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      `  ${VALID_IDEA}  `,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ideaText: VALID_IDEA,
+      tone: "soft",
+    });
+  });
+
+  it("accepts text pasted from the clipboard", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+
+    await user.click(input);
+    await user.paste(CLIPBOARD_IDEA);
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ideaText: CLIPBOARD_IDEA,
+      tone: "soft",
+    });
+  });
+
+  it("blocks empty or whitespace-only input with an accessible message", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/hay aire/i);
+
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      "     ",
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toBeVisible();
+  });
+
+  it("requires at least 10 characters and limits input to 800 characters", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+
+    await user.type(input, "demasiado");
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /al menos 10 caracteres/i,
+    );
+
+    await user.clear(input);
+    await user.type(input, "a".repeat(MAX_IDEA_LENGTH + 1));
+    expect(input).toHaveValue("a".repeat(MAX_IDEA_LENGTH));
+    expect(input).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
+  });
+
+  it("treats markup as literal user text and never renders it as HTML", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const unsafeLookingText = '<img src=x onerror="alert(1)">';
+    render(<GetUserIdea onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+
+    await user.type(input, unsafeLookingText);
+    expect(document.querySelector("img")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ideaText: unsafeLookingText,
+      tone: "soft",
+    });
+    expect(document.querySelector("img")).not.toBeInTheDocument();
+  });
+
+  it("renders untrusted error copy as text rather than executable markup", () => {
+    render(<GetUserIdea onSubmit={vi.fn()} error={UNSAFE_ERROR_TEXT} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(UNSAFE_ERROR_TEXT);
+    expect(document.querySelector("script")).not.toBeInTheDocument();
+  });
+
+  it("allows changing presentation tone without altering the captured idea", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      VALID_IDEA,
+    );
+    await user.click(
+      screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ideaText: VALID_IDEA,
+      tone: "hard",
+    });
+  });
+
+  it("supports keyboard submission and disables submission while busy", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const { rerender } = render(<GetUserIdea onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+    await user.click(input);
+    await user.type(input, VALID_IDEA);
+    await user.tab();
+    expect(
+      screen.getByRole("radio", { name: /dime qué opinas/i }),
+    ).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: SUBMIT_LABEL })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+
+    rerender(<GetUserIdea onSubmit={onSubmit} isSubmitting />);
+    expect(screen.getByRole("button", { name: /preparando/i })).toBeDisabled();
+  });
+
+  it("does not persist or send captured text on its own", async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      VALID_IDEA,
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(localStorage.length).toBe(0);
+    fetchSpy.mockRestore();
+  });
+});

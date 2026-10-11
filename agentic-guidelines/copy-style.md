@@ -7,6 +7,15 @@ More examples of copy directly in spanish:
 - Será por (malas) ideas
 - La única IA a la que tu idea le importa menos que (insertar mala idea para desarrollar app de forma dinámica aquí)
 
+## Intensidad base del copy
+
+- El tono predeterminado de toda la interfaz es rudo, mordaz y sarcástico; no se reserva solo para los resultados. Evitar el copy neutro de plantilla cuando exista una alternativa clara con personalidad.
+- La pulla apunta a la idea, al supuesto o a la situación, nunca a la dignidad, identidad o capacidad de quien la propone. Se puede ser afilado sin ser discriminatorio, amenazante ni humillante.
+- La personalidad no puede ocultar información funcional: validaciones, privacidad, límites, errores, estados y siguientes pasos deben seguir siendo inequívocos y accesibles.
+- No fingir capacidades. Si una función aún no existe, decirlo con claridad y sin vender una evaluación como completada.
+- `soft` reduce el sarcasmo, pero conserva la voz propia; `hard` puede intensificarlo, sin convertir la respuesta en un ataque personal.
+- Revisar el copy de cada pantalla, control, estado vacío, carga, error y confirmación en todas las fases. «Suena a producto genérico» es motivo para reescribirlo.
+
 ## Reglas operativas
 
 - El tono puede ser irónico, nunca discriminatorio, amenazante o humillante.

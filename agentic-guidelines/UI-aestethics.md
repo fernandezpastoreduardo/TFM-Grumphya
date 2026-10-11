@@ -18,6 +18,16 @@ Must contain a light / dark selector under same art direction
 All components must have 24px round cornering with 20px padding
 Main frame has to be only 4px margin left and right and 8px top and bottom in mobile devices
 
+## Reglas visuales obligatorias para todas las fases
+
+- `ideas-and-designs/estetica.jpg` es la referencia visual principal: fondo menta, contornos turquesa, titulares gruesos, controles blancos delineados y paneles de opción azules/rosas con criaturas integradas. En móvil vertical se prioriza la secuencia marca → mascota y personalidad → entrada → opciones; no es una web de escritorio encogida.
+- En escritorio se adapta la misma identidad y el mismo orden de lectura; se puede aprovechar el ancho con columnas, sin estirar controles ni convertir la vista en una maqueta distinta.
+- Toda mascota tomada de `ideas-and-designs` se integra como vector SVG, con fondo transparente. No se rasteriza ni se encierra en una tarjeta blanca incluida en la ilustración; el fondo de la interfaz, si lo necesita, pertenece al componente de UI.
+- La referencia original se conserva. Si un SVG trae un fondo opaco, se prepara una variante vectorial transparente y se verifica visualmente antes de integrarla.
+- La interfaz debe tener una dirección visual propia de Grumphya: criaturas y expresiones con intención, composición con carácter y jerarquía reconocible. No se acepta una plantilla SaaS genérica ni ilustración de stock como sustituto.
+- Estas reglas aplican desde el prototipo y en cada fase; pulir accesibilidad o responsive no es motivo para diluir la identidad visual.
+- El carácter visual nunca sustituye WCAG AA, legibilidad, estados de foco ni alternativas textuales.
+
 ## Criterios verificables
 
 - La interfaz debe conservar contraste WCAG AA en texto, controles y estados de foco.
