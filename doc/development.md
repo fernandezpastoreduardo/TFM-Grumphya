@@ -64,6 +64,26 @@ pnpm build
 
 El hook de Git, cuando se inicialice Husky para el equipo, debe ejecutar al menos `pnpm lint` y `pnpm test`. No se fuerza un hook en el repo inicial hasta configurar explícitamente su ciclo de contribución.
 
+## Dictado de ideas
+
+`transcriptUserIdea` ofrece dictado temporal en español (`es-ES`) mediante la
+Web Speech API del navegador. Pulsa «Dictar idea» para solicitar el permiso del
+navegador; la transcripción se añade al campo y queda editable antes de enviar.
+Si el navegador no soporta la API, se deniega el permiso o no se detecta voz,
+se muestra un mensaje y la escritura manual sigue disponible. Al desmontar el
+control se detiene la sesión activa.
+
+El frontend no recibe ni persiste el audio. La implementación del navegador
+puede transferir voz a su propio servicio de reconocimiento; por eso la UI lo
+indica y esta integración no debe describirse como procesamiento local. El
+texto transcrito no se envía ni guarda por este flujo. El adaptador reusable
+está en `apps/web/src/shared/utils/speech-to-text.ts`; la interfaz propia de
+esta feature está en `apps/web/src/features/transcript-user-idea/`.
+
+La conversión voz-a-texto se comparte entre features porque también está
+prevista para el envío de roast; su botón y manejo de estado permanecen locales
+a cada feature, de acuerdo con la regla de alcance del proyecto.
+
 ## Entorno configurable
 
 Valores locales por defecto:

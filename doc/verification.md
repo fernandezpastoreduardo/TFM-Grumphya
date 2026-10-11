@@ -57,3 +57,13 @@ ejecuta desde `Terminal > New Terminal`.
 5. Si se para PostgreSQL, health responde 503; vuelve a iniciarlo con `pnpm db:up`.
 
 Una compilación verde solo prueba el esqueleto técnico, no la lógica de negocio documentada. El E2E actual solo cubre el arranque y conectividad de la infraestructura, no evaluación de ideas.
+
+## Verificación de dictado `transcriptUserIdea`
+
+Validación añadida el 11 de octubre de 2026 con TDD:
+
+- RED: las pruebas fallaron porque aún no existían el adaptador de voz ni el control de dictado.
+- GREEN: reconocimiento `es-ES`, errores normalizados, incorporación del texto al textarea, conservación del texto ya escrito, disponibilidad de entrada manual y parada al desmontar.
+- Cobertura específica: 10 pruebas unitarias/de componente y 3 pruebas de integración del dictado con el formulario (texto previo tras denegación, concatenación y límite de longitud).
+- Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`.
+- Limitación: el soporte y el tratamiento del audio dependen del navegador y su proveedor de reconocimiento. No se ha añadido ni probado un proveedor local ni transcripción del lado servidor.

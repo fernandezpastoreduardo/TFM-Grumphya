@@ -1,8 +1,10 @@
 import { MAX_IDEA_LENGTH } from "../idea-input-rules";
+import { TranscriptUserIdea } from "../../transcript-user-idea/transcript-user-idea";
 
 type IdeaInputProps = {
   value: string;
   onChange: (value: string) => void;
+  onDictatedText: (transcript: string) => void;
   errorMessage?: string;
 };
 
@@ -13,7 +15,12 @@ const INPUT_ID = "idea-text";
 const HELP_ID = "idea-text-help";
 const ERROR_ID = "idea-text-error";
 
-export function IdeaInput({ value, onChange, errorMessage }: IdeaInputProps) {
+export function IdeaInput({
+  value,
+  onChange,
+  onDictatedText,
+  errorMessage,
+}: IdeaInputProps) {
   const describedBy = errorMessage ? `${HELP_ID} ${ERROR_ID}` : HELP_ID;
 
   return (
@@ -34,6 +41,7 @@ export function IdeaInput({ value, onChange, errorMessage }: IdeaInputProps) {
           aria-describedby={describedBy}
           aria-invalid={Boolean(errorMessage)}
         />
+        <TranscriptUserIdea onTranscript={onDictatedText} />
       </div>
       <div className="idea-input-meta">
         <span id={HELP_ID}>{IDEA_INPUT_HELP}</span>

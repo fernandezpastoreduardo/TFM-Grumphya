@@ -3,12 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { GetUserIdea } from "./get-user-idea";
 import { MAX_IDEA_LENGTH } from "./idea-input-rules";
+import * as speechToText from "../../shared/utils/speech-to-text";
 
 const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
 const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
 const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
 const INPUT_LABEL = /qué aplicación tienes en mente/i;
 const SUBMIT_LABEL = /^a ver qué tienes/i;
+const MICROPHONE_BUTTON_LABEL = /dictar idea/i;
+const PERMISSION_DENIED_MESSAGE = /permiso al micrófono/i;
 
 describe("GetUserIdea", () => {
   it("sends trimmed text and the selected tone when submitted", async () => {
@@ -42,6 +45,70 @@ describe("GetUserIdea", () => {
       ideaText: CLIPBOARD_IDEA,
       tone: "soft",
     });
+  });
+
+  it("adds dictated text to the editable idea without replacing existing text", async () => {
+    const user = userEvent.setup();
+    const inputCallback = vi.spyOn(speechToText, "startSpeechToText");
+    inputCallback.mockImplementation(({ onTranscript }) => {
+      onTranscript("y compartir libros entre vecinos");
+      return { stop: vi.fn() };
+    });
+    render(<GetUserIdea onSubmit={vi.fn()} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+
+    await user.type(input, "Una aplicación para");
+    await user.click(
+      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+    );
+
+    expect(input).toHaveValue(
+      "Una aplicación para y compartir libros entre vecinos",
+    );
+    expect(input).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
+  });
+
+  it("keeps dictated text within the maximum idea length", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(speechToText, "startSpeechToText").mockImplementation(
+      ({ onTranscript }) => {
+        onTranscript(" and then some more words");
+        return { stop: vi.fn() };
+      },
+    );
+    render(<GetUserIdea onSubmit={vi.fn()} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+    await user.click(input);
+    await user.paste("a".repeat(MAX_IDEA_LENGTH - 5));
+
+    await user.click(
+      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+    );
+
+    expect(input).toHaveValue(`${"a".repeat(MAX_IDEA_LENGTH - 5)} and `);
+  });
+
+  it("preserves typed text and keeps editing available when microphone access is denied", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(speechToText, "startSpeechToText").mockImplementation(
+      ({ onError }) => {
+        onError("permission-denied");
+        return null;
+      },
+    );
+    render(<GetUserIdea onSubmit={vi.fn()} />);
+    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+    await user.type(input, "Una idea que ya estaba escrita");
+
+    await user.click(
+      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+    );
+
+    expect(input).toHaveValue("Una idea que ya estaba escrita");
+    expect(input).toBeEnabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      PERMISSION_DENIED_MESSAGE,
+    );
   });
 
   it("blocks empty or whitespace-only input with an accessible message", async () => {
@@ -134,6 +201,10 @@ describe("GetUserIdea", () => {
     const input = screen.getByRole("textbox", { name: INPUT_LABEL });
     await user.click(input);
     await user.type(input, VALID_IDEA);
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+    ).toHaveFocus();
     await user.tab();
     expect(
       screen.getByRole("radio", { name: /dime qué opinas/i }),

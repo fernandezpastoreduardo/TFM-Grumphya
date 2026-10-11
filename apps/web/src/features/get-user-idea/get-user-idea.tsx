@@ -32,6 +32,7 @@ const EMPTY_IDEA_MESSAGE =
 const SHORT_IDEA_MESSAGE =
   "Nueve caracteres: ni una idea ni un haiku. Añade al menos 10 caracteres.";
 const LONG_IDEA_MESSAGE = `Son más de ${MAX_IDEA_LENGTH} caracteres y aún no aterriza. Recorta el rodeo.`;
+const DICTATION_SEPARATOR = " ";
 const INVALID_IDEA_MESSAGE =
   "Eso no parece texto utilizable. Prueba a escribirlo otra vez.";
 const BUTTON_LABEL = {
@@ -77,6 +78,15 @@ export function GetUserIdea({
     if (validationError) setValidationError("");
   }
 
+  function handleDictatedText(transcript: string) {
+    const currentText = ideaText.trimEnd();
+    const nextText = [currentText, transcript.trim()]
+      .filter(Boolean)
+      .join(DICTATION_SEPARATOR)
+      .slice(0, MAX_IDEA_LENGTH);
+    handleIdeaChange(nextText);
+  }
+
   const currentError = validationError || error;
 
   return (
@@ -84,6 +94,7 @@ export function GetUserIdea({
       <IdeaInput
         value={ideaText}
         onChange={handleIdeaChange}
+        onDictatedText={handleDictatedText}
         errorMessage={currentError}
       />
       <fieldset className="idea-tone-options">
@@ -114,8 +125,9 @@ export function GetUserIdea({
         <span aria-hidden="true">↗</span>
       </button>
       <p className="idea-privacy-note">
-        Tu texto no se guarda ni se envía. La evaluación todavía no está
-        conectada; aquí no vendemos humo.
+        La idea no se guarda ni se envía desde aquí. El dictado usa el servicio
+        de voz disponible en tu navegador; revisa el texto antes de continuar.
+        La evaluación aún no está conectada; aquí no vendemos humo.
       </p>
     </form>
   );

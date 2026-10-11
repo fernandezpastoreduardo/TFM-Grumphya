@@ -14,6 +14,11 @@ La Home may show a brief, temporary client-side synthesis beside the mascot whil
 
 Forma parte de la primera entrega. Solicita permiso de micrófono, transcribe temporalmente y vuelca el texto en `IdeaInput` para revisión antes del envío. Si falla o se deniega el permiso, conserva el texto existente y permite escribir. No se persiste el audio.
 
+- El contenedor `TranscriptUserIdea` vive en `features/transcript-user-idea/`; el adaptador `shared/utils/speech-to-text.ts` es compartido porque la transcripción de roast también lo utilizará.
+- La transcripción se concatena al texto editable, respetando el límite de 800 caracteres. No se envía ni se persiste desde este flujo.
+- Se usa reconocimiento del navegador en `es-ES` (`SpeechRecognition` o `webkitSpeechRecognition`). El audio se entrega al servicio de voz que implemente el navegador; la aplicación no lo recibe ni lo almacena. Hay que informar este comportamiento y dejar disponible la escritura manual.
+- Los errores se reducen a categorías seguras (`unsupported`, `permission-denied`, `no-speech`, `failed`); no se muestran mensajes crudos del navegador.
+
 ## getIdeaListWorstAll
 
 Returns `IdeaListItemWorstAll` entries for rejected ideas received in the current ISO week in `Europe/Madrid`, ordered by the lowest score from rubric v1. The public response contains only title and weekly reception count, never author or original text.
