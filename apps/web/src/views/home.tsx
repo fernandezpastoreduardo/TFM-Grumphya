@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
+import {
+  evaluationProcess,
+  formatEvaluationAlert,
+} from "../features/idea-evaluation/evaluation-process";
 
 type Health = { status: "ok"; database: "ok"; pgvector: string };
 const API_HEALTH_PATH = "/api/health";
+const EVALUATION_FAILURE_MESSAGE =
+  "No se pudo completar el scoring. La idea sigue en el formulario; inténtalo otra vez.";
 const THEME_LABEL = {
   LIGHT: "Activar modo oscuro",
   DARK: "Activar modo claro",
@@ -52,7 +58,7 @@ function isHealthResponse(value: unknown): value is Health {
 
 export function Home() {
   const [health, setHealth] = useState<Health | null>(null);
-  const [ideaCaptured, setIdeaCaptured] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [ideaSynthesis, setIdeaSynthesis] = useState(DEFAULT_IDEA_SYNTHESIS);
   const [navigationNotice, setNavigationNotice] = useState("");
@@ -76,6 +82,18 @@ export function Home() {
       isMounted = false;
     };
   }, []);
+
+  async function handleEvaluation(ideaText: string) {
+    setIsEvaluating(true);
+    try {
+      const result = await evaluationProcess(ideaText);
+      window.alert(formatEvaluationAlert(result));
+    } catch {
+      window.alert(EVALUATION_FAILURE_MESSAGE);
+    } finally {
+      setIsEvaluating(false);
+    }
+  }
 
   return (
     <div className={`home-page theme-${theme}`}>
@@ -176,7 +194,8 @@ export function Home() {
             onIdeaChange={(ideaText) =>
               setIdeaSynthesis(getIdeaSynthesis(ideaText))
             }
-            onSubmit={() => setIdeaCaptured(true)}
+            onSubmit={(request) => void handleEvaluation(request.ideaText)}
+            isSubmitting={isEvaluating}
           />
           <p className="home-manifesto">
             Porque poder hacerlo no significa que debas hacerlo.
@@ -187,14 +206,7 @@ export function Home() {
           className="home-result"
           aria-label="Resultado de la evaluación"
           aria-live="polite"
-        >
-          {ideaCaptured ? (
-            <p>
-              Idea recibida. El análisis aún no está conectado; no voy a fingir
-              que la he destripado.
-            </p>
-          ) : null}
-        </section>
+        />
 
         <footer className="home-footer">
           <span

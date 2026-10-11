@@ -84,6 +84,16 @@ La conversión voz-a-texto se comparte entre features porque también está
 prevista para el envío de roast; su botón y manejo de estado permanecen locales
 a cada feature, de acuerdo con la regla de alcance del proyecto.
 
+## Scoring de evaluación (prototipo)
+
+Al enviar una idea válida, la Home hace `POST /api/evaluation-process`; NestJS
+valida la entrada y devuelve un scoring de demostración que la UI muestra en un
+`alert` nativo. Como todavía no hay proveedor de IA, los seis criterios se
+marcan desconocidos con nota `2/4`: la rúbrica calcula `50/100` y veredicto
+`review`. La respuesta identifica explícitamente la simulación. Este corte no
+guarda la idea ni consume intentos. El frontend solo valida la forma de la
+respuesta y la presenta; el cálculo y el veredicto viven en la API.
+
 ## Entorno configurable
 
 Valores locales por defecto:

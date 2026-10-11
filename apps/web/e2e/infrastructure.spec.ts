@@ -24,6 +24,18 @@ test("home captures ideas safely and reaches the API and pgvector database", asy
     expect(data.pgvector).toMatch(/^\d+\.\d+\.\d+$/);
   }
 
+  const directEvaluation = await request.post("/api/evaluation-process", {
+    data: { ideaText: "Una app para coordinar voluntarios" },
+  });
+  const evaluationResult = await directEvaluation.json();
+  expect(directEvaluation.status(), JSON.stringify(evaluationResult)).toBe(201);
+  expect(evaluationResult).toMatchObject({
+    score: 50,
+    verdict: "review",
+    isSimulated: true,
+    rubricVersion: "v1",
+  });
+
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: /venga, al lío/i }),
@@ -43,10 +55,15 @@ test("home captures ideas safely and reaches the API and pgvector database", asy
   await page
     .getByRole("textbox", { name: /qué aplicación/i })
     .fill('<img src=x onerror="alert(1)">');
+  const scoringDialogPromise = page.waitForEvent("dialog");
   await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
-  await expect(resultRegion).toContainText(
-    /el análisis aún no está conectado/i,
-  );
+  const scoringDialog = await scoringDialogPromise;
+  expect(scoringDialog.type()).toBe("alert");
+  expect(scoringDialog.message()).toContain("50/100");
+  expect(scoringDialog.message()).toContain("demostración");
+  expect(scoringDialog.message()).not.toContain("<img");
+  await scoringDialog.accept();
+  await expect(resultRegion).toBeEmpty();
   await expect(page.locator("img")).toHaveCount(0);
 
   await page.getByRole("button", { name: /activar modo oscuro/i }).click();

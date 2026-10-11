@@ -67,3 +67,13 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 - Cobertura específica: 10 pruebas unitarias/de componente y 3 pruebas de integración del dictado con el formulario (texto previo tras denegación, concatenación y límite de longitud).
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`.
 - Limitación: el soporte y el tratamiento del audio dependen del navegador y su proveedor de reconocimiento. No se ha añadido ni probado un proveedor local ni transcripción del lado servidor.
+
+## Verificación de scoring `evaluationProcess`
+
+Validación añadida el 11 de octubre de 2026 con TDD:
+
+- RED: los tests de la rúbrica y del alert fallaron antes de añadir el caso de uso/API.
+- GREEN: NestJS valida la idea, calcula la puntuación ponderada con la rúbrica v1 y responde con el scoring simulado; el frontend realiza el POST y muestra un alert accesible del navegador sin repetir el texto de la idea.
+- Cobertura específica: 19 tests de API y 4 tests del adaptador de evaluación web; Home comprueba envío válido, validación, respuesta de scoring, fallo seguro de red y que el texto no se filtra al alert.
+- Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
+- Limitación: 50/100 es una simulación explícita de seis criterios desconocidos, no un dictamen de la idea. No hay proveedor de IA, persistencia, historial, similitud ni consumo de intentos en esta entrega.

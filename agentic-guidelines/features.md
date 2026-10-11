@@ -40,6 +40,8 @@ Returns private `IdeaListItemWorstUser` entries from the authenticated user's su
 
 Evalúa solo ideas de **aplicaciones web o móviles**. Produce una evaluación base independiente del tono. Si el texto no describe mínimamente qué hace la aplicación y para quién, devuelve `IDEA_NOT_EVALUABLE` sin consumir un intento.
 
+Primer corte implementado: al enviar una idea válida, el frontend llama a `POST /api/evaluation-process` y presenta la puntuación en un `alert` del navegador. El endpoint usa una salida de demostración: asigna `2/4` (desconocido) a los seis criterios, por lo que devuelve `50/100` y `review`. La respuesta marca `isSimulated = true`; no se conecta a un proveedor de IA, no persiste datos ni consume intentos. Esto comprueba el contrato UI/API y la fórmula sin fingir una evaluación real. El scoring y el veredicto se calculan exclusivamente en NestJS.
+
 ### Rúbrica v1
 
 Seis criterios reciben una nota entera de 0 a 4: `0` = muy débil o riesgo grave, `1` = débil, `2` = incierto o dato no aportado, `3` = razonable, `4` = bien fundamentado por el texto. Una nota de 2 por falta de datos debe señalarse como supuesto; no se inventan hechos de mercado.

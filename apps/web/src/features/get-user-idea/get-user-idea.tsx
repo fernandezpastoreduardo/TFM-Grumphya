@@ -125,9 +125,9 @@ export function GetUserIdea({
         <span aria-hidden="true">↗</span>
       </button>
       <p className="idea-privacy-note">
-        La idea no se guarda ni se envía desde aquí. El dictado usa el servicio
-        de voz disponible en tu navegador; revisa el texto antes de continuar.
-        La evaluación aún no está conectada; aquí no vendemos humo.
+        La idea se envía al backend para un scoring simulado; no se persiste. El
+        dictado usa el servicio de voz de tu navegador: revisa la transcripción
+        antes de enviar.
       </p>
     </form>
   );

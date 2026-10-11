@@ -1,6 +1,6 @@
 # Infraestructura y desarrollo de Grumphya
 
-Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión de salud a PostgreSQL/pgvector, captura de ideas y dictado de voz en navegador. La evaluación de ideas todavía no está implementada.
+Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión de salud a PostgreSQL/pgvector, captura de ideas, dictado de voz y un scoring de evaluación simulado sin persistencia. El evaluador real todavía no está conectado.
 
 ## Documentos
 
