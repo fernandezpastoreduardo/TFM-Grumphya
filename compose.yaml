@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:0.8.7-pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${PGDATABASE:?Run pnpm db:setup first}
+      POSTGRES_USER: ${PGUSER:?Run pnpm db:setup first}
+      POSTGRES_PASSWORD: ${GRUMPHYA_DB_PASSWORD:?Run pnpm db:setup first}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - grumphya-postgres-data:/var/lib/postgresql/data
+      - ./docker/initdb/001-enable-pgvector.sql:/docker-entrypoint-initdb.d/001-enable-pgvector.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  grumphya-postgres-data:

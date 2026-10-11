@@ -1,0 +1,81 @@
+# Desarrollo local
+
+## Requisitos
+
+- macOS, Linux o Windows con Node.js 22–24 y pnpm 12.
+- Docker Desktop y PostgreSQL 17 con extensión pgvector 0.8.x (arranca con Compose).
+- Para tests E2E: navegador Chromium de Playwright.
+
+En este Mac, Node/pnpm estaban disponibles; Docker Desktop está instalado y probado. PostgreSQL de Homebrew también está instalado, pero el proyecto usa su propio contenedor aislado en el puerto 5433. Tras clonar el repo, `corepack enable` puede habilitar pnpm si no está en el PATH.
+
+## Preparación local
+
+```sh
+pnpm install
+pnpm db:setup
+```
+
+`pnpm db:setup` genera `.env.docker` con una contraseña aleatoria de desarrollo y permisos de archivo `0600`; está excluida de Git. No la copies a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
+
+## Arranque
+
+En una terminal:
+
+```sh
+pnpm dev
+```
+
+Puedes ejecutar este comando directamente en la terminal integrada de Visual
+Studio Code (`Terminal > New Terminal`). Los procesos de Vite y NestJS heredan
+esa terminal, por lo que los mensajes `[infra]` aparecen allí en cada arranque;
+no dependen de la consola del navegador ni de una extensión de VS Code.
+
+El arranque ejecuta comprobaciones acotadas y las imprime siempre por líneas en
+la terminal:
+
+```text
+[infra] PostgreSQL levantado OK
+[infra] pgvector 0.8.7 habilitado OK
+[infra] NestJS levantado OK
+[infra] Comunicación React/Vite → NestJS OK
+[infra] Health check completo: frontend, API y base de datos OK
+```
+
+El proyecto utiliza una única base PostgreSQL; `pgvector` es una extensión de
+esa base, no una segunda base de datos. Por eso se muestran dos comprobaciones
+separadas para dejar verificadas ambas capacidades.
+
+- Web: <http://127.0.0.1:5173>
+- API: <http://127.0.0.1:3000/api/health>
+- PostgreSQL: `127.0.0.1:5433` (contenedor `db`).
+- API directamente accesible solo en loopback (`127.0.0.1`).
+- Vite reenvía `/api` a NestJS.
+
+Para parar web/API: `Ctrl+C`. Para parar y retirar el contenedor sin borrar sus datos: `pnpm db:down`. El volumen de Docker conserva la base al detenerla.
+
+## Calidad y build
+
+```sh
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+```
+
+El hook de Git, cuando se inicialice Husky para el equipo, debe ejecutar al menos `pnpm lint` y `pnpm test`. No se fuerza un hook en el repo inicial hasta configurar explícitamente su ciclo de contribución.
+
+## Entorno configurable
+
+Valores locales por defecto:
+
+| Variable     | Valor local                | Uso                                       |
+| ------------ | -------------------------- | ----------------------------------------- |
+| `API_PORT`   | `3000`                     | Puerto HTTP de NestJS                     |
+| `WEB_ORIGIN` | `http://localhost:5173`    | Origen CORS permitido por API             |
+| `PGHOST`     | `127.0.0.1`                | PostgreSQL local de Docker                |
+| `PGPORT`     | `5433`                     | Puerto publicado por Compose              |
+| `PGDATABASE` | `grumphya_dev`             | Base aislada de desarrollo                |
+| `PGUSER`     | `grumphya_dev`             | Rol local del contenedor                  |
+| `PGPASSWORD` | aleatoria en `.env.docker` | Solo desarrollo; archivo ignorado por Git |
+
+Los valores los genera `pnpm db:setup` en `.env.docker`. Para compartir configuraciones, usa placeholders; no añadas secretos al repo.

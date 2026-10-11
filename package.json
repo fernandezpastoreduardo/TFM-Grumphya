@@ -1,0 +1,31 @@
+{
+  "name": "grumphya",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.5.1",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "dev": "pnpm db:up && dotenv -e .env.docker -- node scripts/start-dev.mjs",
+    "db:setup": "node scripts/setup-dev-db.mjs",
+    "db:up": "pnpm db:setup && docker compose --env-file .env.docker up -d --wait db",
+    "db:down": "docker compose --env-file .env.docker down",
+    "db:logs": "docker compose --env-file .env.docker logs -f db",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @grumphya/web test:e2e",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" compose.yaml package.json pnpm-workspace.yaml README.md",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" compose.yaml package.json pnpm-workspace.yaml README.md"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "concurrently": "^9.2.1",
+    "dotenv-cli": "^11.0.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.9.9"
+  }
+}

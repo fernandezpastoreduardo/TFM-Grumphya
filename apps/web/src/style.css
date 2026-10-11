@@ -1,0 +1,108 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
+
+:root {
+  font-family: "DM Sans", sans-serif;
+  color: #242719;
+  background: #f5f1e8;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 76% 20%, #e3dfc3 0, transparent 38%), #f5f1e8;
+}
+.shell {
+  width: min(720px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 12vh 0 8vh;
+}
+.eyebrow {
+  color: #6d704e;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+h1 {
+  font:
+    800 clamp(2.6rem, 7vw, 4.8rem)/1.04 "Manrope",
+    sans-serif;
+  letter-spacing: -0.065em;
+  margin: 1.4rem 0;
+}
+h1 span {
+  color: #71734d;
+}
+.intro {
+  max-width: 570px;
+  color: #696b5d;
+  font-size: 1.08rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: #626451;
+  font-size: 0.88rem;
+  margin-bottom: 3rem;
+}
+.light {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: #c58a52;
+}
+.light.online {
+  background: #62815b;
+  box-shadow: 0 0 0 4px #62815b22;
+}
+label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}
+textarea {
+  resize: vertical;
+  width: 100%;
+  padding: 1rem 1.1rem;
+  border: 1px solid #d4d1bf;
+  border-radius: 12px;
+  background: #fffdf8cc;
+  font: inherit;
+  line-height: 1.6;
+  color: inherit;
+}
+textarea:focus-visible,
+button:focus-visible {
+  outline: 3px solid #8a8d5e;
+  outline-offset: 3px;
+}
+button {
+  display: flex;
+  gap: 1.4rem;
+  align-items: center;
+  margin-top: 1rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.3rem;
+  color: #f8f6ee;
+  background: #333728;
+  font:
+    600 1rem "DM Sans",
+    sans-serif;
+}
+button:disabled {
+  opacity: 0.65;
+}
+small {
+  display: block;
+  margin-top: 1rem;
+  color: #777968;
+}

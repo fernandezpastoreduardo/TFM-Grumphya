@@ -26,10 +26,14 @@ Integración de pagos reales para los planes.
 
 ## Arquitectura prevista
 
-- Frontend: React, TypeScript y Vite.
-- Backend: NestJS y TypeScript como monolito modular.
-- Persistencia: PostgreSQL con `pgvector` para buscar similitud semántica.
+- Frontend: React 19, TypeScript y Vite 7.
+- Backend: NestJS 11 y TypeScript como monolito modular.
+- Persistencia: PostgreSQL 17 con `pgvector` 0.8.7 para buscar similitud semántica.
 - La evaluación, la autorización, los límites y la activación de planes se validan en el backend.
+
+## Arranque del entorno técnico
+
+Consulta [`doc/README.md`](doc/README.md) para instalar requisitos, arrancar los servicios, ejecutar pruebas y preparar un despliegue de producción. En desarrollo, Docker Compose levanta PostgreSQL con `pgvector`.
 
 ## Documentación
 

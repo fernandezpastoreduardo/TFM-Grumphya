@@ -1,10 +1,16 @@
 node_modules/
 dist/
 coverage/
-.DS_Store
+.DS_Store #Mandatory 4 me. This is from My NAS Sync Backup app
 
 # Environment files may contain credentials. Keep every variant out of Git.
 .env
 .env.*
 example.env
 *.local
+playwright-report/
+test-results/
+.husky/_/
+*.log
+apps/*/.env*
+!apps/*/.env.example
