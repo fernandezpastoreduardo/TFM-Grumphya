@@ -77,3 +77,16 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 - Cobertura específica: 19 tests de API y 4 tests del adaptador de evaluación web; Home comprueba envío válido, validación, respuesta de scoring, fallo seguro de red y que el texto no se filtra al alert.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
 - Limitación: 50/100 es una simulación explícita de seis criterios desconocidos, no un dictamen de la idea. No hay proveedor de IA, persistencia, historial, similitud ni consumo de intentos en esta entrega.
+
+## Revisión de seguridad de la aplicación actual
+
+Revisión estática y pruebas añadidas el 11 de octubre de 2026:
+
+- `POST /api/evaluation-process` aplica un límite en memoria de 10 solicitudes por minuto y dirección IP; el resto de la API comparte un máximo de 120 por minuto. Las respuestas limitadas devuelven HTTP 429 y `Retry-After`.
+- El parser JSON de NestJS limita el cuerpo a 8 KB; el caso de uso además restringe la idea a 10–800 caracteres.
+- Se añaden `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`; HSTS solo se añade en `NODE_ENV=production`.
+- CORS permite un origen exacto, métodos GET/POST y `Content-Type`. En producción es obligatorio configurar `WEB_ORIGIN`; no hay credenciales CORS habilitadas.
+- Pruebas de middleware: headers, cuota de evaluación y preflight. Verificación ejecutada: `pnpm --filter @grumphya/api test`, `typecheck` y `lint`.
+- `pnpm audit --prod` no devolvió resultado en este entorno y se interrumpió; el estado de vulnerabilidades conocidas de dependencias queda pendiente de ejecutar con acceso al registro.
+
+Límites de esta revisión: el rate limit en memoria es por proceso, se reinicia al reiniciar y no coordina réplicas; antes de exponer el servicio públicamente debe moverse a un almacén compartido o al gateway. No hay aún autenticación, autorización, cuotas de negocio, persistencia de ideas ni protección CSRF asociada a cookies; no deben darse por implementadas. No se realizó pentest ni escaneo dinámico completo.
