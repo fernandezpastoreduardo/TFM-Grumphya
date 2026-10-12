@@ -130,11 +130,11 @@ describe("evaluationProcess API use case", () => {
     },
   );
 
-  it("returns a generic client error for invalid API input", () => {
+  it("returns a generic client error for invalid API input", async () => {
     const service = new EvaluationProcessService();
     let thrown: unknown;
     try {
-      service.evaluate({ ideaText: "corta", tone: "soft" });
+      await service.evaluate({ ideaText: "corta", tone: "soft" });
     } catch (error) {
       thrown = error;
     }

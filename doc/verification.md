@@ -73,10 +73,10 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 Validación añadida el 11 de octubre de 2026 con TDD:
 
 - RED: los tests de la rúbrica y del alert fallaron antes de añadir el caso de uso/API.
-- GREEN: NestJS valida la idea, calcula la puntuación ponderada con la rúbrica v1 y responde con el scoring simulado; el frontend realiza el POST y muestra un alert accesible del navegador sin repetir el texto de la idea.
-- Cobertura de referencia de la implementación actual: 23 tests del caso de uso/API, 4 del adaptador y 7 de Home; además, las suites cubren captura, validación y transcripción.
+- GREEN inicial: NestJS validaba la idea y devolvía el scoring simulado v1; el frontend realizaba el POST y mostraba un alert accesible sin repetir el texto. El endpoint ya no usa esa simulación: sin un `EvaluationPort` configurado responde 503.
+- Cobertura actual: API 23 tests del helper v1, 36 del validador de decisión, 5 del renderer, 11 del servicio, 3 del middleware y 1 de health; web 38 tests, incluidos 4 del adaptador y 7 de Home.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
-- Limitación: 50/100 es una simulación explícita de seis criterios desconocidos, no un dictamen de la idea. No hay proveedor de IA, persistencia, historial, similitud ni consumo de intentos en esta entrega.
+- Limitación histórica: 50/100 era una simulación explícita de seis criterios desconocidos, no un dictamen. No hay proveedor de IA real, persistencia, historial, similitud ni consumo de intentos en esta entrega.
 
 Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 
@@ -92,7 +92,7 @@ Actualización del validador del contrato interno, 12 de octubre de 2026:
 - El validador comprueba que un rechazo termina en el primer score menor de 15, y que `stop_at` y `reason_code` coinciden con el criterio; `SIN_BLOQUEO_EVIDENTE` exige los nueve criterios sin veto e `IDEA_INSUFICIENTE` no admite criterios ni datos de veto.
 - La salida validada se reconstruye campo a campo: descarta propiedades adicionales del proveedor y no muta la respuesta original. Los errores usan un mensaje constante y no incluyen la idea ni el texto crudo del proveedor.
 - Revisión de seguridad acotada: el validador comprueba en runtime que la decisión sea un objeto y que la idea de referencia sea texto; limita criterios a nueve, scores a enteros 0–79 y mensajes a 25 palabras/160 unidades UTF-16. No se detectó una vulnerabilidad nueva en este incremento.
-- Limitación: el validador todavía no está conectado al caso de uso, al puerto del proveedor ni a la respuesta HTTP; eso corresponde a incrementos posteriores. Las pruebas demuestran consistencia estructural, no la corrección semántica de la evaluación.
+- Limitación en ese incremento: el validador aún no estaba conectado al caso de uso. Se conecta en la actualización descrita a continuación; las pruebas demuestran consistencia estructural, no la corrección semántica del juicio.
 - Comprobaciones: `pnpm test` (63 API + 38 web, 101 total), `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`.
 
 Actualización del renderer de tono, 12 de octubre de 2026:
@@ -102,6 +102,15 @@ Actualización del renderer de tono, 12 de octubre de 2026:
 - Revisión de seguridad acotada: el renderer recibe valores como `unknown`, valida la frase y el tono y no incorpora el tono del usuario salvo mediante un prefijo constante. No se detectó una vulnerabilidad nueva. La UI deberá mostrar el resultado como texto escapado, nunca como HTML.
 - Limitación: el renderer todavía no está conectado al caso de uso ni a la respuesta HTTP; presupone que la frase neutral proviene de una decisión validada y no reemplaza esa validación.
 - Comprobaciones: `pnpm test` (68 API + 38 web, 106 total), `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`.
+
+Actualización del caso de uso con puerto de evaluación, 12 de octubre de 2026:
+
+- RED: nueve pruebas del servicio fallaron con el caso de uso síncrono anterior: no invocaba un puerto, no generaba la respuesta pública ni manejaba fallos/timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tiene 12 casos.
+- Scores: rechazo usa la nota de veto / 10; sin bloqueo usa la media aritmética de criterios `PUNTUADO` / 10, redondeada a dos decimales; sin criterios puntuados e idea insuficiente devuelven `null`.
+- Errores: entrada inválida 400; proveedor no configurado/no disponible o respuesta inválida 503; timeout 504. No hay reintentos. `EVALUATION_TIMEOUT_MS` configura el timeout (15.000 ms por defecto; se aceptan enteros positivos hasta 120.000 ms); al vencer se aborta la señal si el adaptador la soporta.
+- Revisión de seguridad: errores y logs usan códigos constantes; no se registran idea, respuesta cruda ni mensajes del proveedor. Una prueba instancia el contexto Nest de `AppModule` sin fake de producción y comprueba que el servicio devuelve 503, no scoring simulado; no prueba el arranque HTTP completo. No se detectó vulnerabilidad nueva en este cambio.
+- Limitación: no hay adaptador real ni fake registrado por inyección todavía; el siguiente incremento cubrirá el fake únicamente en tests/DI. Un proveedor que ignore `AbortSignal` podría continuar trabajando tras responder el timeout.
+- Verificación final: `pnpm test` (80 API + 38 web, 118 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. No se volvió a ejecutar E2E ni una auditoría de dependencias en este incremento.
 
 ## Revisión de seguridad de la aplicación actual
 

@@ -63,12 +63,12 @@ Solo los dos primeros pueden sostener un veto conceptual. El tercero no basta pa
 
 ### 2.3 Estados
 
-| Estado interno         | Cuándo                                                        | Qué recibe el usuario                                                         |
-| ---------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `RECHAZADA`            | Primer fallo estructural suficientemente claro, con score <15 | Score global tomado de ese aspecto y una frase explicándolo                   |
-| `SIN_BLOQUEO_EVIDENTE` | No se detecta un fallo de bulto con lo escrito                | Una frase prudente y score; nunca «negocio viable»                            |
-| `IDEA_INSUFICIENTE`    | No se reconoce una propuesta funcional                        | Una frase pidiendo el mínimo para entenderla; tratamiento del score pendiente |
-| `ERROR_EVALUACION`     | Fallo técnico, salida inválida o límite de servicio           | Mensaje breve del servicio; sin veredicto inventado                           |
+| Estado interno         | Cuándo                                                        | Qué recibe el usuario                                       |
+| ---------------------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
+| `RECHAZADA`            | Primer fallo estructural suficientemente claro, con score <15 | Score global tomado de ese aspecto y una frase explicándolo |
+| `SIN_BLOQUEO_EVIDENTE` | No se detecta un fallo de bulto con lo escrito                | Una frase prudente y score; nunca «negocio viable»          |
+| `IDEA_INSUFICIENTE`    | No se reconoce una propuesta funcional                        | Una frase pidiendo el mínimo para entenderla; score `null`  |
+| `ERROR_EVALUACION`     | Fallo técnico, salida inválida o límite de servicio           | Mensaje breve del servicio; sin veredicto inventado         |
 
 Una idea de una línea puede ser evaluable. «Una app para guardar recetas y crear la lista de compra» permite identificar una propuesta. «Una app revolucionaria» no.
 
@@ -140,9 +140,11 @@ la escala conceptual de `0–100` dividiendo entre 10; por ejemplo, un `13`
 conceptual se presenta como `1,30/10`. No se promedian criterios ni se evalúan
 los posteriores al veto.
 
-**Pendiente de decisión:** fórmula del score para `SIN_BLOQUEO_EVIDENTE` y si
-`IDEA_INSUFICIENTE` muestra score o ninguno. No inventar un promedio ni asignar
-un cero hasta acordar esas reglas.
+En `SIN_BLOQUEO_EVIDENTE`, el score es la media aritmética de los criterios
+`PUNTUADO` visitados, convertida a escala 0–10 dividiendo entre 10 y redondeada
+a dos decimales. `INDETERMINADO` y `NO_APLICA` no entran en la media. Si no hay
+ningún criterio puntuado, el score es `null`. `IDEA_INSUFICIENTE` siempre usa
+`score: null`; no equivale a cero ni a rechazo.
 
 ## 4. Criterios y orden de revisión
 
@@ -329,7 +331,8 @@ No guardar este fragmento ni la idea en telemetría general por defecto. Los reg
 - Fragmento `basis` no vacío y presente en la entrada para un rechazo.
 - El código de rechazo pertenece al criterio señalado.
 - En `SIN_BLOQUEO_EVIDENTE`, se han visitado los nueve criterios, aunque algunos sean indeterminados; ninguno tiene score <15.
-- En `IDEA_INSUFICIENTE`, no hay puntuaciones ni criterio de parada.
+- En `SIN_BLOQUEO_EVIDENTE`, el score público es la media de los criterios `PUNTUADO` dividida entre 10 y redondeada a dos decimales; si no hay puntuados, es `null`.
+- En `IDEA_INSUFICIENTE`, no hay puntuaciones ni criterio de parada y el score público es `null`.
 - En estados sin rechazo, `stop_at`, `reason_code` y `basis` son `null`.
 - La frase neutral cumple los límites de la sección 7 y no contiene informe, tabla o varias causas.
 - Un error técnico no se convierte en rechazo de la idea.
@@ -546,7 +549,7 @@ interface ModelDecision {
 
 interface EvaluationResponse {
   status: DecisionStatus;
-  score: number | null; // Regla de score pendiente para estados sin rechazo.
+  score: number | null; // Sin bloqueo: media de puntuados / 10; insuficiente: null.
   message: string; // Frase visible, tras aplicar el tono.
 }
 
@@ -580,7 +583,7 @@ Si ya existe un resultado externo con otra estructura, adaptar en el borde del b
 | Salida                     | JSON validado; límite inicial 500 tokens, configurable; integración real del proveedor diferida                 |
 | Timeout                    | 15.000 ms iniciales, configurable; usar cancelación si el cliente la soporta                                    |
 | Reintentos de evaluación   | 0 por defecto; no lanzar otra evaluación para arreglar JSON                                                     |
-| Score visible              | Rango 0–10 con dos decimales; en rechazo es la nota de veto (escala 0–100) dividida entre 10                    |
+| Score visible              | Rechazo: nota de veto / 10; sin bloqueo: media de puntuados / 10, dos decimales; insuficiente: `null`           |
 | Respuesta de éxito         | Status, score y message; no expone basis, notas por criterio ni datos internos                                  |
 | Error de proveedor         | 503 y código estable según el convenio del proyecto                                                             |
 | Timeout                    | 504 y código estable según el convenio del proyecto                                                             |
@@ -662,7 +665,7 @@ El fake devuelve resultados prefabricados: aquí se prueba el **software**, no l
 | V08 | IDs saltados, repetidos o desordenados                   | Rechaza la salida                                                                              |
 | V09 | Score string, fracción, <0, >79 o null en PUNTUADO       | Rechaza la salida                                                                              |
 | V10 | Número en INDETERMINADO/NO_APLICA                        | Rechaza la salida                                                                              |
-| V11 | SIN_BLOQUEO_EVIDENTE con nueve criterios                 | Valida el recorrido; la respuesta visible espera la regla de score pendiente                   |
+| V11 | SIN_BLOQUEO_EVIDENTE con nueve criterios                 | Valida el recorrido; score = media de criterios PUNTUADO / 10, redondeada a dos decimales       |
 | V12 | SIN_BLOQUEO_EVIDENTE con menos de nueve filas o con veto | Rechaza la salida                                                                              |
 | V13 | IDEA_INSUFICIENTE con filas o campos de veto             | Rechaza la salida                                                                              |
 | V14 | basis no presente en idea o reason_code de otro ID       | Rechaza la salida                                                                              |

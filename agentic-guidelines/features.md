@@ -37,7 +37,7 @@ La especificación funcional, el contrato, la rúbrica y el plan TDD de esta fea
 
 ## showEvaluationResults
 
-Para el primer corte de `evaluationProcess`, presenta el score conceptual global (0–10, dos decimales) y una sola frase explicativa. `soft` y `hard` conservan los controles actuales: `soft` usa redacción normal y `hard` añade el prefijo borde; el tono no cambia evaluación ni score. La fórmula del score en resultados sin rechazo está pendiente en `scoring-viability-software.md`.
+Para el primer corte de `evaluationProcess`, presenta el score conceptual global (0–10, dos decimales) y una sola frase explicativa. `soft` y `hard` conservan los controles actuales: `soft` usa redacción normal y `hard` añade el prefijo borde; el tono no cambia evaluación ni score. Sin bloqueo evidente, el score es la media de criterios puntuados dividida entre 10; insuficiente devuelve `null`. El contrato completo está en `scoring-viability-software.md`.
 
 ## registerWithPlan
 
