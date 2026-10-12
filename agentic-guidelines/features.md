@@ -15,7 +15,7 @@ La Home may show a brief, temporary client-side synthesis beside the mascot whil
 Forma parte de la primera entrega. Solicita permiso de micrófono, transcribe temporalmente y vuelca el texto en `IdeaInput` para revisión antes del envío. Si falla o se deniega el permiso, conserva el texto existente y permite escribir. No se persiste el audio.
 
 - El contenedor `TranscriptUserIdea` vive en `features/transcript-user-idea/`; el adaptador `shared/utils/speech-to-text.ts` es compartido porque la transcripción de roast también lo utilizará.
-- La transcripción se concatena al texto editable, respetando el límite de 800 caracteres. No se envía ni se persiste desde este flujo.
+- La transcripción se concatena al texto editable, respetando el límite de 2.000 caracteres. No se envía ni se persiste desde este flujo.
 - Se usa reconocimiento del navegador en `es-ES` (`SpeechRecognition` o `webkitSpeechRecognition`). El audio se entrega al servicio de voz que implemente el navegador; la aplicación no lo recibe ni lo almacena. Hay que informar este comportamiento y dejar disponible la escritura manual.
 - Los errores se reducen a categorías seguras (`unsupported`, `permission-denied`, `no-speech`, `failed`); no se muestran mensajes crudos del navegador.
 
@@ -29,39 +29,15 @@ Returns private `IdeaListItemWorstUser` entries from the authenticated user's su
 
 ## searchSimilarRecordedIdea
 
-- Entrada: idea de aplicación web o móvil previamente validada.
-- Genera un embedding con la versión activa del modelo y busca en PostgreSQL/`pgvector` la idea canónica evaluada más cercana. Solo compara vectores del mismo modelo y dimensión.
-- Similitud v1: `1 - distancia_coseno`, acotada a `[0, 1]`. Si el mayor valor es **estrictamente mayor que 0,90**, devuelve la idea canónica y su evaluación base; `0,90` exacto devuelve `null`.
-- Si hay coincidencia, reutiliza directamente esa evaluación, incrementa una sola vez el contador de recepciones y registra la nueva presentación en el historial solo si hay usuario registrado. El tono solicitado se aplica al mostrar la misma evaluación base, sin cambiar score ni veredicto.
-- Si no hay coincidencia, devuelve `null` y se ejecuta `evaluationProccess`.
-- Si falla la búsqueda, devuelve error recuperable; no se trata el fallo como `null` ni se consume intento.
+Feature independiente y previa a `evaluationProcess`: compara semánticamente la idea entrante mediante RAG, sin consultar evaluaciones, puntuaciones, veredictos ni otros datos derivados de una evaluación. Su contrato de coincidencia —incluido si informa, detiene o deja continuar el flujo— se definirá al desarrollar esa feature.
 
 ## evaluationProcess
 
-Evalúa solo ideas de **aplicaciones web o móviles**. Produce una evaluación base independiente del tono. Si el texto no describe mínimamente qué hace la aplicación y para quién, devuelve `IDEA_NOT_EVALUABLE` sin consumir un intento.
-
-Primer corte implementado: al enviar una idea válida, el frontend llama a `POST /api/evaluation-process` y presenta la puntuación en un `alert` del navegador. El endpoint usa una salida de demostración: asigna `2/4` (desconocido) a los seis criterios, por lo que devuelve `50/100` y `review`. La respuesta marca `isSimulated = true`; no se conecta a un proveedor de IA, no persiste datos ni consume intentos. Esto comprueba el contrato UI/API y la fórmula sin fingir una evaluación real. El scoring y el veredicto se calculan exclusivamente en NestJS.
-
-### Rúbrica v1
-
-Seis criterios reciben una nota entera de 0 a 4: `0` = muy débil o riesgo grave, `1` = débil, `2` = incierto o dato no aportado, `3` = razonable, `4` = bien fundamentado por el texto. Una nota de 2 por falta de datos debe señalarse como supuesto; no se inventan hechos de mercado.
-
-| Criterio                             | Peso | Aspectos de una app web/móvil                                                        |
-| ------------------------------------ | ---: | ------------------------------------------------------------------------------------ |
-| Problema y usuario                   |   25 | Usuario objetivo, necesidad concreta, frecuencia e intensidad.                       |
-| Diferenciación                       |   15 | Alternativas y ventaja propuesta.                                                    |
-| Captación y adopción                 |   15 | Canal plausible para llegar al usuario y fricción de uso.                            |
-| Viabilidad técnica y operativa       |   20 | Desarrollo, integraciones, mantenimiento, dependencia de IA/APIs y escalado inicial. |
-| Economía                             |   15 | Costes de construcción y operación frente al posible valor o ingreso.                |
-| Privacidad, seguridad y cumplimiento |   10 | Datos sensibles, permisos, abuso y obligaciones previsibles.                         |
-
-`score = round(sum(peso * nota / 4))`, entre 0 y 100. `0–39 = reject`, `40–69 = review`, `70–100 = promising`. Si faltan datos en dos o más criterios, el veredicto máximo es `review`, aunque el score sea superior. Se mantiene el score numérico y se explican las incógnitas. Un posible daño grave o tratamiento delicado de datos genera una advertencia y recomendación de revisión humana, sin afirmar ilegalidad sin evidencia.
-
-El proveedor de IA devuelve seis notas justificadas, riesgos, supuestos y próximos pasos. El backend valida la estructura, recalcula score y veredicto y registra `rubricVersion = v1` y versión del evaluador. Una respuesta inválida o un fallo del proveedor no guarda evaluación parcial ni consume intento. El análisis es una orientación basada en el texto aportado, no una predicción de éxito.
+La especificación funcional, el contrato, la rúbrica y el plan TDD de esta feature están en [scoring-viability-software.md](./scoring-viability-software.md). Ese documento sustituye las instrucciones anteriores de `evaluationProcess` de este archivo.
 
 ## showEvaluationResults
 
-Presenta puntuación, veredicto, razones, incertidumbres y siguientes pasos. `soft` y `hard` cambian la redacción, pero nunca las notas, el score, el veredicto o los riesgos. La evaluación canónica se almacena sin tono y se presenta con el tono elegido, también cuando procede de una coincidencia reutilizada.
+Para el primer corte de `evaluationProcess`, presenta el score conceptual global (0–10, dos decimales) y una sola frase explicativa. `soft` y `hard` conservan los controles actuales: `soft` usa redacción normal y `hard` añade el prefijo borde; el tono no cambia evaluación ni score. La fórmula del score en resultados sin rechazo está pendiente en `scoring-viability-software.md`.
 
 ## registerWithPlan
 
@@ -81,10 +57,10 @@ Caso de uso principal del MVP.
 
 - Entrada: `ideaText`, `tone` (`soft` o `hard`) y contexto de usuario.
 - Valida longitud, contenido y disponibilidad de intentos.
-- Busca una idea semánticamente similar antes de invocar al evaluador.
-- Si existe una evaluación reutilizable con similitud `> 0,90`, devuelve su resultado y registra la repetición.
-- Si no existe, ejecuta `evaluationProcess`, guarda la evaluación base y actualiza el contador.
-- Salida: `EvaluationResult`.
+- Ejecuta la feature independiente `searchSimilarRecordedIdea` antes de `evaluationProcess`; esta detección no lee datos de evaluación.
+- La política del flujo al obtener una coincidencia queda pendiente de definir en la especificación de esa feature; no se reutiliza una evaluación desde la detección semántica.
+- Cuando corresponda evaluar, ejecuta `evaluationProcess`. Persistencia e intentos pertenecen a capas/orquestación posteriores, no a `evaluationProcess`.
+- Salida del primer corte: estado, score conceptual según la política definida y una frase; contrato detallado en `scoring-viability-software.md`.
 - Errores: entrada vacía, contenido no evaluable, límite agotado, proveedor de IA no disponible.
 
 ## Reglas de implementación

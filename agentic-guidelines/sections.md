@@ -17,7 +17,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
         - Case use: User inputs same app idea as Grumphya. In this case a popup appears with main character illustration laughing in a sinister way with this copy: Sería muy triste que tuviese que hacerte desaparecer por querer copiar una app que me da ni para pagarme un café... Por esta vez lo dejo pasar.
         Error path: User does not submit any content put presses the submit button. Warn user with a popup in same style as the rest of the app.
         - Case use: User submits an idea which is not any of the other prior cases but is not an app or business idea or system is unable to identify what submit means. Show popup with copy: Anda, aclárate primero y luego me cuentas. Si yo no puedo entenderte nadie lo hará.
-        - Happy path: `evaluateIdea` valida la idea de app web/móvil, comprueba y reserva un uso disponible, busca coincidencias con `searchSimilarRecordedIdea` y reutiliza la evaluación si la similitud es estrictamente mayor que 0,90. En otro caso ejecuta `evaluationProcess` según la rúbrica v1 de `features.md`.
+        - Happy path: `evaluateIdea` valida la idea, ejecuta primero la feature RAG separada de detección de duplicados (sin datos de evaluación) y, cuando corresponda, ejecuta `evaluationProcess` según `scoring-viability-software.md`. Las cuotas pertenecen a una capa posterior.
         - Tras obtener un resultado válido se confirma un solo uso. Si falla la transcripción, búsqueda o evaluación, no se consume. Las peticiones repetidas usan idempotencia.
         - La evaluación base se muestra en tono suave o duro sin cambiar score ni veredicto. Un usuario registrado conserva el envío en su historial; un visitante anónimo no tiene historial personal.
 
@@ -108,9 +108,9 @@ La primera entrega incluye Home con dictado por voz, evaluación y similitud, tr
 
 - Empty input cannot call the evaluation API.
 - El dictado solicita permiso; su resultado se puede revisar y editar antes de enviar. Una denegación o error no borra lo que ya se escribió.
-- Input is limited to 800 characters and sanitized at the API boundary.
+- Input is limited to 2,000 characters and sanitized at the API boundary.
 - A valid submission consumes exactly one available attempt.
-- Una coincidencia de similitud `> 0,90` devuelve la evaluación previa sin duplicar su registro canónico; `0,90` exacto se evalúa como idea nueva.
-- The result shows score, verdict, risks and next steps in both tones.
+- La detección de duplicados es una feature RAG separada, previa a la evaluación, y no consulta datos de evaluaciones. Qué ocurre en el flujo cuando detecta una coincidencia queda por especificar.
+- El primer resultado muestra score conceptual de 0–10 con dos decimales y una única frase explicativa en ambos tonos. La fórmula para resultados sin rechazo está pendiente.
 - Las evaluaciones fallidas no consumen intento. Los envíos concurrentes y los reintentos de red tampoco pueden exceder ni duplicar el límite.
 - Los límites de planes activos se reinician a las 00:00 en `Europe/Madrid`, no a medianoche UTC.

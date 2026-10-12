@@ -4,27 +4,16 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 ### EvaluateIdeaRequest
 
-- `ideaText: string`, entre 10 y 800 caracteres.
+- `ideaText: string`, entre 10 y 2.000 caracteres.
 - `tone: 'soft' | 'hard'`.
 
-### EvaluationResult
+### EvaluationProcessResponse
 
-- `id: string` (UUID público).
-- `ideaId: string`.
-- `score: number` (0–100).
-- `verdict: 'reject' | 'review' | 'promising'`.
-- `criteria: { key: string; rating: 0 | 1 | 2 | 3 | 4; weight: number; reason: string; isUnknown: boolean }[]` (seis elementos).
-- `summary: string`.
-- `risks: string[]`.
-- `assumptions: string[]`.
-- `recommendations: string[]`.
-- `tone: 'soft' | 'hard'`.
-- `isRepeated: boolean`.
-- `timesSubmitted: number`.
-- `createdAt: string` (ISO 8601).
-- `rubricVersion: 'v1'`.
+- `status: 'RECHAZADA' | 'SIN_BLOQUEO_EVIDENTE' | 'IDEA_INSUFICIENTE'`.
+- `score: number | null`; escala global 0–10. Para `RECHAZADA` se toma la nota del aspecto que provoca el veto y se divide entre 10. Las reglas para otros estados están pendientes en `scoring-viability-software.md`.
+- `message: string`; una frase visible. La UI presenta el score con dos decimales en `es-ES`.
 
-`tone` identifica la presentación pedida; la evaluación base no depende de él. La respuesta reutilizada no contiene texto ni identificadores de otro usuario. `promising` es el único veredicto que cuenta como idea aprobada en «Humanos notables».
+El primer corte no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos persistidos. El contrato posterior de historial/persistencia queda fuera de `evaluationProcess` y se definirá al desarrollar esas features.
 
 ### RegistrationRequest / AccountResponse
 
