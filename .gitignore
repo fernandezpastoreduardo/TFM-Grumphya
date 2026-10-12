@@ -12,5 +12,6 @@ playwright-report/
 test-results/
 .husky/_/
 *.log
+*.tsbuildinfo
 apps/*/.env*
 !apps/*/.env.example
