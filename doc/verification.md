@@ -95,6 +95,14 @@ Actualización del validador del contrato interno, 12 de octubre de 2026:
 - Limitación: el validador todavía no está conectado al caso de uso, al puerto del proveedor ni a la respuesta HTTP; eso corresponde a incrementos posteriores. Las pruebas demuestran consistencia estructural, no la corrección semántica de la evaluación.
 - Comprobaciones: `pnpm test` (63 API + 38 web, 101 total), `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`.
 
+Actualización del renderer de tono, 12 de octubre de 2026:
+
+- RED: cinco pruebas fallaron al no existir `renderMessage`. GREEN: `soft` conserva exactamente el mensaje neutral; `hard` añade únicamente `Menudo plan: `, sin mutar estado ni scores.
+- La salida se valida tras renderizar: 8–30 palabras, una oración y máximo 180 unidades UTF-16. Un tono no permitido falla con mensaje genérico, sin reflejar el valor recibido.
+- Revisión de seguridad acotada: el renderer recibe valores como `unknown`, valida la frase y el tono y no incorpora el tono del usuario salvo mediante un prefijo constante. No se detectó una vulnerabilidad nueva. La UI deberá mostrar el resultado como texto escapado, nunca como HTML.
+- Limitación: el renderer todavía no está conectado al caso de uso ni a la respuesta HTTP; presupone que la frase neutral proviene de una decisión validada y no reemplaza esa validación.
+- Comprobaciones: `pnpm test` (68 API + 38 web, 106 total), `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:

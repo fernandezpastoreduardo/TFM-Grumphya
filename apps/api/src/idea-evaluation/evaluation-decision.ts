@@ -13,6 +13,7 @@ export const EVALUATION_CRITERION_IDS = [
 export type EvaluationCriterionId = (typeof EVALUATION_CRITERION_IDS)[number];
 export type EvaluationDecisionStatus =
   "RECHAZADA" | "SIN_BLOQUEO_EVIDENTE" | "IDEA_INSUFICIENTE";
+export type EvaluationTone = "soft" | "hard";
 export type EvaluationReasonCode =
   | "PRIVACIDAD_ESTRUCTURAL"
   | "PELIGRO_ESTRUCTURAL"
@@ -63,10 +64,16 @@ const INVALID_DECISION_MESSAGE = "Respuesta del evaluador no válida.";
 const MIN_MESSAGE_WORDS = 8;
 const MAX_MESSAGE_WORDS = 25;
 const MAX_MESSAGE_LENGTH = 160;
+const MIN_VISIBLE_MESSAGE_WORDS = 8;
+const MAX_VISIBLE_MESSAGE_WORDS = 30;
+const MAX_VISIBLE_MESSAGE_LENGTH = 180;
 const MIN_CONCEPTUAL_SCORE = 0;
 const MAX_CONCEPTUAL_SCORE = 79;
 const REJECTION_THRESHOLD = 15;
 const TERMINAL_SENTENCE_MARK = ".";
+const HARD_TONE_PREFIX = "Menudo plan: ";
+const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
+const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
 
 export class InvalidModelDecisionError extends Error {
   constructor() {
@@ -130,11 +137,16 @@ function parseEvaluatedCriteria(input: unknown): EvaluatedCriterion[] {
   });
 }
 
-function isValidNeutralMessage(value: unknown): value is string {
+function isValidMessage(
+  value: unknown,
+  minWords: number,
+  maxWords: number,
+  maxLength: number,
+): value is string {
   if (
     typeof value !== "string" ||
     value.trim() !== value ||
-    value.length > MAX_MESSAGE_LENGTH ||
+    value.length > maxLength ||
     value.length === 0 ||
     /[\r\n\t]/u.test(value) ||
     /^[-*#•]\s/u.test(value) ||
@@ -148,7 +160,43 @@ function isValidNeutralMessage(value: unknown): value is string {
   if (/[.!?…]/u.test(sentenceBody)) return false;
 
   const words = value.split(/\s+/u);
-  return words.length >= MIN_MESSAGE_WORDS && words.length <= MAX_MESSAGE_WORDS;
+  return words.length >= minWords && words.length <= maxWords;
+}
+
+function isValidNeutralMessage(value: unknown): value is string {
+  return isValidMessage(
+    value,
+    MIN_MESSAGE_WORDS,
+    MAX_MESSAGE_WORDS,
+    MAX_MESSAGE_LENGTH,
+  );
+}
+
+function isValidVisibleMessage(value: unknown): value is string {
+  return isValidMessage(
+    value,
+    MIN_VISIBLE_MESSAGE_WORDS,
+    MAX_VISIBLE_MESSAGE_WORDS,
+    MAX_VISIBLE_MESSAGE_LENGTH,
+  );
+}
+
+function getMessageForTone(message: string, tone: unknown): string {
+  if (tone === "soft") return message;
+  if (tone === "hard") return `${HARD_TONE_PREFIX}${message}`;
+  throw new Error(INVALID_TONE_MESSAGE);
+}
+
+export function renderMessage(decision: unknown, tone: unknown): string {
+  if (!isRecord(decision) || !isValidNeutralMessage(decision.message)) {
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  }
+
+  const visibleMessage = getMessageForTone(decision.message, tone);
+  if (!isValidVisibleMessage(visibleMessage)) {
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  }
+  return visibleMessage;
 }
 
 function parseDecisionFields(
