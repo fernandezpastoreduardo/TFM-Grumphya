@@ -25,7 +25,7 @@ export type EvaluationProcessResponse = {
   message: string;
 };
 
-const POLICY_VERSION = "grumphya-concept-v3";
+const POLICY_VERSION = "grumphya-concept-v4";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 15_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";

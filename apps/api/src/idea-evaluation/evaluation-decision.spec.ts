@@ -6,12 +6,14 @@ import {
 
 const IDEA_TEXT =
   "Pagamos cualquier declaración sin comprobarla para obtener ingresos recurrentes.";
+const PARKING_IDEA =
+  "Sería una app para que la gente informe de un hueco libre de aparcamiento de forma automática con unos sensores que llevaría encima. Los usuarios de pago verían en un mapa donde están y donde están las plazas libres más cercanas";
 const VALID_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
   "Pagar por declaraciones que nadie verifica convierte el engaño en el negocio más rentable de tu app.";
 const INSUFFICIENT_MESSAGE =
-  "Cuéntame qué haría la app y para quién, porque todavía no hay una idea concreta que pueda valorar.";
+  "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.";
 const CRITERION_IDS = [
   "C01",
   "C02",
@@ -78,6 +80,26 @@ function createInsufficientDecision() {
   };
 }
 
+function createParkingRejection() {
+  return {
+    status: "RECHAZADA",
+    evaluated: [
+      { id: "C01", state: "PUNTUADO", score: 79 },
+      { id: "C02", state: "PUNTUADO", score: 79 },
+      { id: "C03", state: "PUNTUADO", score: 79 },
+      { id: "C04", state: "PUNTUADO", score: 28 },
+      { id: "C05", state: "PUNTUADO", score: 79 },
+      { id: "C06", state: "PUNTUADO", score: 79 },
+      { id: "C07", state: "PUNTUADO", score: 10 },
+    ],
+    stop_at: "C07",
+    reason_code: CRITERION_REASON_CODES.C07,
+    basis: "plazas libres más cercanas",
+    message:
+      "Sin un método fiable para detectar y caducar plazas libres, el mapa vende humo y llega tarde.",
+  };
+}
+
 describe("validateModelDecision", () => {
   it.each([
     { decision: createCompleteDecision(), ideaText: IDEA_TEXT },
@@ -89,6 +111,24 @@ describe("validateModelDecision", () => {
       expect(validateModelDecision(decision, ideaText)).toMatchObject(decision);
     },
   );
+
+  it("accepts a C07 rejection grounded in an omitted critical mechanism", () => {
+    expect(
+      validateModelDecision(createParkingRejection(), PARKING_IDEA),
+    ).toEqual(createParkingRejection());
+  });
+
+  it("rejects quotation marks added around a basis fragment", () => {
+    expect(() =>
+      validateModelDecision(
+        {
+          ...createParkingRejection(),
+          basis: '"plazas libres más cercanas"',
+        },
+        PARKING_IDEA,
+      ),
+    ).toThrow(/respuesta del evaluador no válida/i);
+  });
 
   it.each([
     { ...createCompleteDecision(), status: "ERROR_EVALUACION" },

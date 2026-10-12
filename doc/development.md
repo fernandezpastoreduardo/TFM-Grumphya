@@ -84,15 +84,41 @@ La conversión voz-a-texto se comparte entre features porque también está
 prevista para el envío de roast; su botón y manejo de estado permanecen locales
 a cada feature, de acuerdo con la regla de alcance del proyecto.
 
-## Scoring de evaluación (prototipo)
+## Scoring de evaluación (rama experimental)
 
-Al enviar una idea válida, la Home hace `POST /api/evaluation-process`; NestJS
-valida la entrada y devuelve un scoring de demostración que la UI muestra en un
-`alert` nativo. Como todavía no hay proveedor de IA, los seis criterios se
-marcan desconocidos con nota `2/4`: la rúbrica calcula `50/100` y veredicto
-`review`. La respuesta identifica explícitamente la simulación. Este corte no
-guarda la idea ni consume intentos. El frontend solo valida la forma de la
-respuesta y la presenta; el cálculo y el veredicto viven en la API.
+`POST /api/evaluation-process` valida la idea y delega en el `EvaluationPort`.
+Sin proveedor configurado, el endpoint mantiene el comportamiento seguro
+actual y responde `503`; el fake solo está registrado en pruebas.
+
+Esta rama experimental añade un adaptador directo a OpenAI Responses API. Para
+activarlo en desarrollo, añade estas variables al archivo local ignorado
+`.env.openai` y reinicia `pnpm dev`:
+
+```dotenv
+EVALUATION_PROVIDER=openai
+OPENAI_API_KEY=<clave-de-tu-proyecto-api>
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_REASONING_EFFORT=medium
+```
+
+No pegues una clave real en Git, documentación compartida, tickets o historial
+del shell. `pnpm dev` carga `.env.openai` además de `.env.docker`. El modelo y
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v4`
+rechaza también la ausencia de mecanismos conceptuales imprescindibles para
+la promesa central si causa un perjuicio directo previsible; no pide aclaraciones
+ni da por resuelto lo que no se describe. Cada envío se evalúa por separado.
+La API envía la idea y la versión de política a OpenAI; el tono de interfaz no se
+envía. Las respuestas se solicitan con JSON Schema estricto y `store: false`,
+pero esto **no equivale a Zero Data Retention**: según los controles vigentes de
+OpenAI, el uso ordinario de API puede generar logs de abuso que incluyan prompts
+y respuestas y conservarlos hasta 30 días. Revisa la [política de controles de
+datos de OpenAI](https://developers.openai.com/api/docs/guides/your-data) antes
+de enviar ideas reales.
+
+La validación semántica del backend sigue siendo autoritativa: JSON bien
+formado no garantiza que la decisión respete la rúbrica. Esta rama es para una
+comparación exploratoria, no habilita por sí sola el proveedor en `main` ni
+representa una evaluación de calidad aprobada.
 
 ## Entorno configurable
 
