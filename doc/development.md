@@ -103,10 +103,12 @@ OPENAI_REASONING_EFFORT=medium
 
 No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.openai` además de `.env.docker`. El modelo y
-el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v4`
-rechaza también la ausencia de mecanismos conceptuales imprescindibles para
-la promesa central si causa un perjuicio directo previsible; no pide aclaraciones
-ni da por resuelto lo que no se describe. Cada envío se evalúa por separado.
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v5`
+aplica una lectura adversarial proporcional: no presupone honestidad ni buenas
+intenciones, y analiza abuso, impacto, verificación, contención y reparación,
+especialmente en interacciones presenciales entre desconocidos. No convierte
+riesgos exóticos ni detalles rutinarios en vetos. Cada envío se evalúa por
+separado y no pide aclaraciones.
 La API envía la idea y la versión de política a OpenAI; el tono de interfaz no se
 envía. Las respuestas se solicitan con JSON Schema estricto y `store: false`,
 pero esto **no equivale a Zero Data Retention**: según los controles vigentes de
@@ -117,8 +119,9 @@ de enviar ideas reales.
 
 La validación semántica del backend sigue siendo autoritativa: JSON bien
 formado no garantiza que la decisión respete la rúbrica. Esta rama es para una
-comparación exploratoria, no habilita por sí sola el proveedor en `main` ni
-representa una evaluación de calidad aprobada.
+comparación exploratoria. El resultado del front presenta titular, puntuación
+y explicación específica; el titular se adapta a estado y tono y la UI no
+etiqueta los defectos como «bloqueos».
 
 ## Entorno configurable
 

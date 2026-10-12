@@ -62,18 +62,32 @@ const REASON_CODE_BY_CRITERION: Record<
 };
 const INVALID_DECISION_MESSAGE = "Respuesta del evaluador no válida.";
 const MIN_MESSAGE_WORDS = 8;
-const MAX_MESSAGE_WORDS = 25;
-const MAX_MESSAGE_LENGTH = 160;
-const MIN_VISIBLE_MESSAGE_WORDS = 8;
-const MAX_VISIBLE_MESSAGE_WORDS = 30;
-const MAX_VISIBLE_MESSAGE_LENGTH = 180;
+const MAX_MESSAGE_WORDS = 40;
+const MAX_MESSAGE_LENGTH = 280;
 const MIN_CONCEPTUAL_SCORE = 0;
 const MAX_CONCEPTUAL_SCORE = 79;
 const REJECTION_THRESHOLD = 15;
 const TERMINAL_SENTENCE_MARK = ".";
-const HARD_TONE_PREFIX = "Menudo plan: ";
+const DISALLOWED_RESULT_LABEL = /\bbloque(?:o|os|ante|antes)\b/iu;
 const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
 const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
+const RESULT_HEADLINES: Record<
+  EvaluationDecisionStatus,
+  Record<EvaluationTone, string>
+> = {
+  RECHAZADA: {
+    soft: "Vaya, justo falla donde más importa.",
+    hard: "Pues… no decepciona; no esperaba gran cosa.",
+  },
+  SIN_BLOQUEO_EVIDENTE: {
+    soft: "Bueno, de momento no se cae por lo más obvio.",
+    hard: "Bueno, no se ha desmontado a la primera. No te emociones.",
+  },
+  IDEA_INSUFICIENTE: {
+    soft: "Por ahora solo hay una pista, no una propuesta.",
+    hard: "Esto aún no es una idea; es el tráiler sin película.",
+  },
+};
 
 export class InvalidModelDecisionError extends Error {
   constructor() {
@@ -148,6 +162,7 @@ function isValidMessage(
     value.trim() !== value ||
     value.length > maxLength ||
     value.length === 0 ||
+    DISALLOWED_RESULT_LABEL.test(value) ||
     /[\r\n\t]/u.test(value) ||
     /^[-*#•]\s/u.test(value) ||
     /^\d+[.)]\s/u.test(value) ||
@@ -172,31 +187,19 @@ function isValidNeutralMessage(value: unknown): value is string {
   );
 }
 
-function isValidVisibleMessage(value: unknown): value is string {
-  return isValidMessage(
-    value,
-    MIN_VISIBLE_MESSAGE_WORDS,
-    MAX_VISIBLE_MESSAGE_WORDS,
-    MAX_VISIBLE_MESSAGE_LENGTH,
-  );
-}
-
-function getMessageForTone(message: string, tone: unknown): string {
-  if (tone === "soft") return message;
-  if (tone === "hard") return `${HARD_TONE_PREFIX}${message}`;
-  throw new Error(INVALID_TONE_MESSAGE);
-}
-
-export function renderMessage(decision: unknown, tone: unknown): string {
+export function renderMessage(decision: unknown): string {
   if (!isRecord(decision) || !isValidNeutralMessage(decision.message)) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
+  return decision.message;
+}
 
-  const visibleMessage = getMessageForTone(decision.message, tone);
-  if (!isValidVisibleMessage(visibleMessage)) {
-    throw new Error(INVALID_VISIBLE_MESSAGE);
+export function renderHeadline(status: unknown, tone: unknown): string {
+  if (!isDecisionStatus(status)) throw new Error(INVALID_VISIBLE_MESSAGE);
+  if (tone !== "soft" && tone !== "hard") {
+    throw new Error(INVALID_TONE_MESSAGE);
   }
-  return visibleMessage;
+  return RESULT_HEADLINES[status][tone];
 }
 
 function parseDecisionFields(

@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import {
   InvalidModelDecisionError,
+  renderHeadline,
   renderMessage,
   validateModelDecision,
   type ModelDecision,
@@ -22,10 +23,11 @@ import {
 export type EvaluationProcessResponse = {
   status: ModelDecision["status"];
   score: number | null;
+  headline: string;
   message: string;
 };
 
-const POLICY_VERSION = "grumphya-concept-v4";
+const POLICY_VERSION = "grumphya-concept-v5";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 15_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
@@ -100,12 +102,13 @@ function getPublicScore(decision: ModelDecision): number | null {
 
 function toPublicResponse(
   decision: ModelDecision,
-  message: string,
+  tone: "soft" | "hard",
 ): EvaluationProcessResponse {
   return {
     status: decision.status,
     score: getPublicScore(decision),
-    message,
+    headline: renderHeadline(decision.status, tone),
+    message: renderMessage(decision),
   };
 }
 
@@ -166,8 +169,7 @@ export class EvaluationProcessService {
         request.ideaText,
       );
       const decision = validateModelDecision(rawDecision, request.ideaText);
-      const message = renderMessage(decision, request.tone);
-      return toPublicResponse(decision, message);
+      return toPublicResponse(decision, request.tone);
     } catch (error) {
       if (error instanceof EvaluationTimeoutError) {
         this.logger.warn(EVALUATION_TIMEOUT_RESPONSE.code);

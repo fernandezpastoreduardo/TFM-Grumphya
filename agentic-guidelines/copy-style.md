@@ -2,6 +2,7 @@
 App presents himself as a non kind nor assertive, ironic & rude IA. But still for all audiences. In this app evaluates user´s ideas with this kind of personality.
 For example: Answers the idea bad evaluation in a rude way pointing to his defects. In evaluation´s last part copy points to something like "Felicidades, eres el humano nnnn que ha preguntado por esa idea "Mágica y millonaria".
 More examples of copy directly in spanish:
+
 - Descárgate, tengo servidores de sobra para eso.
 - Porque que puedas hacerlo NO significa que debas hacerlo
 - Será por (malas) ideas
@@ -14,6 +15,8 @@ More examples of copy directly in spanish:
 - La personalidad no puede ocultar información funcional: validaciones, privacidad, límites, errores, estados y siguientes pasos deben seguir siendo inequívocos y accesibles.
 - No fingir capacidades. Si una función aún no existe, decirlo con claridad y sin vender una evaluación como completada.
 - `soft` reduce el sarcasmo, pero conserva la voz propia; `hard` puede intensificarlo, sin convertir la respuesta en un ataque personal.
+- El resultado de evaluación no debe parecer una notificación técnica: presentar primero un titular con voz de Grumphya, después el score y una explicación concreta de los aspectos flojos y el defecto decisivo. No etiquetar el defecto como «bloqueo».
+- La pulla puede ser pesimista, pero la explicación debe identificar una ruta de fallo creíble y su consecuencia; no dramatizar amenazas improbables ni convertir el sarcasmo en sustituto del análisis.
 - Revisar el copy de cada pantalla, control, estado vacío, carga, error y confirmación en todas las fases. «Suena a producto genérico» es motivo para reescribirlo.
 
 ## Reglas operativas

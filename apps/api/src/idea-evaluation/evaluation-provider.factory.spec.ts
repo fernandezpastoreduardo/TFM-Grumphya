@@ -62,7 +62,7 @@ describe("createEvaluationProvider", () => {
 
     await provider.evaluate({
       ideaText: "Una idea de prueba suficientemente larga",
-      policyVersion: "grumphya-concept-v4",
+      policyVersion: "grumphya-concept-v5",
       signal: new AbortController().signal,
     });
 

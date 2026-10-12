@@ -157,6 +157,16 @@ Actualización de rúbrica pesimista y mecanismos esenciales omitidos, 12 de oct
 - Seguridad: el cambio no altera autenticación, cuotas, cuerpo HTTP, almacenamiento ni telemetría. No se relaja la validación de fragmento: la normalización solo retira puntuación envolvente verificable. No se registran ideas ni respuestas crudas. La evaluación sigue enviándose al proveedor externo conforme a `.env.openai`.
 - Comprobaciones finales de este incremento: `pnpm test` (99 API + 41 web, 140 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. La suite E2E no se volvió a ejecutar: el cambio afecta al prompt/adaptador y no altera la UI ni el contrato HTTP.
 
+Modelo de amenazas y rediseño del feedback de evaluación, 12 de octubre de 2026:
+
+- RED: las pruebas nuevas fallaron al faltar el titular separado y las instrucciones adversariales genéricas. GREEN: la política `grumphya-concept-v5` pide identificar actor, ruta de abuso, impacto y salvaguardas conceptuales, no confiar en honestidad/buena intención y considerar encuentros entre desconocidos; prohíbe elevar riesgos exóticos a veto.
+- C05 ahora incluye afirmaciones centrales falseables sin verificación/corrección conceptual; C06 cubre conflictos previsibles sin comprobación, contención ni reparación; C09 cubre dependencias de happy path sin alternativa segura. C02 conserva el daño grave inherente/facilitado. La rúbrica sigue exigiendo perjuicio previsible ligado a la mecánica, no una lista de controles técnicos.
+- El prompt ya no contiene la idea del aparcamiento ni un escenario por dominio como prueba de regresión. Se conservaron tests genéricos de contrato literal y de instrucciones del modelo; la entrada de aparcamiento citada en el registro previo fue una prueba exploratoria histórica, no una regla universal.
+- La respuesta pública incorpora `headline`; la UI muestra titular propio de Grumphya, score y explicación específica. No muestra la etiqueta «bloqueo»; además el validador rechaza mensajes del proveedor que la usen. La explicación admite hasta 40 palabras/280 unidades UTF-16 y React la renderiza como texto plano.
+- Seguridad: el titular es una constante local por estado/tono y no interpola la idea; los valores del mensaje no se convierten en HTML ni se registran. La validación rechaza longitud, formato y etiqueta no deseada. No se relajaron validación de entrada, literalidad de `basis`, timeout, rate limiting ni protección de errores.
+- Pendiente: una prueba lingüística con el proveedor real puede comprobar la consistencia semántica del prompt, pero conlleva coste de API; no se lanzó una llamada facturable en este incremento. Los tests simulados no certifican la precisión del modelo.
+- Comprobación final: `pnpm test` (99 API + 41 web, 140 total), `pnpm test:e2e` (1 Chromium), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:

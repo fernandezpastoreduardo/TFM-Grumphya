@@ -16,9 +16,7 @@ import { EvaluationProcessService } from "./evaluation-process.service";
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const REJECTED_IDEA =
   "Accedemos sin autorización a datos personales para ofrecer una app de coordinación.";
-const PARKING_IDEA =
-  "Sería una app para que la gente informe de un hueco libre de aparcamiento de forma automática con unos sensores que llevaría encima. Los usuarios de pago verían en un mapa donde están y donde están las plazas libres más cercanas";
-const POLICY_VERSION = "grumphya-concept-v4";
+const POLICY_VERSION = "grumphya-concept-v5";
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
@@ -26,7 +24,8 @@ const REJECTION_MESSAGE =
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
-  message: `Menudo plan: ${NEUTRAL_MESSAGE}`,
+  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
+  message: NEUTRAL_MESSAGE,
 };
 const UNAVAILABLE_RESPONSE = {
   code: "EVALUATOR_UNAVAILABLE",
@@ -70,26 +69,6 @@ function createRejectedDecision(): ModelDecision {
     reason_code: "PRIVACIDAD_ESTRUCTURAL",
     basis: "sin autorización",
     message: REJECTION_MESSAGE,
-  };
-}
-
-function createParkingRejection(): ModelDecision {
-  return {
-    status: "RECHAZADA",
-    evaluated: [
-      { id: "C01", state: "PUNTUADO", score: 79 },
-      { id: "C02", state: "PUNTUADO", score: 79 },
-      { id: "C03", state: "PUNTUADO", score: 79 },
-      { id: "C04", state: "PUNTUADO", score: 28 },
-      { id: "C05", state: "PUNTUADO", score: 79 },
-      { id: "C06", state: "PUNTUADO", score: 79 },
-      { id: "C07", state: "PUNTUADO", score: 10 },
-    ],
-    stop_at: "C07",
-    reason_code: "UTILIDAD_ANULADA",
-    basis: "plazas libres más cercanas",
-    message:
-      "Sin un método fiable para detectar y caducar plazas libres, el mapa vende humo y llega tarde.",
   };
 }
 
@@ -161,21 +140,22 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual({
       status: "RECHAZADA",
       score: 1.3,
+      headline: "Vaya, justo falla donde más importa.",
       message: REJECTION_MESSAGE,
     });
   });
 
-  it("explains an omitted core mechanism as a hard-tone rejection", async () => {
-    const port = createPort(createParkingRejection());
+  it("renders the hard-tone title separately from the factual finding", async () => {
+    const port = createPort(createRejectedDecision());
     const service = new EvaluationProcessService(port);
 
     await expect(
-      service.evaluate({ ideaText: PARKING_IDEA, tone: "hard" }),
+      service.evaluate({ ideaText: REJECTED_IDEA, tone: "hard" }),
     ).resolves.toEqual({
       status: "RECHAZADA",
-      score: 1,
-      message:
-        "Menudo plan: Sin un método fiable para detectar y caducar plazas libres, el mapa vende humo y llega tarde.",
+      score: 1.3,
+      headline: "Pues… no decepciona; no esperaba gran cosa.",
+      message: REJECTION_MESSAGE,
     });
   });
 
@@ -273,6 +253,7 @@ describe("EvaluationProcessService", () => {
       expect(result).toEqual({
         status: "SIN_BLOQUEO_EVIDENTE",
         score: 7.15,
+        headline: "Bueno, de momento no se cae por lo más obvio.",
         message: NEUTRAL_MESSAGE,
       });
       expect(fake.calls).toHaveLength(1);

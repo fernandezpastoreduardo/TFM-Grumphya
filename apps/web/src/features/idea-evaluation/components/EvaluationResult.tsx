@@ -5,9 +5,9 @@ type EvaluationResultProps = {
 };
 
 const STATUS_LABELS: Record<EvaluationProcessResult["status"], string> = {
-  RECHAZADA: "Idea rechazada",
-  SIN_BLOQUEO_EVIDENTE: "Sin bloqueo evidente",
-  IDEA_INSUFICIENTE: "Idea insuficiente",
+  RECHAZADA: "Fuera de juego",
+  SIN_BLOQUEO_EVIDENTE: "Sigue en pie, por ahora",
+  IDEA_INSUFICIENTE: "Falta la idea",
 };
 const SPANISH_SCORE_FORMAT = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 2,
@@ -22,11 +22,19 @@ function formatPublicScore(score: number | null): string {
 
 export function EvaluationResult({ result }: EvaluationResultProps) {
   return (
-    <article className="evaluation-result-card">
-      <h2>{STATUS_LABELS[result.status]}</h2>
-      <p className="evaluation-result-score">
-        {formatPublicScore(result.score)}
-      </p>
+    <article
+      className={`evaluation-result-card evaluation-result-card--${result.status.toLowerCase()}`}
+      aria-label="Resultado de tu idea"
+    >
+      <div className="evaluation-result-topline">
+        <p className="evaluation-result-status">
+          {STATUS_LABELS[result.status]}
+        </p>
+        <p className="evaluation-result-score">
+          {formatPublicScore(result.score)}
+        </p>
+      </div>
+      <h2>{result.headline}</h2>
       <p className="evaluation-result-message">{result.message}</p>
     </article>
   );
