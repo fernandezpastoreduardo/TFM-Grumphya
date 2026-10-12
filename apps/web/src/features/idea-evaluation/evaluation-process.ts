@@ -48,15 +48,16 @@ function parseEvaluationResponse(
   return { score, verdict, unknownCriteriaCount, isSimulated, rubricVersion };
 }
 
-export async function evaluationProcess(
-  ideaText: string,
-): Promise<EvaluationProcessResult> {
+export async function evaluationProcess(request: {
+  ideaText: string;
+  tone: "soft" | "hard";
+}): Promise<EvaluationProcessResult> {
   let response: Response;
   try {
     response = await fetch(EVALUATION_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ideaText }),
+      body: JSON.stringify(request),
     });
   } catch {
     throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);

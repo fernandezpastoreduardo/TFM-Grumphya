@@ -4,8 +4,10 @@ import {
   formatEvaluationAlert,
   type EvaluationProcessResult,
 } from "./evaluation-process";
+import type { IdeaTone } from "../get-user-idea/models";
 
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
+const IDEA_TONE: IdeaTone = "hard";
 const EVALUATION_PATH = "/api/evaluation-process";
 const DEMO_RESULT: EvaluationProcessResult = {
   score: 50,
@@ -26,13 +28,15 @@ describe("evaluationProcess frontend adapter", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(evaluationProcess(IDEA_TEXT)).resolves.toEqual(DEMO_RESULT);
+    await expect(
+      evaluationProcess({ ideaText: IDEA_TEXT, tone: IDEA_TONE }),
+    ).resolves.toEqual(DEMO_RESULT);
     expect(fetchMock).toHaveBeenCalledWith(
       EVALUATION_PATH,
       expect.objectContaining({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ideaText: IDEA_TEXT }),
+        body: JSON.stringify({ ideaText: IDEA_TEXT, tone: IDEA_TONE }),
       }),
     );
   });
@@ -46,17 +50,17 @@ describe("evaluationProcess frontend adapter", () => {
       }),
     );
 
-    await expect(evaluationProcess(IDEA_TEXT)).rejects.toThrow(
-      SAFE_FAILURE_MESSAGE,
-    );
+    await expect(
+      evaluationProcess({ ideaText: IDEA_TEXT, tone: IDEA_TONE }),
+    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
   });
 
   it("uses a safe error when the API request fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error(IDEA_TEXT)));
 
-    await expect(evaluationProcess(IDEA_TEXT)).rejects.toThrow(
-      /no se pudo obtener el scoring/i,
-    );
+    await expect(
+      evaluationProcess({ ideaText: IDEA_TEXT, tone: IDEA_TONE }),
+    ).rejects.toThrow(/no se pudo obtener el scoring/i);
   });
 
   it("formats only score and verdict, explicitly labeling demo results", () => {

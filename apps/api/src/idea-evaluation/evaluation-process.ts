@@ -9,6 +9,8 @@ export const EVALUATION_RUBRIC = [
 
 export type CriterionKey = (typeof EVALUATION_RUBRIC)[number]["key"];
 export type EvaluationVerdict = "reject" | "review" | "promising";
+export type EvaluationTone = "soft" | "hard";
+export type EvaluationRequest = { ideaText: string; tone: EvaluationTone };
 
 export type EvaluationCriterion = {
   key: CriterionKey;
@@ -31,7 +33,7 @@ export type EvaluationProcessResult = EvaluationScore & {
 };
 
 const MIN_IDEA_LENGTH = 10;
-const MAX_IDEA_LENGTH = 800;
+const MAX_IDEA_LENGTH = 2000;
 const INVALID_CRITERIA_MESSAGE = "Criterios de evaluación no válidos.";
 const INVALID_IDEA_MESSAGE = "Idea no válida para evaluación.";
 const DEMO_UNKNOWN_RATING = 2;
@@ -140,8 +142,12 @@ export function calculateEvaluationScore(input: unknown): EvaluationScore {
   };
 }
 
-function extractIdeaText(input: unknown): string {
-  if (!isRecord(input) || typeof input.ideaText !== "string") {
+export function normalizeAndValidateRequest(input: unknown): EvaluationRequest {
+  if (
+    !isRecord(input) ||
+    typeof input.ideaText !== "string" ||
+    (input.tone !== "soft" && input.tone !== "hard")
+  ) {
     throw new InvalidEvaluationInputError();
   }
 
@@ -149,11 +155,11 @@ function extractIdeaText(input: unknown): string {
   if (ideaText.length < MIN_IDEA_LENGTH || ideaText.length > MAX_IDEA_LENGTH) {
     throw new InvalidEvaluationInputError();
   }
-  return ideaText;
+  return { ideaText, tone: input.tone };
 }
 
 export function evaluationProcess(input: unknown): EvaluationProcessResult {
-  extractIdeaText(input);
+  normalizeAndValidateRequest(input);
   return {
     ...calculateEvaluationScore(DEMO_RATINGS),
     isSimulated: true,

@@ -126,6 +126,9 @@ describe("Home", () => {
       TEST_IDEA_TEXT,
     );
     await user.click(
+      screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
+    );
+    await user.click(
       screen.getByRole("button", { name: /^a ver qué tienes/i }),
     );
 
@@ -134,7 +137,7 @@ describe("Home", () => {
       "/api/evaluation-process",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ ideaText: TEST_IDEA_TEXT }),
+        body: JSON.stringify({ ideaText: TEST_IDEA_TEXT, tone: "hard" }),
       }),
     );
     expect(

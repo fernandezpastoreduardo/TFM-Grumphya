@@ -83,10 +83,13 @@ export function Home() {
     };
   }, []);
 
-  async function handleEvaluation(ideaText: string) {
+  async function handleEvaluation(request: {
+    ideaText: string;
+    tone: "soft" | "hard";
+  }) {
     setIsEvaluating(true);
     try {
-      const result = await evaluationProcess(ideaText);
+      const result = await evaluationProcess(request);
       window.alert(formatEvaluationAlert(result));
     } catch {
       window.alert(EVALUATION_FAILURE_MESSAGE);
@@ -194,7 +197,7 @@ export function Home() {
             onIdeaChange={(ideaText) =>
               setIdeaSynthesis(getIdeaSynthesis(ideaText))
             }
-            onSubmit={(request) => void handleEvaluation(request.ideaText)}
+            onSubmit={(request) => void handleEvaluation(request)}
             isSubmitting={isEvaluating}
           />
           <p className="home-manifesto">

@@ -74,9 +74,17 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 
 - RED: los tests de la rúbrica y del alert fallaron antes de añadir el caso de uso/API.
 - GREEN: NestJS valida la idea, calcula la puntuación ponderada con la rúbrica v1 y responde con el scoring simulado; el frontend realiza el POST y muestra un alert accesible del navegador sin repetir el texto de la idea.
-- Cobertura específica: 19 tests de API y 4 tests del adaptador de evaluación web; Home comprueba envío válido, validación, respuesta de scoring, fallo seguro de red y que el texto no se filtra al alert.
+- Cobertura de referencia de la implementación actual: 23 tests del caso de uso/API, 4 del adaptador y 7 de Home; además, las suites cubren captura, validación y transcripción.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
 - Limitación: 50/100 es una simulación explícita de seis criterios desconocidos, no un dictamen de la idea. No hay proveedor de IA, persistencia, historial, similitud ni consumo de intentos en esta entrega.
+
+Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
+
+- La validación de backend acepta `ideaText` entre 10 y 2.000 unidades UTF-16 tras `trim` y requiere `tone` igual a `soft` o `hard`; valores inválidos generan HTTP 400 sin incluir la idea en el mensaje.
+- El formulario conserva el límite de 2.000 caracteres. Home pasa `ideaText` y el tono seleccionado al adaptador, que envía ambos en el cuerpo JSON a `POST /api/evaluation-process`.
+- RED: la prueba de integración de Home y la del adaptador fallaron al exigir `tone` en el POST; reproducían el payload incompleto previo. GREEN: ambas verifican el texto y tono elegidos en la solicitud.
+- La API conserva el límite de cuerpo JSON de 8 KB y el rate limit existente. El parser puede rechazar un cuerpo grande antes de la validación del caso de uso.
+- Verificación de este incremento: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`. No se volvió a ejecutar E2E en esta actualización.
 
 ## Revisión de seguridad de la aplicación actual
 

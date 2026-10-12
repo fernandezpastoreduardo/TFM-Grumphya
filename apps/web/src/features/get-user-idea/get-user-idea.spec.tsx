@@ -130,7 +130,7 @@ describe("GetUserIdea", () => {
     expect(screen.getByRole("alert")).toBeVisible();
   });
 
-  it("requires at least 10 characters and limits input to 800 characters", async () => {
+  it("requires at least 10 characters and limits input to 2,000 characters", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<GetUserIdea onSubmit={onSubmit} />);

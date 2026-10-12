@@ -8,6 +8,7 @@ import {
 import { EvaluationProcessService } from "./evaluation-process.service";
 
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
+const VALID_REQUEST = { ideaText: VALID_IDEA, tone: "soft" };
 const UNSAFE_IDEA = '<script>alert("idea privada")</script>';
 const INVALID_CRITERIA_MESSAGE = /criterios de evaluación no válidos/i;
 
@@ -33,7 +34,7 @@ function createRatingsFromValues(ratings: number[]) {
 
 describe("evaluationProcess API use case", () => {
   it("returns a clearly simulated score using the v1 rubric", () => {
-    const result = evaluationProcess({ ideaText: VALID_IDEA });
+    const result = evaluationProcess(VALID_REQUEST);
 
     expect(result).toMatchObject({
       score: 50,
@@ -49,7 +50,7 @@ describe("evaluationProcess API use case", () => {
   });
 
   it("does not echo idea text or markup in its response", () => {
-    const result = evaluationProcess({ ideaText: UNSAFE_IDEA });
+    const result = evaluationProcess({ ideaText: UNSAFE_IDEA, tone: "soft" });
     const serializedResult = JSON.stringify(result);
 
     expect(serializedResult).not.toContain(UNSAFE_IDEA);
@@ -106,15 +107,26 @@ describe("evaluationProcess API use case", () => {
     );
   });
 
-  it.each([null, 42, { ideaText: "corta" }, { ideaText: "a".repeat(801) }])(
-    "rejects invalid request input without echoing it",
-    (input) => {
-      expect(() => evaluationProcess(input)).toThrow(/idea no válida/i);
-      try {
-        evaluationProcess(input);
-      } catch (error) {
-        expect(String(error)).not.toContain(String(input));
-      }
+  it.each([
+    null,
+    42,
+    { ideaText: "corta", tone: "soft" },
+    { ideaText: "a".repeat(2001), tone: "soft" },
+    { ideaText: VALID_IDEA, tone: "angry" },
+    { ideaText: VALID_IDEA, tone: 42 },
+  ])("rejects invalid request input without echoing it", (input) => {
+    expect(() => evaluationProcess(input)).toThrow(/idea no válida/i);
+    try {
+      evaluationProcess(input);
+    } catch (error) {
+      expect(String(error)).not.toContain(String(input));
+    }
+  });
+
+  it.each(["a".repeat(10), "a".repeat(2000)])(
+    "accepts idea text at the %s-character boundary",
+    (ideaText) => {
+      expect(() => evaluationProcess({ ideaText, tone: "hard" })).not.toThrow();
     },
   );
 
@@ -122,7 +134,7 @@ describe("evaluationProcess API use case", () => {
     const service = new EvaluationProcessService();
     let thrown: unknown;
     try {
-      service.evaluate({ ideaText: "corta" });
+      service.evaluate({ ideaText: "corta", tone: "soft" });
     } catch (error) {
       thrown = error;
     }
@@ -131,7 +143,8 @@ describe("evaluationProcess API use case", () => {
     if (thrown instanceof BadRequestException) {
       expect(thrown.getResponse()).toEqual({
         code: "INVALID_IDEA",
-        message: "La idea debe tener entre 10 y 800 caracteres.",
+        message:
+          "La idea debe tener entre 10 y 2.000 caracteres y un tono válido.",
       });
     }
   });

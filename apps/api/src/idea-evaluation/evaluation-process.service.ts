@@ -6,7 +6,7 @@ import {
 
 const INVALID_IDEA_RESPONSE = {
   code: "INVALID_IDEA",
-  message: "La idea debe tener entre 10 y 800 caracteres.",
+  message: "La idea debe tener entre 10 y 2.000 caracteres y un tono válido.",
 };
 
 @Injectable()
