@@ -6,8 +6,8 @@ import {
 
 const IDEA_TEXT =
   "Pagamos cualquier declaración sin comprobarla para obtener ingresos recurrentes.";
-const PARKING_IDEA =
-  "Sería una app para que la gente informe de un hueco libre de aparcamiento de forma automática con unos sensores que llevaría encima. Los usuarios de pago verían en un mapa donde están y donde están las plazas libres más cercanas";
+const TIME_SENSITIVE_PROMISE_IDEA =
+  "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
@@ -80,7 +80,7 @@ function createInsufficientDecision() {
   };
 }
 
-function createParkingRejection() {
+function createCorePromiseRejection() {
   return {
     status: "RECHAZADA",
     evaluated: [
@@ -94,9 +94,9 @@ function createParkingRejection() {
     ],
     stop_at: "C07",
     reason_code: CRITERION_REASON_CODES.C07,
-    basis: "plazas libres más cercanas",
+    basis: "resultados actuales",
     message:
-      "Sin un método fiable para detectar y caducar plazas libres, el mapa vende humo y llega tarde.",
+      "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
   };
 }
 
@@ -112,20 +112,23 @@ describe("validateModelDecision", () => {
     },
   );
 
-  it("accepts a C07 rejection grounded in an omitted critical mechanism", () => {
+  it("accepts a rejection grounded in a literal phrase from the core promise", () => {
     expect(
-      validateModelDecision(createParkingRejection(), PARKING_IDEA),
-    ).toEqual(createParkingRejection());
+      validateModelDecision(
+        createCorePromiseRejection(),
+        TIME_SENSITIVE_PROMISE_IDEA,
+      ),
+    ).toEqual(createCorePromiseRejection());
   });
 
   it("rejects quotation marks added around a basis fragment", () => {
     expect(() =>
       validateModelDecision(
         {
-          ...createParkingRejection(),
-          basis: '"plazas libres más cercanas"',
+          ...createCorePromiseRejection(),
+          basis: '"resultados actuales"',
         },
-        PARKING_IDEA,
+        TIME_SENSITIVE_PROMISE_IDEA,
       ),
     ).toThrow(/respuesta del evaluador no válida/i);
   });
@@ -223,8 +226,9 @@ describe("validateModelDecision", () => {
     "- " + VALID_MESSAGE,
     "• " + VALID_MESSAGE,
     "Texto de respuesta demasiado corto.",
-    `${"palabra ".repeat(26)}termina.`,
-    "x".repeat(161) + ".",
+    "El bloqueo conceptual deja al usuario sin una salida clara.",
+    `${"palabra ".repeat(41)}termina.`,
+    "x".repeat(281) + ".",
   ])("rejects malformed neutral message: %s", (message) => {
     expect(() =>
       validateModelDecision(

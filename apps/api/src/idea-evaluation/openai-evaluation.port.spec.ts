@@ -5,9 +5,9 @@ import { OpenAiEvaluationPort } from "./openai-evaluation.port";
 const API_KEY = "test-openai-key";
 const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
-const CRITICAL_OMISSION_IDEA =
-  "Sería una app para que la gente informe de un hueco libre de aparcamiento de forma automática con unos sensores que llevaría encima. Los usuarios de pago verían en un mapa donde están y donde están las plazas libres más cercanas";
-const POLICY_VERSION = "grumphya-concept-v4";
+const TIME_SENSITIVE_PROMISE_IDEA =
+  "El servicio promete mostrar resultados actuales a sus usuarios.";
+const POLICY_VERSION = "grumphya-concept-v5";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
@@ -18,24 +18,22 @@ const MODEL_DECISION = {
   message:
     "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.",
 };
-const PARKING_IDEA =
-  "Sería una app para que la gente informe de un hueco libre de aparcamiento de forma automática con unos sensores que llevaría encima. Los usuarios de pago verían en un mapa donde están y donde están las plazas libres más cercanas";
-const PARKING_REJECTION = {
+const QUOTED_BASIS_DECISION = {
   status: "RECHAZADA",
   evaluated: [
     { id: "C01", state: "PUNTUADO", score: 79 },
     { id: "C02", state: "PUNTUADO", score: 79 },
     { id: "C03", state: "PUNTUADO", score: 79 },
-    { id: "C04", state: "PUNTUADO", score: 28 },
+    { id: "C04", state: "PUNTUADO", score: 79 },
     { id: "C05", state: "PUNTUADO", score: 79 },
     { id: "C06", state: "PUNTUADO", score: 79 },
     { id: "C07", state: "PUNTUADO", score: 10 },
   ],
   stop_at: "C07",
   reason_code: "UTILIDAD_ANULADA",
-  basis: '"plazas libres más cercanas"',
+  basis: '"resultados actuales"',
   message:
-    "Sin un método fiable para detectar y caducar plazas libres, el mapa vende humo y llega tarde.",
+    "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
 };
 
 function createResponse(body: unknown, status = 200): Response {
@@ -105,7 +103,7 @@ describe("OpenAiEvaluationPort", () => {
     expect(JSON.stringify(requestBody)).not.toContain('"tone"');
   });
 
-  it("treats missing core mechanisms as rejection grounds without asking follow-up questions", async () => {
+  it("applies pessimistic threat modeling without inventing exotic risks", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(createOpenAiResponse(MODEL_DECISION));
@@ -115,32 +113,56 @@ describe("OpenAiEvaluationPort", () => {
       model: MODEL_NAME,
     });
 
-    await port.evaluate({
-      ...createInput(),
-      ideaText: CRITICAL_OMISSION_IDEA,
-    });
+    await port.evaluate(createInput());
 
     const request = JSON.stringify(fetchMock.mock.calls[0]?.[1]);
-    expect(request).toContain(CRITICAL_OMISSION_IDEA);
     expect(request).toContain(
       "Rechaza también si falta un mecanismo conceptual imprescindible para que la promesa central funcione de forma fiable",
     );
-    expect(request).toContain("No preguntes al usuario cómo resolverlo");
-    expect(request).toContain("cuando alguien ocupa la plaza");
     expect(request).toContain(
-      "sin comillas alrededor, escapes ni caracteres añadidos",
+      "Analiza el escenario pesimista como un modelo de amenazas",
+    );
+    expect(request).toContain(
+      "no presupongas honestidad, buena intención ni cooperación",
+    );
+    expect(request).toContain("encuentros presenciales entre desconocidos");
+    expect(request).toContain(
+      "verificación, detección, contención y reparación",
+    );
+    expect(request).toContain(
+      "C05 dependencia central de afirmaciones de usuarios que pueden falsearse",
+    );
+    expect(request).toContain(
+      "C06 conflicto grave entre personas sin vía de comprobación, contención o reparación",
+    );
+    expect(request).toContain("C09 dependencia perfecta del happy path");
+    expect(request).toContain(
+      "no son por sí mismos controles de fraude, seguridad o resolución de incidentes",
+    );
+    expect(request).toContain(
+      "No conviertas riesgos exóticos o meramente imaginables en vetos",
+    );
+    expect(request).toContain("No preguntes al usuario cómo resolverlo");
+    expect(request).toContain(
+      "fragmento literal breve de la idea que sostenga el defecto",
     );
     expect(request).toContain(
       "El mensaje constata que no hay propuesta evaluable",
     );
     expect(request).toContain("No inventes incentivos");
+    expect(request).toContain(
+      "No uses las palabras bloqueo ni bloqueante en el mensaje visible",
+    );
+    expect(request).toContain(
+      "Si criterios previos tienen score de 15 a 34 y refuerzan el defecto decisivo, resume como máximo dos",
+    );
     expect(request).toContain("clara, mordaz y factual");
   });
 
-  it("normalizes only quote-wrapped basis text that occurs literally in the idea", async () => {
+  it("normalizes quote-wrapped basis only when its contents occur literally", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(createOpenAiResponse(PARKING_REJECTION));
+      .mockResolvedValue(createOpenAiResponse(QUOTED_BASIS_DECISION));
     vi.stubGlobal("fetch", fetchMock);
     const port = new OpenAiEvaluationPort({
       apiKey: API_KEY,
@@ -149,13 +171,15 @@ describe("OpenAiEvaluationPort", () => {
 
     const result = await port.evaluate({
       ...createInput(),
-      ideaText: PARKING_IDEA,
+      ideaText: TIME_SENSITIVE_PROMISE_IDEA,
     });
 
-    expect(validateModelDecision(result, PARKING_IDEA)).toMatchObject({
+    expect(
+      validateModelDecision(result, TIME_SENSITIVE_PROMISE_IDEA),
+    ).toMatchObject({
       status: "RECHAZADA",
       stop_at: "C07",
-      basis: "plazas libres más cercanas",
+      basis: "resultados actuales",
     });
   });
 
