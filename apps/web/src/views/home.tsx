@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
+import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
 import {
   evaluationProcess,
-  formatEvaluationAlert,
+  type EvaluationProcessResult,
 } from "../features/idea-evaluation/evaluation-process";
 
 type Health = { status: "ok"; database: "ok"; pgvector: string };
 const API_HEALTH_PATH = "/api/health";
 const EVALUATION_FAILURE_MESSAGE =
   "No se pudo completar el scoring. La idea sigue en el formulario; inténtalo otra vez.";
+const EVALUATION_LOADING_MESSAGE = "Evaluando tu idea. La espera no la mejora.";
 const THEME_LABEL = {
   LIGHT: "Activar modo oscuro",
   DARK: "Activar modo claro",
@@ -59,6 +61,9 @@ function isHealthResponse(value: unknown): value is Health {
 export function Home() {
   const [health, setHealth] = useState<Health | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationResult, setEvaluationResult] =
+    useState<EvaluationProcessResult | null>(null);
+  const [evaluationError, setEvaluationError] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [ideaSynthesis, setIdeaSynthesis] = useState(DEFAULT_IDEA_SYNTHESIS);
   const [navigationNotice, setNavigationNotice] = useState("");
@@ -87,12 +92,14 @@ export function Home() {
     ideaText: string;
     tone: "soft" | "hard";
   }) {
+    setEvaluationResult(null);
+    setEvaluationError("");
     setIsEvaluating(true);
     try {
       const result = await evaluationProcess(request);
-      window.alert(formatEvaluationAlert(result));
+      setEvaluationResult(result);
     } catch {
-      window.alert(EVALUATION_FAILURE_MESSAGE);
+      setEvaluationError(EVALUATION_FAILURE_MESSAGE);
     } finally {
       setIsEvaluating(false);
     }
@@ -209,7 +216,21 @@ export function Home() {
           className="home-result"
           aria-label="Resultado de la evaluación"
           aria-live="polite"
-        />
+        >
+          {isEvaluating ? (
+            <p className="home-result-status" role="status">
+              {EVALUATION_LOADING_MESSAGE}
+            </p>
+          ) : null}
+          {evaluationError ? (
+            <p className="home-result-error" role="alert">
+              {evaluationError}
+            </p>
+          ) : null}
+          {evaluationResult ? (
+            <EvaluationResult result={evaluationResult} />
+          ) : null}
+        </section>
 
         <footer className="home-footer">
           <span

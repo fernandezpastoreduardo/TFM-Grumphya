@@ -125,9 +125,9 @@ export function GetUserIdea({
         <span aria-hidden="true">↗</span>
       </button>
       <p className="idea-privacy-note">
-        La idea se envía al backend para un scoring simulado; no se persiste. El
-        dictado usa el servicio de voz de tu navegador: revisa la transcripción
-        antes de enviar.
+        La idea se envía al backend para evaluación y no se persiste. El dictado
+        usa el servicio de voz de tu navegador: revisa la transcripción antes de
+        enviar.
       </p>
     </form>
   );

@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   evaluationProcess,
-  formatEvaluationAlert,
   type EvaluationProcessResult,
 } from "./evaluation-process";
 import type { IdeaTone } from "../get-user-idea/models";
@@ -9,28 +8,27 @@ import type { IdeaTone } from "../get-user-idea/models";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const IDEA_TONE: IdeaTone = "hard";
 const EVALUATION_PATH = "/api/evaluation-process";
-const DEMO_RESULT: EvaluationProcessResult = {
-  score: 50,
-  verdict: "review",
-  unknownCriteriaCount: 6,
-  isSimulated: true,
-  rubricVersion: "v1",
+const EVALUATION_RESULT: EvaluationProcessResult = {
+  status: "SIN_BLOQUEO_EVIDENTE",
+  score: 7.15,
+  message:
+    "Menudo plan: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 const SAFE_FAILURE_MESSAGE = /no se puede verificar/i;
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("evaluationProcess frontend adapter", () => {
-  it("sends the idea to the API and returns its validated scoring", async () => {
+  it("sends the idea and selected tone and returns the public evaluation", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => DEMO_RESULT,
+      json: async () => EVALUATION_RESULT,
     });
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
       evaluationProcess({ ideaText: IDEA_TEXT, tone: IDEA_TONE }),
-    ).resolves.toEqual(DEMO_RESULT);
+    ).resolves.toEqual(EVALUATION_RESULT);
     expect(fetchMock).toHaveBeenCalledWith(
       EVALUATION_PATH,
       expect.objectContaining({
@@ -46,7 +44,11 @@ describe("evaluationProcess frontend adapter", () => {
       "fetch",
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({ ...DEMO_RESULT, score: 101, leaked: IDEA_TEXT }),
+        json: async () => ({
+          ...EVALUATION_RESULT,
+          score: 101,
+          privateProviderData: IDEA_TEXT,
+        }),
       }),
     );
 
@@ -63,12 +65,27 @@ describe("evaluationProcess frontend adapter", () => {
     ).rejects.toThrow(/no se pudo obtener el scoring/i);
   });
 
-  it("formats only score and verdict, explicitly labeling demo results", () => {
-    const alertText = formatEvaluationAlert(DEMO_RESULT);
-
-    expect(alertText).toBe(
-      "Puntuación de demostración: 50/100 — revisar. El evaluador real aún no está conectado; hay 6 criterios desconocidos.",
+  it("projects only the public fields and accepts an insufficient result without a score", async () => {
+    const publicResult = {
+      status: "IDEA_INSUFICIENTE",
+      score: null,
+      message: "Cuéntame qué haría la app y para quién.",
+      basis: IDEA_TEXT,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => publicResult,
+      }),
     );
-    expect(alertText).not.toContain(IDEA_TEXT);
+
+    await expect(
+      evaluationProcess({ ideaText: IDEA_TEXT, tone: IDEA_TONE }),
+    ).resolves.toEqual({
+      status: "IDEA_INSUFICIENTE",
+      score: null,
+      message: "Cuéntame qué haría la app y para quién.",
+    });
   });
 });

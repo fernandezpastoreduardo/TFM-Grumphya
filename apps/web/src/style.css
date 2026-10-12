@@ -528,8 +528,58 @@ input:focus-visible {
   font-weight: 800;
 }
 
-.home-result p {
+.home-result-status,
+.home-result-error {
   margin: 0;
+  padding: 12px 14px;
+  border: 2px dashed var(--color-teal-dark);
+  border-radius: 14px;
+  background: var(--color-paper);
+}
+
+.home-result-error {
+  border-color: #a72848;
+  color: #7d1731;
+}
+
+.theme-dark .home-result-error {
+  border-color: #f2a2b5;
+  color: #ffe0e8;
+}
+
+.evaluation-result-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 18px;
+  padding: 16px;
+  background: var(--color-paper);
+}
+
+.evaluation-result-card h2,
+.evaluation-result-card p {
+  margin: 0;
+}
+
+.evaluation-result-card h2 {
+  font-family: "Fredoka", "Arial Black", sans-serif;
+  font-size: 1.15rem;
+}
+
+.evaluation-result-score {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--color-teal-dark);
+  font-family: "Fredoka", "Arial Black", sans-serif;
+  font-size: 1.5rem;
+  white-space: nowrap;
+}
+
+.evaluation-result-message {
+  grid-column: 1 / -1;
+  line-height: 1.5;
 }
 
 .home-footer {

@@ -1,11 +1,10 @@
-export type EvaluationVerdict = "reject" | "review" | "promising";
+export type EvaluationStatus =
+  "RECHAZADA" | "SIN_BLOQUEO_EVIDENTE" | "IDEA_INSUFICIENTE";
 
 export type EvaluationProcessResult = {
-  score: number;
-  verdict: EvaluationVerdict;
-  unknownCriteriaCount: number;
-  isSimulated: boolean;
-  rubricVersion: "v1";
+  status: EvaluationStatus;
+  score: number | null;
+  message: string;
 };
 
 const EVALUATION_ENDPOINT = "/api/evaluation-process";
@@ -13,39 +12,49 @@ const INVALID_RESULT_MESSAGE =
   "El servicio devolvió un resultado que no se puede verificar.";
 const EVALUATION_UNAVAILABLE_MESSAGE =
   "No se pudo obtener el scoring. La idea sigue en el formulario; inténtalo otra vez.";
-const ALERT_VERDICT: Record<EvaluationVerdict, string> = {
-  reject: "descartar",
-  review: "revisar",
-  promising: "prometedora",
-};
+const MAX_PUBLIC_SCORE = 10;
+const MAX_PUBLIC_MESSAGE_LENGTH = 180;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isEvaluationStatus(value: unknown): value is EvaluationStatus {
+  return (
+    value === "RECHAZADA" ||
+    value === "SIN_BLOQUEO_EVIDENTE" ||
+    value === "IDEA_INSUFICIENTE"
+  );
+}
+
+function isValidPublicScore(value: unknown): value is number | null {
+  return (
+    value === null ||
+    (typeof value === "number" &&
+      Number.isFinite(value) &&
+      value >= 0 &&
+      value <= MAX_PUBLIC_SCORE)
+  );
 }
 
 function parseEvaluationResponse(
   input: unknown,
 ): EvaluationProcessResult | null {
   if (!isRecord(input)) return null;
-  const { score, verdict, unknownCriteriaCount, isSimulated, rubricVersion } =
-    input;
+  const { status, score, message } = input;
   if (
-    typeof score !== "number" ||
-    !Number.isInteger(score) ||
-    score < 0 ||
-    score > 100 ||
-    (verdict !== "reject" && verdict !== "review" && verdict !== "promising") ||
-    typeof unknownCriteriaCount !== "number" ||
-    !Number.isInteger(unknownCriteriaCount) ||
-    unknownCriteriaCount < 0 ||
-    unknownCriteriaCount > 6 ||
-    typeof isSimulated !== "boolean" ||
-    rubricVersion !== "v1"
+    !isEvaluationStatus(status) ||
+    !isValidPublicScore(score) ||
+    typeof message !== "string" ||
+    message.trim().length === 0 ||
+    message.length > MAX_PUBLIC_MESSAGE_LENGTH ||
+    (status === "IDEA_INSUFICIENTE" && score !== null) ||
+    (status === "RECHAZADA" && score === null)
   ) {
     return null;
   }
 
-  return { score, verdict, unknownCriteriaCount, isSimulated, rubricVersion };
+  return { status, score, message };
 }
 
 export async function evaluationProcess(request: {
@@ -75,11 +84,4 @@ export async function evaluationProcess(request: {
   const result = parseEvaluationResponse(payload);
   if (!result) throw new Error(INVALID_RESULT_MESSAGE);
   return result;
-}
-
-export function formatEvaluationAlert(result: EvaluationProcessResult): string {
-  const simulationNote = result.isSimulated
-    ? ` El evaluador real aún no está conectado; hay ${result.unknownCriteriaCount} criterios desconocidos.`
-    : "";
-  return `Puntuación${result.isSimulated ? " de demostración" : ""}: ${result.score}/100 — ${ALERT_VERDICT[result.verdict]}.${simulationNote}`;
 }

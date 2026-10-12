@@ -126,6 +126,13 @@ Actualización de integración HTTP de `evaluationProcess`, 12 de octubre de 202
 - Revisión de seguridad acotada: las respuestas probadas no reflejan la idea ni campos internos del proveedor; el fake sigue limitado al módulo de pruebas. Este harness no instala los middlewares de `main.ts`, por lo que no sustituye las pruebas existentes de rate limit/cabeceras/CORS ni comprueba el arranque productivo completo. Sin dependencias nuevas ni vulnerabilidades detectadas.
 - Verificación: suite completa con permiso de bind local (85 API + 38 web, 123 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. E2E y auditoría de dependencias no ejecutadas en este incremento.
 
+Actualización de UI de `evaluationProcess`, 12 de octubre de 2026:
+
+- RED: las pruebas de adapter rechazaron el contrato actual (`status`, `score`, `message`) y las pruebas de Home detectaron el alert en vez del resultado accesible dentro de la vista. GREEN: el adapter valida y proyecta el contrato público; Home muestra carga, error recuperable y una única explicación con estado y score `es-ES` a dos decimales. El formulario conserva la idea ante errores y deshabilita el botón durante la solicitud.
+- `EvaluationResult` muestra `Sin puntuación` cuando score es `null`; la respuesta se renderiza como texto React, no HTML. Se actualizó la nota de privacidad para quitar la afirmación obsoleta de que el scoring es simulado.
+- Revisión de seguridad: el parser de frontend comprueba estado, score y mensaje en runtime, descarta propiedades internas adicionales, y usa errores genéricos que no reflejan el texto de idea ni detalles del proveedor. El test de UI confirma que un mensaje con markup queda como texto. No se añadieron dependencias ni se detectó vulnerabilidad nueva.
+- Verificación: suite completa con permiso de bind local (85 API + 41 web, 126 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. El endpoint sigue respondiendo 503 en producción mientras no haya proveedor configurado. E2E y auditoría de dependencias no ejecutadas en este incremento.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:
