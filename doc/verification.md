@@ -112,6 +112,13 @@ Actualización del caso de uso con puerto de evaluación, 12 de octubre de 2026:
 - Limitación: no hay adaptador real ni fake registrado por inyección todavía; el siguiente incremento cubrirá el fake únicamente en tests/DI. Un proveedor que ignore `AbortSignal` podría continuar trabajando tras responder el timeout.
 - Verificación final: `pnpm test` (80 API + 38 web, 118 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. No se volvió a ejecutar E2E ni una auditoría de dependencias en este incremento.
 
+Actualización del fake de evaluación exclusivo de tests, 12 de octubre de 2026:
+
+- RED: el spec falló al importar el módulo de pruebas que aún no existía. GREEN: `EvaluationTestingModule` registra `FakeEvaluationPort` bajo `EVALUATION_PORT`; el servicio real resuelto por Nest devuelve la decisión prefabricada, y el test confirma una invocación con idea, versión de política y señal de cancelación.
+- El fake solo devuelve un objeto fijo y almacena las llamadas recibidas; no contiene cliente HTTP/SDK ni realiza acceso a red. `AppModule` de producción permanece sin proveedor, por lo que mantiene el 503 cuando no se configura un evaluador.
+- Revisión de seguridad: el fake no es alcanzable desde el módulo productivo ni cambia autenticación, validación, cuotas, persistencia o superficie HTTP. No se añadieron dependencias ni se detectó vulnerabilidad nueva. No equivale a comprobar comportamiento semántico de un LLM.
+- Verificación: `pnpm test` (81 API + 38 web, 119 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. E2E y auditoría de dependencias no ejecutadas en este incremento.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:

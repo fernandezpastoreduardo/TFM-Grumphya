@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../app.module";
 import type { ModelDecision } from "./evaluation-decision";
 import type { EvaluationPort } from "./evaluation-port";
+import { EvaluationTestingModule } from "./evaluation-testing.module";
+import { FakeEvaluationPort } from "./fake-evaluation.port";
 import { EvaluationProcessService } from "./evaluation-process.service";
 
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
@@ -213,6 +215,36 @@ describe("EvaluationProcessService", () => {
 
       expect(caught).toBeInstanceOf(ServiceUnavailableException);
       expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
+    } finally {
+      await application.close();
+    }
+  });
+
+  it("injects the deterministic test fake into the real evaluation service", async () => {
+    const application = await NestFactory.createApplicationContext(
+      EvaluationTestingModule,
+      { logger: false },
+    );
+
+    try {
+      const service = application.get(EvaluationProcessService);
+      const fake = application.get(FakeEvaluationPort);
+      const result = await service.evaluate({
+        ideaText: VALID_IDEA,
+        tone: "soft",
+      });
+
+      expect(result).toEqual({
+        status: "SIN_BLOQUEO_EVIDENTE",
+        score: 7.15,
+        message: NEUTRAL_MESSAGE,
+      });
+      expect(fake.calls).toHaveLength(1);
+      expect(fake.calls[0]).toMatchObject({
+        ideaText: VALID_IDEA,
+        policyVersion: POLICY_VERSION,
+      });
+      expect(fake.calls[0].signal).toBeInstanceOf(AbortSignal);
     } finally {
       await application.close();
     }
