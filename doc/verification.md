@@ -119,6 +119,13 @@ Actualización del fake de evaluación exclusivo de tests, 12 de octubre de 2026
 - Revisión de seguridad: el fake no es alcanzable desde el módulo productivo ni cambia autenticación, validación, cuotas, persistencia o superficie HTTP. No se añadieron dependencias ni se detectó vulnerabilidad nueva. No equivale a comprobar comportamiento semántico de un LLM.
 - Verificación: `pnpm test` (81 API + 38 web, 119 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. E2E y auditoría de dependencias no ejecutadas en este incremento.
 
+Actualización de integración HTTP de `evaluationProcess`, 12 de octubre de 2026:
+
+- RED: la primera ejecución aislada no pudo abrir el puerto local (`EPERM`); al ejecutarse con permiso para localhost se observó 404 en éxito y 400 porque el módulo de pruebas no registraba el controller. GREEN: tras registrarlo, cuatro pruebas HTTP contra un puerto efímero pasan.
+- Verifica POST exitoso (201) y proyección exacta de `status`, `score` y `message`; entrada inválida 400 sin reflejarla; `AppModule` sin evaluador 503; y puerto que excede el timeout 504. El caso de timeout usa timeout de 1 ms y se restaura la variable de entorno.
+- Revisión de seguridad acotada: las respuestas probadas no reflejan la idea ni campos internos del proveedor; el fake sigue limitado al módulo de pruebas. Este harness no instala los middlewares de `main.ts`, por lo que no sustituye las pruebas existentes de rate limit/cabeceras/CORS ni comprueba el arranque productivo completo. Sin dependencias nuevas ni vulnerabilidades detectadas.
+- Verificación: suite completa con permiso de bind local (85 API + 38 web, 123 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. E2E y auditoría de dependencias no ejecutadas en este incremento.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:
