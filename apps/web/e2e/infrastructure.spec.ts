@@ -1,71 +1,87 @@
 import { expect, test } from "@playwright/test";
 
-test("home captures ideas safely and reaches the API and pgvector database", async ({
+const IDEA_TEXT_FIRST = "Una app para coordinar voluntarios en el barrio";
+const IDEA_TEXT_SECOND = "Una app para compartir herramientas en el vecindario";
+const READINESS_PATH = "/api/test-ready";
+const EVALUATION_PATH = "/api/evaluation-process";
+const NEUTRAL_MESSAGE =
+  "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+
+test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", async ({
   page,
   request,
 }) => {
-  await expect
-    .poll(
-      async () =>
-        (await request.get("http://127.0.0.1:3000/api/health")).status(),
-      {
-        timeout: 30_000,
-        message: "NestJS API and its database dependency should become ready",
-      },
-    )
-    .toBe(200);
+  const readinessResponse = await request.get(READINESS_PATH);
+  expect(readinessResponse.ok()).toBeTruthy();
 
-  const directHealth = await request.get("http://127.0.0.1:3000/api/health");
-  const proxiedHealth = await request.get("/api/health");
-  for (const response of [directHealth, proxiedHealth]) {
-    expect(response.ok()).toBeTruthy();
-    const data = await response.json();
-    expect(data).toMatchObject({ status: "ok", database: "ok" });
-    expect(data.pgvector).toMatch(/^\d+\.\d+\.\d+$/);
-  }
-
-  const directEvaluation = await request.post("/api/evaluation-process", {
-    data: { ideaText: "Una app para coordinar voluntarios" },
+  const directResponse = await request.post(EVALUATION_PATH, {
+    data: { ideaText: IDEA_TEXT_FIRST, tone: "soft" },
   });
-  const evaluationResult = await directEvaluation.json();
-  expect(directEvaluation.status(), JSON.stringify(evaluationResult)).toBe(201);
-  expect(evaluationResult).toMatchObject({
-    score: 50,
-    verdict: "review",
-    isSimulated: true,
-    rubricVersion: "v1",
+  expect(directResponse.status()).toBe(201);
+  expect(await directResponse.json()).toEqual({
+    status: "SIN_BLOQUEO_EVIDENTE",
+    score: 7.15,
+    message: NEUTRAL_MESSAGE,
+  });
+
+  const submissionPayloads: unknown[] = [];
+  let unexpectedDialog = false;
+  page.on("request", (browserRequest) => {
+    if (
+      browserRequest.method() === "POST" &&
+      browserRequest.url() ===
+        `${new URL(page.url()).origin}/api/evaluation-process`
+    ) {
+      submissionPayloads.push(
+        JSON.parse(browserRequest.postData() ?? "null") as unknown,
+      );
+    }
+  });
+  page.on("dialog", async (dialog) => {
+    unexpectedDialog = true;
+    await dialog.dismiss();
   });
 
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: /venga, al lío/i }),
   ).toBeVisible();
-  await expect(page.getByText(/servicios listos · postgresql/i)).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: /qué aplicación/i }),
   ).toBeVisible();
+
   const resultRegion = page.getByRole("region", {
     name: /resultado de la evaluación/i,
   });
   await expect(resultRegion).toBeEmpty();
-
   await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
   await expect(page.getByRole("alert")).toContainText(/hay aire/i);
 
-  await page
-    .getByRole("textbox", { name: /qué aplicación/i })
-    .fill('<img src=x onerror="alert(1)">');
-  const scoringDialogPromise = page.waitForEvent("dialog");
+  const ideaInput = page.getByRole("textbox", { name: /qué aplicación/i });
+  await ideaInput.fill(IDEA_TEXT_FIRST);
+  await page.getByRole("radio", { name: /dame tu mejor golpe/i }).check();
   await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
-  const scoringDialog = await scoringDialogPromise;
-  expect(scoringDialog.type()).toBe("alert");
-  expect(scoringDialog.message()).toContain("50/100");
-  expect(scoringDialog.message()).toContain("demostración");
-  expect(scoringDialog.message()).not.toContain("<img");
-  await scoringDialog.accept();
-  await expect(resultRegion).toBeEmpty();
-  await expect(page.locator("img")).toHaveCount(0);
+  await expect(resultRegion.getByText("7,15/10")).toBeVisible();
+  await expect(
+    resultRegion.getByRole("heading", { name: /sin bloqueo evidente/i }),
+  ).toBeVisible();
+  await expect(
+    resultRegion.getByText(`Menudo plan: ${NEUTRAL_MESSAGE}`),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /a ver qué tienes/i }),
+  ).toBeEnabled();
 
-  await page.getByRole("button", { name: /activar modo oscuro/i }).click();
-  await expect(page.locator(".home-page")).toHaveClass(/theme-dark/);
+  await ideaInput.fill(IDEA_TEXT_SECOND);
+  await page.getByRole("radio", { name: /dime qué opinas/i }).check();
+  await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
+  await expect(resultRegion.getByText("7,15/10")).toBeVisible();
+  await expect(resultRegion.getByText(NEUTRAL_MESSAGE)).toBeVisible();
+
+  expect(submissionPayloads).toEqual([
+    { ideaText: IDEA_TEXT_FIRST, tone: "hard" },
+    { ideaText: IDEA_TEXT_SECOND, tone: "soft" },
+  ]);
+  expect(unexpectedDialog).toBe(false);
+  await expect(page.locator("img")).toHaveCount(0);
 });

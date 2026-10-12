@@ -133,6 +133,14 @@ Actualización de UI de `evaluationProcess`, 12 de octubre de 2026:
 - Revisión de seguridad: el parser de frontend comprueba estado, score y mensaje en runtime, descarta propiedades internas adicionales, y usa errores genéricos que no reflejan el texto de idea ni detalles del proveedor. El test de UI confirma que un mensaje con markup queda como texto. No se añadieron dependencias ni se detectó vulnerabilidad nueva.
 - Verificación: suite completa con permiso de bind local (85 API + 41 web, 126 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. El endpoint sigue respondiendo 503 en producción mientras no haya proveedor configurado. E2E y auditoría de dependencias no ejecutadas en este incremento.
 
+Cierre de integración E2E de `evaluationProcess`, 12 de octubre de 2026:
+
+- Se reemplazó el E2E obsoleto que esperaba el scoring demo retirado. Playwright levanta una API aislada con `EvaluationTestingModule`/`FakeEvaluationPort` y Vite con proxy dirigido a esa API; no arranca Docker ni usa PostgreSQL. La readiness route y el fake existen solo en el módulo de pruebas; la API escucha en loopback y conserva parser de 8 KB y middleware de seguridad.
+- Un recorrido Chromium comprueba readiness del entorno, contrato HTTP, validación UI, primer envío con tono borde y segundo envío con tono normal. Verifica dos payloads distintos y resultados visibles, sin alertas ni HTML insertado. Los tests unitarios previos cubren explícitamente doble clic bloqueado mientras hay una solicitud pendiente.
+- Este cierre no cambió lógica productiva: el RED/GREEN funcional ya quedó registrado en los incrementos anteriores. Las primeras ejecuciones de Playwright detectaron errores del harness (decoradores fuera del `tsconfig`, luego colisión con puertos 5173/5174 preexistentes); se corrigieron usando el módulo Nest ya compilado y puertos aislados configurables 3190/5190. No se detuvieron ni modificaron los servidores preexistentes.
+- Revisión de seguridad: no hay fake registrado en `AppModule`, el test server solo se inicia desde Playwright y enlaza a `127.0.0.1`; no hay conexión con base de datos ni proveedor externo. El proxy conserva como destino por defecto `127.0.0.1:3000` y solo usa el target alternativo configurado para E2E. Sin nuevas dependencias ni vulnerabilidades detectadas.
+- Verificación final: `pnpm test` (85 API + 41 web, 126 total), `pnpm test:e2e` (1 Chromium), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. Auditoría de dependencias no ejecutada.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:
