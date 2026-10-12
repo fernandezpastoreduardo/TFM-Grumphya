@@ -1,6 +1,6 @@
 # grumphya — Filtro conceptual de ideas y scoring con corte temprano
 
-**Versión:** 3.0 — 12 de octubre de 2026
+**Versión:** 3.1 — 12 de octubre de 2026
 **Entrada de la evaluación:** una idea escrita en un textarea, breve o muy breve.
 **Objetivo:** detectar errores de bulto y devolver una frase breve en tono normal o borde, acompañada de un score visible de 0 a 10 con dos decimales.
 **Sustituye:** el sistema de evaluación exhaustiva de la versión 1.0.
@@ -60,6 +60,14 @@ Las expresiones «seguro», «con IA» o «con blockchain» no eliminan por sí 
 3. **Posible:** podría haber fraude si la implementación fuera mala.
 
 Solo los dos primeros pueden sostener un veto conceptual. El tercero no basta para rechazar.
+
+Al analizar interacciones o transacciones entre personas, usa una perspectiva
+adversarial proporcional: identifica quién puede abusar, la ruta concreta, el
+impacto previsible y qué salvaguarda conceptual falta. No presupongas honestidad,
+buenas intenciones o cooperación si el beneficio depende de ellas. Un chat, un
+disclaimer o una renuncia de responsabilidad no son por sí solos controles de
+fraude, seguridad, verificación o reparación. Tampoco conviertas riesgos
+exóticos o meramente imaginables en vetos.
 
 ### 2.3 Estados
 
@@ -158,15 +166,15 @@ La tabla es una rúbrica de diseño; no un formulario que el usuario deba comple
 | 2 / C02    | Peligro para las personas                     | El mecanismo facilita un daño grave directo o entrega instrucciones/decisiones críticas con garantías imposibles declaradas                               | Una herramienta útil podría usarse mal; no detallar cada control   |
 | 3 / C03    | Ética e incentivos dañinos                    | El beneficio exige engañar, explotar, coaccionar o humillar a personas                                                                                    | Un tono provocador, una opinión discutible o una molestia menor    |
 | 4 / C04    | Coherencia y posibilidad técnica              | El resultado contradice las capacidades o información que la propia idea permite usar                                                                     | Complejidad, escala no descrita o «habría que programarlo»         |
-| 5 / C05    | Dependencia de honestidad                     | El núcleo recompensa afirmaciones falsas y el texto excluye controles o depende expresamente de buena fe universal                                        | Que haya usuarios, valoraciones, ventas o declaraciones            |
-| 6 / C06    | Conflictos entre personas                     | El mecanismo provoca conflictos graves previsibles y explícitamente impide verificar, reparar o apelar                                                    | Interacción social normal o no explicar el sistema de disputas     |
+| 5 / C05    | Dependencia de honestidad y afirmaciones fiables | El núcleo depende de afirmaciones falseables y no describe salvaguarda conceptual cuando el fraude dañaría la transacción                              | Que haya usuarios, valoraciones, ventas o declaraciones            |
+| 6 / C06    | Conflictos entre personas                     | Hay una ruta previsible a un conflicto grave y el diseño no permite comprobar, contener ni reparar el daño                                              | Interacción social normal o no explicar cada procedimiento        |
 | 7 / C07    | Utilidad y posibilidad conceptual de adopción | El mecanismo elimina el beneficio, contradice el objetivo del usuario o le exige un sacrificio que anula el resultado                                     | Falta de entrevistas, métricas, usuarios o prueba de interés       |
 | 8 / C08    | Coste y monetización conceptuales             | La propia propuesta define ingresos y costes incompatibles, o promete un servicio ilimitado costoso sin recursos bajo condiciones expresamente imposibles | No incluir ROI, precio, financiación o monetización                |
-| 9 / C09    | Happy path y operación                        | El texto exige condiciones perfectas o una dependencia única imposible de asegurar, y un fallo común destruye el núcleo                                   | No describir infraestructura, soporte, contingencias o proveedores |
+| 9 / C09    | Happy path y operación                        | El núcleo exige que terceros —en especial contrapartes desconocidas— cooperen y actúen siempre honestamente, sin alternativa segura ante un fallo previsible | Coordinación ordinaria o no describir infraestructura o proveedores |
 
 Todos los vetos conservan el mismo umbral <15; no hay pesos que compensen uno con otro.
 
-Para evitar solapamientos, C04 se reserva a contradicciones lógicas o técnicas del resultado; el beneficio anulado por fricción pertenece a C07 y las cuentas incompatibles a C08. Un incentivo a mentir pertenece a C05; C03 requiere que el planteamiento haga del engaño o la explotación su propio beneficio, no simplemente que pudiera sufrir fraude.
+Para evitar solapamientos, C04 se reserva a contradicciones lógicas o técnicas del resultado; el beneficio anulado por fricción pertenece a C07 y las cuentas incompatibles a C08. Un incentivo o dependencia de afirmaciones falseables pertenece a C05; C06 cubre conflictos graves sin comprobación, contención o reparación; C09 cubre la dependencia de que todo el mundo coopere. C03 requiere que el engaño o la explotación sean el propio beneficio, no que el producto pudiera sufrir fraude.
 
 ### 4.1 Privacidad y legalidad
 
@@ -199,6 +207,12 @@ Buscar dependencias explícitas o inevitables:
 - el sistema promete saber algo que nadie ni ningún sensor observa.
 
 No rechazar toda idea que use APIs, IA o personas. Rechazar la dependencia estructural descrita cuando invalida el mecanismo.
+
+Para operaciones entre desconocidos, no basta con «añadir un chat» o declarar
+que la plataforma no se responsabiliza: valora si el concepto ofrece alguna
+forma de reducir, detectar o reparar el abuso o el conflicto previsible. No
+exijas procesos rutinarios ni anticipes abusos sin ruta concreta e impacto
+material.
 
 ## 5. Ejecución con corte temprano
 
@@ -363,11 +377,11 @@ C01 privacidad/derechos y acceso no autorizado;
 C02 daño grave a personas;
 C03 engaño/explotación como núcleo;
 C04 contradicción lógica o técnica del mecanismo;
-C05 dependencia estructural de honestidad;
-C06 conflictos graves sin verificación o reparación por diseño;
+C05 dependencia central de afirmaciones falseables sin salvaguarda conceptual;
+C06 conflicto grave sin comprobación, contención o reparación;
 C07 utilidad/adopción anulada por el propio mecanismo;
 C08 ingresos/costes conceptualmente incompatibles;
-C09 happy path o dependencia perfecta imprescindible.
+C09 dependencia de cooperación perfecta, especialmente entre desconocidos.
 
 C04 no sustituye a los criterios especializados: beneficio anulado va a C07
 y cuentas incompatibles a C08; incentivo de usuarios a mentir va a C05,
@@ -376,6 +390,10 @@ salvo que explotar o engañar sea el propio negocio descrito en C03.
 Solo rechaza si un defecto se desprende del texto o es consecuencia necesaria
 de su mecanismo, afecta al núcleo y evitarlo exige cambiar lo planteado.
 Una omisión, un riesgo hipotético o no tener datos nunca bastan para un veto.
+En transacciones entre personas, considera fraude, incumplimiento y conflicto
+solo cuando exista una ruta previsible ligada al diseño; un chat o disclaimer
+no son salvaguardas suficientes por sí solos. No presupongas buena fe universal
+ni inventes escenarios exóticos.
 No inventes audiencia, presupuesto, demanda, competidores, permisos o leyes.
 No otorgues garantías por las palabras "IA", "seguro" o "blockchain".
 
