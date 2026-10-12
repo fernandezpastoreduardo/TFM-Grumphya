@@ -86,12 +86,21 @@ Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 - La API conserva el límite de cuerpo JSON de 8 KB y el rate limit existente. El parser puede rechazar un cuerpo grande antes de la validación del caso de uso.
 - Verificación de este incremento: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`. No se volvió a ejecutar E2E en esta actualización.
 
+Actualización del validador del contrato interno, 12 de octubre de 2026:
+
+- RED: las pruebas de contrato fallaron porque no existía `validateModelDecision`; GREEN: sus 36 casos actuales aceptan estados válidos y rechazan prefijos/IDs incorrectos, puntuaciones inválidas, vetos inconsistentes, fragmentos ajenos y mensajes fuera de formato.
+- El validador comprueba que un rechazo termina en el primer score menor de 15, y que `stop_at` y `reason_code` coinciden con el criterio; `SIN_BLOQUEO_EVIDENTE` exige los nueve criterios sin veto e `IDEA_INSUFICIENTE` no admite criterios ni datos de veto.
+- La salida validada se reconstruye campo a campo: descarta propiedades adicionales del proveedor y no muta la respuesta original. Los errores usan un mensaje constante y no incluyen la idea ni el texto crudo del proveedor.
+- Revisión de seguridad acotada: el validador comprueba en runtime que la decisión sea un objeto y que la idea de referencia sea texto; limita criterios a nueve, scores a enteros 0–79 y mensajes a 25 palabras/160 unidades UTF-16. No se detectó una vulnerabilidad nueva en este incremento.
+- Limitación: el validador todavía no está conectado al caso de uso, al puerto del proveedor ni a la respuesta HTTP; eso corresponde a incrementos posteriores. Las pruebas demuestran consistencia estructural, no la corrección semántica de la evaluación.
+- Comprobaciones: `pnpm test` (63 API + 38 web, 101 total), `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`.
+
 ## Revisión de seguridad de la aplicación actual
 
 Revisión estática y pruebas añadidas el 11 de octubre de 2026:
 
 - `POST /api/evaluation-process` aplica un límite en memoria de 10 solicitudes por minuto y dirección IP; el resto de la API comparte un máximo de 120 por minuto. Las respuestas limitadas devuelven HTTP 429 y `Retry-After`.
-- El parser JSON de NestJS limita el cuerpo a 8 KB; el caso de uso además restringe la idea a 10–800 caracteres.
+- El parser JSON de NestJS limita el cuerpo a 8 KB; el caso de uso restringe la idea a 10–2.000 unidades UTF-16 tras `trim` y valida el tono `soft`/`hard`.
 - Se añaden `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`; HSTS solo se añade en `NODE_ENV=production`.
 - CORS permite un origen exacto, métodos GET/POST y `Content-Type`. En producción es obligatorio configurar `WEB_ORIGIN`; no hay credenciales CORS habilitadas.
 - Pruebas de middleware: headers, cuota de evaluación y preflight. Verificación ejecutada: `pnpm --filter @grumphya/api test`, `typecheck` y `lint`.
