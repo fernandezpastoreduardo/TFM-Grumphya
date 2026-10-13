@@ -6,6 +6,7 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 - `ideaText: string`, entre 10 y 2.000 caracteres.
 - `tone: 'soft' | 'hard'`.
+- La orquestación requiere `Idempotency-Key` aleatoria por envío lógico, conservada en la detección y en la continuación durante 24 horas; el servidor guarda solo su hash.
 
 ### EvaluationProcessResponse
 
@@ -15,10 +16,16 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 El primer corte no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos persistidos. El contrato posterior de historial/persistencia queda fuera de `evaluationProcess` y se definirá al desarrollar esas features.
 
+### EvaluateIdeaResponse (planificado)
+
+- `status: 'similar_idea_match'` devuelve `safeTitle` verificado, `submissionCount` total después del incremento y los intentos restantes informados por el servidor. No devuelve el identificador interno de la idea, embedding, texto original ni autor.
+- `status: 'evaluated'` devuelve el resultado público de evaluación y, solo para `RECHAZADA` con título validado, `safeTitle`. El título no altera score ni veredicto.
+- Reenviar la misma `Idempotency-Key` para continuar conserva la recepción ya contada aunque la evaluación posterior también dé `RECHAZADA`.
+
 ### Registration intent and registration DTOs
 
 - `CreateRegistrationIntentRequest`: `plan: 'ILUMINADO' | 'FALTON'`. `POST /api/registration-intents` validates the allowlisted plan and stores it server-side in a one-use intent with a 15-minute expiry. The response sets a random opaque cookie (`HttpOnly`, `Secure` in production, `SameSite=Strict`, `Path=/api`) and returns only `expiresAt`; it does not return a plan token. `GET /api/registration-intents/current` resolves the plan from that cookie. The next page is `/crear-cuenta` with no query parameters. Mutating requests validate the exact configured `Origin`, require JSON and apply per-process rate limits.
-- `RegistrationRequest`: `email: string` (max 254 characters), `username: string` (3–30 Unicode letters/numbers, with `_`, `.` or `-` only between alphanumeric characters), `password: string` (12–128 characters; reject control characters and do not trim), `privacyPolicyAcknowledged: true`. The plan is obtained from the server-side intent, never from this body. The server stamps `privacyPolicyVersion` and `privacyPolicyAcknowledgedAt`; clients cannot set either. Email is trimmed, lowercased and its domain converted to ASCII; compare case-insensitively, without provider-specific dot/suffix rewriting. Username is trimmed, Unicode NFC normalized and compared case-insensitively.
+- `RegistrationRequest`: `email: string` (max 254 characters), `username: string` (3–30 Unicode letters/numbers, with `_`, `.` or `-` only between alphanumeric characters), `password: string` (12–128 characters; require uppercase, lowercase, number and special character; reject control characters and do not trim), `privacyPolicyAcknowledged: true`. The plan is obtained from the server-side intent, never from this body. The server stamps `privacyPolicyVersion` and `privacyPolicyAcknowledgedAt`; clients cannot set either. Email is trimmed, lowercased and its domain converted to ASCII; compare case-insensitively, without provider-specific dot/suffix rewriting. Username is trimmed, Unicode NFC normalized and compared case-insensitively.
 - `RegistrationPendingResponse`: HTTP 202, `status: 'pending_email_verification'`, generic `message`, and `verificationExpiresAt`. It contains no user ID, active account DTO, session, plan permissions or remaining usage. The response does not claim the written email received a message.
 - `VerifyEmailRequest`: `token: string` (submitted through a URL-safe one-time link; store only a token hash, expire in 24 hours, consume atomically). `VerifyEmailResponse`: `status: 'email_verified'`; verification alone does not activate a plan or issue a customer session.
 - `ConfirmSimulatedPurchaseRequest`: empty JSON object; it contains no plan, price, `isPaid`, role or permission. The server derives the plan from persisted registration state and uses the pending registration ID as the idempotency key. `ConfirmSimulatedPurchaseResponse`: `status: 'active'`, `plan`, and session bootstrap. Confirmation is idempotent for account activation; failure returns no session or permissions.
@@ -38,6 +45,8 @@ El primer corte no devuelve criterios internos, fragmentos de la idea, puntuaci�
 - `details?: Record<string, unknown>` solo cuando no exponga información sensible.
 
 Los identificadores internos, hashes, tokens, embeddings y prompts internos nunca forman parte de un DTO público.
+
+El aviso de similitud incluye el `safeTitle` validado y el total `submissionCount` actualizado tras contar la recepción. Nunca incluye texto original, autor, embedding ni identificador interno de la idea.
 
 ### IdeaListItemWorstAll
 

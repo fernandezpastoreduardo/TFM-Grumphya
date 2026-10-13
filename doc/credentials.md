@@ -5,8 +5,8 @@
 - GitHub: repositorio privado `fernandezpastoreduardo/TFM-Grumphya`; el acceso se realiza mediante la sesión SSH/CLI ya configurada en el equipo. No copiar ni documentar su token o clave privada.
 - Desarrollo Docker PostgreSQL: base/rol `grumphya_dev`, puerto enlazado solo a `127.0.0.1:5433`; `pnpm db:setup` genera una contraseña aleatoria en `.env.docker` con permisos `0600`. El archivo está ignorado por Git.
 - PostgreSQL Homebrew preexistente: la base y extensión creadas en la verificación inicial permanecen en `5432`; el flujo de la app usa el contenedor independiente en `5433`.
-- Cuentas Grumphya: todavía no existe registro, autenticación ni cuenta administrativa implementada.
-- Proveedor de IA, pagos, correo y producción: no configurados; por tanto no hay claves o usuarios de esos servicios.
+- Cuentas Grumphya: el alta con plan, verificación local simulada, activación de plan simulada y refresh de sesión están implementados; el login general y la cuenta administrativa no están implementados. Revisa [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md) para los controles existentes y pendientes del alta.
+- Embeddings: proveedor elegido OpenAI API con baseline `text-embedding-3-small`; el adaptador aún no está implementado/configurado. Las credenciales de proveedor no se copian ni documentan aquí. Pagos, correo real y producción siguen sin configurar.
 
 ## Cómo tratar secretos futuros
 

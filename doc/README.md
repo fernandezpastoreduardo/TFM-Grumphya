@@ -2,6 +2,8 @@
 
 Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión de salud a PostgreSQL/pgvector, captura de ideas, dictado de voz y un scoring de evaluación simulado sin persistencia. El evaluador real todavía no está conectado.
 
+El flujo de alta con plan está implementado en modo de verificación/compra simulada. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial. Los límites de solicitudes de registro están en memoria por proceso; la UI todavía no tiene un estado específico para `429`. La búsqueda vectorial y el flujo `searchSimilarIdea` → `updateWorstIdea`/`addToWorstIdeas` están especificados como trabajo futuro, no implementados. Consulta el [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md).
+
 ## Documentos
 
 - [Stack instalado y versiones](stack.md)

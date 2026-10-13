@@ -15,7 +15,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 - Features:
   Here, the feature is only capturing the input content from user. It can be added pasting text, writing or using a microphone. This one will require speech-to-text conversion in order to add user speech as text in the layout input. - Case use: User is insulting instead proposing idea. In this case a popup appears with main character illustration with a lanthern pointed from low angle to his face (as campament kids do when they tell themselves escary stories near to firecamp) with this copy: "A llorar a la llorería" Para esto tenemos la sección "Descárgate a gusto". A ver si me haces sudar... - Case use: User inputs same app idea as Grumphya. In this case a popup appears with main character illustration laughing in a sinister way with this copy: Sería muy triste que tuviese que hacerte desaparecer por querer copiar una app que me da ni para pagarme un café... Por esta vez lo dejo pasar.
-  Error path: User does not submit any content put presses the submit button. Warn user with a popup in same style as the rest of the app. - Case use: User submits an idea which is not any of the other prior cases but is not an app or business idea or system is unable to identify what submit means. Show popup with copy: Anda, aclárate primero y luego me cuentas. Si yo no puedo entenderte nadie lo hará. - Happy path: `evaluateIdea` valida la idea, ejecuta primero la feature RAG separada de detección de duplicados (sin datos de evaluación) y, cuando corresponda, ejecuta `evaluationProcess` según `scoring-viability-software.md`. Las cuotas pertenecen a una capa posterior. - Tras obtener un resultado válido se confirma un solo uso. Si falla la transcripción, búsqueda o evaluación, no se consume. Las peticiones repetidas usan idempotencia. - La evaluación base se muestra en tono suave o duro sin cambiar score ni veredicto. Un usuario registrado conserva el envío en su historial; un visitante anónimo no tiene historial personal.
+  Error path: User does not submit any content put presses the submit button. Warn user with a popup in same style as the rest of the app. - Case use: User submits an idea which is not any of the other prior cases but is not an app or business idea or system is unable to identify what submit means. Show popup with copy: Anda, aclárate primero y luego me cuentas. Si yo no puedo entenderte nadie lo hará. - Flujo planificado: `evaluateIdea` valida la idea y ejecuta `searchSimilarIdea` contra el corpus de rechazadas antes de `evaluationProcess`. El caso de uso de búsqueda tiene TDD con puertos, pero faltan los adaptadores y la orquestación. Con match, `updateWorstIdea` cuenta la recepción una sola vez y muestra el título seguro y el contador total actualizado; si la evaluación posterior también rechaza la idea, no vuelve a sumar. La UI ofrece continuar y advierte del intento que se consumirá; solo al continuar se comprueba cuota y se evalúa. Sin match, se evalúa y un rechazo nuevo llama `addToWorstIdeas` con título seguro y embedding, sin guardar texto fuente. La similitud usa umbral estricto `> 0,90`; no se leen evaluaciones previas. Tras resultado válido se confirma un solo uso; búsqueda/aviso no consumen. Las peticiones usan idempotencia durante 24 horas.
 
 2. Worst Ideas
 
@@ -94,9 +94,10 @@ if you need more info about any feature of any section refer to ./agentic-guidel
      - Si no hay intención de alta, está caducada o fue consumida, ofrecer volver a precios y elegir plan.
 
 10. Política de privacidad
-   - Path: `/politica-de-privacidad`
-   - Vista provisional con título y estilos del sitio, claramente identificada como contenido pendiente de completar. No debe presentarse como una política legal completa ni habilitar altas públicas hasta que se publique la información requerida.
-   - El enlace desde el formulario de alta debe ser visible, descriptivo, accesible por teclado y abrir la ruta interna.
+
+- Path: `/politica-de-privacidad`
+- Vista provisional con título y estilos del sitio, claramente identificada como contenido pendiente de completar. No debe presentarse como una política legal completa ni habilitar altas públicas hasta que se publique la información requerida.
+- El enlace desde el formulario de alta debe ser visible, descriptivo, accesible por teclado y abrir la ruta interna.
 
 ## Delivery boundary
 
@@ -117,7 +118,7 @@ La primera entrega incluye Home con dictado por voz, evaluación y similitud, tr
 - El dictado solicita permiso; su resultado se puede revisar y editar antes de enviar. Una denegación o error no borra lo que ya se escribió.
 - Input is limited to 2,000 characters and sanitized at the API boundary.
 - A valid submission consumes exactly one available attempt.
-- La detección de duplicados es una feature RAG separada, previa a la evaluación, y no consulta datos de evaluaciones. Qué ocurre en el flujo cuando detecta una coincidencia queda por especificar.
+- El caso de uso `searchSimilarIdea` está probado con puertos, pero falta conectarlo a embeddings y pgvector. La búsqueda planificada va antes de evaluación, usa coincidencia estricta `> 0,90` sobre ideas rechazadas y no consulta evaluaciones. Una coincidencia incrementa el contador agregado una sola vez y presenta título seguro y contador total, con acción explícita para evaluar; si continuar termina en rechazo, no se suma otra unidad. Solo esa acción consume intento. Sin coincidencia se evalúa y solo un `reject` nuevo se agrega al corpus con título seguro y embedding. No se persiste el texto original.
 - El primer resultado muestra score conceptual de 0–10 con dos decimales y una única frase explicativa en ambos tonos. Sin bloqueo evidente se muestra la media de criterios puntuados dividida entre 10; si no hay puntuados o la idea es insuficiente, no hay score (`null`).
 - Las evaluaciones fallidas no consumen intento. Los envíos concurrentes y los reintentos de red tampoco pueden exceder ni duplicar el límite.
 - Los límites de planes activos se reinician a las 00:00 en `Europe/Madrid`, no a medianoche UTC.

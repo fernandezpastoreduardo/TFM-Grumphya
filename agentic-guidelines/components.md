@@ -12,7 +12,7 @@ Presenta veredicto, puntuación, riesgos, supuestos y próximos pasos. No calcul
 
 ### RepeatedIdeaNotice
 
-Informa de que la idea es semánticamente similar a otra y muestra el contador permitido por producto.
+Informa de que la idea es semánticamente similar a otra, muestra el título público seguro y el contador total ya incrementado, y avisa de los intentos que consumiría continuar con la evaluación. No presenta el texto original ni datos de autor.
 
 ### UsageLimitNotice
 
