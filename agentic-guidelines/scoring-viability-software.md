@@ -63,6 +63,14 @@ Los niveles explícito y necesario pueden sostener un veto. También puede hacer
 
 Cada envío es una evaluación independiente, no una conversación. Si falta ese mecanismo, se rechaza la versión recibida y se explica el defecto como motivo presente; no se pregunta ni se pide completar la idea. El usuario puede enviar otra versión más completa como una evaluación nueva, consumiendo otro intento.
 
+Al analizar interacciones o transacciones entre personas, usa una perspectiva
+adversarial proporcional: identifica quién puede abusar, la ruta concreta, el
+impacto previsible y qué salvaguarda conceptual falta. No presupongas honestidad,
+buenas intenciones o cooperación si el beneficio depende de ellas. Un chat, un
+disclaimer o una renuncia de responsabilidad no son por sí solos controles de
+fraude, seguridad, verificación o reparación. Tampoco conviertas riesgos
+exóticos o meramente imaginables en vetos.
+
 ### 2.3 Estados
 
 | Estado interno         | Cuándo                                                        | Qué recibe el usuario                                             |
@@ -162,13 +170,13 @@ La tabla es una rúbrica de diseño; no un formulario que el usuario deba comple
 | 4 / C04    | Coherencia y posibilidad técnica                 | El resultado contradice las capacidades descritas o falta el mecanismo conceptual para que el mecanismo técnico central observe lo que promete               | Complejidad, escala no descrita o «habría que programarlo»           |
 | 5 / C05    | Dependencia de honestidad y afirmaciones fiables | El núcleo depende de afirmaciones de usuarios falseables y no describe una salvaguarda conceptual cuando el fraude dañaría la transacción                    | Contenido aportado por usuarios o un mal uso meramente imaginable    |
 | 6 / C06    | Conflictos entre personas                        | Hay una ruta previsible a un conflicto grave y el diseño no permite comprobar, contener ni reparar el daño                                                   | Interacción social normal o no describir cada procedimiento          |
-| 7 / C07    | Utilidad y posibilidad conceptual de adopción    | El mecanismo elimina el beneficio o falta una función esencial para mantenerlo                                                                               | Falta de entrevistas, métricas, usuarios o prueba de interés         |
+| 7 / C07    | Utilidad y posibilidad conceptual de adopción    | El mecanismo elimina el beneficio, contradice el objetivo del usuario o falta una función esencial para mantenerlo                                           | Falta de entrevistas, métricas, usuarios o prueba de interés         |
 | 8 / C08    | Coste y monetización conceptuales                | La propia propuesta define ingresos y costes incompatibles, o promete un servicio ilimitado costoso sin recursos bajo condiciones expresamente imposibles    | No incluir ROI, precio, financiación o monetización                  |
 | 9 / C09    | Happy path y operación                           | El núcleo exige que terceros —en especial contrapartes desconocidas— cooperen y actúen siempre honestamente, sin alternativa segura ante un fallo previsible | Coordinación ordinaria entre personas o no describir infraestructura |
 
 Todos los vetos conservan el mismo umbral <15; no hay pesos que compensen uno con otro.
 
-Para evitar solapamientos, C04 se reserva a contradicciones lógicas o técnicas del resultado; el beneficio anulado por fricción pertenece a C07 y las cuentas incompatibles a C08. Un incentivo a mentir pertenece a C05; C03 requiere que el planteamiento haga del engaño o la explotación su propio beneficio, no simplemente que pudiera sufrir fraude.
+Para evitar solapamientos, C04 se reserva a contradicciones lógicas o técnicas del resultado; el beneficio anulado por fricción pertenece a C07 y las cuentas incompatibles a C08. Un incentivo o dependencia de afirmaciones falseables pertenece a C05; C06 cubre conflictos graves sin comprobación, contención o reparación; C09 cubre la dependencia de que todo el mundo coopere. C03 requiere que el engaño o la explotación sean el propio beneficio, no que el producto pudiera sufrir fraude.
 
 ### 4.3 Modelo de amenazas para la idea
 
@@ -217,6 +225,12 @@ Buscar dependencias explícitas o inevitables:
 - el sistema promete saber algo que nadie ni ningún sensor observa.
 
 No rechazar toda idea que use APIs, IA o personas. Rechazar la dependencia estructural descrita cuando invalida el mecanismo.
+
+Para operaciones entre desconocidos, no basta con «añadir un chat» o declarar
+que la plataforma no se responsabiliza: valora si el concepto ofrece alguna
+forma de reducir, detectar o reparar el abuso o el conflicto previsible. No
+exijas procesos rutinarios ni anticipes abusos sin ruta concreta e impacto
+material.
 
 ## 5. Ejecución con corte temprano
 
@@ -381,11 +395,11 @@ C01 privacidad/derechos y acceso no autorizado;
 C02 daño grave a personas;
 C03 engaño/explotación como núcleo;
 C04 contradicción lógica o técnica del mecanismo;
-C05 confianza en afirmaciones de usuarios y fraude previsible;
-C06 conflictos graves sin prevención, comprobación o reparación;
+C05 dependencia central de afirmaciones falseables sin salvaguarda conceptual;
+C06 conflicto grave con ruta previsible sin prevención, comprobación, contención o reparación;
 C07 utilidad/adopción anulada por el propio mecanismo;
 C08 ingresos/costes conceptualmente incompatibles;
-C09 happy path o dependencia perfecta imprescindible.
+C09 dependencia de cooperación perfecta, especialmente entre desconocidos.
 
 C04 no sustituye a los criterios especializados: beneficio anulado va a C07
 y cuentas incompatibles a C08; incentivo de usuarios a mentir va a C05,
@@ -393,13 +407,17 @@ salvo que explotar o engañar sea el propio negocio descrito en C03.
 
 Rechaza un defecto explícito, una consecuencia necesaria o la ausencia de un
 mecanismo imprescindible para una promesa central cuando su falta perjudica
-directamente al usuario. Analiza amenazas creíbles desde la perspectiva de un
-usuario adversarial; no presupongas honestidad, buenas intenciones ni happy
-path. Para cada riesgo concreto valora actor, ruta, impacto y salvaguarda
-conceptual. Un chat o un disclaimer no resuelven fraude, seguridad o disputas.
-No conviertas riesgos exóticos ni detalles rutinarios en vetos. No presupongas
-que el mecanismo se resolverá después. No preguntes ni pidas completar la idea:
-cada envío es independiente. No inventes incentivos no descritos.
+directamente al usuario y evitarlo exige cambiar el núcleo planteado. Analiza
+amenazas creíbles desde la perspectiva de un usuario adversarial; para cada
+riesgo concreto valora actor, ruta, impacto y salvaguarda conceptual. En
+transacciones entre personas, considera fraude, incumplimiento y conflicto
+solo si hay una ruta previsible ligada al diseño. Un chat o un disclaimer no
+son por sí solos salvaguardas suficientes contra fraude, seguridad o disputas.
+Una omisión rutinaria, la falta de datos o un riesgo hipotético no bastan para
+vetar. No presupongas honestidad, buenas intenciones ni happy path; tampoco
+conviertas riesgos exóticos en vetos. No presupongas que el mecanismo se
+resolverá después. No preguntes ni pidas completar la idea: cada envío es
+independiente. No inventes incentivos no descritos.
 No inventes audiencia, presupuesto, demanda, competidores, permisos o leyes.
 No otorgues garantías por las palabras "IA", "seguro" o "blockchain".
 

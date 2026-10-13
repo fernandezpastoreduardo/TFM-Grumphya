@@ -18,12 +18,12 @@ const THEME_LABEL = {
 const DEFAULT_IDEA_SYNTHESIS = "una app para hacer un Tinder de saltamontes";
 const IDEA_SYNTHESIS_MAX_LENGTH = 84;
 const NAV_SECTIONS = [
-  { id: "worst", label: "Peores ideas" },
-  { id: "vent", label: "Descárgate" },
-  { id: "humans", label: "Humanos notables" },
-  { id: "good-practices", label: "Buenas prácticas" },
-  { id: "pricing", label: "Planes" },
-  { id: "contact", label: "Contacto" },
+  { path: "/lo-peor-de-lo-peor", label: "Peores ideas" },
+  { path: "/descargate", label: "Descárgate" },
+  { path: "/humanos-notables", label: "Humanos notables" },
+  { path: "/buenas-practicas", label: "Buenas prácticas" },
+  { path: "/precios", label: "Planes" },
+  { path: "/contacto", label: "Contacto" },
 ] as const;
 
 function getIdeaSynthesis(ideaText: string): string {
@@ -66,7 +66,6 @@ export function Home() {
   const [evaluationError, setEvaluationError] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [ideaSynthesis, setIdeaSynthesis] = useState(DEFAULT_IDEA_SYNTHESIS);
-  const [navigationNotice, setNavigationNotice] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -121,43 +120,22 @@ export function Home() {
               Inicio
             </a>
             {NAV_SECTIONS.map((section) => (
-              <button
+              <a
                 className="home-nav-link"
-                key={section.id}
-                type="button"
-                onClick={() =>
-                  setNavigationNotice(
-                    `${section.label} todavía no está conectada. La estamos sacando del horno, no del sombrero.`,
-                  )
-                }
+                key={section.path}
+                href={section.path}
               >
                 {section.label}
-              </button>
+              </a>
             ))}
           </nav>
           <div className="home-nav-actions">
-            <button
-              className="home-login-button"
-              type="button"
-              onClick={() =>
-                setNavigationNotice(
-                  "El login todavía no está conectado. Tus credenciales pueden seguir durmiendo tranquilas.",
-                )
-              }
-            >
+            <a className="home-login-button" href="/login">
               Entrar
-            </button>
-            <button
-              className="home-register-button"
-              type="button"
-              onClick={() =>
-                setNavigationNotice(
-                  "Crear cuenta aún no está conectado. Primero terminemos la app; qué concepto tan revolucionario.",
-                )
-              }
-            >
+            </a>
+            <a className="home-register-button" href="/precios">
               Crear cuenta
-            </button>
+            </a>
             <button
               className="theme-toggle"
               type="button"
@@ -170,11 +148,6 @@ export function Home() {
               {theme === "light" ? "Modo oscuro" : "Modo claro"}
             </button>
           </div>
-          {navigationNotice ? (
-            <p className="home-nav-notice" role="status">
-              {navigationNotice}
-            </p>
-          ) : null}
         </header>
 
         <header className="home-heading">
@@ -230,6 +203,22 @@ export function Home() {
           {evaluationResult ? (
             <EvaluationResult result={evaluationResult} />
           ) : null}
+        </section>
+
+        <section className="home-marketing" aria-label="Por qué usar Grumphya">
+          <div>
+            <span className="eyebrow">Antes de enamorarte del roadmap</span>
+            <h2>Una mala idea también merece una segunda opinión.</h2>
+          </div>
+          <p>
+            Grumphya señala supuestos, riesgos y agujeros antes de que
+            conviertas una ocurrencia en seis meses de trabajo.
+          </p>
+          <nav className="marketing-links" aria-label="Descubrir Grumphya">
+            <a href="/buenas-practicas">Por qué importa</a>
+            <a href="/precios">Planes para seguir pensando</a>
+            <a href="/descargate">Descárgate a gusto</a>
+          </nav>
         </section>
 
         <footer className="home-footer">
