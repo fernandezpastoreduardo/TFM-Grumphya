@@ -79,8 +79,7 @@ describe("Home", () => {
     expect(screen.getByText(/porque poder hacerlo/i)).toBeInTheDocument();
   });
 
-  it("previews unfinished sections and login without pretending they are live", async () => {
-    const user = userEvent.setup();
+  it("links to separate section pages and account routes", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
@@ -93,13 +92,17 @@ describe("Home", () => {
     expect(sections).toContainElement(
       within(sections).getByRole("link", { name: /inicio/i }),
     );
-    await user.click(screen.getByRole("button", { name: /peores ideas/i }));
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /todavía no está conectada/i,
+    expect(screen.getByRole("link", { name: /peores ideas/i })).toHaveAttribute(
+      "href",
+      "/lo-peor-de-lo-peor",
     );
-    await user.click(screen.getByRole("button", { name: /entrar/i }));
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /login todavía no está conectado/i,
+    expect(screen.getByRole("link", { name: /entrar/i })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    expect(screen.getByRole("link", { name: /crear cuenta/i })).toHaveAttribute(
+      "href",
+      "/precios",
     );
   });
 
