@@ -71,6 +71,14 @@ disclaimer o una renuncia de responsabilidad no son por sí solos controles de
 fraude, seguridad, verificación o reparación. Tampoco conviertas riesgos
 exóticos o meramente imaginables en vetos.
 
+Al analizar interacciones o transacciones entre personas, usa una perspectiva
+adversarial proporcional: identifica quién puede abusar, la ruta concreta, el
+impacto previsible y qué salvaguarda conceptual falta. No presupongas honestidad,
+buenas intenciones o cooperación si el beneficio depende de ellas. Un chat, un
+disclaimer o una renuncia de responsabilidad no son por sí solos controles de
+fraude, seguridad, verificación o reparación. Tampoco conviertas riesgos
+exóticos o meramente imaginables en vetos.
+
 ### 2.3 Estados
 
 | Estado interno         | Cuándo                                                        | Qué recibe el usuario                                             |

@@ -71,6 +71,13 @@ const TERMINAL_SENTENCE_MARK = ".";
 const DISALLOWED_RESULT_LABEL = /\bbloque(?:o|os|ante|antes)\b/iu;
 const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
 const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
+export type ModelDecisionValidationCode =
+  | "response_shape"
+  | "criteria_prefix"
+  | "criterion_value"
+  | "decision_fields"
+  | "visible_message"
+  | "decision_semantics";
 const RESULT_HEADLINES: Record<
   EvaluationDecisionStatus,
   Record<EvaluationTone, string>
@@ -90,7 +97,9 @@ const RESULT_HEADLINES: Record<
 };
 
 export class InvalidModelDecisionError extends Error {
-  constructor() {
+  constructor(
+    readonly validationCode: ModelDecisionValidationCode = "response_shape",
+  ) {
     super(INVALID_DECISION_MESSAGE);
     this.name = "InvalidModelDecisionError";
   }
@@ -129,13 +138,13 @@ function isConceptualScore(value: unknown): value is number {
 
 function parseEvaluatedCriteria(input: unknown): EvaluatedCriterion[] {
   if (!Array.isArray(input) || input.length > EVALUATION_CRITERION_IDS.length) {
-    throw new InvalidModelDecisionError();
+    throw new InvalidModelDecisionError("criteria_prefix");
   }
 
   return input.map((value: unknown, index) => {
     const expectedId = EVALUATION_CRITERION_IDS[index];
     if (!isRecord(value) || !expectedId || value.id !== expectedId) {
-      throw new InvalidModelDecisionError();
+      throw new InvalidModelDecisionError("criteria_prefix");
     }
 
     if (value.state === "PUNTUADO" && isConceptualScore(value.score)) {
@@ -147,7 +156,7 @@ function parseEvaluatedCriteria(input: unknown): EvaluatedCriterion[] {
     ) {
       return { id: expectedId, state: value.state, score: null };
     }
-    throw new InvalidModelDecisionError();
+    throw new InvalidModelDecisionError("criterion_value");
   });
 }
 
@@ -220,7 +229,7 @@ function parseDecisionFields(
   ) {
     return { stop_at: stopAt, reason_code: reasonCode, basis };
   }
-  throw new InvalidModelDecisionError();
+  throw new InvalidModelDecisionError("decision_fields");
 }
 
 function validateRejectedDecision(
@@ -285,12 +294,12 @@ export function validateModelDecision(
     !isDecisionStatus(input.status) ||
     typeof ideaText !== "string"
   ) {
-    throw new InvalidModelDecisionError();
+    throw new InvalidModelDecisionError("response_shape");
   }
   const evaluated = parseEvaluatedCriteria(input.evaluated);
   const fields = parseDecisionFields(input);
   if (!isValidNeutralMessage(input.message)) {
-    throw new InvalidModelDecisionError();
+    throw new InvalidModelDecisionError("visible_message");
   }
 
   const decision: ModelDecision = {
@@ -300,7 +309,7 @@ export function validateModelDecision(
     message: input.message,
   };
   if (!isValidDecisionStatus(decision, ideaText)) {
-    throw new InvalidModelDecisionError();
+    throw new InvalidModelDecisionError("decision_semantics");
   }
   return decision;
 }

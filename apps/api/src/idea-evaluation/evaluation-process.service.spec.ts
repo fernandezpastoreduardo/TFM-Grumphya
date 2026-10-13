@@ -268,6 +268,9 @@ describe("EvaluationProcessService", () => {
   });
 
   it("maps invalid provider output to a generic service error without retry", async () => {
+    const loggerError = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
     const port = createPort({ status: "RECHAZADA", providerSecret: "secret" });
     const service = new EvaluationProcessService(port);
     let caught: unknown;
@@ -283,6 +286,11 @@ describe("EvaluationProcessService", () => {
     expect(port.evaluate).toHaveBeenCalledTimes(1);
     expect(String(caught)).not.toContain("secret");
     expect(String(caught)).not.toContain(VALID_IDEA);
+    expect(loggerError).toHaveBeenCalledWith(
+      "INVALID_EVALUATION_RESPONSE validation=criteria_prefix",
+    );
+    expect(JSON.stringify(loggerError.mock.calls)).not.toContain("secret");
+    expect(JSON.stringify(loggerError.mock.calls)).not.toContain(VALID_IDEA);
   });
 
   it("maps provider errors without exposing their messages", async () => {

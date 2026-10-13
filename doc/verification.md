@@ -178,4 +178,10 @@ Revisión estática y pruebas añadidas el 11 de octubre de 2026:
 - Pruebas de middleware: headers, cuota de evaluación y preflight. Verificación ejecutada: `pnpm --filter @grumphya/api test`, `typecheck` y `lint`.
 - `pnpm audit --prod` no devolvió resultado en este entorno y se interrumpió; el estado de vulnerabilidades conocidas de dependencias queda pendiente de ejecutar con acceso al registro.
 
+Integración de `main` y diagnósticos seguros de validación, 13 de octubre de 2026:
+
+- Se integraron los cambios de `main`; al no aparecer conflictos textuales, se conservaron sus versiones y la política de evaluación. La rama experimental local quedó preservada en `stash@{0}` antes de la integración.
+- Los fallos de validación de la respuesta del proveedor ahora llevan un diagnóstico interno categorizado mediante una unión cerrada: `response_shape`, `criteria_prefix`, `criterion_value`, `decision_fields`, `visible_message` o `decision_semantics`. El log incluye únicamente `INVALID_EVALUATION_RESPONSE validation=<código>`; la respuesta HTTP sigue usando el mensaje genérico.
+- Las pruebas comprueban las categorías esperadas y que ni secretos ni el texto de la idea se incluyen en el log. Los códigos no derivan de contenido externo ni interpolan valores arbitrarios, por lo que mejoran el diagnóstico sin ampliar la exposición de datos.
+
 Límites de esta revisión: el rate limit en memoria es por proceso, se reinicia al reiniciar y no coordina réplicas; antes de exponer el servicio públicamente debe moverse a un almacén compartido o al gateway. No hay aún autenticación, autorización, cuotas de negocio, persistencia de ideas ni protección CSRF asociada a cookies; no deben darse por implementadas. No se realizó pentest ni escaneo dinámico completo.
