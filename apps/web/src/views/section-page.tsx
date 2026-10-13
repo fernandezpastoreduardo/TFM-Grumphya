@@ -3,6 +3,9 @@ import { Contact } from "../features/contact/contact";
 import { GoodPractices } from "../features/good-practices/good-practices";
 import { NotableHumans } from "../features/notable-humans/notable-humans";
 import { Pricing } from "../features/pricing/pricing";
+import { PrivacyPolicy } from "../features/register-with-plan/privacy-policy";
+import { RegisterWithPlan } from "../features/register-with-plan/register-with-plan";
+import { RegistrationVerification } from "../features/register-with-plan/registration-verification";
 import { Roast } from "../features/roast/roast";
 import { WorstIdeas } from "../features/worst-ideas/worst-ideas";
 import {
@@ -63,11 +66,23 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     theme: "mint",
   },
   "/crear-cuenta": {
-    label: "Crear cuenta · plan elegido",
+    label: "Crear cuenta · plan seleccionado en el servidor",
     title: "Una cuenta. Un plan. Sin letra pequeña de película.",
     intro:
       "La contratación de esta versión es simulada. No introduzcas datos bancarios porque no hacen falta.",
     theme: "blue",
+  },
+  "/verificar-cuenta": {
+    label: "Verificación de correo",
+    title: "Una última comprobación",
+    intro: "Validamos el enlace. Después decidirás si confirmas la contratación simulada.",
+    theme: "mint",
+  },
+  "/politica-de-privacidad": {
+    label: "Información provisional",
+    title: "Política de privacidad",
+    intro: "La información de privacidad se completará antes de abrir el registro al público.",
+    theme: "calm",
   },
 };
 
@@ -78,7 +93,10 @@ function SectionContent({ path }: { path: string }) {
   if (path === "/buenas-practicas") return <GoodPractices />;
   if (path === "/precios") return <Pricing />;
   if (path === "/contacto") return <Contact />;
-  return <AuthenticationPage createAccount={path === "/crear-cuenta"} />;
+  if (path === "/crear-cuenta") return <RegisterWithPlan />;
+  if (path === "/verificar-cuenta") return <RegistrationVerification />;
+  if (path === "/politica-de-privacidad") return <PrivacyPolicy />;
+  return <AuthenticationPage />;
 }
 
 export function SectionPage({ path }: { path: string }) {

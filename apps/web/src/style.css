@@ -2509,7 +2509,7 @@ body {
   font-size: 0.84rem;
   font-weight: 900;
 }
-.auth-card form > label > input {
+.auth-card form > input {
   width: 100%;
   min-height: 48px;
   border: 2px solid #78aaa0;
@@ -2596,6 +2596,60 @@ body {
 .account-plan-required p {
   margin: 0 0 8px;
   line-height: 1.5;
+}
+.registration-privacy {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1.5;
+}
+.registration-privacy input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #216b70;
+}
+.registration-error {
+  margin: 0;
+  border-left: 4px solid #a33450;
+  padding: 10px 12px;
+  color: #6e1830;
+  background: #f7dce2;
+  font-weight: 800;
+  line-height: 1.45;
+}
+.registration-test-notice {
+  margin: 12px 0;
+  border: 2px solid #856114;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #49370c;
+  background: #fff1c8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.registration-test-notice strong {
+  font-weight: 900;
+}
+.registration-pending {
+  display: grid;
+  gap: 12px;
+  max-width: 720px;
+  margin-inline: auto;
+}
+.registration-pending p {
+  margin: 0;
+  line-height: 1.55;
+}
+.registration-pending .button-primary {
+  justify-self: start;
+}
+.privacy-policy-placeholder {
+  max-width: 760px;
+  margin-inline: auto;
 }
 
 @media (max-width: 979px) {

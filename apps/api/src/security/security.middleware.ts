@@ -3,6 +3,9 @@ import type { RequestHandler } from "express";
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const API_REQUEST_LIMIT = 120;
 const EVALUATION_REQUEST_LIMIT = 10;
+const REGISTRATION_REQUEST_LIMIT = 8;
+const REGISTRATION_INTENT_REQUEST_LIMIT = 20;
+const REGISTRATION_VERIFY_REQUEST_LIMIT = 10;
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
@@ -37,6 +40,19 @@ export function createSecurityMiddleware(): RequestHandler {
       return;
     }
 
+    const isProtectedCookiePost = request.method === "POST" && (request.path.startsWith("/api/registration") || request.path === "/api/auth/refresh");
+    if (isProtectedCookiePost) {
+      const allowedOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
+      if (request.get("origin") !== allowedOrigin) {
+        response.status(403).json({ statusCode: 403, message: "Origen de solicitud no permitido." });
+        return;
+      }
+      if (!request.is("application/json")) {
+        response.status(415).json({ statusCode: 415, message: "Se requiere application/json." });
+        return;
+      }
+    }
+
     const now = Date.now();
     requestCount += 1;
     if (requestCount % CLEANUP_INTERVAL_REQUESTS === 0) {
@@ -47,13 +63,18 @@ export function createSecurityMiddleware(): RequestHandler {
 
     const clientAddress =
       request.ip ?? request.socket.remoteAddress ?? "unknown";
-    const isEvaluation =
-      request.method === "POST" && request.path === "/api/evaluation-process";
+    const isEvaluation = request.method === "POST" && request.path === "/api/evaluation-process";
+    const isRegistrationPost = request.method === "POST" && request.path.startsWith("/api/registration");
+    const isRefreshPost = request.method === "POST" && request.path === "/api/auth/refresh";
+    const registrationScope = isRefreshPost ? "session-refresh" : request.path.includes("verify") || request.path.includes("confirm")
+      ? "registration-verification"
+      : request.path.includes("intents") ? "registration-intent" : "registration-create";
+    const registrationLimit = registrationScope === "registration-intent"
+      ? REGISTRATION_INTENT_REQUEST_LIMIT
+      : registrationScope === "registration-verification" || isRefreshPost ? REGISTRATION_VERIFY_REQUEST_LIMIT : REGISTRATION_REQUEST_LIMIT;
     const limits: ReadonlyArray<readonly [string, number]> = isEvaluation
-      ? [
-          ["api", API_REQUEST_LIMIT],
-          ["evaluation", EVALUATION_REQUEST_LIMIT],
-        ]
+      ? [["api", API_REQUEST_LIMIT], ["evaluation", EVALUATION_REQUEST_LIMIT]]
+      : isRegistrationPost || isRefreshPost ? [["api", API_REQUEST_LIMIT], [registrationScope, registrationLimit]]
       : [["api", API_REQUEST_LIMIT]];
 
     for (const [scope, limit] of limits) {

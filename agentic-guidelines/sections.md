@@ -68,7 +68,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    Si lo hacen, será porque venderán tus datos, y aquí no hacemos eso.
    Tus buenas ideas, las aprobadas, son tuyas y solo tuyas.
    - Features:
-     - Al elegir Iluminado o Faltón sin sesión, ir al alta con el plan seleccionado. En la primera entrega la contratación y su confirmación se simulan sin dinero real; el backend activa el plan, su vigencia y sus permisos. La integración de pagos reales queda para medio plazo.
+     - Al elegir Iluminado o Faltón sin sesión, enviar el plan por `POST` al servidor para crear una intención temporal de alta y navegar a `/crear-cuenta` sin parámetros de plan en URL. El servidor conserva el plan y valida su vigencia; la integración de pagos reales queda para medio plazo.
      - UltraChachi es una tarjeta humorística con popup, no un plan contratable ni una promesa real de uso ilimitado.
 
 8. Login
@@ -86,9 +86,17 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 9. Create account
    - Features
      - Crear cuenta solo al seleccionar Iluminado o Faltón; el nivel gratuito anónimo no requiere registro.
-     - Solicitar usuario y contraseña; fecha, identificador y estado del plan los determina el servidor, no campos ocultos enviados por el navegador.
-     - Flujo: elegir plan → crear cuenta → confirmar contratación simulada (visible como simulación, sin datos bancarios) → activar plan en servidor → emitir sesión → aplicar permisos y límites del plan.
-     - Una contratación simulada fallida no activa el plan. El usuario puede repetir la confirmación sin duplicar cuentas, activaciones o usos.
+     - Solicitar email, alias, contraseña y una casilla desmarcada «He leído la política de privacidad» con enlace a `/politica-de-privacidad`. El servidor registra la versión y hora de la política presentada; marcarla no es un consentimiento genérico para cualquier tratamiento.
+     - Validar sintaxis de email y alias. Para conflictos de email y alias existentes, mostrar respuesta deliberadamente genérica e idéntica; no confirmar qué dato existe. Los detalles de validación y límites están en `features.md` y `Dtos.md`.
+     - Flujo: elegir plan mediante POST → URL limpia `/crear-cuenta` → alta pendiente → verificar email → confirmar contratación simulada (sin dinero ni datos bancarios) → activar plan en servidor → emitir sesión → aplicar permisos vigentes.
+     - Antes de verificar el email y confirmar la simulación no hay sesión de cliente ni permisos de plan. Una contratación simulada fallida no activa el plan. Los reintentos son idempotentes y no duplican cuenta, compra o activaciones.
+     - El desvío de email a `fernandezpastoreduardo@gmail.com` solo se permite en desarrollo/QA y debe mostrarse como simulación; no significa que se haya verificado el correo introducido. La app no puede habilitar altas en producción con ese adaptador.
+     - Si no hay intención de alta, está caducada o fue consumida, ofrecer volver a precios y elegir plan.
+
+10. Política de privacidad
+   - Path: `/politica-de-privacidad`
+   - Vista provisional con título y estilos del sitio, claramente identificada como contenido pendiente de completar. No debe presentarse como una política legal completa ni habilitar altas públicas hasta que se publique la información requerida.
+   - El enlace desde el formulario de alta debe ser visible, descriptivo, accesible por teclado y abrir la ruta interna.
 
 ## Delivery boundary
 

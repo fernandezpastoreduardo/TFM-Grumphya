@@ -15,11 +15,16 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 El primer corte no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos persistidos. El contrato posterior de historial/persistencia queda fuera de `evaluationProcess` y se definirá al desarrollar esas features.
 
-### RegistrationRequest / AccountResponse
+### Registration intent and registration DTOs
 
-- Solicitud: `username`, `password`, `selectedPlan: 'ILUMINADO' | 'FALTON'`.
-- Respuesta: `userId` UUID, `username`, `plan`, `subscriptionStatus`, `expiresAt`, `remainingIdeas`, `remainingRoasts`.
-- La contratación simulada se confirma con una operación idempotente del servidor antes de activar permisos. Nunca se recibe `isPaid` o un rol concedido por el cliente.
+- `CreateRegistrationIntentRequest`: `plan: 'ILUMINADO' | 'FALTON'`. `POST /api/registration-intents` validates the allowlisted plan and stores it server-side in a one-use intent with a 15-minute expiry. The response sets a random opaque cookie (`HttpOnly`, `Secure` in production, `SameSite=Strict`, `Path=/api`) and returns only `expiresAt`; it does not return a plan token. `GET /api/registration-intents/current` resolves the plan from that cookie. The next page is `/crear-cuenta` with no query parameters. Mutating requests validate the exact configured `Origin`, require JSON and apply per-process rate limits.
+- `RegistrationRequest`: `email: string` (max 254 characters), `username: string` (3–30 Unicode letters/numbers, with `_`, `.` or `-` only between alphanumeric characters), `password: string` (12–128 characters; reject control characters and do not trim), `privacyPolicyAcknowledged: true`. The plan is obtained from the server-side intent, never from this body. The server stamps `privacyPolicyVersion` and `privacyPolicyAcknowledgedAt`; clients cannot set either. Email is trimmed, lowercased and its domain converted to ASCII; compare case-insensitively, without provider-specific dot/suffix rewriting. Username is trimmed, Unicode NFC normalized and compared case-insensitively.
+- `RegistrationPendingResponse`: HTTP 202, `status: 'pending_email_verification'`, generic `message`, and `verificationExpiresAt`. It contains no user ID, active account DTO, session, plan permissions or remaining usage. The response does not claim the written email received a message.
+- `VerifyEmailRequest`: `token: string` (submitted through a URL-safe one-time link; store only a token hash, expire in 24 hours, consume atomically). `VerifyEmailResponse`: `status: 'email_verified'`; verification alone does not activate a plan or issue a customer session.
+- `ConfirmSimulatedPurchaseRequest`: empty JSON object; it contains no plan, price, `isPaid`, role or permission. The server derives the plan from persisted registration state and uses the pending registration ID as the idempotency key. `ConfirmSimulatedPurchaseResponse`: `status: 'active'`, `plan`, and session bootstrap. Confirmation is idempotent for account activation; failure returns no session or permissions.
+- The email verification adapter is a fixed development-only sink with intended QA destination `fernandezpastoreduardo@gmail.com`. It does not send a real email; the local test link is exposed only to loopback requests and the UI must say that plainly. Production startup/configuration rejects the simulated adapter.
+- Email syntax errors may return a specific validation code/message. Existing email and existing username conflicts must return exactly the same HTTP status, `code`, and body to avoid account enumeration. Privacy acknowledgement errors are explicit and accessible. Error details must not disclose which identity field conflicted.
+- Never accept `isPaid`, subscription status, expiry, role, remaining usage, or an authoritative plan from the registration client. Never expose password hashes, verification tokens, intent identifiers, or internal IDs in public DTOs.
 
 ### UsageResponse
 

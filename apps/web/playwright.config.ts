@@ -18,7 +18,10 @@ export default defineConfig({
       url: `http://127.0.0.1:${API_TEST_PORT}/api/test-ready`,
       reuseExistingServer: false,
       timeout: 30_000,
-      env: { EVALUATION_TEST_PORT: API_TEST_PORT },
+      env: {
+        EVALUATION_TEST_PORT: API_TEST_PORT,
+        WEB_ORIGIN: `http://127.0.0.1:${WEB_TEST_PORT}`,
+      },
     },
     {
       command: `pnpm exec vite --host 127.0.0.1 --port ${WEB_TEST_PORT} --strictPort`,

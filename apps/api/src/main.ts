@@ -10,7 +10,7 @@ async function bootstrap() {
   if (process.env.NODE_ENV === "production" && !webOrigin) {
     throw new Error("WEB_ORIGIN must be configured in production.");
   }
-  const allowedWebOrigin = webOrigin ?? "http://localhost:5173";
+  const allowedWebOrigin = webOrigin ?? "http://127.0.0.1:5173";
   const parsedWebOrigin = new URL(allowedWebOrigin);
   if (
     parsedWebOrigin.origin !== allowedWebOrigin ||
@@ -28,6 +28,7 @@ async function bootstrap() {
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
     maxAge: 600,
+    credentials: true,
   });
   app.useBodyParser("json", { limit: "8kb" });
   app.use(createSecurityMiddleware());

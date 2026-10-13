@@ -11,7 +11,10 @@ function createRequest(path = EVALUATION_PATH, method = "POST"): Request {
     path,
     method,
     socket: { remoteAddress: REQUEST_IP },
-  } as Request;
+    headers: {},
+    get: (name: string) => name.toLowerCase() === "origin" ? "http://127.0.0.1:5173" : undefined,
+    is: (type: string) => type === "application/json",
+  } as unknown as Request;
 }
 
 function createResponse() {
@@ -62,6 +65,31 @@ describe("security middleware", () => {
     );
     expect(headers.has("Retry-After")).toBe(true);
     expect(next).toHaveBeenCalledTimes(10);
+  });
+
+  it("rejects registration requests without the configured origin", () => {
+    const middleware = createSecurityMiddleware();
+    const request = { ...createRequest("/api/registrations"), get: () => "https://attacker.example" } as unknown as Request;
+    const { response } = createResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("requires JSON for registration requests", () => {
+    const middleware = createSecurityMiddleware();
+    const request = createRequest("/api/registrations");
+    request.is = () => false;
+    const { response } = createResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(415);
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("does not count CORS preflight requests", () => {
