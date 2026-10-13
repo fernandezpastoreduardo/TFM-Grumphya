@@ -273,6 +273,48 @@ describe("validateModelDecision", () => {
     expect(String(thrown)).not.toContain(IDEA_TEXT);
   });
 
+  it.each([
+    ["response_shape", null],
+    [
+      "criteria_prefix",
+      {
+        ...createCompleteDecision(),
+        evaluated: createCompleteDecision().evaluated.map((criterion, index) =>
+          index === 1 ? { ...criterion, id: "C01" } : criterion,
+        ),
+      },
+    ],
+    [
+      "criterion_value",
+      {
+        ...createCompleteDecision(),
+        evaluated: createCompleteDecision().evaluated.map((criterion, index) =>
+          index === 0 ? { ...criterion, score: 100 } : criterion,
+        ),
+      },
+    ],
+    ["decision_fields", { ...createCompleteDecision(), stop_at: "C01" }],
+    ["visible_message", { ...createCompleteDecision(), message: "Muy corto." }],
+    [
+      "decision_semantics",
+      { ...createCompleteDecision(), status: "RECHAZADA" },
+    ],
+  ] as const)(
+    "classifies invalid decisions as %s",
+    (expectedCode, decision) => {
+      let thrown: unknown;
+      try {
+        validateModelDecision(decision, IDEA_TEXT);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(InvalidModelDecisionError);
+      expect(thrown).toHaveProperty("validationCode", expectedCode);
+      expect(String(thrown)).not.toContain(IDEA_TEXT);
+    },
+  );
+
   it.each([null, 42, { ideaText: IDEA_TEXT }])(
     "rejects a non-text idea supplied to the decision validator",
     (ideaText) => {

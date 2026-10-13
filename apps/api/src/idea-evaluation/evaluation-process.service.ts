@@ -176,7 +176,9 @@ export class EvaluationProcessService {
         throw new GatewayTimeoutException(EVALUATION_TIMEOUT_RESPONSE);
       }
       if (error instanceof InvalidModelDecisionError) {
-        this.logger.error(INVALID_EVALUATION_RESPONSE.code);
+        this.logger.error(
+          `${INVALID_EVALUATION_RESPONSE.code} validation=${error.validationCode}`,
+        );
         throw new ServiceUnavailableException(INVALID_EVALUATION_RESPONSE);
       }
       this.logger.error(EVALUATOR_UNAVAILABLE_RESPONSE.code);
