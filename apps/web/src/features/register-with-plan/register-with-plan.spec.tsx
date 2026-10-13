@@ -8,7 +8,7 @@ const VALID_EMAIL = "persona@example.es";
 const VALID_USERNAME = "persona-lista";
 const VALID_PASSWORD = "Una contraseña suficientemente segura 48!";
 const DUPLICATE_RESPONSE = {
-  message: "No se ha podido completar el alta. Revisa los datos e inténtalo de nuevo.",
+  message: "No se ha podido confirmar el alta. Para evitar un envío duplicado, vuelve a cargar la página antes de intentarlo otra vez.",
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -54,6 +54,22 @@ describe("RegisterWithPlan", () => {
     );
     expect(screen.getByLabelText(/correo electrónico/i)).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText(/correo electrónico/i)).toHaveAttribute("aria-describedby", "registration-error");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a password that lacks the required character groups before posting", async () => {
+    const user = userEvent.setup();
+    render(<RegisterWithPlan />);
+
+    await user.type(await screen.findByLabelText(/correo electrónico/i), VALID_EMAIL);
+    await user.type(screen.getByLabelText(/nombre de usuario/i), VALID_USERNAME);
+    await user.type(screen.getByLabelText(/contraseña/i), "una clave larga 2026!");
+    await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
+    await user.click(screen.getByRole("button", { name: /crear cuenta/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Usa al menos 12 caracteres e incluye mayúscula, minúscula, número y carácter especial.",
+    );
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -111,6 +127,51 @@ describe("RegisterWithPlan", () => {
     expect(screen.getByText(/no se envía un correo real/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /abrir enlace de verificación de pruebas/i })).toBeInTheDocument();
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("locks the submit button during the request and prevents another POST after acceptance", async () => {
+    const user = userEvent.setup();
+    let finishRegistration: ((response: Response) => void) | undefined;
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input) === "/api/registration-intents/current") return Promise.resolve(jsonResponse(PLAN_RESPONSE));
+      return new Promise((resolve) => { finishRegistration = resolve; });
+    });
+    render(<RegisterWithPlan />);
+
+    await user.type(await screen.findByLabelText(/correo electrónico/i), VALID_EMAIL);
+    await user.type(screen.getByLabelText(/nombre de usuario/i), VALID_USERNAME);
+    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
+    const submitButton = screen.getByRole("button", { name: /crear cuenta/i });
+    await user.click(submitButton);
+    expect(await screen.findByRole("button", { name: /enviando/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /enviando/i }));
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    finishRegistration?.(jsonResponse({ status: "pending_email_verification", message: "Solicitud recibida." }, 202));
+    expect(await screen.findByRole("heading", { name: /continúa con la verificación de prueba/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /crear cuenta|enviando/i })).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the submit locked after an ambiguous failure to avoid duplicating the request", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(async (input) =>
+      String(input) === "/api/registration-intents/current"
+        ? jsonResponse(PLAN_RESPONSE)
+        : jsonResponse({}, 503),
+    );
+    render(<RegisterWithPlan />);
+
+    await user.type(await screen.findByLabelText(/correo electrónico/i), VALID_EMAIL);
+    await user.type(screen.getByLabelText(/nombre de usuario/i), VALID_USERNAME);
+    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
+    await user.click(screen.getByRole("button", { name: /crear cuenta/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/vuelve a cargar la página/i);
+    expect(screen.getByRole("button", { name: /envío bloqueado/i })).toBeDisabled();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("shows the same vague response for registration conflicts", async () => {

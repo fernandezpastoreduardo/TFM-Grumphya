@@ -20,6 +20,7 @@ export class RegistrationController {
 
   @Post("registration-intents")
   async createIntent(@Body() body: unknown, @Res({ passthrough: true }) response: Response) {
+    if (!hasOnlyKeys(body, ["plan"])) throw new RegistrationError(400, "INVALID_PLAN", "Selecciona un plan válido.");
     const plan = isRecord(body) ? body.plan : undefined;
     const intent = await this.service.createIntent(plan);
     response.cookie(INTENT_COOKIE, intent.token, COOKIE_OPTIONS);
@@ -43,6 +44,7 @@ export class RegistrationController {
 
   @Post("registrations/verify")
   async verify(@Body() body: unknown, @Res({ passthrough: true }) response: Response) {
+    if (!hasOnlyKeys(body, ["token"])) throw new RegistrationError(400, "INVALID_VERIFICATION", "El enlace no es válido o ha caducado.");
     const token = isRecord(body) ? body.token : undefined;
     if (typeof token !== "string") throw new RegistrationError(400, "INVALID_VERIFICATION", "El enlace no es válido o ha caducado.");
     const verified = await this.service.verify(token);
@@ -85,11 +87,21 @@ function readCookie(request: Request, name: string): string | undefined {
   if (!header) return undefined;
   for (const item of header.split(";")) {
     const [key, ...value] = item.trim().split("=");
-    if (key === name) return decodeURIComponent(value.join("="));
+    if (key === name) {
+      try {
+        return decodeURIComponent(value.join("="));
+      } catch {
+        return undefined;
+      }
+    }
   }
   return undefined;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function hasOnlyKeys(value: unknown, allowedKeys: readonly string[]): boolean {
+  if (!isRecord(value)) return false;
+  return Object.keys(value).every((key) => allowedKeys.includes(key));
 }
 function isLoopback(address: string): boolean { return address === "::1" || address === "127.0.0.1" || address === "::ffff:127.0.0.1"; }

@@ -18,6 +18,10 @@ const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const ACCESS_TOKEN_TTL_SECONDS = 10 * 60;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
+const PASSWORD_LOWERCASE_PATTERN = /\p{Ll}/u;
+const PASSWORD_NUMBER_PATTERN = /\p{N}/u;
+const PASSWORD_SPECIAL_PATTERN = /[^\p{L}\p{N}\s]/u;
 const USERNAME_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
 const REGISTRATION_PENDING_MESSAGE = "Solicitud recibida. Completa la verificación para continuar con el alta.";
 const GENERIC_CONFLICT = { status: 409, code: "REGISTRATION_UNAVAILABLE", message: "No se ha podido completar el alta con esos datos. Revisa la información e inténtalo de nuevo." } as const;
@@ -130,6 +134,8 @@ export class RegistrationService {
 
 function validateRegistrationInput(value: unknown): RegistrationInput {
   if (!isRecord(value)) throw new RegistrationError(400, "INVALID_REGISTRATION", "Revisa los datos del formulario.");
+  const allowedFields = new Set(["email", "username", "password", "privacyPolicyAcknowledged"]);
+  if (Object.keys(value).some((key) => !allowedFields.has(key))) throw new RegistrationError(400, "INVALID_REGISTRATION", "Revisa los datos del formulario.");
   const { email, username, password, privacyPolicyAcknowledged } = value;
   if (typeof email !== "string") {
     throw new RegistrationError(400, "INVALID_EMAIL", "Venga ya, ese correo no es de verdad, escribe bien anda.");
@@ -141,13 +147,19 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
   if (typeof username !== "string" || !USERNAME_PATTERN.test(username.trim().normalize("NFC"))) {
     throw new RegistrationError(400, "INVALID_USERNAME", "Escribe un nombre de entre 3 y 30 caracteres alfanuméricos; los signos solo pueden ir en medio.");
   }
-  if (typeof password !== "string" || password.length < 12 || password.length > 128 || hasControlCharacters(password)) {
-    throw new RegistrationError(400, "INVALID_PASSWORD", "La contraseña debe tener entre 12 y 128 caracteres.");
+  if (!isStrongPassword(password)) {
+    throw new RegistrationError(400, "INVALID_PASSWORD", "La contraseña debe tener entre 12 y 128 caracteres e incluir mayúscula, minúscula, número y carácter especial.");
   }
   if (privacyPolicyAcknowledged !== true) {
     throw new RegistrationError(400, "PRIVACY_POLICY_REQUIRED", "Debes leer y aceptar la política de privacidad para continuar.");
   }
   return { email: normalizedEmail, username: username.trim().normalize("NFC"), password, privacyPolicyAcknowledged: true };
+}
+
+function isStrongPassword(value: unknown): value is string {
+  if (typeof value !== "string" || value.length < 12 || value.length > 128 || hasControlCharacters(value)) return false;
+  return PASSWORD_UPPERCASE_PATTERN.test(value) && PASSWORD_LOWERCASE_PATTERN.test(value)
+    && PASSWORD_NUMBER_PATTERN.test(value) && PASSWORD_SPECIAL_PATTERN.test(value);
 }
 
 function normalizeEmail(value: string): string | null {

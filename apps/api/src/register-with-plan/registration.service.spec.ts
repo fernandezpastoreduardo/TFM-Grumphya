@@ -58,6 +58,21 @@ describe("register with plan", () => {
     await expect(service.register(intent.token, { ...validRegistration, email: "no" })).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  it("requires a long password with uppercase, lowercase, number and special character", async () => {
+    const service = new RegistrationService(new InMemoryRegistrationRepository(), new InMemoryVerificationDelivery());
+    const weakPasswords = ["una clave larga 2026!", "UNA CLAVE LARGA 2026!", "Una clave larga segura!", "UnaClaveLarga2026"];
+    for (const password of weakPasswords) {
+      const intent = await service.createIntent("ILUMINADO");
+      await expect(service.register(intent.token, { ...validRegistration, password })).rejects.toMatchObject({ code: "INVALID_PASSWORD" });
+    }
+  });
+
+  it("rejects unexpected payload fields instead of silently accepting them", async () => {
+    const service = new RegistrationService(new InMemoryRegistrationRepository(), new InMemoryVerificationDelivery());
+    const intent = await service.createIntent("ILUMINADO");
+    await expect(service.register(intent.token, { ...validRegistration, role: "admin" })).rejects.toMatchObject({ code: "INVALID_REGISTRATION" });
+  });
+
   it("normalizes international email domains and Unicode usernames, and rejects malformed aliases or controls", async () => {
     const repository = new InMemoryRegistrationRepository();
     const service = new RegistrationService(repository, new InMemoryVerificationDelivery());

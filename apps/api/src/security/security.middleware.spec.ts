@@ -101,4 +101,19 @@ describe("security middleware", () => {
 
     expect(next).toHaveBeenCalledOnce();
   });
+
+  it("rate limits registration intent endpoints and rejects URL query parameters", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const request = createRequest("/api/registration-intents", "POST");
+    for (let index = 0; index < 20; index += 1) middleware(request, createResponse().response, next);
+    const limited = createResponse();
+    middleware(request, limited.response, next);
+    expect(limited.response.status).toHaveBeenCalledWith(429);
+
+    const queryRequest = { ...createRequest("/api/registration-intents?plan=ILUMINADO", "POST"), originalUrl: "/api/registration-intents?plan=ILUMINADO" } as unknown as Request;
+    const queryResponse = createResponse();
+    middleware(queryRequest, queryResponse.response, next);
+    expect(queryResponse.response.status).toHaveBeenCalledWith(400);
+  });
 });

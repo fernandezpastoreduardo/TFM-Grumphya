@@ -63,6 +63,10 @@ export function createSecurityMiddleware(): RequestHandler {
 
     const clientAddress =
       request.ip ?? request.socket.remoteAddress ?? "unknown";
+    if (request.path.startsWith("/api/registration") && request.originalUrl?.includes("?")) {
+      response.status(400).json({ statusCode: 400, message: "La URL no admite parámetros para esta solicitud." });
+      return;
+    }
     const isEvaluation = request.method === "POST" && request.path === "/api/evaluation-process";
     const isRegistrationPost = request.method === "POST" && request.path.startsWith("/api/registration");
     const isRefreshPost = request.method === "POST" && request.path === "/api/auth/refresh";

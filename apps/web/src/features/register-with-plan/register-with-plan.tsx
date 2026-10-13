@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 type Plan = "ILUMINADO" | "FALTON";
 type PlanResponse = { plan: Plan };
@@ -11,11 +11,16 @@ type RegistrationField = "email" | "username" | "password" | "privacyPolicyAckno
 const EMAIL_ERROR = "Venga ya, ese correo no es de verdad, escribe bien anda.";
 const USERNAME_ERROR = "Ese nombre necesita al menos 3 caracteres. Prueba con otro.";
 const PASSWORD_ERROR = "La contraseña necesita al menos 12 caracteres.";
+const STRONG_PASSWORD_ERROR = "Usa al menos 12 caracteres e incluye mayúscula, minúscula, número y carácter especial.";
 const PRIVACY_ERROR = "Debes confirmar que has leído la política de privacidad.";
 const GENERIC_ERROR =
-  "No se ha podido completar el alta. Revisa los datos e inténtalo de nuevo.";
+  "No se ha podido confirmar el alta. Para evitar un envío duplicado, vuelve a cargar la página antes de intentarlo otra vez.";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
+const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
+const PASSWORD_LOWERCASE_PATTERN = /\p{Ll}/u;
+const PASSWORD_NUMBER_PATTERN = /\p{N}/u;
+const PASSWORD_SPECIAL_PATTERN = /[^\p{L}\p{N}\s]/u;
 const QA_MAILBOX = "fernandezpastoreduardo@gmail.com";
 const TEST_MAIL_ERROR = "No se ha podido abrir el enlace de pruebas. Comprueba que la API local esté activa e inténtalo otra vez.";
 const PLAN_NAMES: Record<Plan, string> = {
@@ -59,6 +64,8 @@ export function RegisterWithPlan() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const submissionLocked = useRef(false);
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<RegistrationField | null>(null);
   const [pendingMessage, setPendingMessage] = useState("");
@@ -88,6 +95,7 @@ export function RegisterWithPlan() {
 
   async function submitRegistration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submissionLocked.current || submitted) return;
     setError("");
     setErrorField(null);
     const formData = new FormData(event.currentTarget);
@@ -106,8 +114,8 @@ export function RegisterWithPlan() {
       setErrorField("username");
       return;
     }
-    if (password.length < 12) {
-      setError(PASSWORD_ERROR);
+    if (!isStrongPassword(password)) {
+      setError(password.length < 12 ? PASSWORD_ERROR : STRONG_PASSWORD_ERROR);
       setErrorField("password");
       return;
     }
@@ -117,6 +125,8 @@ export function RegisterWithPlan() {
       return;
     }
 
+    submissionLocked.current = true;
+    setSubmitted(true);
     setSubmitting(true);
     try {
       const response = await fetch("/api/registrations", {
@@ -132,6 +142,7 @@ export function RegisterWithPlan() {
       });
       const body: unknown = await readJson(response);
       if (response.status === 202 && isRegistrationResponse(body)) {
+        setSubmitted(true);
         setPendingMessage(body.message);
         return;
       }
@@ -207,14 +218,15 @@ export function RegisterWithPlan() {
           <label htmlFor="registration-username">Nombre de usuario</label>
           <input id="registration-username" name="username" autoComplete="username" required minLength={3} maxLength={30} aria-invalid={errorField === "username"} aria-describedby={errorField === "username" ? "registration-error" : undefined} />
           <label htmlFor="registration-password">Contraseña</label>
-          <input id="registration-password" name="password" type="password" autoComplete="new-password" required minLength={12} aria-invalid={errorField === "password"} aria-describedby={errorField === "password" ? "registration-error" : undefined} />
+          <p id="registration-password-help">Mínimo 12 caracteres, con mayúscula, minúscula, número y carácter especial.</p>
+          <input id="registration-password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} aria-describedby={errorField === "password" ? "registration-error registration-password-help" : "registration-password-help"} aria-invalid={errorField === "password"} />
           <label className="registration-privacy" htmlFor="privacy-policy-acknowledged">
             <input id="privacy-policy-acknowledged" name="privacyPolicyAcknowledged" type="checkbox" required aria-invalid={errorField === "privacyPolicyAcknowledged"} aria-describedby={errorField === "privacyPolicyAcknowledged" ? "registration-error" : undefined} />
             <span>He leído la <a href="/politica-de-privacidad">política de privacidad</a>.</span>
           </label>
           {error ? <p className="registration-error" id="registration-error" role="alert">{error}</p> : null}
-          <button className="button-primary" type="submit" disabled={submitting}>
-            {submitting ? "Enviando…" : "Crear cuenta"} <span aria-hidden="true">↗</span>
+          <button className="button-primary" type="submit" disabled={submitting || submitted}>
+            {submitting ? "Enviando…" : submitted ? "Envío bloqueado" : "Crear cuenta"} <span aria-hidden="true">↗</span>
           </button>
         </form>
         <p className="auth-privacy">Cuando completes la verificación, podrás confirmar la contratación simulada. No se procesa ningún pago.</p>
@@ -226,4 +238,10 @@ export function RegisterWithPlan() {
       </aside>
     </div>
   );
+}
+
+function isStrongPassword(password: string): boolean {
+  if (password.length < 12 || password.length > 128) return false;
+  return PASSWORD_UPPERCASE_PATTERN.test(password) && PASSWORD_LOWERCASE_PATTERN.test(password)
+    && PASSWORD_NUMBER_PATTERN.test(password) && PASSWORD_SPECIAL_PATTERN.test(password);
 }
