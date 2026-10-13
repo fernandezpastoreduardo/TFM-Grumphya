@@ -21,6 +21,7 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
   expect(await directResponse.json()).toEqual({
     status: "SIN_BLOQUEO_EVIDENTE",
     score: 7.15,
+    headline: "Bueno, de momento no se cae por lo más obvio.",
     message: NEUTRAL_MESSAGE,
   });
 
@@ -63,11 +64,11 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
   await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
   await expect(resultRegion.getByText("7,15/10")).toBeVisible();
   await expect(
-    resultRegion.getByRole("heading", { name: /sin bloqueo evidente/i }),
+    resultRegion.getByRole("heading", {
+      name: /bueno, no se ha desmontado a la primera/i,
+    }),
   ).toBeVisible();
-  await expect(
-    resultRegion.getByText(`Menudo plan: ${NEUTRAL_MESSAGE}`),
-  ).toBeVisible();
+  await expect(resultRegion.getByText(NEUTRAL_MESSAGE)).toBeVisible();
   await expect(
     page.getByRole("button", { name: /a ver qué tienes/i }),
   ).toBeEnabled();
@@ -76,6 +77,11 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
   await page.getByRole("radio", { name: /dime qué opinas/i }).check();
   await page.getByRole("button", { name: /^a ver qué tienes/i }).click();
   await expect(resultRegion.getByText("7,15/10")).toBeVisible();
+  await expect(
+    resultRegion.getByRole("heading", {
+      name: /bueno, de momento no se cae por lo más obvio/i,
+    }),
+  ).toBeVisible();
   await expect(resultRegion.getByText(NEUTRAL_MESSAGE)).toBeVisible();
 
   expect(submissionPayloads).toEqual([

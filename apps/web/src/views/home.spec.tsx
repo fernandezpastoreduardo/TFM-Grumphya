@@ -7,8 +7,9 @@ const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const EVALUATION_RESPONSE = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
+  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
   message:
-    "Menudo plan: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+    "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 
 describe("Home", () => {
@@ -79,8 +80,7 @@ describe("Home", () => {
     expect(screen.getByText(/porque poder hacerlo/i)).toBeInTheDocument();
   });
 
-  it("previews unfinished sections and login without pretending they are live", async () => {
-    const user = userEvent.setup();
+  it("links to separate section pages and account routes", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
@@ -93,13 +93,17 @@ describe("Home", () => {
     expect(sections).toContainElement(
       within(sections).getByRole("link", { name: /inicio/i }),
     );
-    await user.click(screen.getByRole("button", { name: /peores ideas/i }));
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /todavía no está conectada/i,
+    expect(screen.getByRole("link", { name: /peores ideas/i })).toHaveAttribute(
+      "href",
+      "/lo-peor-de-lo-peor",
     );
-    await user.click(screen.getByRole("button", { name: /entrar/i }));
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /login todavía no está conectado/i,
+    expect(screen.getByRole("link", { name: /entrar/i })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+    expect(screen.getByRole("link", { name: /crear cuenta/i })).toHaveAttribute(
+      "href",
+      "/precios",
     );
   });
 
@@ -129,7 +133,13 @@ describe("Home", () => {
     );
 
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
-    expect(screen.getByText(/sin bloqueo evidente/i)).toBeInTheDocument();
+    expect(screen.getByText(/sigue en pie, por ahora/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: EVALUATION_RESPONSE.headline,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText(EVALUATION_RESPONSE.message)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/evaluation-process",

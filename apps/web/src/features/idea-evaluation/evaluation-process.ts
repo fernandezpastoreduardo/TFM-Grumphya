@@ -4,6 +4,7 @@ export type EvaluationStatus =
 export type EvaluationProcessResult = {
   status: EvaluationStatus;
   score: number | null;
+  headline: string;
   message: string;
 };
 
@@ -13,7 +14,8 @@ const INVALID_RESULT_MESSAGE =
 const EVALUATION_UNAVAILABLE_MESSAGE =
   "No se pudo obtener el scoring. La idea sigue en el formulario; inténtalo otra vez.";
 const MAX_PUBLIC_SCORE = 10;
-const MAX_PUBLIC_MESSAGE_LENGTH = 180;
+const MAX_PUBLIC_HEADLINE_LENGTH = 120;
+const MAX_PUBLIC_MESSAGE_LENGTH = 280;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -41,10 +43,13 @@ function parseEvaluationResponse(
   input: unknown,
 ): EvaluationProcessResult | null {
   if (!isRecord(input)) return null;
-  const { status, score, message } = input;
+  const { status, score, headline, message } = input;
   if (
     !isEvaluationStatus(status) ||
     !isValidPublicScore(score) ||
+    typeof headline !== "string" ||
+    headline.trim().length === 0 ||
+    headline.length > MAX_PUBLIC_HEADLINE_LENGTH ||
     typeof message !== "string" ||
     message.trim().length === 0 ||
     message.length > MAX_PUBLIC_MESSAGE_LENGTH ||
@@ -54,7 +59,7 @@ function parseEvaluationResponse(
     return null;
   }
 
-  return { status, score, message };
+  return { status, score, headline, message };
 }
 
 export async function evaluationProcess(request: {

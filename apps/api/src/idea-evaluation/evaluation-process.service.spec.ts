@@ -16,7 +16,7 @@ import { EvaluationProcessService } from "./evaluation-process.service";
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const REJECTED_IDEA =
   "Accedemos sin autorización a datos personales para ofrecer una app de coordinación.";
-const POLICY_VERSION = "grumphya-concept-v3";
+const POLICY_VERSION = "grumphya-concept-v5";
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
@@ -24,7 +24,8 @@ const REJECTION_MESSAGE =
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
-  message: `Menudo plan: ${NEUTRAL_MESSAGE}`,
+  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
+  message: NEUTRAL_MESSAGE,
 };
 const UNAVAILABLE_RESPONSE = {
   code: "EVALUATOR_UNAVAILABLE",
@@ -79,7 +80,7 @@ function createInsufficientDecision(): ModelDecision {
     reason_code: null,
     basis: null,
     message:
-      "Cuéntame qué haría la app y para quién, porque todavía no hay una idea concreta que pueda valorar.",
+      "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.",
   };
 }
 
@@ -139,6 +140,21 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual({
       status: "RECHAZADA",
       score: 1.3,
+      headline: "Vaya, justo falla donde más importa.",
+      message: REJECTION_MESSAGE,
+    });
+  });
+
+  it("renders the hard-tone title separately from the factual finding", async () => {
+    const port = createPort(createRejectedDecision());
+    const service = new EvaluationProcessService(port);
+
+    await expect(
+      service.evaluate({ ideaText: REJECTED_IDEA, tone: "hard" }),
+    ).resolves.toEqual({
+      status: "RECHAZADA",
+      score: 1.3,
+      headline: "Pues… no decepciona; no esperaba gran cosa.",
       message: REJECTION_MESSAGE,
     });
   });
@@ -237,6 +253,7 @@ describe("EvaluationProcessService", () => {
       expect(result).toEqual({
         status: "SIN_BLOQUEO_EVIDENTE",
         score: 7.15,
+        headline: "Bueno, de momento no se cae por lo más obvio.",
         message: NEUTRAL_MESSAGE,
       });
       expect(fake.calls).toHaveLength(1);

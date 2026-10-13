@@ -6,12 +6,14 @@ import {
 
 const IDEA_TEXT =
   "Pagamos cualquier declaración sin comprobarla para obtener ingresos recurrentes.";
+const TIME_SENSITIVE_PROMISE_IDEA =
+  "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
   "Pagar por declaraciones que nadie verifica convierte el engaño en el negocio más rentable de tu app.";
 const INSUFFICIENT_MESSAGE =
-  "Cuéntame qué haría la app y para quién, porque todavía no hay una idea concreta que pueda valorar.";
+  "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.";
 const CRITERION_IDS = [
   "C01",
   "C02",
@@ -78,6 +80,26 @@ function createInsufficientDecision() {
   };
 }
 
+function createCorePromiseRejection() {
+  return {
+    status: "RECHAZADA",
+    evaluated: [
+      { id: "C01", state: "PUNTUADO", score: 79 },
+      { id: "C02", state: "PUNTUADO", score: 79 },
+      { id: "C03", state: "PUNTUADO", score: 79 },
+      { id: "C04", state: "PUNTUADO", score: 28 },
+      { id: "C05", state: "PUNTUADO", score: 79 },
+      { id: "C06", state: "PUNTUADO", score: 79 },
+      { id: "C07", state: "PUNTUADO", score: 10 },
+    ],
+    stop_at: "C07",
+    reason_code: CRITERION_REASON_CODES.C07,
+    basis: "resultados actuales",
+    message:
+      "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
+  };
+}
+
 describe("validateModelDecision", () => {
   it.each([
     { decision: createCompleteDecision(), ideaText: IDEA_TEXT },
@@ -89,6 +111,27 @@ describe("validateModelDecision", () => {
       expect(validateModelDecision(decision, ideaText)).toMatchObject(decision);
     },
   );
+
+  it("accepts a rejection grounded in a literal phrase from the core promise", () => {
+    expect(
+      validateModelDecision(
+        createCorePromiseRejection(),
+        TIME_SENSITIVE_PROMISE_IDEA,
+      ),
+    ).toEqual(createCorePromiseRejection());
+  });
+
+  it("rejects quotation marks added around a basis fragment", () => {
+    expect(() =>
+      validateModelDecision(
+        {
+          ...createCorePromiseRejection(),
+          basis: '"resultados actuales"',
+        },
+        TIME_SENSITIVE_PROMISE_IDEA,
+      ),
+    ).toThrow(/respuesta del evaluador no válida/i);
+  });
 
   it.each([
     { ...createCompleteDecision(), status: "ERROR_EVALUACION" },
@@ -183,8 +226,9 @@ describe("validateModelDecision", () => {
     "- " + VALID_MESSAGE,
     "• " + VALID_MESSAGE,
     "Texto de respuesta demasiado corto.",
-    `${"palabra ".repeat(26)}termina.`,
-    "x".repeat(161) + ".",
+    "El bloqueo conceptual deja al usuario sin una salida clara.",
+    `${"palabra ".repeat(41)}termina.`,
+    "x".repeat(281) + ".",
   ])("rejects malformed neutral message: %s", (message) => {
     expect(() =>
       validateModelDecision(

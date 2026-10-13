@@ -11,8 +11,9 @@ const EVALUATION_PATH = "/api/evaluation-process";
 const EVALUATION_RESULT: EvaluationProcessResult = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
+  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
   message:
-    "Menudo plan: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+    "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 const SAFE_FAILURE_MESSAGE = /no se puede verificar/i;
 
@@ -69,7 +70,8 @@ describe("evaluationProcess frontend adapter", () => {
     const publicResult = {
       status: "IDEA_INSUFICIENTE",
       score: null,
-      message: "Cuéntame qué haría la app y para quién.",
+      headline: "Esto aún no es una idea; es el tráiler sin película.",
+      message: "Esto todavía no describe una propuesta evaluable.",
       basis: IDEA_TEXT,
     };
     vi.stubGlobal(
@@ -85,7 +87,8 @@ describe("evaluationProcess frontend adapter", () => {
     ).resolves.toEqual({
       status: "IDEA_INSUFICIENTE",
       score: null,
-      message: "Cuéntame qué haría la app y para quién.",
+      headline: "Esto aún no es una idea; es el tráiler sin película.",
+      message: "Esto todavía no describe una propuesta evaluable.",
     });
   });
 });

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prepare": "husky",
-    "dev": "pnpm db:up && dotenv -e .env.docker -- node scripts/start-dev.mjs",
+    "dev": "pnpm db:up && dotenv -e .env.docker -e .env.openai -- node scripts/start-dev.mjs",
     "db:setup": "node scripts/setup-dev-db.mjs",
     "db:up": "pnpm db:setup && docker compose --env-file .env.docker up -d --wait db",
     "db:down": "docker compose --env-file .env.docker down",
