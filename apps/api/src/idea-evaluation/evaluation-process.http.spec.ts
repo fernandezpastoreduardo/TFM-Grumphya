@@ -75,6 +75,7 @@ describe("evaluation process HTTP endpoint", () => {
       expect(await response.json()).toEqual({
         status: "SIN_BLOQUEO_EVIDENTE",
         score: 7.15,
+        headline: "Bueno, de momento no se cae por lo más obvio.",
         message:
           "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
       });

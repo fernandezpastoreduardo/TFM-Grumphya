@@ -56,7 +56,9 @@ async function verifyInfrastructure() {
     throw new Error("El proxy de Vite no devuelve el estado de la API");
   }
   console.log("[infra] Comunicación React/Vite → NestJS OK");
-  console.log("[infra] Health check completo: frontend, API y base de datos OK");
+  console.log(
+    "[infra] Health check completo: frontend, API y base de datos OK",
+  );
 }
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

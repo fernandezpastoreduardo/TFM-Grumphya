@@ -7,8 +7,9 @@ const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const EVALUATION_RESPONSE = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
+  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
   message:
-    "Menudo plan: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+    "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 
 describe("Home", () => {
@@ -132,7 +133,13 @@ describe("Home", () => {
     );
 
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
-    expect(screen.getByText(/sin bloqueo evidente/i)).toBeInTheDocument();
+    expect(screen.getByText(/sigue en pie, por ahora/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: EVALUATION_RESPONSE.headline,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText(EVALUATION_RESPONSE.message)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/evaluation-process",

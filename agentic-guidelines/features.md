@@ -37,7 +37,7 @@ La especificación funcional, el contrato, la rúbrica y el plan TDD de esta fea
 
 ## showEvaluationResults
 
-Para el primer corte de `evaluationProcess`, presenta el score conceptual global (0–10, dos decimales) y una sola frase explicativa. `soft` y `hard` conservan los controles actuales: `soft` usa redacción normal y `hard` añade el prefijo borde; el tono no cambia evaluación ni score. Sin bloqueo evidente, el score es la media de criterios puntuados dividida entre 10; insuficiente devuelve `null`. El contrato completo está en `scoring-viability-software.md`.
+Presenta score conceptual global (0–10, dos decimales), un titular propio de Grumphya y una explicación concreta que reúna los aspectos mediocres evaluados y el defecto decisivo. El titular cambia entre `soft` y `hard`; tono no cambia evaluación ni score. La interfaz no presenta el defecto como «bloqueo». Sin fallo estructural evidente, el score es la media de criterios puntuados dividida entre 10; insuficiente devuelve `null`. El contrato completo está en `scoring-viability-software.md`.
 
 ## registerWithPlan
 
@@ -60,7 +60,7 @@ Caso de uso principal del MVP.
 - Ejecuta la feature independiente `searchSimilarRecordedIdea` antes de `evaluationProcess`; esta detección no lee datos de evaluación.
 - La política del flujo al obtener una coincidencia queda pendiente de definir en la especificación de esa feature; no se reutiliza una evaluación desde la detección semántica.
 - Cuando corresponda evaluar, ejecuta `evaluationProcess`. Persistencia e intentos pertenecen a capas/orquestación posteriores, no a `evaluationProcess`.
-- Salida del primer corte: estado, score conceptual según la política definida y una frase; contrato detallado en `scoring-viability-software.md`.
+- Salida del primer corte: estado, score conceptual, titular y explicación; contrato detallado en `scoring-viability-software.md`.
 - Errores: entrada vacía, contenido no evaluable, límite agotado, proveedor de IA no disponible.
 
 ## Reglas de implementación
