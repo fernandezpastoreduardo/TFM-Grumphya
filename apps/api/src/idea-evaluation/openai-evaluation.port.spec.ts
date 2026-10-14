@@ -1,13 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validateModelDecision } from "./evaluation-decision";
-import { OpenAiEvaluationPort } from "./openai-evaluation.port";
+import {
+  OpenAiEvaluationFailure,
+  OpenAiEvaluationPort,
+} from "./openai-evaluation.port";
 
 const API_KEY = "test-openai-key";
 const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
-const POLICY_VERSION = "grumphya-concept-v5";
+const POLICY_VERSION = "grumphya-concept-v6";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
@@ -15,8 +18,11 @@ const MODEL_DECISION = {
   stop_at: null,
   reason_code: null,
   basis: null,
+  safeTitle: null,
   message:
     "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.",
+  hardSetup: null,
+  hardConsequence: null,
 };
 const QUOTED_BASIS_DECISION = {
   status: "RECHAZADA",
@@ -32,8 +38,11 @@ const QUOTED_BASIS_DECISION = {
   stop_at: "C07",
   reason_code: "UTILIDAD_ANULADA",
   basis: '"resultados actuales"',
+  safeTitle: "Promesas sin respaldo verificable",
   message:
     "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
+  hardSetup: "un servicio que ofrece información actual sin mantenerla al día",
+  hardConsequence: "el usuario pagaría por información que ya está caducada",
 };
 
 function createResponse(body: unknown, status = 200): Response {
@@ -55,7 +64,12 @@ function createOpenAiResponse(decision: unknown): Response {
 }
 
 function createInput(signal = new AbortController().signal) {
-  return { ideaText: IDEA_TEXT, policyVersion: POLICY_VERSION, signal };
+  return {
+    ideaText: IDEA_TEXT,
+    tone: "hard" as const,
+    policyVersion: POLICY_VERSION,
+    signal,
+  };
 }
 
 afterEach(() => {
@@ -63,7 +77,7 @@ afterEach(() => {
 });
 
 describe("OpenAiEvaluationPort", () => {
-  it("requests a strict structured decision without sending UI tone", async () => {
+  it("requests a strict tone-neutral structured decision", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(createOpenAiResponse(MODEL_DECISION));
@@ -90,6 +104,7 @@ describe("OpenAiEvaluationPort", () => {
       model: MODEL_NAME,
       reasoning: { effort: "medium" },
       store: false,
+      max_output_tokens: 6_000,
       text: {
         format: {
           type: "json_schema",
@@ -100,7 +115,9 @@ describe("OpenAiEvaluationPort", () => {
     });
     expect(JSON.stringify(requestBody)).toContain(IDEA_TEXT);
     expect(JSON.stringify(requestBody)).toContain(POLICY_VERSION);
-    expect(JSON.stringify(requestBody)).not.toContain('"tone"');
+    const request = JSON.stringify(requestBody);
+    expect(request).not.toContain('"tone":"hard"');
+    expect(request).toContain("ideaText");
   });
 
   it("applies pessimistic threat modeling without inventing exotic risks", async () => {
@@ -143,6 +160,9 @@ describe("OpenAiEvaluationPort", () => {
       "No conviertas riesgos exóticos o meramente imaginables en vetos",
     );
     expect(request).toContain("No preguntes al usuario cómo resolverlo");
+    expect(request).toContain("Deduce quién tendría que usar el producto");
+    expect(request).toContain("el tono solo afecta la presentación posterior");
+    expect(request).toContain("español sencillo");
     expect(request).toContain(
       "fragmento literal breve de la idea que sostenga el defecto",
     );
@@ -151,12 +171,23 @@ describe("OpenAiEvaluationPort", () => {
     );
     expect(request).toContain("No inventes incentivos");
     expect(request).toContain(
-      "No uses las palabras bloqueo ni bloqueante en el mensaje visible",
+      "Evita tecnicismos y las palabras bloqueo o bloqueante",
     );
     expect(request).toContain(
-      "Si criterios previos tienen score de 15 a 34 y refuerzan el defecto decisivo, resume como máximo dos",
+      "Si criterios previos con score de 15 a 34 refuerzan el defecto, resume como máximo dos",
     );
-    expect(request).toContain("clara, mordaz y factual");
+    expect(request).toContain("hardSetup");
+    expect(request).toContain("hardConsequence");
+    expect(request).toContain("tono neutral");
+    expect(request).toContain(
+      "No generalices una especie u objeto concreto a una categoría amplia",
+    );
+    expect(request).toContain(
+      "la cámara, la pantalla donde se ven y sus ajustes cambian el brillo, los colores y el contraste",
+    );
+    expect(request).toContain(
+      "sigue la cadena de captura, transmisión y reproducción",
+    );
   });
 
   it("normalizes quote-wrapped basis only when its contents occur literally", async () => {
@@ -224,8 +255,37 @@ describe("OpenAiEvaluationPort", () => {
     if (!(caught instanceof Error)) {
       throw new Error("Expected a sanitized provider error.");
     }
-    expect(caught.message).toBe("OpenAI evaluation request failed.");
+    expect(caught).toBeInstanceOf(OpenAiEvaluationFailure);
+    expect(caught).toMatchObject({ code: "OPENAI_HTTP_401" });
     expect(caught.message).not.toContain(providerSecret);
+  });
+
+  it("classifies output truncated by the token limit without exposing response text", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createResponse({
+        status: "incomplete",
+        incomplete_details: { reason: "max_output_tokens" },
+        output: [{ type: "reasoning", summary: [{ text: "private content" }] }],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiEvaluationPort({
+      apiKey: API_KEY,
+      model: MODEL_NAME,
+    });
+
+    let caught: unknown;
+    try {
+      await port.evaluate(createInput());
+    } catch (error) {
+      caught = error;
+    }
+
+    if (!(caught instanceof OpenAiEvaluationFailure)) {
+      throw new Error("Expected a classified incomplete-response error.");
+    }
+    expect(caught.code).toBe("OPENAI_OUTPUT_INCOMPLETE_MAX_TOKENS");
+    expect(caught.message).not.toContain("private content");
   });
 
   it("rejects a successful response that contains no output text", async () => {
@@ -236,8 +296,8 @@ describe("OpenAiEvaluationPort", () => {
       model: MODEL_NAME,
     });
 
-    await expect(port.evaluate(createInput())).rejects.toThrow(
-      "OpenAI evaluation response is invalid.",
-    );
+    await expect(port.evaluate(createInput())).rejects.toMatchObject({
+      code: "OPENAI_RESPONSE_INVALID",
+    });
   });
 });

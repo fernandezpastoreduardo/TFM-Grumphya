@@ -43,7 +43,10 @@ export type ModelDecision = {
   stop_at: EvaluationCriterionId | null;
   reason_code: EvaluationReasonCode | null;
   basis: string | null;
+  safeTitle: string | null;
   message: string;
+  hardSetup: string | null;
+  hardConsequence: string | null;
 };
 
 const REASON_CODE_BY_CRITERION: Record<
@@ -69,8 +72,18 @@ const MAX_CONCEPTUAL_SCORE = 79;
 const REJECTION_THRESHOLD = 15;
 const TERMINAL_SENTENCE_MARK = ".";
 const DISALLOWED_RESULT_LABEL = /\bbloque(?:o|os|ante|antes)\b/iu;
+const MIN_SAFE_TITLE_LENGTH = 8;
+const MAX_SAFE_TITLE_LENGTH = 72;
+const SAFE_TITLE_WORD_PATTERN = /^[\p{L}\p{N}]+(?:[ '\u2019-][\p{L}\p{N}]+)*$/u;
+const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
+const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
+const PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
+const CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
+const MIN_LITERAL_FRAGMENT_LENGTH = 18;
 const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
 const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
+const HARD_COPY_MIN_LENGTH = 8;
+const HARD_COPY_MAX_LENGTH = 140;
 export type ModelDecisionValidationCode =
   | "response_shape"
   | "criteria_prefix"
@@ -196,11 +209,59 @@ function isValidNeutralMessage(value: unknown): value is string {
   );
 }
 
-export function renderMessage(decision: unknown): string {
+function isValidHardCopyComponent(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim() === value &&
+    value.length >= HARD_COPY_MIN_LENGTH &&
+    value.length <= HARD_COPY_MAX_LENGTH &&
+    !/[.!?\r\n\t]/u.test(value) &&
+    !EMAIL_PATTERN.test(value) &&
+    !URL_PATTERN.test(value) &&
+    !PHONE_PATTERN.test(value) &&
+    !CONTROL_PATTERN.test(value)
+  );
+}
+
+function renderHardRejectionMessage(decision: ModelDecision): string {
+  if (!decision.hardSetup || !decision.hardConsequence) {
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  }
+  const consequence = `${decision.hardConsequence[0]?.toLocaleLowerCase("es-ES")}${decision.hardConsequence.slice(1)}`;
+  return `¿Has visto alguna vez ${decision.hardSetup}? Pues eso: ${consequence}. A ver si le damos una vuelta más a las cosas la próxima vez.`;
+}
+
+function renderHardMessage(decision: ModelDecision): string {
+  if (decision.status === "RECHAZADA") {
+    return renderHardRejectionMessage(decision);
+  }
+  if (decision.status === "IDEA_INSUFICIENTE") {
+    return "Esto aún no es una idea; es el tráiler sin película. A ver si le damos una vuelta más a las cosas la próxima vez.";
+  }
+  return `Bueno, por ahora aguanta la inspección; tampoco te vengas arriba. ${decision.message}`;
+}
+
+export function renderMessage(decision: unknown, tone: unknown): string {
   if (!isRecord(decision) || !isValidNeutralMessage(decision.message)) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
-  return decision.message;
+  if (tone !== "soft" && tone !== "hard") {
+    throw new Error(INVALID_TONE_MESSAGE);
+  }
+  const parsedDecision = decision as unknown as ModelDecision;
+  if (tone === "soft") return parsedDecision.message;
+  const hardMessage = renderHardMessage(parsedDecision);
+  if (hardMessage.length > MAX_MESSAGE_LENGTH || !hardMessage.endsWith(".")) {
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  }
+  if (
+    parsedDecision.status === "RECHAZADA" &&
+    (!isValidHardCopyComponent(parsedDecision.hardSetup) ||
+      !isValidHardCopyComponent(parsedDecision.hardConsequence))
+  ) {
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  }
+  return hardMessage;
 }
 
 export function renderHeadline(status: unknown, tone: unknown): string {
@@ -258,17 +319,54 @@ function validateRejectedDecision(
     );
 }
 
+function isSafeTitle(value: unknown, ideaText: string): value is string {
+  if (
+    typeof value !== "string" ||
+    value.trim() !== value ||
+    value.length < MIN_SAFE_TITLE_LENGTH ||
+    value.length > MAX_SAFE_TITLE_LENGTH ||
+    !SAFE_TITLE_WORD_PATTERN.test(value) ||
+    EMAIL_PATTERN.test(value) ||
+    URL_PATTERN.test(value) ||
+    PHONE_PATTERN.test(value) ||
+    CONTROL_PATTERN.test(value)
+  )
+    return false;
+
+  const normalizedTitle = value.toLocaleLowerCase("es-ES");
+  const normalizedIdea = ideaText.toLocaleLowerCase("es-ES");
+  for (
+    let start = 0;
+    start <= normalizedTitle.length - MIN_LITERAL_FRAGMENT_LENGTH;
+    start += 1
+  ) {
+    for (
+      let length = MIN_LITERAL_FRAGMENT_LENGTH;
+      length <= normalizedTitle.length - start;
+      length += 1
+    ) {
+      if (normalizedIdea.includes(normalizedTitle.slice(start, start + length)))
+        return false;
+    }
+  }
+  return true;
+}
+
 function isValidDecisionStatus(
   decision: ModelDecision,
   ideaText: string,
 ): boolean {
   if (decision.status === "RECHAZADA") {
-    return validateRejectedDecision(decision, ideaText);
+    return (
+      isSafeTitle(decision.safeTitle, ideaText) &&
+      validateRejectedDecision(decision, ideaText)
+    );
   }
   if (
     decision.stop_at !== null ||
     decision.reason_code !== null ||
-    decision.basis !== null
+    decision.basis !== null ||
+    decision.safeTitle !== null
   ) {
     return false;
   }
@@ -298,15 +396,41 @@ export function validateModelDecision(
   }
   const evaluated = parseEvaluatedCriteria(input.evaluated);
   const fields = parseDecisionFields(input);
+  const safeTitle = input.safeTitle;
+  if (safeTitle !== null && typeof safeTitle !== "string") {
+    throw new InvalidModelDecisionError("decision_fields");
+  }
   if (!isValidNeutralMessage(input.message)) {
     throw new InvalidModelDecisionError("visible_message");
+  }
+
+  const hardSetup = input.hardSetup;
+  const hardConsequence = input.hardConsequence;
+  if (
+    (hardSetup !== null && typeof hardSetup !== "string") ||
+    (hardConsequence !== null && typeof hardConsequence !== "string")
+  ) {
+    throw new InvalidModelDecisionError("decision_fields");
+  }
+  if (input.status === "RECHAZADA") {
+    if (
+      !isValidHardCopyComponent(hardSetup) ||
+      !isValidHardCopyComponent(hardConsequence)
+    ) {
+      throw new InvalidModelDecisionError("visible_message");
+    }
+  } else if (hardSetup !== null || hardConsequence !== null) {
+    throw new InvalidModelDecisionError("decision_fields");
   }
 
   const decision: ModelDecision = {
     status: input.status,
     evaluated,
     ...fields,
+    safeTitle,
     message: input.message,
+    hardSetup,
+    hardConsequence,
   };
   if (!isValidDecisionStatus(decision, ideaText)) {
     throw new InvalidModelDecisionError("decision_semantics");

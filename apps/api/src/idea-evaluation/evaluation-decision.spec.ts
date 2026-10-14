@@ -48,7 +48,10 @@ function createCompleteDecision() {
     stop_at: null,
     reason_code: null,
     basis: null,
+    safeTitle: null,
     message: VALID_MESSAGE,
+    hardSetup: null,
+    hardConsequence: null,
   };
 }
 
@@ -65,7 +68,10 @@ function createRejectedDecision() {
     stop_at: "C05",
     reason_code: CRITERION_REASON_CODES.C05,
     basis: "Pagamos cualquier declaración sin comprobarla",
+    safeTitle: "Cobrar por promesas sin verificar",
     message: REJECTION_MESSAGE,
+    hardSetup: "un negocio que paga por declaraciones sin comprobarlas",
+    hardConsequence: "nadie sabe si esas declaraciones son ciertas",
   };
 }
 
@@ -76,7 +82,10 @@ function createInsufficientDecision() {
     stop_at: null,
     reason_code: null,
     basis: null,
+    safeTitle: null,
     message: INSUFFICIENT_MESSAGE,
+    hardSetup: null,
+    hardConsequence: null,
   };
 }
 
@@ -95,8 +104,12 @@ function createCorePromiseRejection() {
     stop_at: "C07",
     reason_code: CRITERION_REASON_CODES.C07,
     basis: "resultados actuales",
+    safeTitle: "Promesas sin respaldo verificable",
     message:
       "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
+    hardSetup:
+      "un servicio que promete información actual sin mantenerla al día",
+    hardConsequence: "el usuario acabaría pagando por información caducada",
   };
 }
 
@@ -129,6 +142,33 @@ describe("validateModelDecision", () => {
           basis: '"resultados actuales"',
         },
         TIME_SENSITIVE_PROMISE_IDEA,
+      ),
+    ).toThrow(/respuesta del evaluador no válida/i);
+  });
+
+  it.each([
+    null,
+    "",
+    "corto",
+    "Título con\nsalto",
+    "contacto usuario@example.com",
+    "visita https://example.es",
+    "llama al 612 345 678",
+    IDEA_TEXT.slice(0, 30),
+  ])("rejects unsafe rejected title: %s", (safeTitle) => {
+    expect(() =>
+      validateModelDecision(
+        { ...createRejectedDecision(), safeTitle },
+        IDEA_TEXT,
+      ),
+    ).toThrow(/respuesta del evaluador no válida/i);
+  });
+
+  it("requires no safe title for non-rejected decisions", () => {
+    expect(() =>
+      validateModelDecision(
+        { ...createCompleteDecision(), safeTitle: "Título genérico válido" },
+        IDEA_TEXT,
       ),
     ).toThrow(/respuesta del evaluador no válida/i);
   });
@@ -297,7 +337,14 @@ describe("validateModelDecision", () => {
     ["visible_message", { ...createCompleteDecision(), message: "Muy corto." }],
     [
       "decision_semantics",
-      { ...createCompleteDecision(), status: "RECHAZADA" },
+      {
+        ...createRejectedDecision(),
+        evaluated: createRejectedDecision().evaluated.map((item, index) =>
+          index === createRejectedDecision().evaluated.length - 1
+            ? { ...item, score: 20 }
+            : item,
+        ),
+      },
     ],
   ] as const)(
     "classifies invalid decisions as %s",

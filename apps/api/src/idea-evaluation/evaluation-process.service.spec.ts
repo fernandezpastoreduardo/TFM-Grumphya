@@ -16,16 +16,21 @@ import { EvaluationProcessService } from "./evaluation-process.service";
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const REJECTED_IDEA =
   "Accedemos sin autorización a datos personales para ofrecer una app de coordinación.";
-const POLICY_VERSION = "grumphya-concept-v5";
+const POLICY_VERSION = "grumphya-concept-v6";
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
   "Acceder sin autorización a datos personales convierte el servicio en una invasión directa de la privacidad de sus usuarios.";
+const HARD_SETUP = "un servicio que accede a datos personales sin permiso";
+const HARD_CONSEQUENCE = "los usuarios pierden el control de su información";
+const HARD_REJECTION_MESSAGE =
+  "¿Has visto alguna vez un servicio que accede a datos personales sin permiso? Pues eso: los usuarios pierden el control de su información. A ver si le damos una vuelta más a las cosas la próxima vez.";
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
   headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
-  message: NEUTRAL_MESSAGE,
+  message:
+    "Bueno, por ahora aguanta la inspección; tampoco te vengas arriba. Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 const UNAVAILABLE_RESPONSE = {
   code: "EVALUATOR_UNAVAILABLE",
@@ -57,7 +62,10 @@ function createCompleteDecision(): ModelDecision {
     stop_at: null,
     reason_code: null,
     basis: null,
+    safeTitle: null,
     message: NEUTRAL_MESSAGE,
+    hardSetup: null,
+    hardConsequence: null,
   };
 }
 
@@ -68,7 +76,10 @@ function createRejectedDecision(): ModelDecision {
     stop_at: "C01",
     reason_code: "PRIVACIDAD_ESTRUCTURAL",
     basis: "sin autorización",
+    safeTitle: "Riesgo de privacidad sin mitigaciones",
     message: REJECTION_MESSAGE,
+    hardSetup: HARD_SETUP,
+    hardConsequence: HARD_CONSEQUENCE,
   };
 }
 
@@ -79,8 +90,11 @@ function createInsufficientDecision(): ModelDecision {
     stop_at: null,
     reason_code: null,
     basis: null,
+    safeTitle: null,
     message:
       "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.",
+    hardSetup: null,
+    hardConsequence: null,
   };
 }
 
@@ -108,7 +122,7 @@ afterEach(() => {
 });
 
 describe("EvaluationProcessService", () => {
-  it("calls the evaluation port once without sending the tone", async () => {
+  it("sends the selected tone to the evaluation port", async () => {
     const port = createPort(createCompleteDecision());
     const service = new EvaluationProcessService(port);
 
@@ -117,6 +131,7 @@ describe("EvaluationProcessService", () => {
     expect(port.evaluate).toHaveBeenCalledTimes(1);
     expect(port.evaluate).toHaveBeenCalledWith({
       ideaText: VALID_IDEA,
+      tone: "hard",
       policyVersion: POLICY_VERSION,
       signal: expect.any(AbortSignal),
     });
@@ -142,10 +157,11 @@ describe("EvaluationProcessService", () => {
       score: 1.3,
       headline: "Vaya, justo falla donde más importa.",
       message: REJECTION_MESSAGE,
+      safeTitle: "Riesgo de privacidad sin mitigaciones",
     });
   });
 
-  it("renders the hard-tone title separately from the factual finding", async () => {
+  it("renders the hard-tone message from validated mechanism and consequence fields", async () => {
     const port = createPort(createRejectedDecision());
     const service = new EvaluationProcessService(port);
 
@@ -155,7 +171,8 @@ describe("EvaluationProcessService", () => {
       status: "RECHAZADA",
       score: 1.3,
       headline: "Pues… no decepciona; no esperaba gran cosa.",
-      message: REJECTION_MESSAGE,
+      message: HARD_REJECTION_MESSAGE,
+      safeTitle: "Riesgo de privacidad sin mitigaciones",
     });
   });
 
@@ -340,7 +357,7 @@ describe("EvaluationProcessService", () => {
       (error: unknown) => error,
     );
 
-    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(60_000);
     const caught = await outcome;
 
     expect(caught).toBeInstanceOf(GatewayTimeoutException);
