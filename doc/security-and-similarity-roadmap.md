@@ -5,12 +5,14 @@ Este documento separa lo que el código hace hoy de los cambios solicitados. Los
 ## Similitud de ideas: estado implementado
 
 - `searchSimilarIdea` genera con OpenAI una firma semántica neutral, efímera y no persistida, crea su embedding con `text-embedding-3-small` (1536 dimensiones) y consulta exclusivamente ideas rechazadas persistidas con pgvector. Pgvector recupera hasta 20 candidatas cercanas sin umbral coseno fijo; OpenAI `gpt-5.4-mini` compara texto original, firma y títulos seguros y confirma match solo si coinciden producto y público/objeto. El coseno recupera candidatas, no decide por sí mismo. Las llamadas a Responses usan `store: false`.
-- `POST /api/evaluation-process` orquesta búsqueda, evaluación y persistencia. Requiere `Idempotency-Key` UUID; solo se guarda el hash durante 24 horas. Con match, el contador total y el agregado semanal se incrementan de forma atómica e idempotente al detectar el envío. La respuesta incluye título seguro y total actualizado.
-- Sin match, una evaluación rechazada con `safeTitle` verificado se agrega con contador inicial `1`. El texto original y el embedding no salen en DTOs ni logs. Una continuación reutiliza la clave original, reclama una sola continuación y no vuelve a incrementar por un rechazo posterior.
+- `POST /api/evaluation-process` orquesta búsqueda, evaluación y persistencia. Requiere `Idempotency-Key` UUID; durante 24 horas guarda el hash de la clave y un `request_hash` HMAC-SHA-256 del payload normalizado (`ideaText` y `tone`), usando la clave de idempotencia como clave HMAC. No almacena texto fuente en esta tabla. Reutilizar clave con payload distinto se rechaza y `continueAnyway` solo acepta el payload original. Con match, el contador total y el agregado semanal se incrementan de forma atómica e idempotente al detectar el envío. La respuesta incluye título seguro y total actualizado.
+- Sin match, una evaluación rechazada con `safeTitle` verificado se agrega con contador inicial `1`. El texto original y el embedding no salen en DTOs ni logs. Una continuación reutiliza la clave y el payload originales, reclama una sola continuación y no vuelve a incrementar por un rechazo posterior.
 - La migración `005_worst_ideas.sql` crea el corpus vectorial, la idempotencia y los agregados semanales. Las consultas excluyen filas vencidas a los 24 meses; **la purga física automática sigue pendiente**.
-- La UI permite evaluar igualmente con una acción explícita y muestra el título seguro y el contador.
+- La UI permite continuar con una acción explícita y muestra el título seguro y el contador. El flujo depende de los adaptadores de similitud y del evaluador configurados; sin ellos, la API responde con error de servicio y no completa la evaluación.
+- El middleware limita evaluación a 10 solicitudes/minuto por IP y la API completa a 120 por IP; los contadores son en memoria por proceso y no se coordinan entre réplicas.
+- La idempotencia duradera registra match y rechazo persistido. Un resultado `SIN_BLOQUEO_EVIDENTE`, `IDEA_INSUFICIENTE` o un fallo antes de persistir no queda cacheado como respuesta; reintentar puede volver a invocar búsqueda/proveedor. El rate limit reduce frecuencia por proceso, pero la idempotencia no protege estos reintentos ni evita sus llamadas/coste.
 - El corpus contiene solo ideas rechazadas. Si una idea anterior fue aprobada, no habrá registro para detectar su paráfrasis; una evaluación nueva es el comportamiento esperado. Para validar la repetición de una idea recién rechazada, el primer envío debe terminar en rechazo y persistencia.
-- **Pendiente antes de producción:** cuotas de uso (3 por sesión anónima y 11 al día para el plan Iluminado), reservas/confirmación idempotentes y autenticación de la evaluación no existen en la API actual. El aviso no puede mostrar intentos restantes ni garantizar su descuento. La evaluación adicional se tramita como otro envío, pero no hay todavía un contador autoritativo que limite ese consumo.
+- **Pendiente antes de producción:** cuotas de uso (3 por sesión anónima y 11 al día para el plan Iluminado) y autenticación/autorización de la evaluación no existen en la API actual. La idempotencia implementada cubre el registro de match/rechazo persistido y la continuación de similitud, no cachea todas las respuestas ni reserva/confirma cuotas. El aviso no muestra intentos restantes ni garantiza su descuento. La evaluación adicional se tramita como continuación del envío original con la misma clave idempotente, pero todavía no hay contador autoritativo que limite ese consumo.
 - **Pendiente:** política de privacidad que informe el envío de ideas a OpenAI para firma semántica, embeddings y comparación; purga física automatizada tras 24 meses; probar consultas y migración contra PostgreSQL/pgvector aislado; configurar el proveedor evaluador real. La batería anterior medía un filtro coseno que ya no se usa y no constituye evidencia de la nueva orquestación; se sustituye por pruebas de unidad de paráfrasis y separación de ideas relacionadas.
 
 ## Registro: estado observado
@@ -32,7 +34,7 @@ Este documento separa lo que el código hace hoy de los cambios solicitados. Los
 
 ## Similitud de ideas: alcance funcional
 
-El caso de uso, el adaptador OpenAI, el repositorio pgvector y la orquestación están implementados. El evaluador real todavía requiere configuración (`EVALUATION_PROVIDER` y sus credenciales). Las cuotas de evaluación y la purga física siguen pendientes, así que el flujo de similitud no debe habilitarse a usuarios de producción todavía.
+El caso de uso, adaptadores OpenAI, repositorio pgvector, orquestación y aviso UI están implementados. La operación necesita `OPENAI_API_KEY` para similitud y, para evaluar, `EVALUATION_PROVIDER=openai`; sin esa configuración no hay flujo funcional. Las cuotas de evaluación, autenticación/autorización y purga física siguen pendientes, así que el flujo de similitud no debe habilitarse a usuarios de producción todavía.
 
 Flujo objetivo:
 
@@ -64,7 +66,7 @@ Flujo objetivo:
 ### Orquestación y UI
 
 - **Hecho:** match actualiza el contador una sola vez; continuar reclama una vez y evalúa sin incrementar el contador aunque el resultado sea `RECHAZADA`; sin match, el rechazo nuevo llama `addToWorstIdeas`; otros estados no. La UI muestra un aviso y una acción explícita.
-- **Pendiente:** reserva y confirmación de cuota de uso, accesible y validada en servidor. Los límites diarios/sesión no existen en la API todavía.
+- **Pendiente:** reserva y confirmación de cuota de uso, accesible y validada en servidor. Los límites diarios/sesión no existen en la API todavía. La continuación se reclama de forma idempotente, pero eso evita repetir su operación; no limita la cantidad de usos.
 - **E2E:** prueba en entorno aislado con repositorio vectorial y datos sintéticos; verificar aviso, continuar/cancelar, ranking y ausencia de texto/identidad en respuestas/logs.
 
 ## Decisiones cerradas y detalles de implementación
@@ -74,6 +76,6 @@ Flujo objetivo:
 - Retención interna: eliminar título seguro, embedding y contador después de 24 meses desde la última recepción. La búsqueda excluirá registros caducados aunque la limpieza física esté pendiente.
 - Título: añadir `safeTitle` dedicado a la salida estructurada del evaluador para veredictos `reject`; un puerto verificador independiente valida y falla de forma cerrada. Sin aprobación, no se publica ni se incorpora al corpus.
 - Aviso: mostrar el título seguro y el contador total posterior al incremento. No mostrar texto original, autor ni identificadores. Los intentos disponibles y su coste no pueden mostrarse correctamente hasta implementar las cuotas en servidor.
-- Idempotencia: una clave por envío lógico, compartida por búsqueda, incremento y continuación; persistir solo su hash y eliminarla tras 24 horas. Un segundo rechazo en la continuación no suma otra unidad.
+- Idempotencia: una clave por envío lógico, compartida por búsqueda, incremento y continuación; persistir el hash de la clave y la huella HMAC-SHA-256 de `ideaText` + `tone` (con la clave como secreto HMAC), nunca el texto fuente, y eliminar el registro tras 24 horas. Rechazar la misma clave con payload distinto. Un segundo rechazo en la continuación no suma otra unidad.
 - Implementado: verificador de títulos, migración, adaptadores, persistencia, orquestación, aviso UI y pruebas unitarias focalizadas.
-- Pendiente: cuotas de uso, purga física programada, política de privacidad actualizada, integración con PostgreSQL/pgvector aislado y recorrido E2E.
+- Pendiente: cuotas de uso, autenticación/autorización de evaluación, purga física programada, política de privacidad actualizada, integración con PostgreSQL/pgvector aislado y recorrido E2E completo del flujo.

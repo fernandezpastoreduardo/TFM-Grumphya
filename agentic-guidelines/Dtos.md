@@ -6,7 +6,7 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 - `ideaText: string`, entre 10 y 2.000 caracteres.
 - `tone: 'soft' | 'hard'`.
-- La orquestación requiere `Idempotency-Key` aleatoria por envío lógico, conservada en la detección y en la continuación durante 24 horas; el servidor guarda solo su hash.
+- La orquestación requiere `Idempotency-Key` aleatoria por envío lógico, conservada en la detección y continuación durante 24 horas. La tabla no almacena texto fuente: vincula la clave al payload normalizado `ideaText` + `tone` mediante `request_hash`, una huella HMAC-SHA-256 cuya clave es la propia `Idempotency-Key`. Reutilizarla con otro payload se rechaza; `continueAnyway` debe conservar el payload inicial.
 
 ### EvaluationProcessResponse
 
@@ -14,13 +14,13 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 - `score: number | null`; escala global 0–10. `RECHAZADA`: nota del aspecto de veto dividida entre 10. `SIN_BLOQUEO_EVIDENTE`: media aritmética de los criterios `PUNTUADO`, dividida entre 10 y redondeada a dos decimales; `null` si ninguno se puntuó. `IDEA_INSUFICIENTE`: `null`.
 - `message: string`; una frase visible. La UI presenta el score con dos decimales en `es-ES`.
 
-El primer corte no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos persistidos. El contrato posterior de historial/persistencia queda fuera de `evaluationProcess` y se definirá al desarrollar esas features.
+El endpoint no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos de persistencia. La orquestación de similitud/persistencia vive en `POST /api/evaluation-process`; no existe historial personal de evaluaciones en el contrato actual.
 
 ### EvaluateIdeaResponse
 
 - `status: 'similar_idea_match'` devuelve `safeTitle` verificado y `submissionCount` total después del incremento. No devuelve el identificador interno de la idea, embedding, texto original ni autor. Los intentos restantes no están implementados en la API todavía.
 - `status: 'evaluated'` devuelve el resultado público de evaluación y, solo para `RECHAZADA` con título validado, `safeTitle`. El título no altera score ni veredicto.
-- Reenviar la misma `Idempotency-Key` para continuar conserva la recepción ya contada aunque la evaluación posterior también dé `RECHAZADA`.
+- Reenviar la misma `Idempotency-Key` y el mismo payload para continuar conserva la recepción ya contada aunque la evaluación posterior también dé `RECHAZADA`; cambiar `ideaText` o `tone` con esa clave se rechaza.
 
 La evaluación adicional necesita una comprobación de cuota en servidor, pero las cuotas de ideas anónimas y de plan no existen aún; hasta implementarlas, el DTO no acredita consumo ni disponibilidad de intentos.
 
@@ -30,7 +30,7 @@ La evaluación adicional necesita una comprobación de cuota en servidor, pero l
 - `RegistrationRequest`: `email: string` (max 254 characters), `username: string` (3–30 Unicode letters/numbers, with `_`, `.` or `-` only between alphanumeric characters), `password: string` (12–128 characters; require uppercase, lowercase, number and special character; reject control characters and do not trim), `privacyPolicyAcknowledged: true`. The plan is obtained from the server-side intent, never from this body. The server stamps `privacyPolicyVersion` and `privacyPolicyAcknowledgedAt`; clients cannot set either. Email is trimmed, lowercased and its domain converted to ASCII; compare case-insensitively, without provider-specific dot/suffix rewriting. Username is trimmed, Unicode NFC normalized and compared case-insensitively.
 - `RegistrationPendingResponse`: HTTP 202, `status: 'pending_email_verification'`, generic `message`, and `verificationExpiresAt`. It contains no user ID, active account DTO, session, plan permissions or remaining usage. The response does not claim the written email received a message.
 - `VerifyEmailRequest`: `token: string` (submitted through a URL-safe one-time link; store only a token hash, expire in 24 hours, consume atomically). `VerifyEmailResponse`: `status: 'email_verified'`; verification alone does not activate a plan or issue a customer session.
-- `ConfirmSimulatedPurchaseRequest`: empty JSON object; it contains no plan, price, `isPaid`, role or permission. The server derives the plan from persisted registration state and uses the pending registration ID as the idempotency key. `ConfirmSimulatedPurchaseResponse`: `status: 'active'`, `plan`, and session bootstrap. Confirmation is idempotent for account activation; failure returns no session or permissions.
+- `ConfirmSimulatedPurchaseRequest`: empty JSON object; it contains no plan, price, `isPaid`, role or permission. A one-use confirmation cookie expires server-side after 15 minutes. In one transaction the server activates the simulated subscription and stores session hashes, then sets the refresh cookie. Reusing a consumed token does not create another session or replay the response; lost-response recovery requires login/support, not yet implemented. `ConfirmSimulatedPurchaseResponse`: `status: 'active'`, `plan`, and session bootstrap.
 - The email verification adapter is a fixed development-only sink with intended QA destination `fernandezpastoreduardo@gmail.com`. It does not send a real email; the local test link is exposed only to loopback requests and the UI must say that plainly. Production startup/configuration rejects the simulated adapter.
 - Email syntax errors may return a specific validation code/message. Existing email and existing username conflicts must return exactly the same HTTP status, `code`, and body to avoid account enumeration. Privacy acknowledgement errors are explicit and accessible. Error details must not disclose which identity field conflicted.
 - Never accept `isPaid`, subscription status, expiry, role, remaining usage, or an authoritative plan from the registration client. Never expose password hashes, verification tokens, intent identifiers, or internal IDs in public DTOs.

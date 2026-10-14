@@ -21,11 +21,11 @@ Forma parte de la primera entrega. Solicita permiso de micrófono, transcribe te
 
 ## getIdeaListWorstAll
 
-Returns `IdeaListItemWorstAll` entries for rejected ideas received in the current ISO week in `Europe/Madrid`, ordered by the lowest score from rubric v1. The public response contains only title and weekly reception count, never author or original text.
+Contrato previsto para el ranking público, no implementado aún: devolverá `IdeaListItemWorstAll` para ideas rechazadas de la semana ISO actual en `Europe/Madrid`, ordenadas por el menor score de la rúbrica v1. La respuesta pública incluirá solo título y cantidad semanal, nunca autor ni texto original.
 
 ## getIdeaListWorstUser
 
-Returns private `IdeaListItemWorstUser` entries from the authenticated user's submissions. Anonymous visitors have no personal idea history.
+Contrato previsto para historial privado, no implementado aún: devolverá `IdeaListItemWorstUser` del usuario autenticado. Los visitantes anónimos no tienen historial personal.
 
 ## searchSimilarIdea
 
@@ -58,7 +58,7 @@ Feature `features/register-with-plan/`, con contenedor `RegisterWithPlan`. Solo 
 3. `POST /api/registrations` envía `email`, `username`, `password` y `privacyPolicyAcknowledged: true`. El servidor vuelve a validar todo, comprueba la intención, normaliza email/alias, comprueba unicidad y crea una cuenta pendiente dentro de una transacción. Guarda únicamente un hash de contraseña con `scrypt` parametrizado. El servidor registra la versión y fecha/hora de la política que presentó y que el usuario confirmó; el booleano del cliente no es consentimiento genérico ni sustituye la base jurídica del tratamiento. El correo y el alias no se devuelven en logs.
 4. El alta pendiente no inicia sesión, no activa plan, no concede permisos ni devuelve un DTO de cuenta activa. El sistema emite una verificación de email de un solo uso, con token aleatorio de alta entropía, almacenamiento solo de hash, caducidad de 24 horas y consumo atómico. El enlace no debe filtrar el token a terceros; tras validarlo, retirar el token de la URL y evitar recursos de terceros en esa vista.
 5. **Modo local de pruebas:** no se envía un correo real. El adaptador guarda el enlace de verificación en memoria y marca `fernandezpastoreduardo@gmail.com` como destino QA previsto; la interfaz ofrece abrir ese enlace localmente e indica que no se ha enviado email. No se afirma que el correo introducido haya recibido un mensaje ni que el usuario controle esa dirección. En producción el modo simulado falla durante el arranque; allí se necesita un proveedor real que entregue al email validado.
-6. Tras verificar el email, el usuario confirma la contratación simulada con una petición autenticada por el estado de verificación y protegida contra CSRF. El servidor determina el plan desde la intención/registro persistidos y activa la suscripción mediante operación idempotente. Solo tras confirmación exitosa puede emitir una sesión. No hay dinero real ni datos bancarios. Fallos y reintentos no duplican cuenta, contratación, suscripción ni usos. Los permisos se consultan en servidor a partir de suscripción vigente.
+6. Tras verificar el email, una cookie/enlace de confirmación de un solo uso permite confirmar la contratación simulada durante 15 minutos. La API activa la suscripción y guarda hashes de sesión en una única transacción; después entrega la cookie de refresh. No hay dinero real ni datos bancarios. Un token consumido no se puede reutilizar: si se pierde la respuesta de confirmación, el cliente no obtiene otra sesión y necesita un flujo de acceso o soporte, que aún no está implementado. Los permisos deben consultarse en servidor a partir de suscripción vigente.
 
 ### Validación, privacidad y abuso
 
@@ -77,7 +77,7 @@ Feature `features/register-with-plan/`, con contenedor `RegisterWithPlan`. Solo 
 - Red primero: plan ausente/no permitido, intención caducada/reutilizada, CSRF/origen inválido, sintaxis de email inválida, política no marcada, límites de campos y contraseña inválida; añadir casos de mayúscula/minúscula/número/especial, `429` y doble submit al implementar la especificación objetivo.
 - Con concurrencia, dos altas con la misma identidad producen como máximo una cuenta por las restricciones únicas de base de datos. Email duplicado y alias duplicado producen la misma respuesta HTTP/código/cuerpo; comprobar que las respuestas no revelan qué campo ya existe.
 - El hash de contraseña es verificable con el algoritmo configurado; el valor original y los tokens no aparecen en base de datos ni logs. La intención y la verificación son de un solo uso y caducan según servidor.
-- Antes de verificar: no hay sesión, suscripción activa ni permiso. Después de verificar pero antes de confirmar la simulación: tampoco hay suscripción/permisos. Solo una confirmación simulada exitosa activa el plan y permite sesión; fallo y reintentos son seguros e idempotentes.
+- Antes de verificar: no hay sesión, suscripción activa ni permiso. Después de verificar pero antes de confirmar la simulación: tampoco hay suscripción/permisos. Una confirmación simulada exitosa activa el plan y emite sesión atómicamente. La activación no se duplica, pero un reintento con el token consumido no recupera la respuesta ni crea otra sesión; el MVP carece de login/recuperación.
 - En local, no se envía correo: el enlace queda disponible mediante la vista de pruebas local, se muestra aviso inequívoco y no se expone a solicitudes remotas; configuración de producción con adaptador simulado se rechaza. Un email sintácticamente válido no se describe como verificado antes de consumir el token.
 - Prueba E2E aislada: seleccionar plan → URL limpia → alta pendiente → error accesible de política → verificación → confirmación simulada → éxito y sesión; cubrir errores/caducidad, duplicados, repetición y que ningún fallo conceda permisos.
 
@@ -94,10 +94,10 @@ La versión básica acepta tres envíos por sesión anónima o, con plan Faltón
 Caso de uso principal del MVP.
 
 - Entrada: `ideaText`, `tone` (`soft` o `hard`) y contexto de usuario.
-- Valida longitud, contenido y disponibilidad de intentos.
-- La orquestación futura ejecuta `searchSimilarIdea` antes de `evaluationProcess`; esta detección no lee datos de evaluación. Al coincidir, `updateWorstIdea` registra la recepción y se solicita una acción explícita antes de evaluar. Sin coincidencia, ejecuta `evaluationProcess`.
+- Valida longitud y tono en servidor. La disponibilidad de intentos aún no se comprueba porque las cuotas de negocio no están implementadas.
+- `IdeaSubmissionService` orquesta `searchSimilarIdea` antes de `evaluationProcess`; esta detección no lee datos de evaluación. Al coincidir, `updateWorstIdea` registra la recepción y la UI ofrece una acción explícita para continuar. Sin coincidencia, ejecuta `evaluationProcess`.
 - Tras un rechazo nuevo, invoca `addToWorstIdeas`; el embedding y el título seguro se guardan sin el texto original. Ninguna idea aprobada se incorpora al ranking.
-- Cuando corresponda evaluar, ejecuta `evaluationProcess`. Persistencia e intentos pertenecen a capas/orquestación posteriores, no a `evaluationProcess`.
+- La evaluación, persistencia e idempotencia de la recepción están conectadas en la API; los permisos y cuotas de uso todavía no. El evaluador real requiere configuración explícita.
 - Salida del primer corte: estado, score conceptual, titular y explicación; contrato detallado en `scoring-viability-software.md`.
 - Errores: entrada vacía, contenido no evaluable, límite agotado, proveedor de IA no disponible.
 
