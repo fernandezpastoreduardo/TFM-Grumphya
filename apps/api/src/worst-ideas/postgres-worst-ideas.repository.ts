@@ -79,16 +79,19 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     safeTitle: string,
     embedding: readonly number[],
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<string> {
     await this.ensureSchema();
-    this.validateInput(safeTitle, embedding, idempotencyHash);
+    this.validateInput(safeTitle, embedding, idempotencyHash, requestHash);
     return this.transaction(async (client) => {
       const reserved = await this.reserveIdempotency(
         client,
         idempotencyHash,
         "new_rejection",
+        requestHash,
       );
-      if (!reserved) return this.findIdempotentIdea(client, idempotencyHash);
+      if (!reserved)
+        return this.findIdempotentIdea(client, idempotencyHash, requestHash);
 
       const inserted = await client.query<{ id: string }>(
         `INSERT INTO rejected_ideas
@@ -114,6 +117,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
 
   async getIdempotentMatch(
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<IdempotentRejectedIdeaMatch | null> {
     await this.ensureSchema();
     if (!idempotencyHash.trim())
@@ -128,9 +132,10 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
        JOIN rejected_ideas AS ideas ON ideas.id = requests.rejected_idea_id
        WHERE requests.idempotency_hash = $1
          AND requests.submission_type = 'match'
+         AND requests.request_hash = $2
          AND requests.expires_at > now()
          AND ideas.last_received_at > now() - interval '24 months'`,
-      [idempotencyHash],
+      [idempotencyHash, requestHash],
     );
     const row = result.rows[0];
     return row
@@ -138,7 +143,25 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
       : null;
   }
 
-  async claimIdempotentContinuation(idempotencyHash: string): Promise<boolean> {
+  async hasDifferentIdempotentRequest(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<boolean> {
+    await this.ensureSchema();
+    const result = await this.pool.query(
+      `SELECT 1 FROM rejected_idea_idempotency
+       WHERE idempotency_hash = $1 AND request_hash IS NOT NULL
+         AND request_hash <> $2 AND expires_at > now()
+       LIMIT 1`,
+      [idempotencyHash, requestHash],
+    );
+    return result.rowCount === 1;
+  }
+
+  async claimIdempotentContinuation(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<boolean> {
     await this.ensureSchema();
     if (!idempotencyHash.trim())
       throw new Error("Rejected idea idempotency hash is invalid.");
@@ -150,11 +173,12 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
          WHERE requests.idempotency_hash = $1
            AND requests.rejected_idea_id = ideas.id
            AND requests.submission_type = 'match'
+           AND requests.request_hash = $2
            AND requests.expires_at > now()
            AND requests.continue_started_at IS NULL
            AND ideas.last_received_at > now() - interval '24 months'
          RETURNING requests.idempotency_hash`,
-        [idempotencyHash],
+        [idempotencyHash, requestHash],
       );
       return result.rowCount === 1;
     });
@@ -163,6 +187,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
   async updateWorstIdea(
     ideaId: string,
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<number> {
     await this.ensureSchema();
     if (!ideaId || !idempotencyHash)
@@ -172,9 +197,15 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
         client,
         idempotencyHash,
         "match",
+        requestHash,
       );
       if (!reserved)
-        return this.findIdempotentCount(client, idempotencyHash, "match");
+        return this.findIdempotentCount(
+          client,
+          idempotencyHash,
+          "match",
+          requestHash,
+        );
       const updated = await client.query<{ count: string | number }>(
         `UPDATE rejected_ideas
          SET count = count + 1, last_received_at = now()
@@ -194,16 +225,18 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     client: PoolClient,
     idempotencyHash: string,
     submissionType: RejectedIdeaSubmissionType,
+    requestHash: string,
   ): Promise<boolean> {
     const result = await client.query(
-      `INSERT INTO rejected_idea_idempotency (idempotency_hash, submission_type, expires_at)
-       VALUES ($1, $2, now() + interval '${IDEMPOTENCY_TTL_HOURS} hours')
+      `INSERT INTO rejected_idea_idempotency (idempotency_hash, submission_type, request_hash, expires_at)
+       VALUES ($1, $2, $3, now() + interval '${IDEMPOTENCY_TTL_HOURS} hours')
        ON CONFLICT (idempotency_hash) DO UPDATE SET submission_type = EXCLUDED.submission_type,
+                                                    request_hash = EXCLUDED.request_hash,
                                                     expires_at = EXCLUDED.expires_at,
                                                     rejected_idea_id = NULL
        WHERE rejected_idea_idempotency.expires_at <= now()
        RETURNING idempotency_hash`,
-      [idempotencyHash, submissionType],
+      [idempotencyHash, submissionType, requestHash],
     );
     return result.rowCount === 1;
   }
@@ -212,15 +245,17 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     client: PoolClient,
     idempotencyHash: string,
     submissionType: RejectedIdeaSubmissionType,
+    requestHash: string,
   ): Promise<number> {
     const result = await client.query<{ count: number | string }>(
       `SELECT ideas.count
        FROM rejected_idea_idempotency AS requests
        JOIN rejected_ideas AS ideas ON ideas.id = requests.rejected_idea_id
        WHERE requests.idempotency_hash = $1 AND requests.submission_type = $2
+         AND requests.request_hash = $3
          AND requests.expires_at > now()
          AND ideas.last_received_at > now() - interval '24 months'`,
-      [idempotencyHash, submissionType],
+      [idempotencyHash, submissionType, requestHash],
     );
     const count = result.rows[0]?.count;
     if (count === undefined)
@@ -246,11 +281,12 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
   private async findIdempotentIdea(
     client: PoolClient,
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<string> {
     const result = await client.query<{ rejected_idea_id: string }>(
       `SELECT rejected_idea_id FROM rejected_idea_idempotency
-       WHERE idempotency_hash = $1 AND submission_type = 'new_rejection' AND expires_at > now()`,
-      [idempotencyHash],
+       WHERE idempotency_hash = $1 AND submission_type = 'new_rejection' AND request_hash = $2 AND expires_at > now()`,
+      [idempotencyHash, requestHash],
     );
     const ideaId = result.rows[0]?.rejected_idea_id;
     if (!ideaId)
@@ -308,12 +344,14 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     safeTitle: string,
     embedding: readonly number[],
     idempotencyHash: string,
+    requestHash: string,
   ): void {
     this.validateEmbedding(embedding);
     if (
       !safeTitle.trim() ||
       safeTitle.length > 160 ||
-      !idempotencyHash.trim()
+      !idempotencyHash.trim() ||
+      !requestHash.trim()
     ) {
       throw new Error("Rejected idea input is invalid.");
     }

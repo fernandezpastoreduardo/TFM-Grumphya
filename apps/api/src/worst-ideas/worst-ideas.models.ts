@@ -26,10 +26,23 @@ export interface WorstIdeasRepository {
     safeTitle: string,
     embedding: readonly number[],
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<string>;
   getIdempotentMatch(
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<IdempotentRejectedIdeaMatch | null>;
-  claimIdempotentContinuation(idempotencyHash: string): Promise<boolean>;
-  updateWorstIdea(ideaId: string, idempotencyHash: string): Promise<number>;
+  hasDifferentIdempotentRequest(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<boolean>;
+  claimIdempotentContinuation(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<boolean>;
+  updateWorstIdea(
+    ideaId: string,
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<number>;
 }

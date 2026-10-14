@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -81,6 +81,15 @@ function hashIdempotencyKey(idempotencyKey: string): string {
   return createHash("sha256").update(idempotencyKey).digest("hex");
 }
 
+function hashSubmissionRequest(
+  request: EvaluationRequest,
+  idempotencyKey: string,
+): string {
+  return createHmac("sha256", idempotencyKey)
+    .update(JSON.stringify({ ideaText: request.ideaText, tone: request.tone }))
+    .digest("hex");
+}
+
 @Injectable()
 export class IdeaSubmissionService {
   private readonly logger = new Logger(IdeaSubmissionService.name);
@@ -103,21 +112,40 @@ export class IdeaSubmissionService {
       throw new BadRequestException(INVALID_REQUEST_RESPONSE);
     }
     const idempotencyHash = hashIdempotencyKey(idempotencyKeyInput);
-
-    if (request.continueAnyway) {
-      return this.continueAfterMatch(request, idempotencyHash);
+    const requestHash = hashSubmissionRequest(request, idempotencyKeyInput);
+    let keyBoundToDifferentRequest: boolean;
+    try {
+      keyBoundToDifferentRequest =
+        await this.repository.hasDifferentIdempotentRequest(
+          idempotencyHash,
+          requestHash,
+        );
+    } catch {
+      this.logger.error("IDEA_IDEMPOTENCY_LOOKUP_FAILED");
+      throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
+    }
+    if (keyBoundToDifferentRequest) {
+      throw new ConflictException(INVALID_CONTINUATION_RESPONSE);
     }
 
-    return this.checkAndSubmit(request, idempotencyHash);
+    if (request.continueAnyway) {
+      return this.continueAfterMatch(request, idempotencyHash, requestHash);
+    }
+
+    return this.checkAndSubmit(request, idempotencyHash, requestHash);
   }
 
   private async continueAfterMatch(
     request: EvaluationRequest,
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<IdeaSubmissionResponse> {
     let previousMatch;
     try {
-      previousMatch = await this.repository.getIdempotentMatch(idempotencyHash);
+      previousMatch = await this.repository.getIdempotentMatch(
+        idempotencyHash,
+        requestHash,
+      );
     } catch {
       this.logger.error("IDEA_CONTINUATION_LOOKUP_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
@@ -128,8 +156,10 @@ export class IdeaSubmissionService {
 
     let continuationClaimed: boolean;
     try {
-      continuationClaimed =
-        await this.repository.claimIdempotentContinuation(idempotencyHash);
+      continuationClaimed = await this.repository.claimIdempotentContinuation(
+        idempotencyHash,
+        requestHash,
+      );
     } catch {
       this.logger.error("IDEA_CONTINUATION_CLAIM_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
@@ -147,6 +177,7 @@ export class IdeaSubmissionService {
   private async checkAndSubmit(
     request: EvaluationRequest,
     idempotencyHash: string,
+    requestHash: string,
   ): Promise<IdeaSubmissionResponse> {
     if (!this.search) {
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
@@ -166,6 +197,7 @@ export class IdeaSubmissionService {
         const submissionCount = await this.repository.updateWorstIdea(
           detailedSearch.result.ideaId,
           idempotencyHash,
+          requestHash,
         );
         return {
           status: "similar_idea_match",
@@ -194,6 +226,7 @@ export class IdeaSubmissionService {
         result.safeTitle,
         detailedSearch.embedding,
         idempotencyHash,
+        requestHash,
       );
     } catch {
       this.logger.error("IDEA_REJECTION_PERSISTENCE_FAILED");

@@ -42,6 +42,7 @@ const PREVIOUS_TIMEOUT = process.env.EVALUATION_TIMEOUT_MS;
       useValue: {
         addToWorstIdeas: async () => "test-idea",
         getIdempotentMatch: async () => null,
+        hasDifferentIdempotentRequest: async () => false,
         claimIdempotentContinuation: async () => true,
         updateWorstIdea: async () => 1,
       },

@@ -30,6 +30,7 @@ import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
       useValue: {
         addToWorstIdeas: async () => "test-idea",
         getIdempotentMatch: async () => null,
+        hasDifferentIdempotentRequest: async () => false,
         claimIdempotentContinuation: async () => true,
         updateWorstIdea: async () => 1,
       },

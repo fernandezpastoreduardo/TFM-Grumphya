@@ -5,6 +5,7 @@ import { PostgresWorstIdeasRepository } from "./postgres-worst-ideas.repository"
 const VALID_EMBEDDING = Array.from({ length: 1536 }, () => 0.25);
 const SAFE_TITLE = "La red social de las tostadoras";
 const IDEMPOTENCY_HASH = "sha256:anonymized-hash";
+const REQUEST_HASH = "hmac:anonymized-request-hash";
 const IDEA_ID = "5d5e03ab-753d-4fa0-b5ec-f1d55abe4382";
 
 interface CapturedQuery {
@@ -200,7 +201,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.addToWorstIdeas(SAFE_TITLE, VALID_EMBEDDING, IDEMPOTENCY_HASH),
+      repository.addToWorstIdeas(
+        SAFE_TITLE,
+        VALID_EMBEDDING,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
     ).resolves.toBe(IDEA_ID);
 
     const queries = pool.client.queries;
@@ -229,7 +235,7 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(
       queries.find(({ sql }) => sql.includes("rejected_idea_idempotency"))
         ?.values,
-    ).toEqual([IDEMPOTENCY_HASH, "new_rejection"]);
+    ).toEqual([IDEMPOTENCY_HASH, "new_rejection", REQUEST_HASH]);
     expect(pool.client.releaseCalled).toBe(true);
   });
 
@@ -239,7 +245,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.addToWorstIdeas(SAFE_TITLE, VALID_EMBEDDING, IDEMPOTENCY_HASH),
+      repository.addToWorstIdeas(
+        SAFE_TITLE,
+        VALID_EMBEDDING,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
     ).resolves.toBe(IDEA_ID);
 
     expect(
@@ -252,7 +263,7 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH),
+      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
     ).resolves.toBe(5);
 
     expect(
@@ -272,7 +283,7 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH),
+      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
     ).rejects.toThrow("Rejected idea is unavailable.");
     expect(pool.client.queries.at(-1)?.sql).toBe("ROLLBACK");
     expect(pool.client.releaseCalled).toBe(true);
@@ -285,7 +296,7 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH),
+      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
     ).resolves.toBe(8);
 
     expect(
@@ -301,7 +312,7 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.getIdempotentMatch(IDEMPOTENCY_HASH),
+      repository.getIdempotentMatch(IDEMPOTENCY_HASH, REQUEST_HASH),
     ).resolves.toEqual({ id: IDEA_ID, safeTitle: SAFE_TITLE, count: 4 });
 
     expect(pool.queries[0]?.sql).toContain(
@@ -329,10 +340,10 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.claimIdempotentContinuation(IDEMPOTENCY_HASH),
+      repository.claimIdempotentContinuation(IDEMPOTENCY_HASH, REQUEST_HASH),
     ).resolves.toBe(true);
     await expect(
-      repository.claimIdempotentContinuation(IDEMPOTENCY_HASH),
+      repository.claimIdempotentContinuation(IDEMPOTENCY_HASH, REQUEST_HASH),
     ).resolves.toBe(false);
 
     const claims = pool.client.queries.filter(({ sql }) =>
@@ -349,14 +360,20 @@ describe("PostgresWorstIdeasRepository", () => {
     otherTypePool.client.submissionType = "new_rejection";
     const otherTypeRepository = makeRepository(otherTypePool);
     await expect(
-      otherTypeRepository.claimIdempotentContinuation(IDEMPOTENCY_HASH),
+      otherTypeRepository.claimIdempotentContinuation(
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
     ).resolves.toBe(false);
 
     const missingPool = new FakePgPool();
     missingPool.client.idempotencyExists = false;
     const missingRepository = makeRepository(missingPool);
     await expect(
-      missingRepository.claimIdempotentContinuation(IDEMPOTENCY_HASH),
+      missingRepository.claimIdempotentContinuation(
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
     ).resolves.toBe(false);
   });
 
@@ -368,13 +385,18 @@ describe("PostgresWorstIdeasRepository", () => {
       SAFE_TITLE,
       VALID_EMBEDDING,
       IDEMPOTENCY_HASH,
+      REQUEST_HASH,
     );
 
     const reserve = pool.client.queries.find(({ sql }) =>
       sql.includes("INSERT INTO rejected_idea_idempotency"),
     );
     expect(reserve?.sql).toContain("submission_type");
-    expect(reserve?.values).toEqual([IDEMPOTENCY_HASH, "new_rejection"]);
+    expect(reserve?.values).toEqual([
+      IDEMPOTENCY_HASH,
+      "new_rejection",
+      REQUEST_HASH,
+    ]);
   });
 
   it("rejects invalid embeddings before querying", async () => {

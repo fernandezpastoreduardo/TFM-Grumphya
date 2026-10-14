@@ -40,6 +40,7 @@ function createDependencies(
     updateWorstIdea: vi.fn().mockResolvedValue(24),
     getIdempotentMatch: vi.fn().mockResolvedValue(null),
     claimIdempotentContinuation: vi.fn().mockResolvedValue(true),
+    hasDifferentIdempotentRequest: vi.fn().mockResolvedValue(false),
   } as unknown as WorstIdeasRepository;
   const evaluation = {
     evaluate: vi.fn().mockResolvedValue(evaluationResult),
@@ -76,6 +77,7 @@ describe("IdeaSubmissionService", () => {
     expect(repository.updateWorstIdea).toHaveBeenCalledWith(
       "idea-1",
       IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
     );
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
@@ -107,6 +109,7 @@ describe("IdeaSubmissionService", () => {
     expect(repository.updateWorstIdea).toHaveBeenCalledWith(
       "grasshopper-idea",
       IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
     );
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
@@ -126,6 +129,7 @@ describe("IdeaSubmissionService", () => {
       SAFE_TITLE,
       EMBEDDING,
       IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
     );
   });
 
@@ -143,6 +147,65 @@ describe("IdeaSubmissionService", () => {
     await service.submit(VALID_REQUEST, IDEMPOTENCY_KEY);
 
     expect(repository.addToWorstIdeas).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a rejected result has no safe public title", async () => {
+    const loggerError = vi
+      .spyOn((await import("@nestjs/common")).Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    const resultWithoutTitle = { ...EVALUATION_RESULT, safeTitle: undefined };
+    const { service, repository } = createDependencies(
+      { kind: "no-match" },
+      resultWithoutTitle,
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      response: {
+        code: "INVALID_REJECTION_TITLE",
+        message: "No se ha podido guardar el resultado de la evaluación.",
+      },
+    });
+    expect(repository.addToWorstIdeas).not.toHaveBeenCalled();
+    expect(loggerError).toHaveBeenCalledWith(
+      "IDEA_REJECTION_TITLE_UNAVAILABLE",
+    );
+  });
+
+  it("maps similarity and persistence failures to generic responses without leaking details", async () => {
+    const privateText = `${IDEA_TEXT} secret`;
+    const loggerError = vi
+      .spyOn((await import("@nestjs/common")).Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    const similarityFailure = createDependencies();
+    vi.mocked(similarityFailure.search.executeDetailed).mockRejectedValue(
+      new Error(privateText),
+    );
+
+    await expect(
+      similarityFailure.service.submit(VALID_REQUEST, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      response: {
+        code: "SIMILARITY_UNAVAILABLE",
+        message: "No se ha podido comprobar la similitud ahora.",
+      },
+    });
+    expect(similarityFailure.evaluation.evaluate).not.toHaveBeenCalled();
+
+    const persistenceFailure = createDependencies();
+    vi.mocked(persistenceFailure.repository.addToWorstIdeas).mockRejectedValue(
+      new Error(privateText),
+    );
+    await expect(
+      persistenceFailure.service.submit(VALID_REQUEST, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      response: {
+        code: "INVALID_REJECTION_TITLE",
+        message: "No se ha podido guardar el resultado de la evaluación.",
+      },
+    });
+    expect(JSON.stringify(loggerError.mock.calls)).not.toContain(privateText);
   });
 
   it("continues evaluation only when the same key has an unexpired prior match and does not count again", async () => {
@@ -164,14 +227,30 @@ describe("IdeaSubmissionService", () => {
 
     expect(repository.getIdempotentMatch).toHaveBeenCalledWith(
       IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
     );
     expect(repository.claimIdempotentContinuation).toHaveBeenCalledWith(
       IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
     );
     expect(search.executeDetailed).not.toHaveBeenCalled();
     expect(repository.updateWorstIdea).not.toHaveBeenCalled();
     expect(repository.addToWorstIdeas).not.toHaveBeenCalled();
     expect(evaluation.evaluate).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a key already bound to a different idea or tone", async () => {
+    const { service, search, evaluation, repository } = createDependencies();
+    vi.mocked(repository.hasDifferentIdempotentRequest).mockResolvedValue(true);
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      status: 409,
+    });
+
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
 
   it("does not allow clients to skip the match check when continuing", async () => {
