@@ -11,6 +11,14 @@ const MIGRATIONS = [
     file: "004_registration_lifecycle.sql",
   },
   { version: "005_worst_ideas", file: "005_worst_ideas.sql" },
+  {
+    version: "006_verified_token_expiry",
+    file: "006_verified_token_expiry.sql",
+  },
+  {
+    version: "007_idempotency_request_hash",
+    file: "007_idempotency_request_hash.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

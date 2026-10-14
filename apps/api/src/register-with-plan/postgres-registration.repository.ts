@@ -88,6 +88,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
   async verify(
     verificationHash: string,
     verifiedTokenHash: string,
+    verifiedTokenExpiresAt: Date,
   ): Promise<VerifiedResult> {
     await this.ensureSchema();
     return this.transaction(async (client) => {
@@ -95,10 +96,10 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         plan_code: PlanCode;
         user_id: string;
       }>(
-        `UPDATE pending_registrations SET verification_token_hash='consumed:' || id::text, verified_token_hash=$2
+        `UPDATE pending_registrations SET verification_token_hash='consumed:' || id::text, verified_token_hash=$2, verified_token_expires_at=$3
          WHERE verification_token_hash=$1 AND verification_expires_at > now() AND verified_token_hash IS NULL
          RETURNING plan_code,user_id`,
-        [verificationHash, verifiedTokenHash],
+        [verificationHash, verifiedTokenHash, verifiedTokenExpiresAt],
       );
       if (!result.rows[0]) throw new Error("Verification unavailable.");
       await client.query(
@@ -109,7 +110,12 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     });
   }
 
-  async confirm(verifiedTokenHash: string): Promise<ConfirmedRegistration> {
+  async confirm(
+    verifiedTokenHash: string,
+    accessTokenHash: string,
+    refreshTokenHash: string,
+    expiresAt: Date,
+  ): Promise<ConfirmedRegistration> {
     await this.ensureSchema();
     return this.transaction(async (client) => {
       const found = await client.query<{
@@ -120,12 +126,12 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         confirmed_at: Date | null;
       }>(
         `SELECT p.id,p.user_id,u.username,p.plan_code,p.confirmed_at FROM pending_registrations p
-         JOIN users u ON u.id=p.user_id WHERE p.verified_token_hash=$1 FOR UPDATE OF p`,
+         JOIN users u ON u.id=p.user_id WHERE p.verified_token_hash=$1 AND p.verified_token_expires_at > now() AND p.confirmed_at IS NULL FOR UPDATE OF p`,
         [verifiedTokenHash],
       );
       const registration = found.rows[0];
       if (!registration) throw new Error("Verification required.");
-      if (!registration.confirmed_at) {
+      {
         const subscription = await client.query<{ id: string }>(
           `INSERT INTO subscriptions(user_id,plan_code,status,starts_at,expires_at,activation_source,idempotency_key)
            VALUES($1,$2,'active',now(),now()+interval '1 month','simulated',$3) RETURNING id`,
@@ -142,6 +148,10 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         await client.query(
           "UPDATE pending_registrations SET confirmed_at=now() WHERE id=$1",
           [registration.id],
+        );
+        await client.query(
+          "INSERT INTO auth_sessions(user_id,access_token_hash,refresh_token_hash,expires_at) VALUES($1,$2,$3,$4)",
+          [registration.user_id, accessTokenHash, refreshTokenHash, expiresAt],
         );
       }
       return {
