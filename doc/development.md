@@ -6,7 +6,7 @@
 - Docker Desktop y PostgreSQL 17 con extensión pgvector 0.8.x (arranca con Compose).
 - Para tests E2E: navegador Chromium de Playwright.
 
-En este Mac, Node/pnpm estaban disponibles; Docker Desktop está instalado y probado. PostgreSQL de Homebrew también está instalado, pero el proyecto usa su propio contenedor aislado en el puerto 5433. Tras clonar el repo, `corepack enable` puede habilitar pnpm si no está en el PATH.
+En este Mac, Node/pnpm estaban disponibles; Docker Desktop está instalado y probado. PostgreSQL de Homebrew también está instalado, pero el proyecto usa su propio contenedor aislado; el puerto publicado predeterminado es 5433. Si otro proyecto ya ocupa ese puerto, cambia `PGPORT` y `GRUMPHYA_DB_HOST_PORT` al mismo puerto libre en `.env.docker`.
 
 ## Preparación local
 
@@ -103,14 +103,15 @@ OPENAI_REASONING_EFFORT=medium
 
 No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.openai` además de `.env.docker`. El modelo y
-el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v5`
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v6`
 aplica una lectura adversarial proporcional: no presupone honestidad ni buenas
 intenciones, y analiza abuso, impacto, verificación, contención y reparación,
 especialmente en interacciones presenciales entre desconocidos. No convierte
 riesgos exóticos ni detalles rutinarios en vetos. Cada envío se evalúa por
 separado y no pide aclaraciones.
-La API envía la idea y la versión de política a OpenAI; el tono de interfaz no se
-envía. Las respuestas se solicitan con JSON Schema estricto y `store: false`,
+La API envía la idea, el tono elegido y la versión de política a OpenAI. El tono
+solo debe modificar la redacción de `message`, nunca el veredicto o la
+puntuación. Las respuestas se solicitan con JSON Schema estricto y `store: false`,
 pero esto **no equivale a Zero Data Retention**: según los controles vigentes de
 OpenAI, el uso ordinario de API puede generar logs de abuso que incluyan prompts
 y respuestas y conservarlos hasta 30 días. Revisa la [política de controles de
@@ -127,14 +128,14 @@ etiqueta los defectos como «bloqueos».
 
 Valores locales por defecto:
 
-| Variable     | Valor local                | Uso                                       |
-| ------------ | -------------------------- | ----------------------------------------- |
-| `API_PORT`   | `3000`                     | Puerto HTTP de NestJS                     |
-| `WEB_ORIGIN` | `http://localhost:5173`    | Origen CORS permitido por API             |
-| `PGHOST`     | `127.0.0.1`                | PostgreSQL local de Docker                |
-| `PGPORT`     | `5433`                     | Puerto publicado por Compose              |
-| `PGDATABASE` | `grumphya_dev`             | Base aislada de desarrollo                |
-| `PGUSER`     | `grumphya_dev`             | Rol local del contenedor                  |
-| `PGPASSWORD` | aleatoria en `.env.docker` | Solo desarrollo; archivo ignorado por Git |
+| Variable     | Valor local                | Uso                                                    |
+| ------------ | -------------------------- | ------------------------------------------------------ |
+| `API_PORT`   | `3000`                     | Puerto HTTP de NestJS                                  |
+| `WEB_ORIGIN` | `http://localhost:5173`    | Origen CORS permitido por API                          |
+| `PGHOST`     | `127.0.0.1`                | PostgreSQL local de Docker                             |
+| `PGPORT`     | `5433`                     | Puerto publicado por Compose; ajústalo si está ocupado |
+| `PGDATABASE` | `grumphya_dev`             | Base aislada de desarrollo                             |
+| `PGUSER`     | `grumphya_dev`             | Rol local del contenedor                               |
+| `PGPASSWORD` | aleatoria en `.env.docker` | Solo desarrollo; archivo ignorado por Git              |
 
 Los valores los genera `pnpm db:setup` en `.env.docker`. Para compartir configuraciones, usa placeholders; no añadas secretos al repo.

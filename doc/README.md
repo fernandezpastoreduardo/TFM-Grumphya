@@ -1,8 +1,8 @@
 # Infraestructura y desarrollo de Grumphya
 
-Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión de salud a PostgreSQL/pgvector, captura de ideas, dictado de voz y un scoring de evaluación simulado sin persistencia. El evaluador real todavía no está conectado.
+Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión a PostgreSQL/pgvector, captura de ideas, dictado de voz, evaluación y búsqueda/persistencia de ideas rechazadas. La integración del evaluador real requiere configuración explícita.
 
-El flujo de alta con plan está implementado en modo de verificación/compra simulada. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial. Los límites de solicitudes de registro están en memoria por proceso; la UI todavía no tiene un estado específico para `429`. La búsqueda vectorial y el flujo `searchSimilarIdea` → `updateWorstIdea`/`addToWorstIdeas` están especificados como trabajo futuro, no implementados. Consulta el [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md).
+El flujo de alta con plan está implementado en modo de verificación/compra simulada. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial. Los límites de solicitudes de registro están en memoria por proceso. La similitud usa OpenAI `text-embedding-3-small` y pgvector; la API incrementa una vez los rechazos repetidos y conserva título seguro, embedding y contador por 24 meses. **Pendiente:** cuotas de evaluaciones (3 por sesión anónima y 11 al día para Iluminado), purga física, política de privacidad del procesamiento externo y pruebas con PostgreSQL aislado. Consulta el [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md).
 
 ## Documentos
 

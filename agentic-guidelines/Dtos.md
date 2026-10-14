@@ -16,11 +16,13 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 El primer corte no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos persistidos. El contrato posterior de historial/persistencia queda fuera de `evaluationProcess` y se definirá al desarrollar esas features.
 
-### EvaluateIdeaResponse (planificado)
+### EvaluateIdeaResponse
 
-- `status: 'similar_idea_match'` devuelve `safeTitle` verificado, `submissionCount` total después del incremento y los intentos restantes informados por el servidor. No devuelve el identificador interno de la idea, embedding, texto original ni autor.
+- `status: 'similar_idea_match'` devuelve `safeTitle` verificado y `submissionCount` total después del incremento. No devuelve el identificador interno de la idea, embedding, texto original ni autor. Los intentos restantes no están implementados en la API todavía.
 - `status: 'evaluated'` devuelve el resultado público de evaluación y, solo para `RECHAZADA` con título validado, `safeTitle`. El título no altera score ni veredicto.
 - Reenviar la misma `Idempotency-Key` para continuar conserva la recepción ya contada aunque la evaluación posterior también dé `RECHAZADA`.
+
+La evaluación adicional necesita una comprobación de cuota en servidor, pero las cuotas de ideas anónimas y de plan no existen aún; hasta implementarlas, el DTO no acredita consumo ni disponibilidad de intentos.
 
 ### Registration intent and registration DTOs
 

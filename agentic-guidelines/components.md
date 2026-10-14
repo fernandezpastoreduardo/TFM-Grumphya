@@ -12,7 +12,7 @@ Presenta veredicto, puntuación, riesgos, supuestos y próximos pasos. No calcul
 
 ### RepeatedIdeaNotice
 
-Informa de que la idea es semánticamente similar a otra, muestra el título público seguro y el contador total ya incrementado, y avisa de los intentos que consumiría continuar con la evaluación. No presenta el texto original ni datos de autor.
+Informa de que la idea es semánticamente similar a otra, muestra el título público seguro y el contador total ya incrementado, y ofrece «Evaluar igualmente». La frase valorativa sigue el tono seleccionado (`soft` o `hard`). No presenta el texto original ni datos de autor. Hasta que la API implemente cuotas autoritativas, no afirma que continuar descuente un intento ni muestra intentos restantes.
 
 ### UsageLimitNotice
 
