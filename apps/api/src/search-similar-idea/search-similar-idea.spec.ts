@@ -1,110 +1,171 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   InvalidSimilarIdeaInputError,
+  MAX_SEARCH_CANDIDATES,
   SearchSimilarIdea,
+  type IdeaEquivalencePort,
   type RejectedIdeaSearchPort,
+  type SemanticIdeaFingerprintPort,
   type TextEmbeddingPort,
 } from "./search-similar-idea";
 
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
+const SEMANTIC_FINGERPRINT =
+  "Aplicación de coordinación de voluntariado para organizar personas y tareas en un barrio.";
 const QUERY_VECTOR = [0.1, 0.2, 0.3];
 const SAFE_REJECTED_IDEA = {
   ideaId: "idea-1",
   semanticTitle: "Servicio sin consentimiento para usar datos personales",
-  similarity: 0.91,
+  similarity: 0.31,
   submissionCount: 23,
   verdict: "reject",
   isPublicTitleSafe: true,
 };
 
 function createUseCase(results: unknown) {
+  const fingerprintPort: SemanticIdeaFingerprintPort = {
+    createFingerprint: vi.fn().mockResolvedValue(SEMANTIC_FINGERPRINT),
+  };
   const embeddingPort: TextEmbeddingPort = {
     createEmbedding: vi.fn().mockResolvedValue(QUERY_VECTOR),
   };
   const searchPort: RejectedIdeaSearchPort = {
     searchRejected: vi.fn().mockResolvedValue(results),
   };
+  const equivalencePort: IdeaEquivalencePort = {
+    classifyIdeas: vi
+      .fn()
+      .mockResolvedValue(Array.isArray(results) ? results.map(() => true) : []),
+  };
   return {
-    useCase: new SearchSimilarIdea(embeddingPort, searchPort),
+    useCase: new SearchSimilarIdea(
+      fingerprintPort,
+      embeddingPort,
+      searchPort,
+      equivalencePort,
+    ),
+    fingerprintPort,
     embeddingPort,
     searchPort,
+    equivalencePort,
   };
 }
 
 describe("SearchSimilarIdea", () => {
-  it("embeds the validated idea and searches the rejected-idea corpus", async () => {
-    const { useCase, embeddingPort, searchPort } = createUseCase([]);
+  it("uses one semantic fingerprint for embedding, persistence, and search", async () => {
+    const embedding = [0.12, 0.34, 0.56];
+    const fingerprintPort = {
+      createFingerprint: vi.fn().mockResolvedValue(SEMANTIC_FINGERPRINT),
+    };
+    const embeddingPort = {
+      createEmbedding: vi.fn().mockResolvedValue(embedding),
+    };
+    const searchPort = { searchRejected: vi.fn().mockResolvedValue([]) };
+    const equivalencePort = { classifyIdeas: vi.fn().mockResolvedValue([]) };
+    const search = new SearchSimilarIdea(
+      fingerprintPort,
+      embeddingPort,
+      searchPort,
+      equivalencePort,
+    );
+
+    const detailed = await search.executeDetailed({ ideaText: VALID_IDEA });
+
+    expect(fingerprintPort.createFingerprint).toHaveBeenCalledWith(VALID_IDEA);
+    expect(embeddingPort.createEmbedding).toHaveBeenCalledWith(
+      SEMANTIC_FINGERPRINT,
+    );
+    expect(searchPort.searchRejected).toHaveBeenCalledWith(
+      embedding,
+      MAX_SEARCH_CANDIDATES,
+    );
+    expect(detailed).toEqual({ result: { kind: "no-match" }, embedding });
+  });
+
+  it("recognizes a web and app paraphrase below 0.90 after the model confirms the same idea", async () => {
+    const { equivalencePort } = createUseCase([
+      { ...SAFE_REJECTED_IDEA, similarity: 0.31 },
+    ]);
+    const query = "Una web tipo tinder pero para grillos";
+    const fingerprint =
+      "Servicio web de citas para que los grillos encuentren pareja.";
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([true]);
+    const fingerprintPort = {
+      createFingerprint: vi.fn().mockResolvedValue(fingerprint),
+    };
+    const embeddingPort = {
+      createEmbedding: vi.fn().mockResolvedValue(QUERY_VECTOR),
+    };
+    const searchPort = {
+      searchRejected: vi
+        .fn()
+        .mockResolvedValue([{ ...SAFE_REJECTED_IDEA, similarity: 0.31 }]),
+    };
+    const search = new SearchSimilarIdea(
+      fingerprintPort,
+      embeddingPort,
+      searchPort,
+      equivalencePort,
+    );
+
+    await expect(search.execute({ ideaText: query })).resolves.toMatchObject({
+      kind: "match",
+      ideaId: "idea-1",
+      semanticTitle: SAFE_REJECTED_IDEA.semanticTitle,
+    });
+    expect(equivalencePort.classifyIdeas).toHaveBeenCalledWith(
+      query,
+      fingerprint,
+      [SAFE_REJECTED_IDEA.semanticTitle],
+    );
+  });
+
+  it("retrieves candidates by rank without a hard similarity cutoff", async () => {
+    const { useCase, equivalencePort, searchPort } = createUseCase([
+      { ...SAFE_REJECTED_IDEA, similarity: 0.01 },
+    ]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([false]);
 
     await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
       kind: "no-match",
     });
-    expect(embeddingPort.createEmbedding).toHaveBeenCalledWith(VALID_IDEA);
-    expect(searchPort.searchRejected).toHaveBeenCalledWith(QUERY_VECTOR);
+    expect(searchPort.searchRejected).toHaveBeenCalledWith(
+      QUERY_VECTOR,
+      MAX_SEARCH_CANDIDATES,
+    );
+    expect(equivalencePort.classifyIdeas).toHaveBeenCalledOnce();
   });
 
-  it("returns the closest rejected match above 0.90 with safe title and count", async () => {
-    const { useCase } = createUseCase([
-      { ...SAFE_REJECTED_IDEA, similarity: 0.91 },
-      { ...SAFE_REJECTED_IDEA, ideaId: "idea-2", similarity: 0.94 },
+  it("returns the closest candidate confirmed as the same idea", async () => {
+    const { useCase, equivalencePort } = createUseCase([
+      { ...SAFE_REJECTED_IDEA, similarity: 0.1 },
+      { ...SAFE_REJECTED_IDEA, ideaId: "idea-2", similarity: 0.4 },
     ]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([true, false]);
 
     await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
       kind: "match",
       ideaId: "idea-2",
-      semanticTitle:
-        "Servicio sin consentimiento para usar datos personales",
-      similarity: 0.94,
+      semanticTitle: SAFE_REJECTED_IDEA.semanticTitle,
+      similarity: 0.4,
       submissionCount: 23,
     });
   });
 
-  it("requires similarity to be strictly greater than 0.90", async () => {
-    const { useCase } = createUseCase([
-      { ...SAFE_REJECTED_IDEA, similarity: 0.9 },
+  it("fails closed when the semantic comparator returns malformed data", async () => {
+    const { useCase, equivalencePort } = createUseCase([
+      { ...SAFE_REJECTED_IDEA, similarity: 0.4 },
     ]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue(["same"]);
 
-    await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
-      kind: "no-match",
-    });
+    await expect(useCase.execute({ ideaText: VALID_IDEA })).rejects.toThrow(
+      "Semantic comparison response is invalid.",
+    );
   });
 
-  it("ignores candidates whose verdict is not reject", async () => {
-    const { useCase } = createUseCase([
-      { ...SAFE_REJECTED_IDEA, verdict: "promising" },
-      { ...SAFE_REJECTED_IDEA, ideaId: "review-idea", verdict: "review" },
-    ]);
-
-    await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
-      kind: "no-match",
-    });
-  });
-
-  it("does not expose a title that has not passed the safety check", async () => {
-    const { useCase } = createUseCase([
-      { ...SAFE_REJECTED_IDEA, isPublicTitleSafe: false },
-    ]);
-
-    await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
-      kind: "no-match",
-    });
-  });
-
-  it("does not return any original text included by a repository", async () => {
-    const { useCase } = createUseCase([
-      {
-        ...SAFE_REJECTED_IDEA,
-        originalText: "Texto privado que no se debe devolver",
-      },
-    ]);
-
-    const result = await useCase.execute({ ideaText: VALID_IDEA });
-
-    expect(result).not.toHaveProperty("originalText");
-    expect(result).not.toHaveProperty("normalizedText");
-  });
-
-  it("rejects invalid runtime input before calling its ports", async () => {
-    const { useCase, embeddingPort, searchPort } = createUseCase([]);
+  it("does not call embedding or search ports for malformed public input", async () => {
+    const { useCase, fingerprintPort, embeddingPort, searchPort } =
+      createUseCase([]);
 
     await expect(useCase.execute(null)).rejects.toBeInstanceOf(
       InvalidSimilarIdeaInputError,
@@ -115,34 +176,48 @@ describe("SearchSimilarIdea", () => {
     await expect(
       useCase.execute({ ideaText: VALID_IDEA, userId: { malformed: true } }),
     ).rejects.toBeInstanceOf(InvalidSimilarIdeaInputError);
+    expect(fingerprintPort.createFingerprint).not.toHaveBeenCalled();
     expect(embeddingPort.createEmbedding).not.toHaveBeenCalled();
     expect(searchPort.searchRejected).not.toHaveBeenCalled();
   });
 
-  it("rejects a malformed embedding from the embedding port", async () => {
-    const embeddingPort: TextEmbeddingPort = {
-      createEmbedding: vi.fn().mockResolvedValue([0.1, Number.NaN]),
-    };
-    const searchPort: RejectedIdeaSearchPort = {
-      searchRejected: vi.fn().mockResolvedValue([]),
-    };
-    const useCase = new SearchSimilarIdea(embeddingPort, searchPort);
-
-    await expect(useCase.execute({ ideaText: VALID_IDEA })).rejects.toThrow(
-      "Embedding no válido.",
+  it("rejects malformed fingerprints and embeddings before querying pgvector", async () => {
+    const invalidFingerprintUseCase = new SearchSimilarIdea(
+      { createFingerprint: vi.fn().mockResolvedValue("short") },
+      { createEmbedding: vi.fn().mockResolvedValue(QUERY_VECTOR) },
+      { searchRejected: vi.fn().mockResolvedValue([]) },
+      { classifyIdeas: vi.fn().mockResolvedValue([]) },
     );
-    expect(searchPort.searchRejected).not.toHaveBeenCalled();
+    const invalidEmbeddingUseCase = new SearchSimilarIdea(
+      {
+        createFingerprint: vi.fn().mockResolvedValue(SEMANTIC_FINGERPRINT),
+      },
+      { createEmbedding: vi.fn().mockResolvedValue([0.1, Number.NaN]) },
+      { searchRejected: vi.fn().mockResolvedValue([]) },
+      { classifyIdeas: vi.fn().mockResolvedValue([]) },
+    );
+
+    await expect(
+      invalidFingerprintUseCase.execute({ ideaText: VALID_IDEA }),
+    ).rejects.toThrow("Semantic idea fingerprint is invalid.");
+    await expect(
+      invalidEmbeddingUseCase.execute({ ideaText: VALID_IDEA }),
+    ).rejects.toThrow("Embedding no válido.");
   });
 
-  it("ignores malformed repository results safely", async () => {
+  it("does not expose original text or embeddings in search results", async () => {
     const { useCase } = createUseCase([
-      null,
-      { ...SAFE_REJECTED_IDEA, similarity: Number.POSITIVE_INFINITY },
-      { ...SAFE_REJECTED_IDEA, submissionCount: -1 },
+      {
+        ...SAFE_REJECTED_IDEA,
+        similarity: 0.4,
+        originalText: "Texto privado que no se debe devolver",
+      },
     ]);
 
-    await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
-      kind: "no-match",
-    });
+    const result = await useCase.execute({ ideaText: VALID_IDEA });
+
+    expect(result).not.toHaveProperty("originalText");
+    expect(result).not.toHaveProperty("normalizedText");
+    expect(result).not.toHaveProperty("embedding");
   });
 });

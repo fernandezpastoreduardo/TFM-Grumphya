@@ -1,0 +1,1 @@
+export const TEXT_EMBEDDING_PORT = Symbol("TEXT_EMBEDDING_PORT");

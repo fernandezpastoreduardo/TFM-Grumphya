@@ -1,6 +1,8 @@
-export const SIMILARITY_THRESHOLD = 0.9;
+export const MAX_SEARCH_CANDIDATES = 20;
 const MIN_IDEA_LENGTH = 10;
 const MAX_IDEA_LENGTH = 2000;
+const MIN_FINGERPRINT_LENGTH = 8;
+const MAX_FINGERPRINT_LENGTH = 400;
 const INVALID_IDEA_MESSAGE = "Idea no válida para buscar coincidencias.";
 const INVALID_EMBEDDING_MESSAGE = "Embedding no válido.";
 
@@ -9,7 +11,19 @@ export interface TextEmbeddingPort {
 }
 
 export interface RejectedIdeaSearchPort {
-  searchRejected(embedding: readonly number[]): Promise<unknown>;
+  searchRejected(embedding: readonly number[], limit: number): Promise<unknown>;
+}
+
+export interface SemanticIdeaFingerprintPort {
+  createFingerprint(ideaText: string): Promise<unknown>;
+}
+
+export interface IdeaEquivalencePort {
+  classifyIdeas(
+    ideaText: string,
+    semanticFingerprint: string,
+    safeTitles: readonly string[],
+  ): Promise<unknown>;
 }
 
 type RejectedIdeaCandidate = {
@@ -67,6 +81,19 @@ function parseIdeaText(input: unknown): string {
   return ideaText;
 }
 
+function parseSemanticFingerprint(input: unknown): string {
+  if (
+    typeof input !== "string" ||
+    input.trim() !== input ||
+    input.length < MIN_FINGERPRINT_LENGTH ||
+    input.length > MAX_FINGERPRINT_LENGTH ||
+    /[\p{Cc}\p{Cf}]/u.test(input)
+  ) {
+    throw new Error("Semantic idea fingerprint is invalid.");
+  }
+  return input;
+}
+
 function parseEmbedding(input: unknown): number[] {
   if (
     !Array.isArray(input) ||
@@ -98,40 +125,97 @@ function isRejectedIdeaCandidate(
   );
 }
 
-function getBestRejectedMatch(candidates: unknown): SimilarIdeaSearchResult {
-  if (!Array.isArray(candidates)) return NO_MATCH;
+function parseRejectedCandidates(candidates: unknown): RejectedIdeaCandidate[] {
+  if (!Array.isArray(candidates)) return [];
 
-  let bestMatch: RejectedIdeaCandidate | undefined;
+  const validCandidates: RejectedIdeaCandidate[] = [];
   for (const candidate of candidates as unknown[]) {
     if (!isRejectedIdeaCandidate(candidate)) continue;
-    if (candidate.similarity <= SIMILARITY_THRESHOLD) continue;
-    if (!bestMatch || candidate.similarity > bestMatch.similarity) {
-      bestMatch = candidate;
-    }
+    validCandidates.push(candidate);
   }
-
-  if (!bestMatch) return NO_MATCH;
-  return {
-    kind: "match",
-    ideaId: bestMatch.ideaId,
-    semanticTitle: bestMatch.semanticTitle,
-    similarity: bestMatch.similarity,
-    submissionCount: bestMatch.submissionCount,
-  };
+  return validCandidates
+    .sort((left, right) => right.similarity - left.similarity)
+    .slice(0, MAX_SEARCH_CANDIDATES);
 }
+
+async function findBestEquivalentIdea(
+  candidates: unknown,
+  ideaText: string,
+  semanticFingerprint: string,
+  equivalencePort: IdeaEquivalencePort,
+): Promise<SimilarIdeaSearchResult> {
+  const validCandidates = parseRejectedCandidates(candidates);
+  if (validCandidates.length === 0) return NO_MATCH;
+  const classifications = await equivalencePort.classifyIdeas(
+    ideaText,
+    semanticFingerprint,
+    validCandidates.map(({ semanticTitle }) => semanticTitle),
+  );
+  if (
+    !Array.isArray(classifications) ||
+    classifications.length !== validCandidates.length ||
+    !classifications.every(
+      (classification) => typeof classification === "boolean",
+    )
+  ) {
+    throw new Error("Semantic comparison response is invalid.");
+  }
+  const matchIndex = classifications.findIndex(
+    (classification) => classification === true,
+  );
+  if (matchIndex !== -1) {
+    const candidate = validCandidates[matchIndex]!;
+    return {
+      kind: "match",
+      ideaId: candidate.ideaId,
+      semanticTitle: candidate.semanticTitle,
+      similarity: candidate.similarity,
+      submissionCount: candidate.submissionCount,
+    };
+  }
+  return NO_MATCH;
+}
+
+export type DetailedSimilarIdeaSearchResult = {
+  result: SimilarIdeaSearchResult;
+  embedding: readonly number[];
+};
 
 export class SearchSimilarIdea {
   constructor(
+    private readonly fingerprintPort: SemanticIdeaFingerprintPort,
     private readonly embeddingPort: TextEmbeddingPort,
     private readonly searchPort: RejectedIdeaSearchPort,
+    private readonly equivalencePort: IdeaEquivalencePort,
   ) {}
 
   async execute(input: unknown): Promise<SimilarIdeaSearchResult> {
+    const detailedResult = await this.executeDetailed(input);
+    return detailedResult.result;
+  }
+
+  async executeDetailed(
+    input: unknown,
+  ): Promise<DetailedSimilarIdeaSearchResult> {
     const ideaText = parseIdeaText(input);
-    const embedding = parseEmbedding(
-      await this.embeddingPort.createEmbedding(ideaText),
+    const semanticFingerprint = parseSemanticFingerprint(
+      await this.fingerprintPort.createFingerprint(ideaText),
     );
-    const candidates = await this.searchPort.searchRejected(embedding);
-    return getBestRejectedMatch(candidates);
+    const embedding = parseEmbedding(
+      await this.embeddingPort.createEmbedding(semanticFingerprint),
+    );
+    const candidates = await this.searchPort.searchRejected(
+      embedding,
+      MAX_SEARCH_CANDIDATES,
+    );
+    return {
+      result: await findBestEquivalentIdea(
+        candidates,
+        ideaText,
+        semanticFingerprint,
+        this.equivalencePort,
+      ),
+      embedding,
+    };
   }
 }
