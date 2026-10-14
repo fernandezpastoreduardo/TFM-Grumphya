@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${PGUSER:?Run pnpm db:setup first}
       POSTGRES_PASSWORD: ${GRUMPHYA_DB_PASSWORD:?Run pnpm db:setup first}
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:${GRUMPHYA_DB_HOST_PORT:-5433}:5432"
     volumes:
       - grumphya-postgres-data:/var/lib/postgresql/data
       - ./docker/initdb/001-enable-pgvector.sql:/docker-entrypoint-initdb.d/001-enable-pgvector.sql:ro
