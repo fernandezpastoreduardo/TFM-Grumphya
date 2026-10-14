@@ -152,6 +152,45 @@ describe("SearchSimilarIdea", () => {
     });
   });
 
+  it("sorts candidates by similarity before matching and ignores unsafe candidates", async () => {
+    const { useCase, equivalencePort } = createUseCase([
+      { ...SAFE_REJECTED_IDEA, ideaId: "lower-ranked", similarity: 0.2 },
+      { ...SAFE_REJECTED_IDEA, ideaId: "top-ranked", similarity: 0.8 },
+      {
+        ...SAFE_REJECTED_IDEA,
+        ideaId: "unsafe",
+        isPublicTitleSafe: false,
+        similarity: 0.99,
+      },
+    ]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([true, false]);
+
+    await expect(
+      useCase.execute({ ideaText: VALID_IDEA }),
+    ).resolves.toMatchObject({
+      kind: "match",
+      ideaId: "top-ranked",
+      similarity: 0.8,
+    });
+    expect(equivalencePort.classifyIdeas).toHaveBeenCalledWith(
+      VALID_IDEA,
+      SEMANTIC_FINGERPRINT,
+      [SAFE_REJECTED_IDEA.semanticTitle, SAFE_REJECTED_IDEA.semanticTitle],
+    );
+  });
+
+  it("returns no match without invoking the comparator when there are no valid candidates", async () => {
+    const { useCase, equivalencePort } = createUseCase([
+      { ...SAFE_REJECTED_IDEA, submissionCount: 0 },
+      { ...SAFE_REJECTED_IDEA, verdict: "promising" },
+    ]);
+
+    await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
+      kind: "no-match",
+    });
+    expect(equivalencePort.classifyIdeas).not.toHaveBeenCalled();
+  });
+
   it("fails closed when the semantic comparator returns malformed data", async () => {
     const { useCase, equivalencePort } = createUseCase([
       { ...SAFE_REJECTED_IDEA, similarity: 0.4 },
