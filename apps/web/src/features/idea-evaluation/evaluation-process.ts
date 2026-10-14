@@ -6,16 +6,41 @@ export type EvaluationProcessResult = {
   score: number | null;
   headline: string;
   message: string;
+  safeTitle?: string;
 };
+
+export type SimilarIdeaMatchResult = {
+  status: "similar_idea_match";
+  safeTitle: string;
+  submissionCount: number;
+};
+
+export type EvaluationSubmissionResult =
+  EvaluationProcessResult | SimilarIdeaMatchResult;
 
 const EVALUATION_ENDPOINT = "/api/evaluation-process";
 const INVALID_RESULT_MESSAGE =
   "El servicio devolvió un resultado que no se puede verificar.";
 const EVALUATION_UNAVAILABLE_MESSAGE =
   "No se pudo obtener el scoring. La idea sigue en el formulario; inténtalo otra vez.";
+const EVALUATION_TIMEOUT_MESSAGE =
+  "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.";
+const EVALUATION_TIMEOUT_CODE = "EVALUATION_TIMEOUT";
 const MAX_PUBLIC_SCORE = 10;
 const MAX_PUBLIC_HEADLINE_LENGTH = 120;
 const MAX_PUBLIC_MESSAGE_LENGTH = 280;
+const MAX_PUBLIC_SAFE_TITLE_LENGTH = 160;
+const MIN_PUBLIC_SAFE_TITLE_LENGTH = 8;
+
+export class EvaluationProcessError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "EvaluationProcessError";
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -59,25 +84,92 @@ function parseEvaluationResponse(
     return null;
   }
 
-  return { status, score, headline, message };
+  let safeTitle: string | undefined;
+  if (status === "RECHAZADA") {
+    if (
+      typeof input.safeTitle !== "string" ||
+      input.safeTitle.trim().length < MIN_PUBLIC_SAFE_TITLE_LENGTH ||
+      input.safeTitle.length > MAX_PUBLIC_SAFE_TITLE_LENGTH
+    ) {
+      return null;
+    }
+    safeTitle = input.safeTitle.trim();
+  }
+
+  return {
+    status,
+    score,
+    headline,
+    message,
+    ...(safeTitle ? { safeTitle } : {}),
+  };
 }
 
-export async function evaluationProcess(request: {
-  ideaText: string;
-  tone: "soft" | "hard";
-}): Promise<EvaluationProcessResult> {
+function parseSubmissionResponse(
+  input: unknown,
+): EvaluationSubmissionResult | null {
+  if (!isRecord(input)) return null;
+  if (input.status === "similar_idea_match") {
+    if (
+      typeof input.safeTitle !== "string" ||
+      input.safeTitle.trim().length < MIN_PUBLIC_SAFE_TITLE_LENGTH ||
+      input.safeTitle.length > MAX_PUBLIC_SAFE_TITLE_LENGTH ||
+      !Number.isSafeInteger(input.submissionCount) ||
+      (input.submissionCount as number) < 1
+    ) {
+      return null;
+    }
+    return {
+      status: "similar_idea_match",
+      safeTitle: input.safeTitle.trim(),
+      submissionCount: input.submissionCount as number,
+    };
+  }
+  if (input.status !== "evaluated") return null;
+  return parseEvaluationResponse(input.result);
+}
+
+export async function evaluationProcess(
+  request: {
+    ideaText: string;
+    tone: "soft" | "hard";
+  },
+  idempotencyKey: string,
+  continueAnyway = false,
+): Promise<EvaluationSubmissionResult> {
   let response: Response;
   try {
     response = await fetch(EVALUATION_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        ...request,
+        ...(continueAnyway ? { continueAnyway: true } : {}),
+      }),
     });
   } catch {
     throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);
   }
 
-  if (!response.ok) throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);
+  if (!response.ok) {
+    let errorCode: unknown;
+    try {
+      const errorPayload: unknown = await response.json();
+      if (isRecord(errorPayload)) errorCode = errorPayload.code;
+    } catch {
+      errorCode = undefined;
+    }
+    if (errorCode === EVALUATION_TIMEOUT_CODE) {
+      throw new EvaluationProcessError(
+        EVALUATION_TIMEOUT_CODE,
+        EVALUATION_TIMEOUT_MESSAGE,
+      );
+    }
+    throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);
+  }
 
   let payload: unknown;
   try {
@@ -86,7 +178,7 @@ export async function evaluationProcess(request: {
     throw new Error(INVALID_RESULT_MESSAGE);
   }
 
-  const result = parseEvaluationResponse(payload);
+  const result = parseSubmissionResponse(payload);
   if (!result) throw new Error(INVALID_RESULT_MESSAGE);
   return result;
 }

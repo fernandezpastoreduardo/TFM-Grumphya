@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
+import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
 import {
   evaluationProcess,
+  EvaluationProcessError,
+  type EvaluationSubmissionResult,
+  type SimilarIdeaMatchResult,
   type EvaluationProcessResult,
 } from "../features/idea-evaluation/evaluation-process";
 
@@ -63,6 +67,12 @@ export function Home() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationResult, setEvaluationResult] =
     useState<EvaluationProcessResult | null>(null);
+  const [similarIdeaMatch, setSimilarIdeaMatch] =
+    useState<SimilarIdeaMatchResult | null>(null);
+  const [pendingEvaluation, setPendingEvaluation] = useState<{
+    request: { ideaText: string; tone: "soft" | "hard" };
+    idempotencyKey: string;
+  } | null>(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [ideaSynthesis, setIdeaSynthesis] = useState(DEFAULT_IDEA_SYNTHESIS);
@@ -92,16 +102,63 @@ export function Home() {
     tone: "soft" | "hard";
   }) {
     setEvaluationResult(null);
+    setSimilarIdeaMatch(null);
     setEvaluationError("");
     setIsEvaluating(true);
+    const idempotencyKey = crypto.randomUUID();
     try {
-      const result = await evaluationProcess(request);
-      setEvaluationResult(result);
-    } catch {
-      setEvaluationError(EVALUATION_FAILURE_MESSAGE);
+      const result = await evaluationProcess(request, idempotencyKey);
+      applySubmissionResult(result, request, idempotencyKey);
+    } catch (error: unknown) {
+      setEvaluationError(
+        error instanceof EvaluationProcessError
+          ? error.message
+          : EVALUATION_FAILURE_MESSAGE,
+      );
     } finally {
       setIsEvaluating(false);
     }
+  }
+
+  async function handleContinueEvaluation() {
+    if (!pendingEvaluation) return;
+    setEvaluationError("");
+    setIsEvaluating(true);
+    try {
+      const result = await evaluationProcess(
+        pendingEvaluation.request,
+        pendingEvaluation.idempotencyKey,
+        true,
+      );
+      applySubmissionResult(
+        result,
+        pendingEvaluation.request,
+        pendingEvaluation.idempotencyKey,
+      );
+    } catch (error: unknown) {
+      setEvaluationError(
+        error instanceof EvaluationProcessError
+          ? error.message
+          : EVALUATION_FAILURE_MESSAGE,
+      );
+    } finally {
+      setIsEvaluating(false);
+    }
+  }
+
+  function applySubmissionResult(
+    result: EvaluationSubmissionResult,
+    request: { ideaText: string; tone: "soft" | "hard" },
+    idempotencyKey: string,
+  ) {
+    if (result.status === "similar_idea_match") {
+      setSimilarIdeaMatch(result);
+      setPendingEvaluation({ request, idempotencyKey });
+      return;
+    }
+    setSimilarIdeaMatch(null);
+    setPendingEvaluation(null);
+    setEvaluationResult(result);
   }
 
   return (
@@ -202,6 +259,14 @@ export function Home() {
           ) : null}
           {evaluationResult ? (
             <EvaluationResult result={evaluationResult} />
+          ) : null}
+          {similarIdeaMatch ? (
+            <SimilarIdeaNotice
+              match={similarIdeaMatch}
+              tone={pendingEvaluation?.request.tone ?? "soft"}
+              isSubmitting={isEvaluating}
+              onContinue={() => void handleContinueEvaluation()}
+            />
           ) : null}
         </section>
 
