@@ -26,6 +26,13 @@ const EVALUATION_UNAVAILABLE_MESSAGE =
 const EVALUATION_TIMEOUT_MESSAGE =
   "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.";
 const EVALUATION_TIMEOUT_CODE = "EVALUATION_TIMEOUT";
+const ANONYMOUS_QUOTA_EXHAUSTED_CODE = "ANONYMOUS_QUOTA_EXHAUSTED";
+const QUOTA_EXHAUSTED_MESSAGES = {
+  ideas:
+    "Has agotado tus tres evaluaciones gratuitas. Consulta los planes para continuar.",
+  roasts:
+    "Has agotado tus tres envíos gratuitos. Consulta los planes para continuar.",
+} as const;
 const MAX_PUBLIC_SCORE = 10;
 const MAX_PUBLIC_HEADLINE_LENGTH = 120;
 const MAX_PUBLIC_MESSAGE_LENGTH = 280;
@@ -79,7 +86,7 @@ function parseEvaluationResponse(
     message.trim().length === 0 ||
     message.length > MAX_PUBLIC_MESSAGE_LENGTH ||
     (status === "IDEA_INSUFICIENTE" && score !== null) ||
-    (status === "RECHAZADA" && score === null)
+    (status !== "IDEA_INSUFICIENTE" && score === null)
   ) {
     return null;
   }
@@ -141,6 +148,7 @@ export async function evaluationProcess(
   try {
     response = await fetch(EVALUATION_ENDPOINT, {
       method: "POST",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         "Idempotency-Key": idempotencyKey,
@@ -156,9 +164,13 @@ export async function evaluationProcess(
 
   if (!response.ok) {
     let errorCode: unknown;
+    let errorScope: unknown;
     try {
       const errorPayload: unknown = await response.json();
-      if (isRecord(errorPayload)) errorCode = errorPayload.code;
+      if (isRecord(errorPayload)) {
+        errorCode = errorPayload.code;
+        errorScope = errorPayload.scope;
+      }
     } catch {
       errorCode = undefined;
     }
@@ -166,6 +178,14 @@ export async function evaluationProcess(
       throw new EvaluationProcessError(
         EVALUATION_TIMEOUT_CODE,
         EVALUATION_TIMEOUT_MESSAGE,
+      );
+    }
+    if (errorCode === ANONYMOUS_QUOTA_EXHAUSTED_CODE) {
+      throw new EvaluationProcessError(
+        ANONYMOUS_QUOTA_EXHAUSTED_CODE,
+        errorScope === "roasts"
+          ? QUOTA_EXHAUSTED_MESSAGES.roasts
+          : QUOTA_EXHAUSTED_MESSAGES.ideas,
       );
     }
     throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);

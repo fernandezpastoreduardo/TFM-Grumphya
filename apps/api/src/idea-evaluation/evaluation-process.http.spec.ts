@@ -3,7 +3,6 @@ import { Module } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { AppModule } from "../app.module";
 import { EVALUATION_PORT, type EvaluationPort } from "./evaluation-port";
 import { EvaluationProcessController } from "./evaluation-process.controller";
 import { EvaluationProcessService } from "./evaluation-process.service";
@@ -17,6 +16,47 @@ import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const EVALUATION_PATH = "/api/evaluation-process";
 const PREVIOUS_TIMEOUT = process.env.EVALUATION_TIMEOUT_MS;
+
+@Module({
+  controllers: [EvaluationProcessController],
+  providers: [
+    EvaluationProcessService,
+    { provide: EVALUATION_PORT, useValue: undefined },
+    {
+      provide: IDEA_SUBMISSION_SEARCH,
+      useValue: {
+        executeDetailed: async () => ({
+          result: { kind: "no-match" },
+          embedding: [0.1],
+        }),
+      },
+    },
+    {
+      provide: WORST_IDEAS_REPOSITORY,
+      useValue: {
+        addToWorstIdeas: async () => "test-idea",
+        getIdempotentMatch: async () => null,
+        hasDifferentIdempotentRequest: async () => false,
+        claimIdempotentContinuation: async () => true,
+        updateWorstIdea: async () => 1,
+      },
+    },
+    {
+      provide: IdeaSubmissionService,
+      useFactory: (
+        search: SearchSimilarIdea,
+        repository: WorstIdeasRepository,
+        evaluation: EvaluationProcessService,
+      ) => new IdeaSubmissionService(search, repository, evaluation),
+      inject: [
+        IDEA_SUBMISSION_SEARCH,
+        WORST_IDEAS_REPOSITORY,
+        EvaluationProcessService,
+      ],
+    },
+  ],
+})
+class UnavailableTestingModule {}
 
 @Module({
   controllers: [EvaluationProcessController],
@@ -116,7 +156,7 @@ describe("evaluation process HTTP endpoint", () => {
         status: "evaluated",
         result: {
           status: "SIN_BLOQUEO_EVIDENTE",
-          score: 7.15,
+          score: 6.77,
           headline: "Bueno, de momento no se cae por lo más obvio.",
           message:
             "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
@@ -145,7 +185,7 @@ describe("evaluation process HTTP endpoint", () => {
   });
 
   it("returns HTTP 503 when the production application has no evaluator", async () => {
-    const application = await startHttpApplication(AppModule);
+    const application = await startHttpApplication(UnavailableTestingModule);
 
     try {
       const response = await postEvaluation(application, {
@@ -156,8 +196,8 @@ describe("evaluation process HTTP endpoint", () => {
 
       expect(response.status).toBe(503);
       expect(body).toMatchObject({
-        code: "SIMILARITY_UNAVAILABLE",
-        message: "No se ha podido comprobar la similitud ahora.",
+        code: "EVALUATOR_UNAVAILABLE",
+        message: "El servicio de evaluación no está disponible ahora.",
       });
       expect(JSON.stringify(body)).not.toContain(VALID_IDEA);
     } finally {

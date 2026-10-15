@@ -71,6 +71,26 @@ describe("evaluationProcess frontend adapter", () => {
     ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
   });
 
+  it("rejects a completed functional result without a numeric score", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: { ...EVALUATION_RESULT, score: null },
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+  });
+
   it("uses a safe error when the API request fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error(IDEA_TEXT)));
 
@@ -103,6 +123,31 @@ describe("evaluationProcess frontend adapter", () => {
     ).rejects.toThrow(
       "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.",
     );
+  });
+
+  it("shows the exhausted lifetime quota message returned by the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: async () => ({
+          code: "ANONYMOUS_QUOTA_EXHAUSTED",
+          scope: "ideas",
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toMatchObject({
+      code: "ANONYMOUS_QUOTA_EXHAUSTED",
+      message:
+        "Has agotado tus tres evaluaciones gratuitas. Consulta los planes para continuar.",
+    });
   });
 
   it("projects only the public fields and accepts an insufficient result without a score", async () => {

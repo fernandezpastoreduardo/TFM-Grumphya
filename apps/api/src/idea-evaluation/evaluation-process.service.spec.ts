@@ -16,7 +16,7 @@ import { EvaluationProcessService } from "./evaluation-process.service";
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const REJECTED_IDEA =
   "Accedemos sin autorización a datos personales para ofrecer una app de coordinación.";
-const POLICY_VERSION = "grumphya-concept-v6";
+const POLICY_VERSION = "grumphya-concept-v7";
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
@@ -27,7 +27,7 @@ const HARD_REJECTION_MESSAGE =
   "¿Has visto alguna vez un servicio que accede a datos personales sin permiso? Pues eso: los usuarios pierden el control de su información. A ver si le damos una vuelta más a las cosas la próxima vez.";
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
-  score: 7.15,
+  score: 7.13,
   headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
   message:
     "Bueno, por ahora aguanta la inspección; tampoco te vengas arriba. Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
@@ -58,6 +58,7 @@ function createCompleteDecision(): ModelDecision {
       { id: "C07", state: "NO_APLICA", score: null },
       { id: "C08", state: "INDETERMINADO", score: null },
       { id: "C09", state: "NO_APLICA", score: null },
+      { id: "C10", state: "PUNTUADO", score: 71 },
     ],
     stop_at: null,
     reason_code: null,
@@ -176,7 +177,7 @@ describe("EvaluationProcessService", () => {
     });
   });
 
-  it("returns null score for insufficient input and no scoreable criteria", async () => {
+  it("returns null only for insufficient input and rejects a functional result without a score", async () => {
     const insufficientPort = createPort(createInsufficientDecision());
     const insufficientService = new EvaluationProcessService(insufficientPort);
     await expect(
@@ -195,7 +196,7 @@ describe("EvaluationProcessService", () => {
     const noScoreService = new EvaluationProcessService(noScorePort);
     await expect(
       noScoreService.evaluate({ ideaText: VALID_IDEA, tone: "soft" }),
-    ).resolves.toMatchObject({ status: "SIN_BLOQUEO_EVIDENTE", score: null });
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
 
   it("rejects invalid input before calling the evaluation port", async () => {
@@ -269,7 +270,7 @@ describe("EvaluationProcessService", () => {
 
       expect(result).toEqual({
         status: "SIN_BLOQUEO_EVIDENTE",
-        score: 7.15,
+        score: 6.77,
         headline: "Bueno, de momento no se cae por lo más obvio.",
         message: NEUTRAL_MESSAGE,
       });
