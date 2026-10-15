@@ -175,13 +175,13 @@
   width: 100%;
   height: 270px;
   margin-bottom: -46px;
-  background: url("../../../ideas-and-designs/grumphya1-transparent.svg") center
+  background: url("/assets/grumphya/mascot-neutral.svg") center
     bottom / contain no-repeat;
   filter: drop-shadow(4px 8px 0 #1a4e5040);
   transform: scaleX(-1) rotate(3deg);
 }
 .section-hero-mascot.mascot-pointing {
-  background-image: url("../../../ideas-and-designs/grumphya1-hablando-y-senalando.svg");
+  background-image: url("/assets/grumphya/mascot-pointing.svg");
   transform: rotate(2deg);
 }
 .hero-scribble {
@@ -325,7 +325,7 @@
   right: -8px;
   left: -8px;
   height: clamp(138px, 15vw, 210px);
-  background: url("../../../ideas-and-designs/revision-vectorial/revisados/grumphya_telon_regenerado.svg")
+  background: url("/assets/grumphya/stage-curtain.svg")
     center top / min(100%, 1440px) auto no-repeat;
   filter: blur(1.2px);
   opacity: 0.76;
@@ -337,7 +337,7 @@
   bottom: -26px;
   left: -10px;
   height: clamp(72px, 8vw, 112px);
-  background: url("../../../ideas-and-designs/revision-vectorial/revisados/grumphya_público_vectorizado_v2.svg")
+  background: url("/assets/grumphya/audience.svg")
     center bottom / max(100%, 1160px) auto no-repeat;
   filter: blur(7px);
   opacity: 0.44;
@@ -368,7 +368,7 @@
   flex: 0 0 auto;
   border: 0;
   border-radius: 0;
-  background: url("../../../ideas-and-designs/revision-vectorial/revisados/grumphya_logo_cara_vectorizado.svg")
+  background: url("/assets/grumphya/mascot-isotype.svg")
     center / contain no-repeat;
 }
 
