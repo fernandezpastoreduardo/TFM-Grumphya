@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comparativa vectorial · Grumphya</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font:
+          16px/1.45 system-ui,
+          sans-serif;
+        color: #172123;
+        background: #f3f4f1;
+      }
+      body {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 32px 20px 56px;
+      }
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+      h1 {
+        font-size: clamp(1.7rem, 3vw, 2.4rem);
+      }
+      .intro {
+        max-width: 70ch;
+        color: #4c5a5a;
+      }
+      .pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr);
+        gap: 18px;
+        align-items: stretch;
+        margin: 18px 0 34px;
+      }
+      figure {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 8px;
+        margin: 0;
+      }
+      figcaption {
+        font-weight: 700;
+      }
+      .frame {
+        min-height: 190px;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border: 1px solid #d3dcda;
+        border-radius: 16px;
+        background-color: #fbfcf9;
+      }
+      .reference {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .checker {
+        background-image:
+          linear-gradient(45deg, #e9eeec 25%, transparent 25%),
+          linear-gradient(-45deg, #e9eeec 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #e9eeec 75%),
+          linear-gradient(-45deg, transparent 75%, #e9eeec 75%);
+        background-size: 20px 20px;
+        background-position:
+          0 0,
+          0 10px,
+          10px -10px,
+          -10px 0;
+      }
+      .vector {
+        width: min(100%, 300px);
+        height: auto;
+      }
+      .master {
+        margin-top: 38px;
+      }
+      .master img {
+        width: 100%;
+        height: auto;
+        border: 1px solid #d3dcda;
+        border-radius: 14px;
+      }
+      @media (max-width: 680px) {
+        body {
+          padding: 22px 14px 40px;
+        }
+        .pair {
+          grid-template-columns: 1fr;
+        }
+        .frame {
+          min-height: 170px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Revisión vectorial de mascotas</h1>
+    <p class="intro">
+      Comparación directa entre los recortes de los botones de la referencia
+      aprobada y los SVG vectoriales revisados.
+    </p>
+
+    <section aria-labelledby="piel-fina">
+      <h2 id="piel-fina">Tengo la piel fina</h2>
+      <div class="pair">
+        <figure>
+          <figcaption>Referencia aprobada</figcaption>
+          <div class="frame">
+            <img
+              class="reference"
+              src="referencia-piel-fina.png"
+              alt="Recorte del botón Tengo la piel fina de la imagen maestra"
+            />
+          </div>
+        </figure>
+        <figure>
+          <figcaption>SVG revisado</figcaption>
+          <div class="frame checker">
+            <img
+              class="vector"
+              src="revisados/grumphya_tirita_referencia_vector.svg"
+              alt="Mascota vectorial llorando con una tirita"
+            />
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="mejor-golpe">
+      <h2 id="mejor-golpe">Dame tu mejor golpe</h2>
+      <div class="pair">
+        <figure>
+          <figcaption>Referencia aprobada</figcaption>
+          <div class="frame">
+            <img
+              class="reference"
+              src="referencia-mejor-golpe.png"
+              alt="Recorte del botón Dame tu mejor golpe de la imagen maestra"
+            />
+          </div>
+        </figure>
+        <figure>
+          <figcaption>SVG revisado</figcaption>
+          <div class="frame checker">
+            <img
+              class="vector"
+              src="revisados/grumphya_boxeo_vectorizado_v2.svg"
+              alt="Mascota vectorial con guantes de boxeo"
+            />
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <figure class="master">
+      <figcaption>Lámina maestra aprobada</figcaption>
+      <img
+        src="referencia-maestra.png"
+        alt="Propuesta aprobada de la página de inicio Grumphya en desktop y móvil"
+      />
+    </figure>
+  </body>
+</html>
