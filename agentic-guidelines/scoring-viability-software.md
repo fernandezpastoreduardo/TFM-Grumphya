@@ -9,6 +9,8 @@
 
 Esta revisión incorpora los cuatro requisitos: entrada conceptual, integración como feature, parada al primer rechazo y especificación implementable por **Luna en esfuerzo medio mediante TDD**, adaptándose al repositorio real.
 
+**Estado de implementación (15 de octubre de 2026):** la rúbrica `grumphya-concept-v7` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea y la versión de política, no el tono; el servidor compone el titular y aplica el tono al redactar el mensaje. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD original y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
+
 **Orden de lectura para Luna:** resumen y alcance (secciones 1–3), rúbrica (4), contrato (8), prompt (9) y plan TDD (12). La sección 12 fija las decisiones de implementación; los ejemplos conceptuales de la sección 10 no sustituyen sus pruebas deterministas.
 
 ## 1. Cambio de enfoque
@@ -290,7 +292,7 @@ Valores de partida propuestos para la feature, sujetos a prueba; no son requisit
 | Control                    | Propuesta inicial                                                                                           | Objetivo                                            |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Tamaño del textarea        | Máximo 2.000 caracteres, visible al usuario                                                                 | Acotar entrada y evitar convertirlo en un plan      |
-| Contexto                   | Idea actual + política compacta + tono `soft`/`hard`                                                        | Evitar historial y documentos innecesarios          |
+| Contexto                   | Idea actual + política compacta; el tono se aplica en el servidor                                          | Evitar historial y documentos innecesarios          |
 | Llamadas                   | Una por envío válido                                                                                        | Evitar cascadas de modelos                          |
 | Tokens de salida           | Límite configurable bajo; empezar probando 500 tokens                                                       | Cubrir JSON compacto y una frase                    |
 | Resultado                  | Titular de Grumphya + explicación factual mordaz de 8–40 palabras + score visible de 0–10 con dos decimales | Feedback con personalidad y motivo concreto         |
@@ -310,10 +312,11 @@ La reutilización de resultados o caché es opcional y queda fuera del primer in
 
 ## 7. Feedback: titular con voz y explicación concreta
 
-El modelo recibe el tono seleccionado junto con la idea, pero no mantiene
-conversación. El tono modifica solo `message`: `soft` es cercano y ligeramente
-irónico; `hard` es mordaz e incisivo. Estado, criterios, puntuaciones, motivo y
-título seguro no deben depender del tono. La explicación usa español sencillo,
+El modelo recibe la idea, pero no el tono ni mantiene conversación. Devuelve
+una explicación neutral junto con los datos estructurados; el servidor aplica
+el tono solo al redactar `message`: `soft` es cercano y ligeramente irónico;
+`hard` es mordaz e incisivo. Estado, criterios, puntuaciones, motivo y título
+seguro no dependen del tono. La explicación usa español sencillo,
 nombra el defecto y su consecuencia y, cuando se deduce de la idea, quién
 tendría que usar la propuesta y por qué eso limita su adopción. No inventa datos,
 no invita a concretar, no ofrece soluciones ni culpa a la persona. No debe usar
@@ -564,7 +567,7 @@ Antes de editar:
 
 No adivinar comandos de arranque, puertos ni prefijos HTTP. Si no está el repositorio, eso bloquea implementar código, no autoriza crear otro proyecto paralelo.
 
-Reutilizar cliente, módulo, endpoint y runner cuando existan. Si falta runner, elegir **uno compatible con el workspace**, no instalar varios. En esta fase se usa un fake solo en las pruebas; la integración con un proveedor real queda para una tarea posterior. No entregar un fake como servicio de producción: mientras no haya proveedor configurado, el endpoint responde con el error de servicio acordado, no con una evaluación simulada.
+Reutilizar cliente, módulo, endpoint y runner cuando existan. Si falta runner, elegir **uno compatible con el workspace**, no instalar varios. El fake se limita a pruebas; no es un proveedor de producción. En el estado actual, el adaptador OpenAI está integrado y se activa mediante configuración del servidor. Si esa configuración falta, el endpoint responde con el error de servicio acordado, no con una evaluación simulada.
 
 ### 12.2 Alcance obligatorio y exclusiones
 
@@ -572,7 +575,7 @@ Implementar:
 
 - Solicitud desde el textarea con modo existente, validación común, botón y estados de carga/error.
 - Endpoint backend reutilizado o añadido de forma consistente.
-- Puerto de evaluación, prompt fijo/versionado, validación de salida, renderer de tono y respuesta pública mínima. El fake solo se inyecta en pruebas; no se configura proveedor real en esta fase.
+- Puerto de evaluación, prompt fijo/versionado, validación de salida, renderer de tono y respuesta pública mínima. El fake solo se inyecta en pruebas; el adaptador OpenAI se configura fuera del código.
 - Una llamada por envío válido, sin herramientas ni investigación.
 - Pruebas unitarias, de integración local y de UI con dependencias controladas.
 
@@ -783,9 +786,9 @@ request
 
 Un fallo en parsing o validación termina en error técnico, no en una segunda llamada de “reparación”. Una respuesta RECHAZADA válida no dispara otro análisis.
 
-El límite de duplicación inicial se aplica a dobles clics en el formulario. Reutilizar idempotencia si ya existe. No prometer eliminación global de duplicados entre pestañas o conexiones sin implementarla ni añadir tablas para ello.
+La idempotencia del envío evita repetir una misma petición lógica; no es una caché de decisiones para ideas aprobadas. La detección semántica de ideas ya rechazadas pertenece a `searchSimilarIdea`, antes de `evaluationProcess`, y se especifica en `features.md`.
 
-El modelo recibe el tono para redactar `message`; las instrucciones exigen que no altere la decisión ni las puntuaciones. Dos llamadas independientes aún pueden producir diferencias por variabilidad del modelo; verificar la invariancia en pruebas de prompt y con pares de evaluación revisados, sin exigir igualdad absoluta entre ejecuciones nuevas como prueba unitaria.
+El modelo no recibe el tono. El servidor renderiza el tono sobre la explicación neutral; por tanto, evaluar la misma idea en dos tonos mantiene los datos de decisión de una misma respuesta, aunque dos llamadas independientes aún pueden diferir por variabilidad del modelo. Revisar la invariancia con pruebas del renderer y pares de evaluación, sin exigir igualdad absoluta entre ejecuciones nuevas como prueba unitaria.
 
 ### 12.9 Comprobación semántica separada del TDD
 
@@ -811,7 +814,7 @@ Luna puede dar por terminada la implementación cuando:
 4. Todos los tests nuevos y checks pertinentes del repositorio pasan; se distinguen fallos previos.
 5. El flujo completo se ejecuta con fake sin credenciales ni red.
 6. La ruta productiva está conectada al proveedor configurado o se identifica explícitamente la configuración faltante; no hay un fake oculto en producción.
-7. Hay una invocación al puerto por envío válido en los tests, cero por entrada inválida y cero reintentos por defecto. La integración LLM real queda expresamente pendiente.
+7. Los tests comprueban una invocación al puerto por envío válido, cero por entrada inválida y cero reintentos por defecto. La suite usa respuestas controladas; no certifica calidad semántica de una ejecución real del modelo. El adaptador OpenAI está integrado y su uso requiere configuración externa.
 8. No se generan informes ni se aceptan filas posteriores al veto.
 9. No se almacenan ideas ni se exponen secretos/campos internos como efecto de esta feature.
 10. La entrega enumera archivos reales cambiados, comandos de tests ejecutados y límites pendientes.
@@ -820,6 +823,6 @@ Si falta configuración externa, entregar el código y las pruebas completas de 
 
 ### 12.11 Instrucción de arranque copiable
 
-> Implementa el filtro conceptual de grumphya de este documento con TDD en el repositorio actual. Primero inspecciona AGENTS.md, scripts, arquitectura, formulario, modos y cliente actual; identifica rutas y comandos reales. Reutiliza lo existente y trabaja en los incrementos de la sección 12.6 con RED → GREEN → REFACTOR. Aplica los contratos y casos, usa un fake sin red solo en tests y una invocación al puerto por envío válido. Conserva los modos `soft` / `hard`; transmite el tono al evaluador para redactar `message`, sin cambiar veredicto ni puntuación. No añadas investigación, RAG dentro de `evaluationProcess`, almacenamiento, una arquitectura nueva, cuotas de uso ni un fake en producción. Completa las verificaciones y entrega cambios, comandos ejecutados y límites pendientes.
+> Mantén el filtro conceptual de Grumphya descrito en este documento. Antes de cambiarlo, inspecciona AGENTS.md, scripts, arquitectura, formulario, modos y cliente actual. Reutiliza `evaluationProcess`, el adaptador OpenAI, la validación de salida y el renderer de tono existentes. El proveedor recibe la idea y la versión de política, pero no el tono: aplica `soft` / `hard` al redactar `message`, sin cambiar veredicto ni puntuaciones. Usa un fake sin red solo en pruebas. No añadas investigación, RAG dentro de `evaluationProcess`, almacenamiento, una arquitectura nueva, cuotas de uso ni un fake en producción. Si modificas la rúbrica o el contrato, actualiza sus pruebas y documentación relacionada; completa las verificaciones pertinentes e indica los límites pendientes.
 
 **Adecuación a Luna en esfuerzo medio:** las decisiones centrales están fijadas y las incógnitas se limitan al encaje verificable en el repositorio. No se presupone que el modelo deba inventar producto, contrato, arquitectura o pruebas para poder empezar.

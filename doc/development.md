@@ -84,15 +84,15 @@ La conversión voz-a-texto se comparte entre features porque también está
 prevista para el envío de roast; su botón y manejo de estado permanecen locales
 a cada feature, de acuerdo con la regla de alcance del proyecto.
 
-## Scoring de evaluación (rama experimental)
+## Evaluación de ideas
 
 `POST /api/evaluation-process` valida la idea y delega en el `EvaluationPort`.
 Sin proveedor configurado, el endpoint mantiene el comportamiento seguro
 actual y responde `503`; el fake solo está registrado en pruebas.
 
-Esta rama experimental añade un adaptador directo a OpenAI Responses API. Para
-activarlo en desarrollo, añade estas variables al archivo local ignorado
-`.env.openai` y reinicia `pnpm dev`:
+La evaluación configurable está integrada en la aplicación. Para activarla en
+desarrollo, añade estas variables al archivo local ignorado `.env.openai` y
+reinicia `pnpm dev`:
 
 ```dotenv
 EVALUATION_PROVIDER=openai
@@ -120,10 +120,13 @@ datos de OpenAI](https://developers.openai.com/api/docs/guides/your-data) antes
 de enviar ideas reales.
 
 La validación semántica del backend sigue siendo autoritativa: JSON bien
-formado no garantiza que la decisión respete la rúbrica. Esta rama es para una
-comparación exploratoria. El resultado del front presenta titular, puntuación
-y explicación específica; el titular se adapta a estado y tono y la UI no
-etiqueta los defectos como «bloqueos».
+formado no garantiza que la decisión respete la rúbrica. Si falta la
+configuración del proveedor, el endpoint responde `503`; el fake solo se
+registra en pruebas. La API envía a OpenAI el texto de la idea y la versión de
+política, pero no el tono. El proveedor devuelve una evaluación neutral y el
+servidor compone el titular y el mensaje visibles según el tono elegido. El
+resultado del front presenta titular, puntuación y explicación específica; la
+UI no etiqueta los defectos como «bloqueos».
 
 ## Entorno configurable
 
