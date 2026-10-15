@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { AppModule } from "../app.module";
 import { EVALUATION_PORT, type EvaluationPort } from "./evaluation-port";
 import { EvaluationProcessController } from "./evaluation-process.controller";
 import { EvaluationProcessService } from "./evaluation-process.service";

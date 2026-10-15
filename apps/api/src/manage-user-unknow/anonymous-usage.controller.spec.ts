@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+import type { Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 import type { AnonymousUsageService } from "./anonymous-usage.service";
 import { AnonymousUsageController } from "./anonymous-usage.controller";
@@ -33,6 +34,44 @@ function createController() {
 }
 
 describe("AnonymousUsageController roast endpoint", () => {
+  it("initializes a persistent browser profile from its cookie and records the request IP", async () => {
+    const { controller, usage } = createController();
+    const request = {
+      headers: { cookie: `other=value; grumphya_anon=${"a".repeat(43)}` },
+      ip: "192.0.2.25",
+      socket: { remoteAddress: "192.0.2.26" },
+    } as never;
+    const response = { cookie: vi.fn() } as unknown as Response;
+
+    await expect(controller.initialize(request, {}, response)).resolves.toEqual(
+      RESERVED.usage,
+    );
+
+    expect(usage.initialize).toHaveBeenCalledWith("a".repeat(43), "192.0.2.25");
+    expect(response.cookie).toHaveBeenCalledWith(
+      "grumphya_anon",
+      "a".repeat(43),
+      expect.objectContaining({
+        httpOnly: true,
+        sameSite: "strict",
+        path: "/api",
+      }),
+    );
+  });
+
+  it("rejects unexpected profile initialization data before accessing usage", async () => {
+    const { controller, usage } = createController();
+    const request = { headers: {}, ip: "192.0.2.25" } as never;
+    const response = { cookie: vi.fn() } as unknown as Response;
+
+    await expect(
+      controller.initialize(request, { used: 3 }, response),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(usage.initialize).not.toHaveBeenCalled();
+    expect(response.cookie).not.toHaveBeenCalled();
+  });
+
   it("validates the bounded text and reserves and commits a server-side use", async () => {
     const { controller, usage } = createController();
     const request = {

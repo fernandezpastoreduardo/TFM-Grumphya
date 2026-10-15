@@ -101,6 +101,25 @@ describe("anonymous idea quota orchestration", () => {
     expect(usage.release).not.toHaveBeenCalled();
   });
 
+  it("releases the reservation when evaluation fails so no lifetime use is charged", async () => {
+    const { service, usage, evaluation, search } = createService();
+    vi.mocked(evaluation.evaluate).mockRejectedValue(
+      new Error("provider unavailable"),
+    );
+
+    await expect(
+      service.submit(IDEA, IDEMPOTENCY_KEY, VISITOR_TOKEN),
+    ).rejects.toThrow("provider unavailable");
+
+    expect(search.executeDetailed).toHaveBeenCalledOnce();
+    expect(usage.release).toHaveBeenCalledWith(
+      VISITOR_TOKEN,
+      "ideas",
+      createHash("sha256").update(IDEMPOTENCY_KEY).digest("hex"),
+    );
+    expect(usage.commit).not.toHaveBeenCalled();
+  });
+
   it("does not call similarity or evaluation when the idempotent evaluation response is cached", async () => {
     const cached = { status: "evaluated", result: EVALUATION_RESULT };
     const { service, search, usage, evaluation } = createService();
