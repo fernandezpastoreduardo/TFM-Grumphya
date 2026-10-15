@@ -1,3 +1,5 @@
+import "./good-practices.scss";
+
 export function GoodPractices() {
   return (
     <div className="practices-page">

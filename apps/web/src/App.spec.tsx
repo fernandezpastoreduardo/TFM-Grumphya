@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
 describe("App", () => {
-  it("shows the idea input and project purpose", () => {
+  it("loads the idea input and project purpose for the home route", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
     );
     render(<App />);
     expect(
-      screen.getByRole("heading", {
+      await screen.findByRole("heading", {
         name: /antes de construirla.*mira dónde puede romperse/i,
       }),
     ).toBeInTheDocument();

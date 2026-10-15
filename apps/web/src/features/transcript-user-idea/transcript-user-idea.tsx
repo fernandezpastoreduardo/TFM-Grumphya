@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import "./transcript-user-idea.scss";
 import {
   startSpeechToText,
   type SpeechToTextError,

@@ -1,0 +1,160 @@
+.dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  width: min(780px, calc(100vw - 36px));
+  max-width: none;
+  max-height: min(86dvh, 900px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-ink);
+  border-radius: 24px 24px 24px 8px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 8px 8px 0 var(--color-ink);
+
+  &::backdrop {
+    background: rgb(20 47 51 / 46%);
+    backdrop-filter: blur(2px);
+  }
+
+  :global(.evaluation-result-card) {
+    margin: 32px 0 6px;
+    box-shadow: 5px 5px 0 var(--color-ink);
+  }
+
+  :global(.home-result-error) {
+    margin-top: 34px;
+  }
+
+  :global(.similar-idea-notice) {
+    margin-top: 28px;
+  }
+}
+
+.panel {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  min-height: 180px;
+  padding: clamp(24px, 5vw, 44px);
+}
+
+.close {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 7px 13px;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-teal-dark);
+  color: #fffefa;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:hover {
+    background: #0bb0b7;
+  }
+
+  &:focus-visible {
+    outline: 3px solid #f2c64a;
+    outline-offset: 3px;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 2.5;
+  }
+}
+
+.loading {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  min-height: 220px;
+  padding: 34px 6px 8px;
+
+  h2 {
+    margin: 0 0 8px;
+    font-family: "Fredoka", "Trebuchet MS", sans-serif;
+    font-size: clamp(1.35rem, 4vw, 2rem);
+    line-height: 1.12;
+  }
+
+  p {
+    max-width: 40ch;
+    margin: 0;
+    color: #304548;
+    line-height: 1.5;
+  }
+}
+
+.mascot {
+  display: block;
+  width: 104px;
+  aspect-ratio: 1;
+  background: url("../../../../../../ideas-and-designs/revision-vectorial/revisados/spinner-evaluation.gif")
+    center / contain no-repeat;
+}
+
+:global(.theme-dark) .dialog {
+  background: #1b2b2b;
+  color: #f5f5eb;
+
+  .loading p {
+    color: #d4e5df;
+  }
+}
+
+@media (max-width: 600px) {
+  .dialog {
+    width: calc(100vw - 24px);
+    max-height: 88dvh;
+    border-radius: 20px 20px 20px 8px;
+    box-shadow: 5px 5px 0 var(--color-ink);
+
+    :global(.evaluation-result-card) {
+      margin-top: 0;
+      padding: 14px;
+    }
+
+    :global(.similar-idea-notice) {
+      margin-top: 0;
+    }
+  }
+
+  .panel {
+    gap: 14px;
+    padding: 60px 18px 22px;
+  }
+
+  .close {
+    top: 10px;
+    right: 10px;
+  }
+
+  .loading {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 175px;
+    padding: 8px 0;
+  }
+
+  .mascot {
+    width: 72px;
+  }
+}

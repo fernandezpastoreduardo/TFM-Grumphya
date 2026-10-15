@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import "../../shared/styles/account.scss";
 
 type Plan = "ILUMINADO" | "FALTON";
 type PlanResponse = { plan: Plan };

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import "../../shared/styles/account.scss";
 
 export function AuthenticationPage() {
   const [notice, setNotice] = useState("");

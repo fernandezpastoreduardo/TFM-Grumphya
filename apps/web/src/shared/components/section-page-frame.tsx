@@ -1,5 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import "./mobile-navigation.scss";
+import "./section-page-frame.scss";
+import "./shared-components.scss";
 
 export type SectionPageMeta = {
   label: string;

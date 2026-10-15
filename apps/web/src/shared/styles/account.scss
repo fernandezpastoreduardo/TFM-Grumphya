@@ -1,0 +1,218 @@
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(250px, 0.9fr);
+  align-items: center;
+  gap: 18px;
+}
+.auth-card form {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.auth-card form > label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+.auth-card form > input {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid #78aaa0;
+  border-radius: 13px;
+  padding: 11px 13px;
+  color: #183234;
+  background: #fff;
+}
+.auth-card .remember-option {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+}
+.remember-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: #216b70;
+}
+.login-copy {
+  margin-top: 20px;
+  border-top: 1px solid #a8cfbf;
+  padding-top: 10px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.login-copy p {
+  margin: 8px 0;
+}
+.login-copy strong {
+  color: #a33450;
+  font:
+    600 1.25rem "Fredoka",
+    sans-serif;
+}
+.auth-notice {
+  border-left: 4px solid #a33450;
+  padding: 10px 12px;
+  background: #f7dce2;
+  font-weight: 800;
+}
+.auth-privacy {
+  color: #405c5b;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.auth-aside {
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 24px;
+  padding: 24px;
+  background: #dff2d8;
+}
+.theme-dark .auth-aside {
+  background: #315c56;
+}
+.auth-aside h2 {
+  font:
+    600 1.7rem/1 "Fredoka",
+    sans-serif;
+}
+.auth-aside p {
+  line-height: 1.5;
+}
+.auth-creature {
+  height: 220px;
+  background: url("/assets/grumphya/mascot-neutral.svg") center
+    bottom / contain no-repeat;
+}
+.account-plan-required {
+  display: grid;
+  gap: 10px;
+  max-width: 650px;
+  margin-inline: auto;
+}
+.account-plan-required p {
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.registration-privacy {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: flex-start;
+  gap: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1.5;
+}
+.registration-privacy input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #216b70;
+}
+.registration-error {
+  margin: 0;
+  border-left: 4px solid #a33450;
+  padding: 10px 12px;
+  color: #6e1830;
+  background: #f7dce2;
+  font-weight: 800;
+  line-height: 1.45;
+}
+.registration-test-notice {
+  margin: 12px 0;
+  border: 2px solid #856114;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #49370c;
+  background: #fff1c8;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.registration-test-notice strong {
+  font-weight: 900;
+}
+.registration-pending {
+  display: grid;
+  gap: 12px;
+  max-width: 720px;
+  margin-inline: auto;
+}
+.registration-pending p {
+  margin: 0;
+  line-height: 1.55;
+}
+.registration-pending .button-primary {
+  justify-self: start;
+}
+.privacy-policy-placeholder {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+@media (max-width: 979px) {
+  .auth-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .auth-aside {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    align-items: center;
+    gap: 0 16px;
+  }
+  .auth-creature {
+    grid-row: span 2;
+    height: 135px;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-aside {
+    grid-template-columns: 72px 1fr;
+    gap: 0 10px;
+    padding: 15px;
+  }
+  .auth-creature {
+    height: 100px;
+  }
+  .auth-aside h2 {
+    margin: 4px 0;
+    font-size: 1.3rem;
+  }
+  .auth-aside p {
+    margin: 5px 0;
+    font-size: 0.8rem;
+  }
+}
+.auth-aside {
+  border-radius: 20px;
+  box-shadow: 4px 5px 0 #226b701a;
+}
+.auth-aside,
+.registration-pending,
+.account-plan-required {
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-paper) 93%, #dff8ef);
+  box-shadow:
+    0 10px 28px #18565d12,
+    0 2px 0 #18565d0a;
+}
+
+.auth-aside p {
+  line-height: 1.55;
+}
+
+.auth-aside,
+.registration-pending,
+.account-plan-required {
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-paper) 93%, #dff8ef);
+  box-shadow:
+    0 10px 28px #18565d12,
+    0 2px 0 #18565d0a;
+}
+
+.auth-aside p {
+  line-height: 1.55;
+}

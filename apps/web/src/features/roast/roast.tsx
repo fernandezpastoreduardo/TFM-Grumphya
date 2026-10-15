@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
+import "./roast.scss";
 
 // PROTOTYPE: sample exchanges and the reply below are fixtures until the roast service exists.
 const SAMPLE_EXCHANGES = [

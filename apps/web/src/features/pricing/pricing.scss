@@ -1,0 +1,208 @@
+@media (max-width: 700px) {
+  .plans-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.price-card h2 {
+  margin: 5px 0 0;
+  font:
+    600 clamp(1.45rem, 2.6vw, 2.2rem)/1 "Fredoka",
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+}
+.price-card,
+.ultra-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 24px;
+  padding: 23px;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: 5px 6px 0 #226b701b;
+}
+.price-card-illuminated {
+  background: #e1f0cb;
+}
+.theme-dark .price-card-illuminated {
+  background: #315c56;
+}
+.price-card-roast {
+  background: #f7dce2;
+}
+.theme-dark .price-card-roast {
+  background: #603c49;
+}
+.plan-tag {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 0.69rem;
+  font-weight: 900;
+}
+.price-card h2 {
+  margin-top: 16px;
+  font-size: 2rem;
+}
+.price-value {
+  margin: 10px 0;
+  font:
+    700 3rem/0.95 "Fredoka",
+    sans-serif;
+  letter-spacing: -0.06em;
+}
+.price-value small {
+  font:
+    800 0.82rem "Nunito Sans",
+    sans-serif;
+  letter-spacing: 0;
+}
+.plan-description {
+  min-height: 68px;
+  line-height: 1.45;
+}
+.price-card ul {
+  display: grid;
+  gap: 10px;
+  margin: 6px 0 20px;
+  padding-left: 20px;
+  line-height: 1.35;
+}
+.price-card .button-primary {
+  width: 100%;
+  margin-top: auto;
+}
+.price-card .prototype-stamp {
+  font-size: 0.64rem;
+}
+.ultra-card {
+  position: relative;
+  gap: 14px;
+  justify-content: center;
+  background: #d6d1df;
+  text-align: left;
+  cursor: pointer;
+}
+.theme-dark .ultra-card {
+  background: #4a4656;
+}
+.ultra-card > strong {
+  font:
+    700 2.5rem "Fredoka",
+    sans-serif;
+}
+.ultra-price {
+  font:
+    700 1.7rem "Fredoka",
+    sans-serif;
+}
+.ultra-price small,
+.ultra-card > small {
+  font:
+    700 0.76rem "Nunito Sans",
+    sans-serif;
+}
+.ultra-action {
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 4px;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+.ultra-sticker {
+  position: absolute;
+  top: 17px;
+  right: 14px;
+  rotate: 8deg;
+  border: 2px solid #a83954;
+  border-radius: 8px;
+  padding: 6px;
+  color: #a83954;
+  font-size: 0.61rem;
+  font-weight: 900;
+}
+.dialog-flashlight {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffe694;
+  font-size: 1.6rem;
+}
+@media (max-width: 640px) {
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .price-card,
+  .ultra-card {
+    border-radius: 21px;
+    padding: 19px;
+  }
+  .price-card h2 {
+    font-size: 1.8rem;
+  }
+  .price-value {
+    margin: 7px 0;
+    font-size: 2.5rem;
+  }
+  .plan-description {
+    min-height: 0;
+  }
+  .price-card ul {
+    margin-bottom: 15px;
+  }
+  .ultra-card {
+    min-height: 220px;
+  }
+}
+.price-card,
+.ultra-card {
+  border-radius: 20px;
+  box-shadow: 4px 5px 0 #226b701a;
+}
+.price-card,
+.ultra-card {
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-paper) 93%, #dff8ef);
+  box-shadow:
+    0 10px 28px #18565d12,
+    0 2px 0 #18565d0a;
+}
+
+.price-card h2 {
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+.price-card p {
+  line-height: 1.55;
+}
+
+.price-card h2 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.price-card,
+.ultra-card {
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-paper) 93%, #dff8ef);
+  box-shadow:
+    0 10px 28px #18565d12,
+    0 2px 0 #18565d0a;
+}
+
+.price-card p {
+  line-height: 1.55;
+}

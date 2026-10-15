@@ -120,7 +120,7 @@ describe("Home", () => {
     );
   });
 
-  it("renders the validated evaluation inline without echoing the submitted idea", async () => {
+  it("renders the validated evaluation in a closable dialog without echoing the idea", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
       void _init;
@@ -150,6 +150,10 @@ describe("Home", () => {
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog", {
+      name: /resultado de la evaluación/i,
+    });
+    expect(dialog).toBeVisible();
     expect(screen.getByText(/sigue en pie, por ahora/i)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
@@ -176,13 +180,19 @@ describe("Home", () => {
         }),
       }),
     );
+    expect(dialog).toContainElement(
+      screen.getByText(EVALUATION_RESPONSE.message),
+    );
+    expect(dialog.textContent).not.toContain(TEST_IDEA_TEXT);
+
+    await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
+    expect(dialog).not.toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: /ver resultado de la evaluación/i }),
+    );
     expect(
-      screen.getByRole("region", { name: /resultado de la evaluación/i }),
-    ).toContainElement(screen.getByText(EVALUATION_RESPONSE.message));
-    expect(
-      screen.getByRole("region", { name: /resultado de la evaluación/i })
-        .textContent,
-    ).not.toContain(TEST_IDEA_TEXT);
+      screen.getByRole("dialog", { name: /resultado de la evaluación/i }),
+    ).toBeVisible();
   });
 
   it("does not start scoring when the idea fails form validation", async () => {
@@ -306,8 +316,12 @@ describe("Home", () => {
       name: LOADING_BUTTON_NAME,
     });
     expect(loadingButton).toBeDisabled();
-    expect(screen.getByRole("status")).toHaveTextContent(/evaluando/i);
-    await user.click(loadingButton);
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      /la espera no mejora el resultado/i,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /buscando dónde puede romperse/i,
+    );
     expect(
       fetchMock.mock.calls.filter(([url]) => url === "/api/evaluation-process"),
     ).toHaveLength(1);

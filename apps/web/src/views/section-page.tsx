@@ -1,13 +1,5 @@
-import { AuthenticationPage } from "../features/authentication/authentication-page";
-import { Contact } from "../features/contact/contact";
-import { GoodPractices } from "../features/good-practices/good-practices";
-import { NotableHumans } from "../features/notable-humans/notable-humans";
-import { Pricing } from "../features/pricing/pricing";
-import { PrivacyPolicy } from "../features/register-with-plan/privacy-policy";
-import { RegisterWithPlan } from "../features/register-with-plan/register-with-plan";
-import { RegistrationVerification } from "../features/register-with-plan/registration-verification";
-import { Roast } from "../features/roast/roast";
-import { WorstIdeas } from "../features/worst-ideas/worst-ideas";
+import { lazy, Suspense } from "react";
+import type { ComponentType, LazyExoticComponent } from "react";
 import {
   SectionPageFrame,
   type SectionPageMeta,
@@ -88,17 +80,76 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   },
 };
 
+const SECTION_CONTENT_BY_PATH: Record<
+  string,
+  LazyExoticComponent<ComponentType>
+> = {
+  "/lo-peor-de-lo-peor": lazy(() =>
+    import("../features/worst-ideas/worst-ideas").then((module) => ({
+      default: module.WorstIdeas,
+    })),
+  ),
+  "/descargate": lazy(() =>
+    import("../features/roast/roast").then((module) => ({
+      default: module.Roast,
+    })),
+  ),
+  "/humanos-notables": lazy(() =>
+    import("../features/notable-humans/notable-humans").then((module) => ({
+      default: module.NotableHumans,
+    })),
+  ),
+  "/buenas-practicas": lazy(() =>
+    import("../features/good-practices/good-practices").then((module) => ({
+      default: module.GoodPractices,
+    })),
+  ),
+  "/precios": lazy(() =>
+    import("../features/pricing/pricing").then((module) => ({
+      default: module.Pricing,
+    })),
+  ),
+  "/contacto": lazy(() =>
+    import("../features/contact/contact").then((module) => ({
+      default: module.Contact,
+    })),
+  ),
+  "/crear-cuenta": lazy(() =>
+    import("../features/register-with-plan/register-with-plan").then(
+      (module) => ({ default: module.RegisterWithPlan }),
+    ),
+  ),
+  "/verificar-cuenta": lazy(() =>
+    import("../features/register-with-plan/registration-verification").then(
+      (module) => ({ default: module.RegistrationVerification }),
+    ),
+  ),
+  "/politica-de-privacidad": lazy(() =>
+    import("../features/register-with-plan/privacy-policy").then((module) => ({
+      default: module.PrivacyPolicy,
+    })),
+  ),
+};
+
+const DEFAULT_SECTION_CONTENT = lazy(() =>
+  import("../features/authentication/authentication-page").then((module) => ({
+    default: module.AuthenticationPage,
+  })),
+);
+
 function SectionContent({ path }: { path: string }) {
-  if (path === "/lo-peor-de-lo-peor") return <WorstIdeas />;
-  if (path === "/descargate") return <Roast />;
-  if (path === "/humanos-notables") return <NotableHumans />;
-  if (path === "/buenas-practicas") return <GoodPractices />;
-  if (path === "/precios") return <Pricing />;
-  if (path === "/contacto") return <Contact />;
-  if (path === "/crear-cuenta") return <RegisterWithPlan />;
-  if (path === "/verificar-cuenta") return <RegistrationVerification />;
-  if (path === "/politica-de-privacidad") return <PrivacyPolicy />;
-  return <AuthenticationPage />;
+  const Content = SECTION_CONTENT_BY_PATH[path] ?? DEFAULT_SECTION_CONTENT;
+  return (
+    <Suspense
+      fallback={
+        <p className="route-loading" role="status" aria-live="polite">
+          Preparando esta sección…
+        </p>
+      }
+    >
+      <Content />
+    </Suspense>
+  );
 }
 
 export function SectionPage({ path }: { path: string }) {

@@ -1,3 +1,5 @@
+import "../../shared/styles/account.scss";
+
 export function PrivacyPolicy() {
   return (
     <article className="content-card privacy-policy-placeholder">

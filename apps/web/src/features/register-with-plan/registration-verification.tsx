@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import "../../shared/styles/account.scss";
 
 type Plan = "ILUMINADO" | "FALTON";
 type VerificationResponse = { status: "email_verified"; plan: Plan };

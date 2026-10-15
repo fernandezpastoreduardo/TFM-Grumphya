@@ -1,4 +1,5 @@
 import type { EvaluationProcessResult } from "../evaluation-process";
+import "../idea-evaluation.scss";
 
 type EvaluationResultProps = {
   result: EvaluationProcessResult;
