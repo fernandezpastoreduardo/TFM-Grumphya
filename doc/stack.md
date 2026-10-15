@@ -31,7 +31,7 @@ Las versiones efectivamente resueltas quedan fijadas en `pnpm-lock.yaml`. Consul
 - `@grumphya/web`: Vite en `http://127.0.0.1:5173`; `/api/*` se reenvía a la API.
 - `@grumphya/api`: NestJS en `http://127.0.0.1:3000`, prefijo `/api`.
 - En producción la API escucha en `0.0.0.0` dentro de la red privada del servicio; el proxy perimetral es quien la publica.
-- `db` en Docker Compose: `127.0.0.1:5433` → PostgreSQL `5432` del contenedor.
+- `db` en Docker Compose: `127.0.0.1:5433` por defecto → PostgreSQL `5432` del contenedor. Se puede ajustar con `GRUMPHYA_DB_HOST_PORT` y `PGPORT` en `.env.docker` si el puerto está ocupado.
 - Volumen persistente: `grumphya-postgres-data`.
 - Base local: `grumphya_dev`; extensión `vector` incluida en la imagen.
 - El PostgreSQL de Homebrew preexistente permanece en el puerto `5432`; Compose usa `5433` para no interferir con él.
@@ -44,4 +44,4 @@ El endpoint `GET /api/health` verifica conectividad de la base y devuelve la ver
 - No se instala un motor de pagos: los planes del MVP tienen activación simulada.
 - Docker Desktop es requisito del comando integrado `pnpm dev`; la imagen de base y versión están fijadas en `compose.yaml`.
 - PostgreSQL de Homebrew se conserva como instalación local preexistente, pero no lo usa la app desde el flujo Compose.
-- En `main`, el proveedor/modelo de IA no está configurado y la feature responde `503`. La rama experimental `experiment/openai-evaluation-provider` añade un adaptador opcional a OpenAI; requiere `EVALUATION_PROVIDER=openai` y una clave API propia en `.env.openai`, ignorado por Git. Las ideas enviadas con esa opción se transmiten al proveedor externo. La rúbrica de esa rama usa `grumphya-concept-v5`, aplica modelado de amenazas conceptual y devuelve titular, score y explicación.
+- En `main`, evaluación, firma semántica, embeddings y comparación usan adaptadores OpenAI opcionales configurados con `OPENAI_API_KEY`; el evaluador requiere además `EVALUATION_PROVIDER=openai`. Sin proveedor evaluador configurado, la evaluación responde `503`. `pnpm dev` carga `.env.openai`, ignorado por Git. La política activa es `grumphya-concept-v6`; el contrato público devuelve estado, score, titular y explicación, y añade título seguro en rechazos.

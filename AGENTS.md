@@ -230,6 +230,8 @@ La primera entrega incluye evaluación de ideas web/móviles, dictado por voz, d
 
 Use conventional commits WITHOUT AI attribution:
 
+**Atajo del usuario:** `decopu` significa «descripción relevante, commit, push». Cuando el usuario lo indique, redacta descripciones claras, separa cambios en commits coherentes y pequeños, y publica cada commit individualmente en el destino autorizado.
+
 ```
 feat: add initial idea evaluation structure
 

@@ -7,7 +7,7 @@ Fecha de verificación: 2026-10-09, macOS Apple Silicon.
 - `node --version`: `v24.20.0`; `pnpm --version`: `12.5.1`.
 - Docker Desktop `4.94.0`; Docker Engine `29.8.2`; Compose `5.5.1`.
 - PostgreSQL 17 y `vector` `0.8.7` en Docker Compose (`127.0.0.1:5433`).
-- `pnpm test`: correcto, 2 archivos y 2 tests unitarios.
+- `pnpm test`: correcto en la verificación inicial; los resultados de cada incremento posterior se registran en las secciones fechadas de este documento.
 - `pnpm typecheck`: correcto para API y web.
 - `pnpm lint`: correcto para API y web.
 - `pnpm format:check`: correcto.
@@ -76,7 +76,7 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 - GREEN inicial: NestJS validaba la idea y devolvía el scoring simulado v1; el frontend realizaba el POST y mostraba un alert accesible sin repetir el texto. El endpoint ya no usa esa simulación: sin un `EvaluationPort` configurado responde 503.
 - Cobertura actual: API 23 tests del helper v1, 36 del validador de decisión, 5 del renderer, 11 del servicio, 3 del middleware y 1 de health; web 38 tests, incluidos 4 del adaptador y 7 de Home.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
-- Limitación histórica: 50/100 era una simulación explícita de seis criterios desconocidos, no un dictamen. No hay proveedor de IA real, persistencia, historial, similitud ni consumo de intentos en esta entrega.
+- Limitación histórica de ese incremento: 50/100 era una simulación explícita de seis criterios desconocidos, no un dictamen. La simulación se retiró después; el estado de implementación actual se recoge en las actualizaciones siguientes.
 
 Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 
@@ -100,14 +100,14 @@ Actualización del renderer de tono, 12 de octubre de 2026:
 - RED: cinco pruebas fallaron al no existir `renderMessage`. GREEN: `soft` conserva exactamente el mensaje neutral; `hard` añade únicamente `Menudo plan: `, sin mutar estado ni scores.
 - La salida se valida tras renderizar: 8–30 palabras, una oración y máximo 180 unidades UTF-16. Un tono no permitido falla con mensaje genérico, sin reflejar el valor recibido.
 - Revisión de seguridad acotada: el renderer recibe valores como `unknown`, valida la frase y el tono y no incorpora el tono del usuario salvo mediante un prefijo constante. No se detectó una vulnerabilidad nueva. La UI deberá mostrar el resultado como texto escapado, nunca como HTML.
-- Limitación: el renderer todavía no está conectado al caso de uso ni a la respuesta HTTP; presupone que la frase neutral proviene de una decisión validada y no reemplaza esa validación.
+- Limitación en ese incremento: el renderer todavía no estaba conectado al caso de uso ni a la respuesta HTTP; la integración posterior se describe en las actualizaciones siguientes.
 - Comprobaciones: `pnpm test` (68 API + 38 web, 106 total), `pnpm typecheck`, `pnpm lint`, `pnpm build` y `pnpm format:check`.
 
 Actualización del caso de uso con puerto de evaluación, 12 de octubre de 2026:
 
 - RED: nueve pruebas del servicio fallaron con el caso de uso síncrono anterior: no invocaba un puerto, no generaba la respuesta pública ni manejaba fallos/timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tiene 12 casos.
 - Scores: rechazo usa la nota de veto / 10; sin bloqueo usa la media aritmética de criterios `PUNTUADO` / 10, redondeada a dos decimales; sin criterios puntuados e idea insuficiente devuelven `null`.
-- Errores: entrada inválida 400; proveedor no configurado/no disponible o respuesta inválida 503; timeout 504. No hay reintentos. `EVALUATION_TIMEOUT_MS` configura el timeout (15.000 ms por defecto; se aceptan enteros positivos hasta 120.000 ms); al vencer se aborta la señal si el adaptador la soporta.
+- Errores: entrada inválida 400; proveedor no configurado/no disponible o respuesta inválida 503; timeout 504. No hay reintentos. `EVALUATION_TIMEOUT_MS` configura el timeout (60.000 ms por defecto; se aceptan enteros positivos hasta 120.000 ms); al vencer se aborta la señal si el adaptador la soporta. El front muestra un mensaje específico para este timeout sin reflejar el texto de la respuesta.
 - Revisión de seguridad: errores y logs usan códigos constantes; no se registran idea, respuesta cruda ni mensajes del proveedor. Una prueba instancia el contexto Nest de `AppModule` sin fake de producción y comprueba que el servicio devuelve 503, no scoring simulado; no prueba el arranque HTTP completo. No se detectó vulnerabilidad nueva en este cambio.
 - Limitación: no hay adaptador real ni fake registrado por inyección todavía; el siguiente incremento cubrirá el fake únicamente en tests/DI. Un proveedor que ignore `AbortSignal` podría continuar trabajando tras responder el timeout.
 - Verificación final: `pnpm test` (80 API + 38 web, 118 total), `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `git diff --check`, todo en verde. No se volvió a ejecutar E2E ni una auditoría de dependencias en este incremento.
@@ -159,7 +159,7 @@ Actualización de rúbrica pesimista y mecanismos esenciales omitidos, 12 de oct
 
 Modelo de amenazas y rediseño del feedback de evaluación, 12 de octubre de 2026:
 
-- RED: las pruebas nuevas fallaron al faltar el titular separado y las instrucciones adversariales genéricas. GREEN: la política `grumphya-concept-v5` pide identificar actor, ruta de abuso, impacto y salvaguardas conceptuales, no confiar en honestidad/buena intención y considerar encuentros entre desconocidos; prohíbe elevar riesgos exóticos a veto.
+- RED: las pruebas nuevas fallaron al faltar el titular separado y las instrucciones adversariales genéricas. GREEN: la política `grumphya-concept-v6` pide identificar actor, ruta de abuso, impacto y salvaguardas conceptuales, no confiar en honestidad/buena intención y considerar encuentros entre desconocidos; ahora también comprueba si el canal propuesto puede transmitir la cualidad central, como al comparar pantallas por fotos reproducidas en otra pantalla. Prohíbe elevar riesgos exóticos a veto.
 - C05 ahora incluye afirmaciones centrales falseables sin verificación/corrección conceptual; C06 cubre conflictos previsibles sin comprobación, contención ni reparación; C09 cubre dependencias de happy path sin alternativa segura. C02 conserva el daño grave inherente/facilitado. La rúbrica sigue exigiendo perjuicio previsible ligado a la mecánica, no una lista de controles técnicos.
 - El prompt ya no contiene la idea del aparcamiento ni un escenario por dominio como prueba de regresión. Se conservaron tests genéricos de contrato literal y de instrucciones del modelo; la entrada de aparcamiento citada en el registro previo fue una prueba exploratoria histórica, no una regla universal.
 - La respuesta pública incorpora `headline`; la UI muestra titular propio de Grumphya, score y explicación específica. No muestra la etiqueta «bloqueo»; además el validador rechaza mensajes del proveedor que la usen. La explicación admite hasta 40 palabras/280 unidades UTF-16 y React la renderiza como texto plano.
@@ -184,4 +184,4 @@ Integración de `main` y diagnósticos seguros de validación, 13 de octubre de 
 - Los fallos de validación de la respuesta del proveedor ahora llevan un diagnóstico interno categorizado mediante una unión cerrada: `response_shape`, `criteria_prefix`, `criterion_value`, `decision_fields`, `visible_message` o `decision_semantics`. El log incluye únicamente `INVALID_EVALUATION_RESPONSE validation=<código>`; la respuesta HTTP sigue usando el mensaje genérico.
 - Las pruebas comprueban las categorías esperadas y que ni secretos ni el texto de la idea se incluyen en el log. Los códigos no derivan de contenido externo ni interpolan valores arbitrarios, por lo que mejoran el diagnóstico sin ampliar la exposición de datos.
 
-Límites de esta revisión: el rate limit en memoria es por proceso, se reinicia al reiniciar y no coordina réplicas; antes de exponer el servicio públicamente debe moverse a un almacén compartido o al gateway. No hay aún autenticación, autorización, cuotas de negocio, persistencia de ideas ni protección CSRF asociada a cookies; no deben darse por implementadas. No se realizó pentest ni escaneo dinámico completo.
+Límites de esta revisión: el rate limit en memoria es por proceso, se reinicia al reiniciar y no coordina réplicas; antes de exponer el servicio públicamente debe moverse a un almacén compartido o al gateway. Las ideas rechazadas sí se persisten para la similitud y Worst Ideas, con idempotencia y título seguro; no se conserva texto fuente ni historial personal de evaluaciones. La autenticación general, autorización de evaluación, cuotas de negocio y protección CSRF asociada a cookies de sesión siguen pendientes. Las pruebas unitarias cubren repositorio/orquestación con dobles, pero falta integración con PostgreSQL/pgvector aislado y un E2E del flujo completo de similitud. No se realizó pentest ni escaneo dinámico completo.

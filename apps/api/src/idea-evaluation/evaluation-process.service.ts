@@ -15,6 +15,7 @@ import {
   type ModelDecision,
 } from "./evaluation-decision";
 import { EVALUATION_PORT, type EvaluationPort } from "./evaluation-port";
+import { OpenAiEvaluationFailure } from "./openai-evaluation.port";
 import {
   InvalidEvaluationInputError,
   normalizeAndValidateRequest,
@@ -25,10 +26,11 @@ export type EvaluationProcessResponse = {
   score: number | null;
   headline: string;
   message: string;
+  safeTitle?: string;
 };
 
-const POLICY_VERSION = "grumphya-concept-v5";
-const DEFAULT_EVALUATION_TIMEOUT_MS = 15_000;
+const POLICY_VERSION = "grumphya-concept-v6";
+const DEFAULT_EVALUATION_TIMEOUT_MS = 60_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
 const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
@@ -104,17 +106,22 @@ function toPublicResponse(
   decision: ModelDecision,
   tone: "soft" | "hard",
 ): EvaluationProcessResponse {
-  return {
+  const response: EvaluationProcessResponse = {
     status: decision.status,
     score: getPublicScore(decision),
     headline: renderHeadline(decision.status, tone),
-    message: renderMessage(decision),
+    message: renderMessage(decision, tone),
   };
+  if (decision.status === "RECHAZADA" && decision.safeTitle) {
+    response.safeTitle = decision.safeTitle;
+  }
+  return response;
 }
 
 async function evaluateWithTimeout(
   port: EvaluationPort,
   ideaText: string,
+  tone: "soft" | "hard",
 ): Promise<unknown> {
   const abortController = new AbortController();
   const timeoutMs = getEvaluationTimeoutMs();
@@ -128,6 +135,7 @@ async function evaluateWithTimeout(
   const evaluationPromise = Promise.resolve().then(() =>
     port.evaluate({
       ideaText,
+      tone,
       policyVersion: POLICY_VERSION,
       signal: abortController.signal,
     }),
@@ -167,6 +175,7 @@ export class EvaluationProcessService {
       const rawDecision = await evaluateWithTimeout(
         this.evaluationPort,
         request.ideaText,
+        request.tone,
       );
       const decision = validateModelDecision(rawDecision, request.ideaText);
       return toPublicResponse(decision, request.tone);
@@ -180,6 +189,10 @@ export class EvaluationProcessService {
           `${INVALID_EVALUATION_RESPONSE.code} validation=${error.validationCode}`,
         );
         throw new ServiceUnavailableException(INVALID_EVALUATION_RESPONSE);
+      }
+      if (error instanceof OpenAiEvaluationFailure) {
+        this.logger.error(error.code);
+        throw new ServiceUnavailableException(EVALUATOR_UNAVAILABLE_RESPONSE);
       }
       this.logger.error(EVALUATOR_UNAVAILABLE_RESPONSE.code);
       throw new ServiceUnavailableException(EVALUATOR_UNAVAILABLE_RESPONSE);

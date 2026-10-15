@@ -107,11 +107,15 @@ describe("Home", () => {
 
   it("renders the validated evaluation inline without echoing the submitted idea", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn((url: unknown) => {
+    const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
+      void _init;
       if (url === "/api/evaluation-process") {
         return Promise.resolve({
           ok: true,
-          json: async () => EVALUATION_RESPONSE,
+          json: async () => ({
+            status: "evaluated",
+            result: EVALUATION_RESPONSE,
+          }),
         });
       }
       return new Promise(() => undefined);
@@ -142,6 +146,17 @@ describe("Home", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ ideaText: TEST_IDEA_TEXT, tone: "hard" }),
+      }),
+    );
+    expect(
+      fetchMock.mock.calls.find(
+        ([url]) => url === "/api/evaluation-process",
+      )?.[1],
+    ).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Idempotency-Key": expect.any(String),
+        }),
       }),
     );
     expect(
@@ -199,19 +214,56 @@ describe("Home", () => {
     expect(screen.getByRole("alert").textContent).not.toContain(TEST_IDEA_TEXT);
   });
 
+  it("explains when the evaluator exceeded its time limit", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) => {
+        if (url === "/api/evaluation-process") {
+          return Promise.resolve({
+            ok: false,
+            status: 504,
+            json: async () => ({
+              code: "EVALUATION_TIMEOUT",
+              message: TEST_IDEA_TEXT,
+            }),
+          });
+        }
+        return new Promise(() => undefined);
+      }),
+    );
+    render(<Home />);
+    await user.type(
+      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      TEST_IDEA_TEXT,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/está tardando más de lo previsto/i);
+    expect(alert.textContent).not.toContain(TEST_IDEA_TEXT);
+  });
+
   it("shows loading state and ignores another submit while a request is pending", async () => {
     const user = userEvent.setup();
     let resolveEvaluation!: (response: {
       ok: boolean;
-      json: () => Promise<typeof EVALUATION_RESPONSE>;
+      json: () => Promise<{
+        status: string;
+        result: typeof EVALUATION_RESPONSE;
+      }>;
     }) => void;
     const pendingEvaluation = new Promise<{
       ok: boolean;
-      json: () => Promise<typeof EVALUATION_RESPONSE>;
+      json: () => Promise<{
+        status: string;
+        result: typeof EVALUATION_RESPONSE;
+      }>;
     }>((resolve) => {
       resolveEvaluation = resolve;
     });
-    const fetchMock = vi.fn((url: unknown) => {
+    const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
+      void _init;
       if (url === "/api/evaluation-process") return pendingEvaluation;
       return new Promise(() => undefined);
     });
@@ -234,7 +286,72 @@ describe("Home", () => {
       fetchMock.mock.calls.filter(([url]) => url === "/api/evaluation-process"),
     ).toHaveLength(1);
 
-    resolveEvaluation({ ok: true, json: async () => EVALUATION_RESPONSE });
+    resolveEvaluation({
+      ok: true,
+      json: async () => ({ status: "evaluated", result: EVALUATION_RESPONSE }),
+    });
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
+  });
+
+  it("shows the safe title and count, then evaluates with the same idempotency key only after confirmation", async () => {
+    const user = userEvent.setup();
+    const responses = [
+      {
+        status: "similar_idea_match",
+        safeTitle: "Una red social para mascotas",
+        submissionCount: 24,
+      },
+      { status: "evaluated", result: EVALUATION_RESPONSE },
+    ];
+    const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
+      void _init;
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => responses.shift(),
+        });
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+    await user.type(
+      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      TEST_IDEA_TEXT,
+    );
+    await user.click(
+      screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    expect(
+      await screen.findByRole("heading", { name: /esta idea ya nos suena/i }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/una red social para mascotas/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/24 veces/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/esta idea ya se llevó un golpe y ha vuelto/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/enviaremos esta idea a una nueva evaluación/i),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === "/api/evaluation-process"),
+    ).toHaveLength(1);
+
+    await user.click(
+      screen.getByRole("button", { name: /evaluar igualmente/i }),
+    );
+    expect(await screen.findByText("7,15/10")).toBeInTheDocument();
+    const evaluationCalls = fetchMock.mock.calls.filter(
+      ([url]) => url === "/api/evaluation-process",
+    );
+    expect(evaluationCalls).toHaveLength(2);
+    expect(evaluationCalls[1][1]?.headers).toEqual(
+      evaluationCalls[0][1]?.headers,
+    );
+    expect(evaluationCalls[1][1]?.body).toContain('"continueAnyway":true');
   });
 });

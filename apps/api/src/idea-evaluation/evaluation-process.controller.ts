@@ -1,15 +1,18 @@
-import { Body, Controller, Inject, Post } from "@nestjs/common";
-import { EvaluationProcessService } from "./evaluation-process.service";
+import { Body, Controller, Headers, Inject, Post } from "@nestjs/common";
+import { IdeaSubmissionService } from "./idea-submission.service";
 
 @Controller("evaluation-process")
 export class EvaluationProcessController {
   constructor(
-    @Inject(EvaluationProcessService)
-    private readonly evaluationProcess: EvaluationProcessService,
+    @Inject(IdeaSubmissionService)
+    private readonly ideaSubmission: IdeaSubmissionService,
   ) {}
 
   @Post()
-  evaluate(@Body() input: unknown) {
-    return this.evaluationProcess.evaluate(input);
+  evaluate(
+    @Body() input: unknown,
+    @Headers("idempotency-key") idempotencyKey: unknown,
+  ) {
+    return this.ideaSubmission.submit(input, idempotencyKey);
   }
 }

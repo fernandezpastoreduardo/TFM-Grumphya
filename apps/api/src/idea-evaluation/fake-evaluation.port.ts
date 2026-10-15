@@ -20,7 +20,10 @@ function createFakeDecision() {
     stop_at: null,
     reason_code: null,
     basis: null,
+    safeTitle: null,
     message: FAKE_MESSAGE,
+    hardSetup: null,
+    hardConsequence: null,
   };
 }
 

@@ -8,6 +8,11 @@ import { EVALUATION_PORT, type EvaluationPort } from "./evaluation-port";
 import { EvaluationProcessController } from "./evaluation-process.controller";
 import { EvaluationProcessService } from "./evaluation-process.service";
 import { EvaluationTestingModule } from "./evaluation-testing.module";
+import { IDEA_SUBMISSION_SEARCH } from "./idea-submission.tokens";
+import { IdeaSubmissionService } from "./idea-submission.service";
+import { WORST_IDEAS_REPOSITORY } from "../worst-ideas/worst-ideas.tokens";
+import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
+import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const EVALUATION_PATH = "/api/evaluation-process";
@@ -22,6 +27,38 @@ const PREVIOUS_TIMEOUT = process.env.EVALUATION_TIMEOUT_MS;
       useValue: {
         evaluate: () => new Promise<unknown>(() => undefined),
       } satisfies EvaluationPort,
+    },
+    {
+      provide: IDEA_SUBMISSION_SEARCH,
+      useValue: {
+        executeDetailed: async () => ({
+          result: { kind: "no-match" },
+          embedding: [0.1],
+        }),
+      },
+    },
+    {
+      provide: WORST_IDEAS_REPOSITORY,
+      useValue: {
+        addToWorstIdeas: async () => "test-idea",
+        getIdempotentMatch: async () => null,
+        hasDifferentIdempotentRequest: async () => false,
+        claimIdempotentContinuation: async () => true,
+        updateWorstIdea: async () => 1,
+      },
+    },
+    {
+      provide: IdeaSubmissionService,
+      useFactory: (
+        search: SearchSimilarIdea,
+        repository: WorstIdeasRepository,
+        evaluation: EvaluationProcessService,
+      ) => new IdeaSubmissionService(search, repository, evaluation),
+      inject: [
+        IDEA_SUBMISSION_SEARCH,
+        WORST_IDEAS_REPOSITORY,
+        EvaluationProcessService,
+      ],
     },
   ],
 })
@@ -48,7 +85,10 @@ async function postEvaluation(
   const origin = await application.getUrl();
   return fetch(new URL(EVALUATION_PATH, origin), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": "d54e74e8-4d23-46d4-9944-0b39bcda0914",
+    },
     body: JSON.stringify(body),
   });
 }
@@ -73,11 +113,14 @@ describe("evaluation process HTTP endpoint", () => {
 
       expect(response.status).toBe(201);
       expect(await response.json()).toEqual({
-        status: "SIN_BLOQUEO_EVIDENTE",
-        score: 7.15,
-        headline: "Bueno, de momento no se cae por lo más obvio.",
-        message:
-          "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+        status: "evaluated",
+        result: {
+          status: "SIN_BLOQUEO_EVIDENTE",
+          score: 7.15,
+          headline: "Bueno, de momento no se cae por lo más obvio.",
+          message:
+            "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+        },
       });
     } finally {
       await application.close();
@@ -113,8 +156,8 @@ describe("evaluation process HTTP endpoint", () => {
 
       expect(response.status).toBe(503);
       expect(body).toMatchObject({
-        code: "EVALUATOR_UNAVAILABLE",
-        message: "El servicio de evaluación no está disponible ahora.",
+        code: "SIMILARITY_UNAVAILABLE",
+        message: "No se ha podido comprobar la similitud ahora.",
       });
       expect(JSON.stringify(body)).not.toContain(VALID_IDEA);
     } finally {
