@@ -45,4 +45,5 @@ Consulta [`doc/README.md`](doc/README.md) para instalar requisitos, arrancar los
 - [`agentic-guidelines/components.md`](agentic-guidelines/components.md): responsabilidades de componentes.
 - [`agentic-guidelines/copy-style.md`](agentic-guidelines/copy-style.md): voz y microcopy.
 - [`agentic-guidelines/UI-aestethics.md`](agentic-guidelines/UI-aestethics.md): dirección visual y accesibilidad.
+- [`doc/ui.md`](doc/ui.md): resumen de la UI aprobada y su implementación.
 - [`ideas-and-designs/`](ideas-and-designs/): referencias visuales para diseño y maquetación.

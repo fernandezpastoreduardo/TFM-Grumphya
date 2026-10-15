@@ -6,6 +6,7 @@ El flujo de alta con plan está implementado en modo de verificación/compra sim
 
 ## Documentos
 
+- [Dirección e implementación de la UI](ui.md)
 - [Stack instalado y versiones](stack.md)
 - [Desarrollo local](development.md)
 - [Producción](production.md)
