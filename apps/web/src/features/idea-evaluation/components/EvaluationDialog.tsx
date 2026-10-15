@@ -4,6 +4,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import styles from "./EvaluationDialog.module.scss";
 
 type EvaluationDialogProps = {
   open: boolean;
@@ -47,18 +48,18 @@ export function EvaluationDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="evaluation-dialog"
+      className={styles.dialog}
       aria-labelledby="evaluation-dialog-title"
       aria-busy={isEvaluating}
       onClose={onClose}
       onClick={handleDialogClick}
     >
-      <div className="evaluation-dialog-panel">
+      <div className={styles.panel}>
         <h2 className="sr-only" id="evaluation-dialog-title">
           Resultado de la evaluación
         </h2>
         <button
-          className="evaluation-dialog-close"
+          className={styles.close}
           type="button"
           aria-label="Cerrar resultado"
           onClick={onClose}
@@ -69,8 +70,8 @@ export function EvaluationDialog({
           <span>Cerrar</span>
         </button>
         {isEvaluating ? (
-          <section className="evaluation-loading" role="status" aria-live="polite">
-            <span className="evaluation-loading-mascot" aria-hidden="true" />
+          <section className={styles.loading} role="status" aria-live="polite">
+            <span className={styles.mascot} aria-hidden="true" />
             <div>
               <h2>Buscando dónde puede romperse…</h2>
               <p>Evaluando tu idea. La espera no mejora el resultado.</p>

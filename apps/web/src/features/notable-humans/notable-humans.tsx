@@ -1,4 +1,5 @@
 // PROTOTYPE: aliases and approval counts are visual fixtures, never real leaderboard data.
+import "./notable-humans.scss";
 const NOTABLE_HUMANS = [
   ["laura_critica", "18"],
   ["pablo_sin_pitch", "13"],

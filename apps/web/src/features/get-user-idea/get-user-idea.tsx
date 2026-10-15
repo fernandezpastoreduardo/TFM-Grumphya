@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import "./get-user-idea.scss";
 import { IdeaInput } from "./components/IdeaInput";
 import { MAX_IDEA_LENGTH } from "./idea-input-rules";
 import type {

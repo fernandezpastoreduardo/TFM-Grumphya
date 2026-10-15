@@ -64,6 +64,22 @@ pnpm build
 
 El hook de Git, cuando se inicialice Husky para el equipo, debe ejecutar al menos `pnpm lint` y `pnpm test`. No se fuerza un hook en el repo inicial hasta configurar explícitamente su ciclo de contribución.
 
+## Estilos de la interfaz
+
+La app web usa Sass/SCSS en tiempo de compilación. Vite procesa `.scss` y activa
+la división de CSS para separar los estilos asociados a cada importación
+dinámica. `main.tsx` carga solo la base global; Home, el marco de secciones y
+cada funcionalidad importan su hoja SCSS junto a su código. `App` carga Home o
+la página de sección de forma diferida, y `SectionPage` carga únicamente la
+funcionalidad de la ruta actual.
+
+Ubica los estilos según su alcance: una funcionalidad en su propio directorio;
+los estilos realmente usados por dos o más funcionalidades en `shared/`.
+Prefiere `.module.scss` para estilos encapsulados de componentes nuevos o ya
+migrados. El CSS legado separado por vistas conserva algunos selectores globales
+mientras se convierten gradualmente; no se debe volver a añadir ese CSS a una
+hoja global única.
+
 ## Dictado de ideas
 
 `transcriptUserIdea` ofrece dictado temporal en español (`es-ES`) mediante la

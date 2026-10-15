@@ -1,0 +1,113 @@
+.personal-empty h2 {
+  margin: 5px 0 0;
+  font:
+    600 clamp(1.45rem, 2.6vw, 2.2rem)/1 "Fredoka",
+    sans-serif;
+  letter-spacing: -0.04em;
+}
+.idea-ranking {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.idea-ranking li {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  border: 1.5px solid #a8cfbf;
+  border-radius: 16px;
+  padding: 10px 13px;
+  background: #fff;
+}
+.ranking-position {
+  color: #327b7c;
+  font:
+    700 1.08rem "Fredoka",
+    sans-serif;
+}
+.ranking-title {
+  font-weight: 900;
+  line-height: 1.25;
+}
+.ranking-count {
+  display: grid;
+  text-align: right;
+}
+.ranking-count strong {
+  color: #a73950;
+  font:
+    700 1.25rem "Fredoka",
+    sans-serif;
+}
+.ranking-count small {
+  color: #526768;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.personal-empty {
+  position: relative;
+  overflow: hidden;
+  background: #e3f5dd;
+}
+.theme-dark .personal-empty {
+  background: #315c56;
+}
+.personal-empty::after {
+  display: none;
+}
+.personal-empty h2,
+.personal-empty p,
+.personal-empty a {
+  position: relative;
+  z-index: 1;
+}
+.personal-empty p {
+  margin: 12px 0 18px;
+  line-height: 1.5;
+}
+@media (max-width: 979px) {
+  .personal-empty::after {
+    width: 125px;
+  }
+}
+@media (max-width: 640px) {
+  .idea-ranking li {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 7px;
+    min-height: 62px;
+    padding: 9px;
+  }
+  .ranking-position {
+    font-size: 0.94rem;
+  }
+  .ranking-title {
+    font-size: 0.82rem;
+  }
+  .ranking-count strong {
+    font-size: 1rem;
+  }
+  .ranking-count small {
+    font-size: 0.58rem;
+  }
+}
+.personal-empty {
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-paper) 93%, #dff8ef);
+  box-shadow:
+    0 10px 28px #18565d12,
+    0 2px 0 #18565d0a;
+}
+
+.personal-empty {
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--color-paper) 93%, #dff8ef);
+  box-shadow:
+    0 10px 28px #18565d12,
+    0 2px 0 #18565d0a;
+}

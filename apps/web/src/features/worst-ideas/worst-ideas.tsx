@@ -1,4 +1,5 @@
 // PROTOTYPE: replace fixture rows with the weekly ranking endpoint before release.
+import "./worst-ideas.scss";
 const WEEKLY_RANKING = [
   ["La app que cobra por respirar", "184"],
   ["Una red social para los ascensores", "129"],

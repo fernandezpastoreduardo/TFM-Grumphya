@@ -1,4 +1,5 @@
 import type { SimilarIdeaMatchResult } from "../../idea-evaluation/evaluation-process";
+import "../repeated-ideas.scss";
 
 type SimilarIdeaNoticeProps = {
   match: SimilarIdeaMatchResult;

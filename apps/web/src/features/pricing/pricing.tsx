@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./pricing.scss";
 
 export function Pricing() {
   const [showLesson, setShowLesson] = useState(false);

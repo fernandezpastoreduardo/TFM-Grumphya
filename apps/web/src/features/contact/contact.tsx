@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./contact.scss";
 
 export function Contact() {
   const [dismissed, setDismissed] = useState(false);

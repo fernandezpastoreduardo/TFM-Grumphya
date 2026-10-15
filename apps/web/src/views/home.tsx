@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import "./home.scss";
+import "../shared/components/mobile-navigation.scss";
+import "../shared/components/shared-components.scss";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
 import { EvaluationDialog } from "../features/idea-evaluation/components/EvaluationDialog";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
