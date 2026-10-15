@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
+const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
+const LOADING_BUTTON_NAME = /evaluando/i;
 const EVALUATION_RESPONSE = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
@@ -21,7 +23,7 @@ describe("Home", () => {
     render(<Home />);
 
     expect(screen.getByRole("main")).toBeInTheDocument();
-    expect(document.querySelector(".home-creature")).toHaveAttribute(
+    expect(document.querySelector(".home-hero-stage")).toHaveAttribute(
       "aria-hidden",
       "true",
     );
@@ -47,37 +49,33 @@ describe("Home", () => {
 
     expect(page).toHaveClass("theme-light");
     await user.click(
-      screen.getByRole("button", { name: /activar modo oscuro/i }),
+      screen.getByRole("switch", { name: /activar modo oscuro/i }),
     );
     expect(page).toHaveClass("theme-dark");
     expect(
-      screen.getByRole("button", { name: /activar modo claro/i }),
+      screen.getByRole("switch", { name: /activar modo claro/i }),
     ).toBeVisible();
   });
 
-  it("previews a short synthesis of the idea beside the mascot", async () => {
+  it("keeps the editable hero copy separate from the idea input", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
     );
-    const { container } = render(<Home />);
-
-    expect(
-      screen.getByText(/una app para hacer un tinder de saltamontes/i),
-    ).toBeInTheDocument();
+    render(<Home />);
+    const heroHeading = screen.getByRole("heading", {
+      level: 1,
+      name: /antes de construirla.*mira dónde puede romperse/i,
+    });
+    const heroDescription = screen.getByText(/grumphya revisa viabilidad/i);
     await user.type(
       screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
       "Una app para cuidar erizos en hoteles",
     );
 
-    expect(container.querySelector(".home-idea-synthesis")).toHaveTextContent(
-      /una app para cuidar erizos en hoteles/i,
-    );
-    expect(container.querySelector(".home-heading")).not.toHaveTextContent(
-      /porque poder hacerlo/i,
-    );
-    expect(screen.getByText(/porque poder hacerlo/i)).toBeInTheDocument();
+    expect(heroHeading).toBeInTheDocument();
+    expect(heroDescription).toBeInTheDocument();
   });
 
   it("links to separate section pages and account routes", () => {
@@ -128,9 +126,7 @@ describe("Home", () => {
     await user.click(
       screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
     );
-    await user.click(
-      screen.getByRole("button", { name: /^a ver qué tienes/i }),
-    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
     expect(screen.getByText(/sigue en pie, por ahora/i)).toBeInTheDocument();
@@ -163,9 +159,7 @@ describe("Home", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
 
-    await user.click(
-      screen.getByRole("button", { name: /^a ver qué tienes/i }),
-    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/evaluation-process",
@@ -191,9 +185,7 @@ describe("Home", () => {
       TEST_IDEA_TEXT,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: /^a ver qué tienes/i }),
-    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /no se pudo completar el scoring/i,
@@ -202,7 +194,7 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
     ).toHaveValue(TEST_IDEA_TEXT);
     expect(
-      screen.getByRole("button", { name: /a ver qué tienes/i }),
+      screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
     ).toBeEnabled();
     expect(screen.getByRole("alert").textContent).not.toContain(TEST_IDEA_TEXT);
   });
@@ -230,11 +222,11 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
       TEST_IDEA_TEXT,
     );
-    await user.click(
-      screen.getByRole("button", { name: /^a ver qué tienes/i }),
-    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
-    const loadingButton = screen.getByRole("button", { name: /preparando/i });
+    const loadingButton = screen.getByRole("button", {
+      name: LOADING_BUTTON_NAME,
+    });
     expect(loadingButton).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(/evaluando/i);
     await user.click(loadingButton);

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export type SectionPageMeta = {
   label: string;
@@ -21,21 +22,23 @@ const SECTION_LINKS = [
 function SectionHeader({
   theme,
   onThemeToggle,
+  isMenuOpen,
+  onMenuToggle,
 }: {
   theme: "light" | "dark";
   onThemeToggle: () => void;
+  isMenuOpen: boolean;
+  onMenuToggle: () => void;
 }) {
   return (
     <header className="site-header">
       <a className="site-brand" href="/" aria-label="Grumphya, inicio">
-        <span className="brand-mark" aria-hidden="true">
-          g
-        </span>
+        <span className="brand-mark" aria-hidden="true" />
         <span>Grumphya</span>
       </a>
       <nav className="site-nav" aria-label="Navegación principal">
         <a href="/" className="site-nav-home">
-          Evaluar idea
+          Inicio
         </a>
         {SECTION_LINKS.map((item) => (
           <a
@@ -52,15 +55,46 @@ function SectionHeader({
       <button
         className="site-theme-toggle"
         type="button"
+        role="switch"
         aria-label={
           theme === "light" ? "Activar modo oscuro" : "Activar modo claro"
         }
-        aria-pressed={theme === "dark"}
+        aria-checked={theme === "dark"}
         onClick={onThemeToggle}
       >
-        <span aria-hidden="true">{theme === "light" ? "☾" : "☀"}</span>
-        <span>{theme === "light" ? "Oscuro" : "Claro"}</span>
+        <span className="theme-switch-sun" aria-hidden="true">
+          ☀
+        </span>
+        <span className="theme-switch-track" aria-hidden="true">
+          <span className="theme-switch-thumb">
+            {theme === "light" ? "☀" : "☾"}
+          </span>
+        </span>
+        <span className="theme-switch-moon" aria-hidden="true">
+          ☾
+        </span>
       </button>
+      <div className="site-mobile-menu">
+        <button
+          className="mobile-menu-trigger"
+          type="button"
+          aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú de secciones"}
+          aria-expanded={isMenuOpen}
+          aria-controls="site-sections-menu"
+          onClick={onMenuToggle}
+        >
+          <span className="menu-icon-open" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4 6.5h16M4 12h16M4 17.5h16" />
+            </svg>
+          </span>
+          <span className="menu-icon-close" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </span>
+        </button>
+      </div>
     </header>
   );
 }
@@ -73,7 +107,9 @@ function SectionHero({ page }: { page: SectionPageMeta }) {
           <span className="kicker-dot" />
           {page.label}
         </span>
-        <h1>{page.title}</h1>
+        <h1>
+          <span className="section-hero-title-mark">{page.title}</span>
+        </h1>
         <p>{page.intro}</p>
       </div>
       <div
@@ -96,12 +132,15 @@ export function SectionPageFrame({
   children: ReactNode;
 }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   return (
-    <div className={`app-page theme-${theme}`}>
+    <div className={`app-page theme-${theme}${isMenuOpen ? " menu-open" : ""}`}>
       <div className="app-frame">
         <SectionHeader
           theme={theme}
           onThemeToggle={() => setTheme(theme === "light" ? "dark" : "light")}
+          isMenuOpen={isMenuOpen}
+          onMenuToggle={() => setIsMenuOpen((open) => !open)}
         />
         <main className="section-main">
           <SectionHero page={page} />
@@ -117,6 +156,44 @@ export function SectionPageFrame({
           </a>
         </footer>
       </div>
+      {isMenuOpen
+        ? createPortal(
+            <>
+              <button
+                className="mobile-menu-backdrop"
+                type="button"
+                aria-label="Cerrar menú"
+                onClick={() => setIsMenuOpen(false)}
+              />
+              <div className="site-mobile-menu mobile-menu-portal">
+                <nav id="site-sections-menu" aria-label="Secciones principales">
+                  <a
+                    href="/"
+                    aria-current={
+                      window.location.pathname === "/" ? "page" : undefined
+                    }
+                  >
+                    Inicio
+                  </a>
+                  {SECTION_LINKS.map((item) => (
+                    <a
+                      href={item.path}
+                      key={item.path}
+                      aria-current={
+                        item.path === window.location.pathname
+                          ? "page"
+                          : undefined
+                      }
+                    >
+                      {item.label}
+                    </a>
+                  ))}
+                </nav>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

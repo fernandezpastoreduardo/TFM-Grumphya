@@ -42,12 +42,14 @@ export function IdeaInput({
           aria-invalid={Boolean(errorMessage)}
         />
         <TranscriptUserIdea onTranscript={onDictatedText} />
-      </div>
-      <div className="idea-input-meta">
-        <span id={HELP_ID}>{IDEA_INPUT_HELP}</span>
-        <span aria-live="polite">
-          {value.length}/{MAX_IDEA_LENGTH}
-        </span>
+        <div className="idea-input-meta">
+          <span className="sr-only" id={HELP_ID}>
+            {IDEA_INPUT_HELP}
+          </span>
+          <span aria-live="polite">
+            {value.length}/{MAX_IDEA_LENGTH}
+          </span>
+        </div>
       </div>
       {errorMessage ? (
         <p className="idea-input-error" id={ERROR_ID} role="alert">

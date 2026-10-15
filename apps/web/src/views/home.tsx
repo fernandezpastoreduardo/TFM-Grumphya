@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
 import {
@@ -15,8 +16,6 @@ const THEME_LABEL = {
   LIGHT: "Activar modo oscuro",
   DARK: "Activar modo claro",
 } as const;
-const DEFAULT_IDEA_SYNTHESIS = "una app para hacer un Tinder de saltamontes";
-const IDEA_SYNTHESIS_MAX_LENGTH = 84;
 const NAV_SECTIONS = [
   { path: "/lo-peor-de-lo-peor", label: "Peores ideas" },
   { path: "/descargate", label: "Descárgate" },
@@ -25,21 +24,21 @@ const NAV_SECTIONS = [
   { path: "/precios", label: "Planes" },
   { path: "/contacto", label: "Contacto" },
 ] as const;
+type HeroRayPlacement =
+  | "hero-rays-copy-start"
+  | "hero-rays-copy-end"
+  | "hero-rays-stage-start"
+  | "hero-rays-stage-end";
+const HERO_RAY_MARKS = ["short", "middle", "long"] as const;
 
-function getIdeaSynthesis(ideaText: string): string {
-  const normalizedText = ideaText.replace(/\s+/g, " ").trim();
-  if (!normalizedText) return DEFAULT_IDEA_SYNTHESIS;
-
-  const sentence = normalizedText.split(/[.!?](?:\s|$)/, 1)[0];
-  if (!sentence) return DEFAULT_IDEA_SYNTHESIS;
-  const title = sentence[0].toLocaleLowerCase("es-ES") + sentence.slice(1);
-  if (title.length <= IDEA_SYNTHESIS_MAX_LENGTH) return title;
-
-  const truncatedTitle = title.slice(0, IDEA_SYNTHESIS_MAX_LENGTH).trimEnd();
-  const lastSpace = truncatedTitle.lastIndexOf(" ");
-  const excerpt =
-    lastSpace > 0 ? truncatedTitle.slice(0, lastSpace) : truncatedTitle;
-  return `${excerpt}…`;
+function HeroRayCluster({ placement }: { placement: HeroRayPlacement }) {
+  return (
+    <span className={`hero-ray-cluster ${placement}`} aria-hidden="true">
+      {HERO_RAY_MARKS.map((mark) => (
+        <span className={`hero-ray hero-ray-${mark}`} key={mark} />
+      ))}
+    </span>
+  );
 }
 
 function isHealthResponse(value: unknown): value is Health {
@@ -65,7 +64,7 @@ export function Home() {
     useState<EvaluationProcessResult | null>(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [ideaSynthesis, setIdeaSynthesis] = useState(DEFAULT_IDEA_SYNTHESIS);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -105,7 +104,9 @@ export function Home() {
   }
 
   return (
-    <div className={`home-page theme-${theme}`}>
+    <div
+      className={`home-page theme-${theme}${isMobileMenuOpen ? " menu-open" : ""}`}
+    >
       <main className="home-shell">
         <header className="home-topbar">
           <a className="home-brand" href="/" aria-label="Grumphya, inicio">
@@ -139,44 +140,80 @@ export function Home() {
             <button
               className="theme-toggle"
               type="button"
+              role="switch"
               aria-label={
                 theme === "light" ? THEME_LABEL.LIGHT : THEME_LABEL.DARK
               }
-              aria-pressed={theme === "dark"}
+              aria-checked={theme === "dark"}
               onClick={() => setTheme(theme === "light" ? "dark" : "light")}
             >
-              {theme === "light" ? "Modo oscuro" : "Modo claro"}
+              <span className="theme-switch-sun" aria-hidden="true">
+                ☀
+              </span>
+              <span className="theme-switch-track" aria-hidden="true">
+                <span className="theme-switch-thumb">
+                  {theme === "light" ? "☀" : "☾"}
+                </span>
+              </span>
+              <span className="theme-switch-moon" aria-hidden="true">
+                ☾
+              </span>
             </button>
+            <div className="home-mobile-menu">
+              <button
+                className="mobile-menu-trigger"
+                type="button"
+                aria-label={
+                  isMobileMenuOpen ? "Cerrar menú" : "Abrir menú de secciones"
+                }
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="home-sections-menu"
+                onClick={() => setIsMobileMenuOpen((open) => !open)}
+              >
+                <span className="menu-icon-open" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M4 6.5h16M4 12h16M4 17.5h16" />
+                  </svg>
+                </span>
+                <span className="menu-icon-close" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="m6 6 12 12M18 6 6 18" />
+                  </svg>
+                </span>
+              </button>
+            </div>
           </div>
         </header>
 
         <header className="home-heading">
-          <h1>Venga, al lío.</h1>
           <div className="home-hero-strip">
             <div className="home-heading-copy">
+              <h1>
+                <span className="hero-line hero-line-yellow">
+                  Antes de construirla,
+                </span>
+                <span className="hero-line hero-line-pink">
+                  mira dónde puede romperse.
+                </span>
+              </h1>
               <p className="home-rude-line">
-                La única IA a la que tu idea le importa menos que{" "}
-                <strong className="home-idea-synthesis">
-                  {ideaSynthesis}.
-                </strong>
+                Grumphya revisa viabilidad, riesgos y supuestos de tu idea de
+                app.
               </p>
+              <HeroRayCluster placement="hero-rays-copy-start" />
+              <HeroRayCluster placement="hero-rays-copy-end" />
             </div>
-            <span className="home-creature" aria-hidden="true" />
+            <div className="home-hero-stage" aria-hidden="true">
+              <span className="home-stage-light" />
+              <span className="home-creature" />
+              <HeroRayCluster placement="hero-rays-stage-start" />
+              <HeroRayCluster placement="hero-rays-stage-end" />
+            </div>
           </div>
         </header>
 
         <section className="home-workspace" aria-label="Preparar una idea">
-          <div className="home-workspace-topline">
-            <span className="home-step">01</span>
-            <div>
-              <h2>Vale, sorpréndeme.</h2>
-              <p>Tu idea, sin el pitch de gurú. Vamos al grano.</p>
-            </div>
-          </div>
           <GetUserIdea
-            onIdeaChange={(ideaText) =>
-              setIdeaSynthesis(getIdeaSynthesis(ideaText))
-            }
             onSubmit={(request) => void handleEvaluation(request)}
             isSubmitting={isEvaluating}
           />
@@ -236,6 +273,33 @@ export function Home() {
           <span className="home-footer-note">Será por malas ideas.</span>
         </footer>
       </main>
+      {isMobileMenuOpen
+        ? createPortal(
+            <>
+              <button
+                className="mobile-menu-backdrop"
+                type="button"
+                aria-label="Cerrar menú"
+                onClick={() => setIsMobileMenuOpen(false)}
+              />
+              <div className="home-mobile-menu mobile-menu-portal">
+                <nav id="home-sections-menu" aria-label="Secciones principales">
+                  <a href="/" aria-current="page">
+                    Inicio
+                  </a>
+                  {NAV_SECTIONS.map((section) => (
+                    <a href={section.path} key={section.path}>
+                      {section.label}
+                    </a>
+                  ))}
+                  <a href="/login">Entrar</a>
+                  <a href="/precios">Crear cuenta</a>
+                </nav>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

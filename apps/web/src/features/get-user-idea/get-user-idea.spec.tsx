@@ -9,7 +9,7 @@ const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
 const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
 const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
 const INPUT_LABEL = /qué aplicación tienes en mente/i;
-const SUBMIT_LABEL = /^a ver qué tienes/i;
+const SUBMIT_LABEL = /^evaluar idea/i;
 const MICROPHONE_BUTTON_LABEL = /dictar idea/i;
 const PERMISSION_DENIED_MESSAGE = /permiso al micrófono/i;
 
@@ -207,7 +207,7 @@ describe("GetUserIdea", () => {
     ).toHaveFocus();
     await user.tab();
     expect(
-      screen.getByRole("radio", { name: /dime qué opinas/i }),
+      screen.getByRole("radio", { name: /tengo la piel fina/i }),
     ).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: SUBMIT_LABEL })).toHaveFocus();
@@ -215,7 +215,7 @@ describe("GetUserIdea", () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
 
     rerender(<GetUserIdea onSubmit={onSubmit} isSubmitting />);
-    expect(screen.getByRole("button", { name: /preparando/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /evaluando/i })).toBeDisabled();
   });
 
   it("does not persist or send captured text on its own", async () => {

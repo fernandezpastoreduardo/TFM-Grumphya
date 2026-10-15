@@ -18,13 +18,13 @@ type GetUserIdeaProps = {
 const TONE_OPTIONS: { tone: IdeaTone; label: string; description: string }[] = [
   {
     tone: "soft",
-    label: "Dime qué opinas",
-    description: "Directa, sin ensañarse.",
+    label: "Tengo la piel fina",
+    description: "Con cuidado: también tengo sentimientos.",
   },
   {
     tone: "hard",
     label: "Dame tu mejor golpe",
-    description: "Sarcasmo afilado. Sin anestesia.",
+    description: "Sin filtros. Dime la verdad, aunque duela.",
   },
 ];
 const EMPTY_IDEA_MESSAGE =
@@ -36,8 +36,8 @@ const DICTATION_SEPARATOR = " ";
 const INVALID_IDEA_MESSAGE =
   "Eso no parece texto utilizable. Prueba a escribirlo otra vez.";
 const BUTTON_LABEL = {
-  IDLE: "A ver qué tienes",
-  LOADING: "Preparando…",
+  IDLE: "Evaluar idea",
+  LOADING: "Evaluando…",
 } as const;
 const VALIDATION_MESSAGES: Record<InvalidIdeaTextReason, string> = {
   not_text: INVALID_IDEA_MESSAGE,
@@ -108,9 +108,10 @@ export function GetUserIdea({
               checked={tone === option.tone}
               onChange={() => setTone(option.tone)}
             />
-            <span className="idea-tone-icon" aria-hidden="true">
-              {option.tone === "soft" ? "✌️" : "😤"}
-            </span>
+            <span
+              className={`idea-tone-illustration idea-tone-illustration-${option.tone}`}
+              aria-hidden="true"
+            />
             <span className="idea-tone-copy">
               <span className="idea-tone-label">{option.label}</span>
               <span className="idea-tone-description">
@@ -122,7 +123,30 @@ export function GetUserIdea({
       </fieldset>
       <button className="idea-submit" type="submit" disabled={isSubmitting}>
         {isSubmitting ? BUTTON_LABEL.LOADING : BUTTON_LABEL.IDLE}
-        <span aria-hidden="true">↗</span>
+        <svg
+          className="submit-arrow"
+          viewBox="0 0 28 18"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M2 9h21m-7-7 7 7-7 7" />
+        </svg>
+        <span
+          className="submit-ray-cluster submit-ray-cluster-start"
+          aria-hidden="true"
+        >
+          <span />
+          <span />
+          <span />
+        </span>
+        <span
+          className="submit-ray-cluster submit-ray-cluster-end"
+          aria-hidden="true"
+        >
+          <span />
+          <span />
+          <span />
+        </span>
       </button>
       <p className="idea-privacy-note">
         La idea se envía al backend para evaluación y no se persiste. El dictado
