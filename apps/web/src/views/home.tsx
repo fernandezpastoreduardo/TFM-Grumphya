@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
+import { EvaluationDialog } from "../features/idea-evaluation/components/EvaluationDialog";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
 import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
 import {
@@ -15,7 +16,6 @@ type Health = { status: "ok"; database: "ok"; pgvector: string };
 const API_HEALTH_PATH = "/api/health";
 const EVALUATION_FAILURE_MESSAGE =
   "No se pudo completar el scoring. La idea sigue en el formulario; inténtalo otra vez.";
-const EVALUATION_LOADING_MESSAGE = "Evaluando tu idea. La espera no la mejora.";
 const THEME_LABEL = {
   LIGHT: "Activar modo oscuro",
   DARK: "Activar modo claro",
@@ -73,6 +73,7 @@ export function Home() {
     idempotencyKey: string;
   } | null>(null);
   const [evaluationError, setEvaluationError] = useState("");
+  const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -104,6 +105,7 @@ export function Home() {
     setSimilarIdeaMatch(null);
     setEvaluationError("");
     setIsEvaluating(true);
+    setIsEvaluationDialogOpen(true);
     const idempotencyKey = crypto.randomUUID();
     try {
       const result = await evaluationProcess(request, idempotencyKey);
@@ -123,6 +125,7 @@ export function Home() {
     if (!pendingEvaluation) return;
     setEvaluationError("");
     setIsEvaluating(true);
+    setIsEvaluationDialogOpen(true);
     try {
       const result = await evaluationProcess(
         pendingEvaluation.request,
@@ -282,22 +285,38 @@ export function Home() {
         <section
           className="home-result"
           aria-label="Resultado de la evaluación"
-          aria-live="polite"
         >
-          {isEvaluating ? (
-            <p className="home-result-status" role="status">
-              {EVALUATION_LOADING_MESSAGE}
-            </p>
+          {!isEvaluationDialogOpen &&
+          (isEvaluating ||
+            evaluationError ||
+            evaluationResult ||
+            similarIdeaMatch) ? (
+            <button
+              className="evaluation-reopen-button"
+              type="button"
+              onClick={() => setIsEvaluationDialogOpen(true)}
+            >
+              {isEvaluating
+                ? "Volver a la evaluación en curso"
+                : "Ver resultado de la evaluación"}
+            </button>
           ) : null}
-          {evaluationError ? (
+        </section>
+
+        <EvaluationDialog
+          open={isEvaluationDialogOpen}
+          isEvaluating={isEvaluating}
+          onClose={() => setIsEvaluationDialogOpen(false)}
+        >
+          {!isEvaluating && evaluationError ? (
             <p className="home-result-error" role="alert">
               {evaluationError}
             </p>
           ) : null}
-          {evaluationResult ? (
+          {!isEvaluating && evaluationResult ? (
             <EvaluationResult result={evaluationResult} />
           ) : null}
-          {similarIdeaMatch ? (
+          {!isEvaluating && similarIdeaMatch ? (
             <SimilarIdeaNotice
               match={similarIdeaMatch}
               tone={pendingEvaluation?.request.tone ?? "soft"}
@@ -305,7 +324,7 @@ export function Home() {
               onContinue={() => void handleContinueEvaluation()}
             />
           ) : null}
-        </section>
+        </EvaluationDialog>
 
         <section className="home-marketing" aria-label="Por qué usar Grumphya">
           <div>

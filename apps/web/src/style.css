@@ -6276,3 +6276,176 @@ b {
 .theme-dark .idea-tone-option .idea-tone-description {
   color: #172123 !important;
 }
+
+/* Evaluation is presented in the browser top layer, above the stage artwork. */
+.evaluation-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  width: min(780px, calc(100vw - 36px));
+  max-width: none;
+  max-height: min(86dvh, 900px);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-ink);
+  border-radius: 24px 24px 24px 8px;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+
+.evaluation-dialog::backdrop {
+  background: rgb(20 47 51 / 46%);
+  backdrop-filter: blur(2px);
+}
+
+.evaluation-dialog-panel {
+  position: relative;
+  display: grid;
+  gap: 20px;
+  min-height: 180px;
+  padding: clamp(24px, 5vw, 44px);
+}
+
+.evaluation-dialog-close {
+  position: absolute;
+  z-index: 1;
+  top: 14px;
+  right: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 7px 13px;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-teal-dark);
+  color: #fffefa;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.evaluation-dialog-close:hover {
+  background: #0bb0b7;
+}
+
+.evaluation-dialog-close:focus-visible,
+.evaluation-reopen-button:focus-visible {
+  outline: 3px solid #f2c64a;
+  outline-offset: 3px;
+}
+
+.evaluation-dialog-close svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.5;
+}
+
+.evaluation-loading {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  min-height: 220px;
+  padding: 34px 6px 8px;
+}
+
+.evaluation-loading-mascot {
+  display: block;
+  width: 104px;
+  aspect-ratio: 1;
+  background: url("../../../ideas-and-designs/revision-vectorial/revisados/spinner-evaluation.gif") center / contain no-repeat;
+}
+
+.evaluation-loading h2 {
+  margin: 0 0 8px;
+  font-family: "Fredoka", "Trebuchet MS", sans-serif;
+  font-size: clamp(1.35rem, 4vw, 2rem);
+  line-height: 1.12;
+}
+
+.evaluation-loading p {
+  max-width: 40ch;
+  margin: 0;
+  color: #304548;
+  line-height: 1.5;
+}
+
+.evaluation-dialog .evaluation-result-card {
+  margin: 32px 0 6px;
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+
+.evaluation-dialog .home-result-error {
+  margin-top: 34px;
+}
+
+.evaluation-dialog .similar-idea-notice {
+  margin-top: 28px;
+}
+
+.evaluation-reopen-button {
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  padding: 9px 15px;
+  background: var(--color-teal-dark);
+  color: #fffefa;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.theme-dark .evaluation-dialog {
+  background: #1b2b2b;
+  color: #f5f5eb;
+}
+
+.theme-dark .evaluation-loading p {
+  color: #d4e5df;
+}
+
+@media (max-width: 600px) {
+  .evaluation-dialog {
+    width: calc(100vw - 24px);
+    max-height: 88dvh;
+    border-radius: 20px 20px 20px 8px;
+    box-shadow: 5px 5px 0 var(--color-ink);
+  }
+
+  .evaluation-dialog-panel {
+    gap: 14px;
+    padding: 60px 18px 22px;
+  }
+
+  .evaluation-dialog-close {
+    top: 10px;
+    right: 10px;
+  }
+
+  .evaluation-loading {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 175px;
+    padding: 8px 0;
+  }
+
+  .evaluation-loading-mascot {
+    width: 72px;
+  }
+
+  .evaluation-dialog .evaluation-result-card {
+    margin-top: 0;
+    padding: 14px;
+  }
+
+  .evaluation-dialog .similar-idea-notice {
+    margin-top: 0;
+  }
+}
