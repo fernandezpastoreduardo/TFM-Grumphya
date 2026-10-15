@@ -533,3 +533,15 @@ pnpm lint
 - **Extracted functions** → Better readability, testability, reusability
 
 These standards ensure **first-try success** with lint and tests, maintain code quality, and follow industry best practices.
+
+## Persistent workflow aliases
+
+### `dotese`
+
+When the user says `dotese`, orchestrate three specialized subagents:
+
+1. A documentation reviewer checks `/doc` and relevant `.md` files for errors, omissions, stale statements, and inconsistencies.
+2. A senior developer checks the implemented features for missing tests and adds the necessary tests. If this work requires documentation changes, the developer asks the documentation reviewer (agent 1) to make them.
+3. A cybersecurity expert reviews the current application for newly introduced vulnerabilities and poor security practices. If this work requires documentation changes, the security reviewer asks the documentation reviewer (agent 1) to make them.
+
+The documentation reviewer owns edits to `/doc` and relevant `.md` files requested by the other reviewers, so those edits remain coordinated. The three reviews may proceed in parallel where their work does not conflict; reconcile their findings and changes before reporting completion.
