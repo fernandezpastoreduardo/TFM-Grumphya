@@ -10,6 +10,10 @@ import { OpenAiTextEmbeddingPort } from "./infrastructure/ai/openai-text-embeddi
 import { TEXT_EMBEDDING_PORT } from "./infrastructure/ai/text-embedding.tokens";
 import { createPostgresPool } from "./infrastructure/database/postgres-pool";
 import { RegistrationModule } from "./register-with-plan/registration.module";
+import { AnonymousUsageController } from "./manage-user-unknow/anonymous-usage.controller";
+import { ANONYMOUS_USAGE_REPOSITORY } from "./manage-user-unknow/anonymous-usage.models";
+import { PostgresAnonymousUsageRepository } from "./manage-user-unknow/postgres-anonymous-usage.repository";
+import { AnonymousUsageService } from "./manage-user-unknow/anonymous-usage.service";
 import { SearchSimilarIdea } from "./search-similar-idea/search-similar-idea";
 import { OpenAiIdeaEquivalencePort } from "./search-similar-idea/openai-idea-equivalence.port";
 import { OpenAiSemanticIdeaFingerprintPort } from "./search-similar-idea/openai-semantic-idea-fingerprint.port";
@@ -66,13 +70,18 @@ function createIdeaSubmissionService(
   search: SearchSimilarIdea | undefined,
   repository: WorstIdeasRepository,
   evaluation: EvaluationProcessService,
+  usage: AnonymousUsageService,
 ): IdeaSubmissionService {
-  return new IdeaSubmissionService(search, repository, evaluation);
+  return new IdeaSubmissionService(search, repository, evaluation, usage);
 }
 
 @Module({
   imports: [RegistrationModule],
-  controllers: [HealthController, EvaluationProcessController],
+  controllers: [
+    HealthController,
+    EvaluationProcessController,
+    AnonymousUsageController,
+  ],
   providers: [
     EvaluationProcessService,
     { provide: EVALUATION_PORT, useFactory: createEvaluationProvider },
@@ -90,6 +99,12 @@ function createIdeaSubmissionService(
       useFactory: () => new PostgresWorstIdeasRepository(createPostgresPool()),
     },
     {
+      provide: ANONYMOUS_USAGE_REPOSITORY,
+      useFactory: () =>
+        new PostgresAnonymousUsageRepository(createPostgresPool()),
+    },
+    AnonymousUsageService,
+    {
       provide: IDEA_SUBMISSION_SEARCH,
       useFactory: createIdeaSearch,
       inject: [
@@ -106,6 +121,7 @@ function createIdeaSubmissionService(
         IDEA_SUBMISSION_SEARCH,
         WORST_IDEAS_REPOSITORY,
         EvaluationProcessService,
+        AnonymousUsageService,
       ],
     },
   ],

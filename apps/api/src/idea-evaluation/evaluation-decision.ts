@@ -8,6 +8,7 @@ export const EVALUATION_CRITERION_IDS = [
   "C07",
   "C08",
   "C09",
+  "C10",
 ] as const;
 
 export type EvaluationCriterionId = (typeof EVALUATION_CRITERION_IDS)[number];
@@ -23,7 +24,8 @@ export type EvaluationReasonCode =
   | "CONFLICTO_ESTRUCTURAL"
   | "UTILIDAD_ANULADA"
   | "ECONOMIA_INCOMPATIBLE"
-  | "HAPPY_PATH_ESTRUCTURAL";
+  | "HAPPY_PATH_ESTRUCTURAL"
+  | "DIFERENCIACION_AUSENTE";
 
 export type EvaluatedCriterion =
   | {
@@ -62,6 +64,7 @@ const REASON_CODE_BY_CRITERION: Record<
   C07: "UTILIDAD_ANULADA",
   C08: "ECONOMIA_INCOMPATIBLE",
   C09: "HAPPY_PATH_ESTRUCTURAL",
+  C10: "DIFERENCIACION_AUSENTE",
 };
 const INVALID_DECISION_MESSAGE = "Respuesta del evaluador no válida.";
 const MIN_MESSAGE_WORDS = 8;
@@ -375,6 +378,8 @@ function isValidDecisionStatus(
   }
   return (
     decision.evaluated.length === EVALUATION_CRITERION_IDS.length &&
+    decision.evaluated.at(-1)?.id === "C10" &&
+    decision.evaluated.at(-1)?.state === "PUNTUADO" &&
     decision.evaluated.every(
       (criterion) =>
         criterion.state !== "PUNTUADO" ||

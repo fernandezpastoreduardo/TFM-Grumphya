@@ -16,6 +16,7 @@ const DECISION: ModelDecision = {
     { id: "C07", state: "PUNTUADO", score: 60 },
     { id: "C08", state: "INDETERMINADO", score: null },
     { id: "C09", state: "NO_APLICA", score: null },
+    { id: "C10", state: "PUNTUADO", score: 50 },
   ],
   stop_at: null,
   reason_code: null,
@@ -31,12 +32,17 @@ const LONG_VALID_MESSAGE =
 describe("renderMessage", () => {
   it("keeps the factual explanation separate from the tone-specific headline", () => {
     expect(renderMessage(DECISION, "soft")).toBe(NEUTRAL_MESSAGE);
-    expect(renderMessage({
-      ...DECISION,
-      status: "RECHAZADA",
-      hardSetup: "un grillo usando un móvil o un ordenador",
-      hardConsequence: "sin esa interacción, nadie llega a encontrarse",
-    }, "hard")).toBe(
+    expect(
+      renderMessage(
+        {
+          ...DECISION,
+          status: "RECHAZADA",
+          hardSetup: "un grillo usando un móvil o un ordenador",
+          hardConsequence: "sin esa interacción, nadie llega a encontrarse",
+        },
+        "hard",
+      ),
+    ).toBe(
       "¿Has visto alguna vez un grillo usando un móvil o un ordenador? Pues eso: sin esa interacción, nadie llega a encontrarse. A ver si le damos una vuelta más a las cosas la próxima vez.",
     );
     expect(renderHeadline("RECHAZADA", "soft")).toBe(

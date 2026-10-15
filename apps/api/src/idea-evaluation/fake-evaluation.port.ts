@@ -16,6 +16,7 @@ function createFakeDecision() {
       { id: "C07", state: "NO_APLICA", score: null },
       { id: "C08", state: "INDETERMINADO", score: null },
       { id: "C09", state: "NO_APLICA", score: null },
+      { id: "C10", state: "PUNTUADO", score: 60 },
     ],
     stop_at: null,
     reason_code: null,

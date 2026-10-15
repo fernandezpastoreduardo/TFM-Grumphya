@@ -19,12 +19,14 @@ const MIGRATIONS = [
     version: "007_idempotency_request_hash",
     file: "007_idempotency_request_hash.sql",
   },
+  { version: "008_anonymous_usage", file: "008_anonymous_usage.sql" },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(728194031)");
     await client.query(
       "CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())",
     );

@@ -15,7 +15,7 @@ pnpm install
 pnpm db:setup
 ```
 
-`pnpm db:setup` genera `.env.docker` con una contraseña aleatoria de desarrollo y permisos de archivo `0600`; está excluida de Git. No la copies a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
+`pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y un secreto HMAC de IP aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
 
 ## Arranque
 
@@ -84,15 +84,15 @@ La conversión voz-a-texto se comparte entre features porque también está
 prevista para el envío de roast; su botón y manejo de estado permanecen locales
 a cada feature, de acuerdo con la regla de alcance del proyecto.
 
-## Scoring de evaluación (rama experimental)
+## Evaluación de ideas
 
 `POST /api/evaluation-process` valida la idea y delega en el `EvaluationPort`.
 Sin proveedor configurado, el endpoint mantiene el comportamiento seguro
 actual y responde `503`; el fake solo está registrado en pruebas.
 
-Esta rama experimental añade un adaptador directo a OpenAI Responses API. Para
-activarlo en desarrollo, añade estas variables al archivo local ignorado
-`.env.openai` y reinicia `pnpm dev`:
+La evaluación configurable está integrada en la aplicación. Para activarla en
+desarrollo, añade estas variables al archivo local ignorado `.env.openai` y
+reinicia `pnpm dev`:
 
 ```dotenv
 EVALUATION_PROVIDER=openai
@@ -103,12 +103,13 @@ OPENAI_REASONING_EFFORT=medium
 
 No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.openai` además de `.env.docker`. El modelo y
-el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v6`
-aplica una lectura adversarial proporcional: no presupone honestidad ni buenas
-intenciones, y analiza abuso, impacto, verificación, contención y reparación,
-especialmente en interacciones presenciales entre desconocidos. No convierte
-riesgos exóticos ni detalles rutinarios en vetos. Cada envío se evalúa por
-separado y no pide aclaraciones.
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v7`
+aplica una lectura adversarial proporcional, incluye diferenciación frente a
+funciones comunes en categorías maduras y exige una puntuación en toda idea
+funcional. No presupone honestidad ni buenas intenciones, analiza abuso,
+impacto, verificación, contención y reparación, especialmente en interacciones
+presenciales entre desconocidos. No convierte riesgos exóticos ni detalles
+rutinarios en vetos. Cada envío se evalúa por separado y no pide aclaraciones.
 La API envía la idea, el tono elegido y la versión de política a OpenAI. El tono
 solo debe modificar la redacción de `message`, nunca el veredicto o la
 puntuación. Las respuestas se solicitan con JSON Schema estricto y `store: false`,
@@ -119,10 +120,13 @@ datos de OpenAI](https://developers.openai.com/api/docs/guides/your-data) antes
 de enviar ideas reales.
 
 La validación semántica del backend sigue siendo autoritativa: JSON bien
-formado no garantiza que la decisión respete la rúbrica. Esta rama es para una
-comparación exploratoria. El resultado del front presenta titular, puntuación
-y explicación específica; el titular se adapta a estado y tono y la UI no
-etiqueta los defectos como «bloqueos».
+formado no garantiza que la decisión respete la rúbrica. Si falta la
+configuración del proveedor, el endpoint responde `503`; el fake solo se
+registra en pruebas. La API envía a OpenAI el texto de la idea y la versión de
+política, pero no el tono. El proveedor devuelve una evaluación neutral y el
+servidor compone el titular y el mensaje visibles según el tono elegido. El
+resultado del front presenta titular, puntuación y explicación específica; la
+UI no etiqueta los defectos como «bloqueos».
 
 ## Entorno configurable
 

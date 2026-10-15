@@ -9,7 +9,7 @@ Grumphya es una aplicación web responsive, en español de España, que ayuda a 
 - Entrada de idea por teclado, pegado o dictado por voz; el usuario revisa la transcripción antes de enviarla.
 - Evaluación según la rúbrica v1 documentada en [`agentic-guidelines/features.md`](agentic-guidelines/features.md).
 - Reutilización de una evaluación existente solo con similitud semántica estrictamente superior a `0,90`.
-- Tres usos anónimos de evaluación de ideas y tres de roast por sesión, sin historial personal anónimo.
+- Tres usos anónimos de evaluación de ideas y tres de roast de por vida por perfil de navegador, sin historial personal anónimo.
 - Alta y acceso de cuentas asociadas a un plan Iluminado o Faltón; la contratación se simula y no procesa dinero real.
 - Cada plan dura un mes natural. Iluminado concede 11 evaluaciones de ideas al día; Faltón concede 11 envíos de roast al día. Los límites se reinician a las 00:00 de `Europe/Madrid`.
 - Historial privado para usuarios registrados.

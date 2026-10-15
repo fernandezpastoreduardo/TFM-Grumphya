@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
 import { EvaluationDialog } from "../features/idea-evaluation/components/EvaluationDialog";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
 import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
+import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
 import {
   evaluationProcess,
   EvaluationProcessError,
@@ -76,6 +77,8 @@ export function Home() {
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const isEvaluationSubmittingRef = useRef(false);
+  const anonymousUsage = useAnonymousUsage();
 
   useEffect(() => {
     let isMounted = true;
@@ -101,6 +104,8 @@ export function Home() {
     ideaText: string;
     tone: "soft" | "hard";
   }) {
+    if (isEvaluationSubmittingRef.current) return;
+    isEvaluationSubmittingRef.current = true;
     setEvaluationResult(null);
     setSimilarIdeaMatch(null);
     setEvaluationError("");
@@ -117,12 +122,15 @@ export function Home() {
           : EVALUATION_FAILURE_MESSAGE,
       );
     } finally {
+      isEvaluationSubmittingRef.current = false;
       setIsEvaluating(false);
+      await anonymousUsage.refresh();
     }
   }
 
   async function handleContinueEvaluation() {
-    if (!pendingEvaluation) return;
+    if (!pendingEvaluation || isEvaluationSubmittingRef.current) return;
+    isEvaluationSubmittingRef.current = true;
     setEvaluationError("");
     setIsEvaluating(true);
     setIsEvaluationDialogOpen(true);
@@ -144,7 +152,9 @@ export function Home() {
           : EVALUATION_FAILURE_MESSAGE,
       );
     } finally {
+      isEvaluationSubmittingRef.current = false;
       setIsEvaluating(false);
+      await anonymousUsage.refresh();
     }
   }
 
@@ -276,7 +286,13 @@ export function Home() {
           <GetUserIdea
             onSubmit={(request) => void handleEvaluation(request)}
             isSubmitting={isEvaluating}
+            remainingAttempts={anonymousUsage.usage?.ideas.remaining ?? null}
           />
+          {anonymousUsage.error ? (
+            <p className="home-result-error" role="alert">
+              {anonymousUsage.error}
+            </p>
+          ) : null}
           <p className="home-manifesto">
             Porque poder hacerlo no significa que debas hacerlo.
           </p>

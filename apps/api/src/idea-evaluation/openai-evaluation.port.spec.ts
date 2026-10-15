@@ -10,7 +10,7 @@ const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
-const POLICY_VERSION = "grumphya-concept-v6";
+const POLICY_VERSION = "grumphya-concept-v7";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
@@ -153,6 +153,7 @@ describe("OpenAiEvaluationPort", () => {
       "C06 conflicto grave entre personas sin vía de comprobación, contención o reparación",
     );
     expect(request).toContain("C09 dependencia perfecta del happy path");
+    expect(request).toContain("C10 diferenciación insuficiente");
     expect(request).toContain(
       "no son por sí mismos controles de fraude, seguridad o resolución de incidentes",
     );

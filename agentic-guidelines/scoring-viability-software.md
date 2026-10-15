@@ -1,6 +1,6 @@
 # grumphya — Filtro conceptual de ideas y scoring con corte temprano
 
-**Versión:** 3.2 — 12 de octubre de 2026
+**Versión:** 3.3 — 15 de octubre de 2026
 **Entrada de la evaluación:** una idea escrita en un textarea, breve o muy breve.
 **Objetivo:** detectar errores de bulto y devolver un score de 0 a 10 con dos decimales, un titular con personalidad y una explicación concreta de los aspectos mediocres y el defecto decisivo.
 **Sustituye:** el sistema de evaluación exhaustiva de la versión 1.0.
@@ -9,19 +9,21 @@
 
 Esta revisión incorpora los cuatro requisitos: entrada conceptual, integración como feature, parada al primer rechazo y especificación implementable por **Luna en esfuerzo medio mediante TDD**, adaptándose al repositorio real.
 
+**Estado de implementación (15 de octubre de 2026):** la rúbrica `grumphya-concept-v7` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea y la versión de política, no el tono; el servidor compone el titular y aplica el tono al redactar el mensaje. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD original y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
+
 **Orden de lectura para Luna:** resumen y alcance (secciones 1–3), rúbrica (4), contrato (8), prompt (9) y plan TDD (12). La sección 12 fija las decisiones de implementación; los ejemplos conceptuales de la sección 10 no sustituyen sus pruebas deterministas.
 
 ## 1. Cambio de enfoque
 
-| Versión anterior                                     | Modelo para la feature                                                  |
-| ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| Plan con alcance, presupuesto, datos y pruebas       | Texto libre con una idea                                                |
-| Investigar demanda, competencia, regulación y costes | Identificar contradicciones y riesgos estructurales evidentes           |
-| Desconocido podía puntuar <15                        | Lo desconocido queda sin puntuación y no provoca rechazo                |
-| Completar todos los criterios y subcriterios         | Revisar en orden y detenerse al primer bloqueo                          |
-| Media, mínimos críticos y aprobación condicionada    | Veto conceptual <15; score del filtro conceptual, no de viabilidad real |
-| Informe con causas y plan de validación              | Una sola frase sobre un solo motivo                                     |
-| Evidencia externa y revisión profesional             | Texto del usuario y razonamiento conceptual acotado                     |
+| Versión anterior                                     | Modelo para la feature                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- |
+| Plan con alcance, presupuesto, datos y pruebas       | Texto libre con una idea                                                  |
+| Investigar demanda, competencia, regulación y costes | Identificar contradicciones y riesgos estructurales evidentes             |
+| Desconocido podía puntuar <15                        | Lo desconocido queda sin puntuación y no provoca rechazo                  |
+| Completar todos los criterios y subcriterios         | Revisar en orden y detenerse al primer bloqueo                            |
+| Media, mínimos críticos y aprobación condicionada    | Veto conceptual <15; score del filtro conceptual, no de viabilidad real   |
+| Informe con causas y plan de validación              | Una sola frase sobre un solo motivo                                       |
+| Evidencia externa y revisión profesional             | Texto del usuario, conocimiento general acotado y razonamiento conceptual |
 
 La detección de ideas duplicadas es una feature independiente que se ejecutará
 antes de `evaluationProcess`. Utilizará comparación semántica con RAG y no
@@ -96,7 +98,7 @@ Una idea de una línea puede ser evaluable. «Una app para guardar recetas y cre
 
 Se mantiene la escala 0–100 por aspecto, pero cambia lo que representa:
 
-**El score expresa la solidez conceptual estimable de un aspecto con lo escrito, no su viabilidad real ni una probabilidad de éxito.**
+**El score expresa la solidez conceptual estimable de un aspecto con lo escrito, incluida la diferenciación descrita, no la viabilidad completa ni una probabilidad de éxito.**
 
 ### 3.1 Escala operativa
 
@@ -124,7 +126,7 @@ No se permite asignar <15 solo porque:
 - parece difícil;
 - puede necesitar dinero;
 - participa gente;
-- existe una categoría parecida;
+- existe una categoría parecida, sin que la idea se limite a copiar una función común sin diferenciarse;
 - un producto de esa clase podría tener problemas;
 - no hay un precio o una estrategia comercial.
 
@@ -147,7 +149,7 @@ Una nota de 15 exacta **no rechaza**. Si la explicación afirma imposibilidad y 
 | `NO_APLICA`     | `null`      | El criterio no corresponde a esta propuesta                |
 | `NO_EVALUADO`   | `null`      | Está después del veto o la ejecución no llegó a él         |
 
-No sustituir `null` por 50, 100 o 0. Los criterios posteriores a un rechazo **no se rellenan con notas hipotéticas**. No es necesario devolver nueve filas de null: basta el tramo efectivamente visitado y el punto de parada.
+No sustituir `null` por 50, 100 o 0. Los criterios posteriores a un rechazo **no se rellenan con notas hipotéticas**. En una idea funcional, C10 siempre aporta una nota; `null` queda reservado para criterios indeterminados/no aplicables y para `IDEA_INSUFICIENTE` en el score público.
 
 ### 3.4 Score visible de la evaluación
 
@@ -160,31 +162,33 @@ los posteriores al veto.
 
 En `SIN_BLOQUEO_EVIDENTE`, el score es la media aritmética de los criterios
 `PUNTUADO` visitados, convertida a escala 0–10 dividiendo entre 10 y redondeada
-a dos decimales. `INDETERMINADO` y `NO_APLICA` no entran en la media. Si no hay
-ningún criterio puntuado, el score es `null`. `IDEA_INSUFICIENTE` siempre usa
+a dos decimales. C10 debe ser `PUNTUADO`, por lo que una idea funcional nunca
+termina sin nota. `INDETERMINADO` y `NO_APLICA` no entran en la media.
+`IDEA_INSUFICIENTE` siempre usa
 `score: null`; no equivale a cero ni a rechazo.
 
 ## 4. Criterios y orden de revisión
 
-Se condensan los treinta criterios anteriores en nueve filtros. El orden prioriza defectos graves antes de hipótesis más inciertas. La detección de duplicados se especificará como feature RAG independiente previa a este caso de uso.
+Se condensan los treinta criterios anteriores en diez filtros. El orden prioriza defectos graves antes de hipótesis más inciertas. La detección de duplicados se especificará como feature RAG independiente previa a este caso de uso.
 
 La tabla es una rúbrica de diseño; no un formulario que el usuario deba completar.
 
-| Orden / ID | Aspecto                                          | Motivo suficiente para <15                                                                                                                                                                                                                                                         | Lo que no basta para rechazar                                                                   |
-| ---------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| 1 / C01    | Privacidad, derechos y legalidad conceptual      | El valor descrito exige acceso no autorizado, vigilancia sin consentimiento o apropiación explícita de recursos sin permiso                                                                                                                                                        | No mencionar política de privacidad, permisos, país o asesoría                                  |
-| 2 / C02    | Peligro para las personas                        | El mecanismo facilita un daño grave directo o entrega instrucciones/decisiones críticas con garantías imposibles declaradas                                                                                                                                                        | Una herramienta útil podría usarse mal; no detallar cada control                                |
-| 3 / C03    | Ética e incentivos dañinos                       | El beneficio exige engañar, explotar, coaccionar o humillar a personas                                                                                                                                                                                                             | Un tono provocador, una opinión discutible o una molestia menor                                 |
-| 4 / C04    | Coherencia y posibilidad técnica                 | El resultado contradice las capacidades descritas o falta el mecanismo conceptual para que el mecanismo técnico central observe lo que promete; también cuando el canal de captura, transmisión o reproducción no puede mostrar la cualidad física central que promete el producto | Complejidad, escala no descrita o «habría que programarlo»; una limitación secundaria del canal |
-| 5 / C05    | Dependencia de honestidad y afirmaciones fiables | El núcleo depende de afirmaciones de usuarios falseables y no describe una salvaguarda conceptual cuando el fraude dañaría la transacción                                                                                                                                          | Contenido aportado por usuarios o un mal uso meramente imaginable                               |
-| 6 / C06    | Conflictos entre personas                        | Hay una ruta previsible a un conflicto grave y el diseño no permite comprobar, contener ni reparar el daño                                                                                                                                                                         | Interacción social normal o no describir cada procedimiento                                     |
-| 7 / C07    | Utilidad y posibilidad conceptual de adopción    | El mecanismo elimina el beneficio, contradice el objetivo del usuario o falta una función esencial para mantenerlo                                                                                                                                                                 | Falta de entrevistas, métricas, usuarios o prueba de interés                                    |
-| 8 / C08    | Coste y monetización conceptuales                | La propia propuesta define ingresos y costes incompatibles, o promete un servicio ilimitado costoso sin recursos bajo condiciones expresamente imposibles                                                                                                                          | No incluir ROI, precio, financiación o monetización                                             |
-| 9 / C09    | Happy path y operación                           | El núcleo exige que terceros —en especial contrapartes desconocidas— cooperen y actúen siempre honestamente, sin alternativa segura ante un fallo previsible                                                                                                                       | Coordinación ordinaria entre personas o no describir infraestructura                            |
+| Orden / ID | Aspecto                                          | Motivo suficiente para <15                                                                                                                                                                                                                                                         | Lo que no basta para rechazar                                                                       |
+| ---------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 1 / C01    | Privacidad, derechos y legalidad conceptual      | El valor descrito exige acceso no autorizado, vigilancia sin consentimiento o apropiación explícita de recursos sin permiso                                                                                                                                                        | No mencionar política de privacidad, permisos, país o asesoría                                      |
+| 2 / C02    | Peligro para las personas                        | El mecanismo facilita un daño grave directo o entrega instrucciones/decisiones críticas con garantías imposibles declaradas                                                                                                                                                        | Una herramienta útil podría usarse mal; no detallar cada control                                    |
+| 3 / C03    | Ética e incentivos dañinos                       | El beneficio exige engañar, explotar, coaccionar o humillar a personas                                                                                                                                                                                                             | Un tono provocador, una opinión discutible o una molestia menor                                     |
+| 4 / C04    | Coherencia y posibilidad técnica                 | El resultado contradice las capacidades descritas o falta el mecanismo conceptual para que el mecanismo técnico central observe lo que promete; también cuando el canal de captura, transmisión o reproducción no puede mostrar la cualidad física central que promete el producto | Complejidad, escala no descrita o «habría que programarlo»; una limitación secundaria del canal     |
+| 5 / C05    | Dependencia de honestidad y afirmaciones fiables | El núcleo depende de afirmaciones de usuarios falseables y no describe una salvaguarda conceptual cuando el fraude dañaría la transacción                                                                                                                                          | Contenido aportado por usuarios o un mal uso meramente imaginable                                   |
+| 6 / C06    | Conflictos entre personas                        | Hay una ruta previsible a un conflicto grave y el diseño no permite comprobar, contener ni reparar el daño                                                                                                                                                                         | Interacción social normal o no describir cada procedimiento                                         |
+| 7 / C07    | Utilidad y posibilidad conceptual de adopción    | El mecanismo elimina el beneficio, contradice el objetivo del usuario o falta una función esencial para mantenerlo                                                                                                                                                                 | Falta de entrevistas, métricas, usuarios o prueba de interés                                        |
+| 8 / C08    | Coste y monetización conceptuales                | La propia propuesta define ingresos y costes incompatibles, o promete un servicio ilimitado costoso sin recursos bajo condiciones expresamente imposibles                                                                                                                          | No incluir ROI, precio, financiación o monetización                                                 |
+| 9 / C09    | Happy path y operación                           | El núcleo exige que terceros —en especial contrapartes desconocidas— cooperen y actúen siempre honestamente, sin alternativa segura ante un fallo previsible                                                                                                                       | Coordinación ordinaria entre personas o no describir infraestructura                                |
+| 10 / C10   | Diferenciación en una categoría madura           | La propuesta se limita a una función básica y habitual, no define público o necesidad distinta, resultado diferencial ni motivo para elegirla frente a alternativas comunes                                                                                                        | Que exista competencia por sí sola, que falten estudios, métricas, cifras o nombres de competidores |
 
 Todos los vetos conservan el mismo umbral <15; no hay pesos que compensen uno con otro.
 
-Para evitar solapamientos, C04 se reserva a contradicciones lógicas o técnicas del resultado; el beneficio anulado por fricción pertenece a C07 y las cuentas incompatibles a C08. Un incentivo o dependencia de afirmaciones falseables pertenece a C05; C06 cubre conflictos graves sin comprobación, contención o reparación; C09 cubre la dependencia de que todo el mundo coopere. C03 requiere que el engaño o la explotación sean el propio beneficio, no que el producto pudiera sufrir fraude.
+Para evitar solapamientos, C04 se reserva a contradicciones lógicas o técnicas del resultado; el beneficio anulado por fricción pertenece a C07 y las cuentas incompatibles a C08. Un incentivo o dependencia de afirmaciones falseables pertenece a C05; C06 cubre conflictos graves sin comprobación, contención o reparación; C09 cubre la dependencia de que todo el mundo coopere. C10 solo cubre propuestas genéricas en categorías claramente maduras sin razón reconocible para elegirlas; no basta con que haya competidores. C03 requiere que el engaño o la explotación sean el propio beneficio, no que el producto pudiera sufrir fraude.
 
 Al evaluar una promesa que depende de una cualidad perceptible (por ejemplo, color, brillo, contraste, sonido, tamaño o textura), comprobar si el canal propuesto puede capturarla, transmitirla y reproducirla de forma que el usuario pueda juzgarla. Una web que compara fotos de televisores encendidos no demuestra cuál televisor se ve mejor: la cámara y la pantalla de quien mira alteran brillo, color y contraste. Si esa comparación es el beneficio central, rechazar por C04 (el medio no permite observar la cualidad prometida) o por C07 cuando el defecto se formule como anulación del beneficio; no rechazar por una limitación que no invalida la propuesta ni asumir que toda imagen digital es inútil.
 
@@ -212,11 +216,13 @@ Cuando una objeción depende de normativa, autorizaciones o hechos actuales que 
 
 ### 4.2 Originalidad y duplicados
 
-La originalidad no se puntúa en `evaluationProcess`. La feature independiente
-de detección de duplicados se ejecutará antes, comparará ideas semánticamente
-con RAG y no utilizará resultados, notas ni otros datos de evaluación. Su
-contrato y la respuesta ante una coincidencia se especificarán al desarrollar
-esa feature; el evaluador de esta rúbrica no buscará ni inventará competidores.
+La detección de ideas rechazadas repetidas pertenece a la feature independiente
+`searchSimilarIdea`: compara semánticamente con RAG antes de `evaluationProcess`
+y no utiliza resultados ni notas de evaluación. C10 tiene otro propósito:
+valora si una propuesta funcional se limita a una función común de una categoría
+madura sin describir una razón para elegirla. Puede usar conocimiento general
+de alta confianza, pero no búsquedas, cifras, cuota de mercado ni nombres de
+competidores. No rechaza solo porque existan alternativas.
 
 ### 4.3 Adopción y dinero
 
@@ -286,7 +292,7 @@ Valores de partida propuestos para la feature, sujetos a prueba; no son requisit
 | Control                    | Propuesta inicial                                                                                           | Objetivo                                            |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | Tamaño del textarea        | Máximo 2.000 caracteres, visible al usuario                                                                 | Acotar entrada y evitar convertirlo en un plan      |
-| Contexto                   | Idea actual + política compacta + tono `soft`/`hard`                                                        | Evitar historial y documentos innecesarios          |
+| Contexto                   | Idea actual + política compacta; el tono se aplica en el servidor                                          | Evitar historial y documentos innecesarios          |
 | Llamadas                   | Una por envío válido                                                                                        | Evitar cascadas de modelos                          |
 | Tokens de salida           | Límite configurable bajo; empezar probando 500 tokens                                                       | Cubrir JSON compacto y una frase                    |
 | Resultado                  | Titular de Grumphya + explicación factual mordaz de 8–40 palabras + score visible de 0–10 con dos decimales | Feedback con personalidad y motivo concreto         |
@@ -306,10 +312,11 @@ La reutilización de resultados o caché es opcional y queda fuera del primer in
 
 ## 7. Feedback: titular con voz y explicación concreta
 
-El modelo recibe el tono seleccionado junto con la idea, pero no mantiene
-conversación. El tono modifica solo `message`: `soft` es cercano y ligeramente
-irónico; `hard` es mordaz e incisivo. Estado, criterios, puntuaciones, motivo y
-título seguro no deben depender del tono. La explicación usa español sencillo,
+El modelo recibe la idea, pero no el tono ni mantiene conversación. Devuelve
+una explicación neutral junto con los datos estructurados; el servidor aplica
+el tono solo al redactar `message`: `soft` es cercano y ligeramente irónico;
+`hard` es mordaz e incisivo. Estado, criterios, puntuaciones, motivo y título
+seguro no dependen del tono. La explicación usa español sencillo,
 nombra el defecto y su consecuencia y, cuando se deduce de la idea, quién
 tendría que usar la propuesta y por qué eso limita su adopción. No inventa datos,
 no invita a concretar, no ofrece soluciones ni culpa a la persona. No debe usar
@@ -374,7 +381,7 @@ No guardar este fragmento ni la idea en telemetría general por defecto. Los reg
 - Ninguna fila posterior al veto.
 - Fragmento `basis` no vacío y presente en la entrada para un rechazo.
 - El código de rechazo pertenece al criterio señalado.
-- En `SIN_BLOQUEO_EVIDENTE`, se han visitado los nueve criterios, aunque algunos sean indeterminados; ninguno tiene score <15.
+- En `SIN_BLOQUEO_EVIDENTE`, se han visitado los diez criterios, C10 tiene score ≥15 y ningún criterio puntuado tiene score <15.
 - En `SIN_BLOQUEO_EVIDENTE`, el score público es la media de los criterios `PUNTUADO` dividida entre 10 y redondeada a dos decimales; si no hay puntuados, es `null`.
 - En `IDEA_INSUFICIENTE`, no hay puntuaciones ni criterio de parada y el score público es `null`.
 - En estados sin rechazo, `stop_at`, `reason_code` y `basis` son `null`.
@@ -415,7 +422,8 @@ C05 dependencia central de afirmaciones falseables sin salvaguarda conceptual;
 C06 conflicto grave con ruta previsible sin prevención, comprobación, contención o reparación;
 C07 utilidad/adopción anulada por el propio mecanismo;
 C08 ingresos/costes conceptualmente incompatibles;
-C09 dependencia de cooperación perfecta, especialmente entre desconocidos.
+C09 dependencia de cooperación perfecta, especialmente entre desconocidos;
+C10 diferenciación frente a alternativas habituales en categorías maduras.
 
 C04 no sustituye a los criterios especializados: beneficio anulado va a C07
 y cuentas incompatibles a C08; incentivo de usuarios a mentir va a C05,
@@ -435,6 +443,11 @@ conviertas riesgos exóticos en vetos. No presupongas que el mecanismo se
 resolverá después. No preguntes ni pidas completar la idea: cada envío es
 independiente. No inventes incentivos no descritos.
 No inventes audiencia, presupuesto, demanda, competidores, permisos o leyes.
+Para C10, si la idea funcional solo nombra una función rutinaria de una
+categoría madura y no describe una diferencia concreta, recházala por
+DIFERENCIACION_AUSENTE. No afirmes que el mercado está saturado ni cites
+competidores o cifras. Una aplicación genérica para registrar entrenamientos
+sin un motivo para cambiar desde alternativas habituales es el ejemplo guía.
 No otorgues garantías por las palabras "IA", "seguro" o "blockchain".
 
 Para cada criterio visitado:
@@ -444,14 +457,15 @@ Scores 0, 5 o 10 indican un fallo bloqueante.
 Cualquier score <15 obliga a RECHAZADA y a parar inmediatamente.
 No evalúes ni devuelvas criterios posteriores; no busques el peor motivo.
 
-Si recorres los nueve sin veto, devuelve SIN_BLOQUEO_EVIDENTE.
+Si recorres los diez sin veto, devuelve SIN_BLOQUEO_EVIDENTE; C10 debe estar
+PUNTUADO para que una idea funcional siempre reciba una nota numérica.
 Eso no significa viable, original, legal o rentable.
 
 Devuelve solo el JSON del contrato:
 status, evaluated, stop_at, reason_code, basis, message.
-evaluated debe ser un prefijo continuo de C01 a C09, sin saltos ni repetición.
+evaluated debe ser un prefijo continuo de C01 a C10, sin saltos ni repetición.
 En RECHAZADA acaba en el primer veto; en SIN_BLOQUEO_EVIDENTE contiene
-los nueve criterios y en IDEA_INSUFICIENTE es un array vacío.
+los diez criterios y C10 tiene score; en IDEA_INSUFICIENTE es un array vacío.
 En rechazo, basis es un fragmento corto literal de la idea que sostiene el fallo.
 En otros estados, stop_at, reason_code y basis son null.
 No devuelvas razonamiento extenso ni puntuación global; el servidor deriva la
@@ -478,7 +492,8 @@ El catálogo de códigos puede ser reducido:
 `PRIVACIDAD_ESTRUCTURAL`, `PELIGRO_ESTRUCTURAL`, `ETICA_ESTRUCTURAL`,
 `CONTRADICCION_NUCLEO`, `HONESTIDAD_ESTRUCTURAL`,
 `CONFLICTO_ESTRUCTURAL`, `UTILIDAD_ANULADA`,
-`ECONOMIA_INCOMPATIBLE`, `HAPPY_PATH_ESTRUCTURAL`.
+`ECONOMIA_INCOMPATIBLE`, `HAPPY_PATH_ESTRUCTURAL`,
+`DIFERENCIACION_AUSENTE`.
 
 Adjuntar la idea como datos separados de las instrucciones. No concatenar el textarea como si fuera parte de la política. No enviar tone al modelo.
 
@@ -552,7 +567,7 @@ Antes de editar:
 
 No adivinar comandos de arranque, puertos ni prefijos HTTP. Si no está el repositorio, eso bloquea implementar código, no autoriza crear otro proyecto paralelo.
 
-Reutilizar cliente, módulo, endpoint y runner cuando existan. Si falta runner, elegir **uno compatible con el workspace**, no instalar varios. En esta fase se usa un fake solo en las pruebas; la integración con un proveedor real queda para una tarea posterior. No entregar un fake como servicio de producción: mientras no haya proveedor configurado, el endpoint responde con el error de servicio acordado, no con una evaluación simulada.
+Reutilizar cliente, módulo, endpoint y runner cuando existan. Si falta runner, elegir **uno compatible con el workspace**, no instalar varios. El fake se limita a pruebas; no es un proveedor de producción. En el estado actual, el adaptador OpenAI está integrado y se activa mediante configuración del servidor. Si esa configuración falta, el endpoint responde con el error de servicio acordado, no con una evaluación simulada.
 
 ### 12.2 Alcance obligatorio y exclusiones
 
@@ -560,7 +575,7 @@ Implementar:
 
 - Solicitud desde el textarea con modo existente, validación común, botón y estados de carga/error.
 - Endpoint backend reutilizado o añadido de forma consistente.
-- Puerto de evaluación, prompt fijo/versionado, validación de salida, renderer de tono y respuesta pública mínima. El fake solo se inyecta en pruebas; no se configura proveedor real en esta fase.
+- Puerto de evaluación, prompt fijo/versionado, validación de salida, renderer de tono y respuesta pública mínima. El fake solo se inyecta en pruebas; el adaptador OpenAI se configura fuera del código.
 - Una llamada por envío válido, sin herramientas ni investigación.
 - Pruebas unitarias, de integración local y de UI con dependencias controladas.
 
@@ -581,7 +596,7 @@ Los nombres siguientes son contratos lógicos, **no rutas de archivos que se afi
 ```ts
 type Tone = "soft" | "hard"; // soft -> normal; hard -> borde.
 type CriterionId =
-  "C01" | "C02" | "C03" | "C04" | "C05" | "C06" | "C07" | "C08" | "C09";
+  "C01" | "C02" | "C03" | "C04" | "C05" | "C06" | "C07" | "C08" | "C09" | "C10";
 
 type DecisionStatus =
   "RECHAZADA" | "SIN_BLOQUEO_EVIDENTE" | "IDEA_INSUFICIENTE";
@@ -599,7 +614,8 @@ type ReasonCode =
   | "CONFLICTO_ESTRUCTURAL"
   | "UTILIDAD_ANULADA"
   | "ECONOMIA_INCOMPATIBLE"
-  | "HAPPY_PATH_ESTRUCTURAL";
+  | "HAPPY_PATH_ESTRUCTURAL"
+  | "DIFERENCIACION_AUSENTE";
 
 interface EvaluationRequest {
   ideaText: string;
@@ -646,7 +662,7 @@ Si ya existe un resultado externo con otra estructura, adaptar en el borde del b
 | Entrada vacía              | Error de validación sin llamada LLM; no simular un veredicto                                                    |
 | Texto breve/vago no vacío  | Lo interpreta el modelo; puede devolver IDEA_INSUFICIENTE                                                       |
 | Ruta HTTP                  | Reutilizar `POST /api/evaluation-process` y el campo existente `ideaText`; añadir `tone` sin cambiar el prefijo |
-| Política                   | Constante versionada `grumphya-concept-v6`; no modificable desde el textarea                                    |
+| Política                   | Constante versionada `grumphya-concept-v7`; no modificable desde el textarea                                    |
 | Herramientas del proveedor | Desactivadas para esta llamada                                                                                  |
 | Payload LLM                | Idea + política/contrato + tono; excluir historial                                                              |
 | Salida                     | JSON validado; límite inicial 500 tokens, configurable; integración real del proveedor diferida                 |
@@ -686,13 +702,13 @@ Estos nombres son propuestas; se pueden reutilizar equivalentes existentes.
 
 **Validación de criterios:**
 
-- `evaluated` es un prefijo continuo de C01…C09, sin repetición ni saltos.
+- `evaluated` es un prefijo continuo de C01…C10, sin repetición ni saltos.
 - Cada criterio visitado debe tener PUNTUADO, INDETERMINADO o NO_APLICA.
 - NO_EVALUADO es un concepto interno para puntos no recorridos; no se serializa.
 - RECHAZADA requiere prefijo no vacío, último score entero <15 y anteriores sin veto.
 - stop_at coincide con el último ID; reason_code corresponde al ID.
 - basis es un fragmento literal no vacío de la idea normalizada.
-- SIN_BLOQUEO_EVIDENTE requiere nueve filas sin veto.
+- SIN_BLOQUEO_EVIDENTE requiere diez filas sin veto y C10 debe ser PUNTUADO.
 - IDEA_INSUFICIENTE requiere `evaluated: []`.
 - Los campos de veto son null en todos los estados no rechazados.
 - No aceptar ERROR_EVALUACION como veredicto del modelo: lo construye el servidor ante fallos.
@@ -721,33 +737,33 @@ No crear todos los archivos y escribir tests después. Tampoco testear una funci
 
 El fake devuelve resultados prefabricados: aquí se prueba el **software**, no la capacidad lingüística del modelo.
 
-| ID  | Caso                                                     | Expectativa verificable                                                                                  |
-| --- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| V01 | Vacío o solo espacios                                    | Error 400, proveedor llamado 0 veces                                                                     |
-| V02 | Tono desconocido o idea no string                        | Error 400, proveedor llamado 0 veces                                                                     |
-| V03 | 2.000 unidades válidas / 2.001                           | Acepta el primero; rechaza el segundo sin truncar                                                        |
-| V04 | Prefix C01…C05, C05=10, anteriores ≥15/null              | RECHAZADA válida, stop_at=C05                                                                            |
-| V05 | C05=14 / C05=15 en respuesta RECHAZADA                   | 14 válido; 15 invalida ese estado                                                                        |
-| V06 | Veto C02=10 y filas hasta C05                            | Rechaza la salida; no permite análisis declarado posterior                                               |
-| V07 | C01=10 con stop_at=C05                                   | Rechaza la salida por veto previo                                                                        |
-| V08 | IDs saltados, repetidos o desordenados                   | Rechaza la salida                                                                                        |
-| V09 | Score string, fracción, <0, >79 o null en PUNTUADO       | Rechaza la salida                                                                                        |
-| V10 | Número en INDETERMINADO/NO_APLICA                        | Rechaza la salida                                                                                        |
-| V11 | SIN_BLOQUEO_EVIDENTE con nueve criterios                 | Valida el recorrido; score = media de criterios PUNTUADO / 10, redondeada a dos decimales                |
-| V12 | SIN_BLOQUEO_EVIDENTE con menos de nueve filas o con veto | Rechaza la salida                                                                                        |
-| V13 | IDEA_INSUFICIENTE con filas o campos de veto             | Rechaza la salida                                                                                        |
-| V14 | basis no presente en idea o reason_code de otro ID       | Rechaza la salida                                                                                        |
-| V15 | Mensaje fuera de longitud/palabras/formato               | Rechaza la salida                                                                                        |
-| V16 | Misma decisión, dos tonos                                | Mismos scores, estado, código y basis; solo cambia el texto visible                                      |
-| V17 | Mismo input conceptual, diferentes tonos                 | Estado y puntuaciones deben permanecer iguales; `message` adopta el tono solicitado                      |
-| V18 | Envío válido con salida válida                           | Una llamada al proveedor; no llamadas por criterio                                                       |
-| V19 | JSON inválido, decisión inválida o respuesta truncada    | Error de servicio, sin nueva llamada ni veredicto de rechazo                                             |
-| V20 | Timeout                                                  | Error de timeout, sin reintento; usar reloj fake y probar cancelación si existe                          |
-| V21 | Texto de idea con instrucciones para ignorar política    | Se conserva como datos; política no cambia, herramientas no se activan                                   |
-| V22 | Respuesta pública                                        | Incluye status, score, headline y message; excluye basis, notas por criterio, secretos y errores del SDK |
-| V23 | UI envía dos clics mientras loading                      | Una solicitud desde ese formulario, botón deshabilitado                                                  |
-| V24 | UI recibe resultado o error                              | Renderiza texto, nunca HTML arbitrario; permite nuevo envío tras terminar                                |
-| V25 | Rechazo con nota conceptual 13                           | Respuesta numérica 1.3, presentada en UI como `1,30/10`                                                  |
+| ID  | Caso                                                   | Expectativa verificable                                                                                  |
+| --- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| V01 | Vacío o solo espacios                                  | Error 400, proveedor llamado 0 veces                                                                     |
+| V02 | Tono desconocido o idea no string                      | Error 400, proveedor llamado 0 veces                                                                     |
+| V03 | 2.000 unidades válidas / 2.001                         | Acepta el primero; rechaza el segundo sin truncar                                                        |
+| V04 | Prefix C01…C05, C05=10, anteriores ≥15/null            | RECHAZADA válida, stop_at=C05                                                                            |
+| V05 | C05=14 / C05=15 en respuesta RECHAZADA                 | 14 válido; 15 invalida ese estado                                                                        |
+| V06 | Veto C02=10 y filas hasta C05                          | Rechaza la salida; no permite análisis declarado posterior                                               |
+| V07 | C01=10 con stop_at=C05                                 | Rechaza la salida por veto previo                                                                        |
+| V08 | IDs saltados, repetidos o desordenados                 | Rechaza la salida                                                                                        |
+| V09 | Score string, fracción, <0, >79 o null en PUNTUADO     | Rechaza la salida                                                                                        |
+| V10 | Número en INDETERMINADO/NO_APLICA                      | Rechaza la salida                                                                                        |
+| V11 | SIN_BLOQUEO_EVIDENTE con diez criterios y C10 puntuado | Valida el recorrido; score = media de criterios PUNTUADO / 10, redondeada a dos decimales                |
+| V12 | SIN_BLOQUEO_EVIDENTE sin C10 puntuado o con veto       | Rechaza la salida                                                                                        |
+| V13 | IDEA_INSUFICIENTE con filas o campos de veto           | Rechaza la salida                                                                                        |
+| V14 | basis no presente en idea o reason_code de otro ID     | Rechaza la salida                                                                                        |
+| V15 | Mensaje fuera de longitud/palabras/formato             | Rechaza la salida                                                                                        |
+| V16 | Misma decisión, dos tonos                              | Mismos scores, estado, código y basis; solo cambia el texto visible                                      |
+| V17 | Mismo input conceptual, diferentes tonos               | Estado y puntuaciones deben permanecer iguales; `message` adopta el tono solicitado                      |
+| V18 | Envío válido con salida válida                         | Una llamada al proveedor; no llamadas por criterio                                                       |
+| V19 | JSON inválido, decisión inválida o respuesta truncada  | Error de servicio, sin nueva llamada ni veredicto de rechazo                                             |
+| V20 | Timeout                                                | Error de timeout, sin reintento; usar reloj fake y probar cancelación si existe                          |
+| V21 | Texto de idea con instrucciones para ignorar política  | Se conserva como datos; política no cambia, herramientas no se activan                                   |
+| V22 | Respuesta pública                                      | Incluye status, score, headline y message; excluye basis, notas por criterio, secretos y errores del SDK |
+| V23 | UI envía dos clics mientras loading                    | Una solicitud desde ese formulario, botón deshabilitado                                                  |
+| V24 | UI recibe resultado o error                            | Renderiza texto, nunca HTML arbitrario; permite nuevo envío tras terminar                                |
+| V25 | Rechazo con nota conceptual 13                         | Respuesta numérica 1.3, presentada en UI como `1,30/10`                                                  |
 
 V21 comprueba aislamiento del payload; un fake no demuestra resistencia semántica del LLM a una inyección. V06 comprueba que no se acepta un recorrido posterior declarado; no demuestra cuándo dejó de razonar el modelo.
 
@@ -770,9 +786,9 @@ request
 
 Un fallo en parsing o validación termina en error técnico, no en una segunda llamada de “reparación”. Una respuesta RECHAZADA válida no dispara otro análisis.
 
-El límite de duplicación inicial se aplica a dobles clics en el formulario. Reutilizar idempotencia si ya existe. No prometer eliminación global de duplicados entre pestañas o conexiones sin implementarla ni añadir tablas para ello.
+La idempotencia del envío evita repetir una misma petición lógica; no es una caché de decisiones para ideas aprobadas. La detección semántica de ideas ya rechazadas pertenece a `searchSimilarIdea`, antes de `evaluationProcess`, y se especifica en `features.md`.
 
-El modelo recibe el tono para redactar `message`; las instrucciones exigen que no altere la decisión ni las puntuaciones. Dos llamadas independientes aún pueden producir diferencias por variabilidad del modelo; verificar la invariancia en pruebas de prompt y con pares de evaluación revisados, sin exigir igualdad absoluta entre ejecuciones nuevas como prueba unitaria.
+El modelo no recibe el tono. El servidor renderiza el tono sobre la explicación neutral; por tanto, evaluar la misma idea en dos tonos mantiene los datos de decisión de una misma respuesta, aunque dos llamadas independientes aún pueden diferir por variabilidad del modelo. Revisar la invariancia con pruebas del renderer y pares de evaluación, sin exigir igualdad absoluta entre ejecuciones nuevas como prueba unitaria.
 
 ### 12.9 Comprobación semántica separada del TDD
 
@@ -798,7 +814,7 @@ Luna puede dar por terminada la implementación cuando:
 4. Todos los tests nuevos y checks pertinentes del repositorio pasan; se distinguen fallos previos.
 5. El flujo completo se ejecuta con fake sin credenciales ni red.
 6. La ruta productiva está conectada al proveedor configurado o se identifica explícitamente la configuración faltante; no hay un fake oculto en producción.
-7. Hay una invocación al puerto por envío válido en los tests, cero por entrada inválida y cero reintentos por defecto. La integración LLM real queda expresamente pendiente.
+7. Los tests comprueban una invocación al puerto por envío válido, cero por entrada inválida y cero reintentos por defecto. La suite usa respuestas controladas; no certifica calidad semántica de una ejecución real del modelo. El adaptador OpenAI está integrado y su uso requiere configuración externa.
 8. No se generan informes ni se aceptan filas posteriores al veto.
 9. No se almacenan ideas ni se exponen secretos/campos internos como efecto de esta feature.
 10. La entrega enumera archivos reales cambiados, comandos de tests ejecutados y límites pendientes.
@@ -807,6 +823,6 @@ Si falta configuración externa, entregar el código y las pruebas completas de 
 
 ### 12.11 Instrucción de arranque copiable
 
-> Implementa el filtro conceptual de grumphya de este documento con TDD en el repositorio actual. Primero inspecciona AGENTS.md, scripts, arquitectura, formulario, modos y cliente actual; identifica rutas y comandos reales. Reutiliza lo existente y trabaja en los incrementos de la sección 12.6 con RED → GREEN → REFACTOR. Aplica los contratos y casos, usa un fake sin red solo en tests y una invocación al puerto por envío válido. Conserva los modos `soft` / `hard`; transmite el tono al evaluador para redactar `message`, sin cambiar veredicto ni puntuación. No añadas investigación, RAG dentro de `evaluationProcess`, almacenamiento, una arquitectura nueva, cuotas de uso ni un fake en producción. Completa las verificaciones y entrega cambios, comandos ejecutados y límites pendientes.
+> Mantén el filtro conceptual de Grumphya descrito en este documento. Antes de cambiarlo, inspecciona AGENTS.md, scripts, arquitectura, formulario, modos y cliente actual. Reutiliza `evaluationProcess`, el adaptador OpenAI, la validación de salida y el renderer de tono existentes. El proveedor recibe la idea y la versión de política, pero no el tono: aplica `soft` / `hard` al redactar `message`, sin cambiar veredicto ni puntuaciones. Usa un fake sin red solo en pruebas. No añadas investigación, RAG dentro de `evaluationProcess`, almacenamiento, una arquitectura nueva, cuotas de uso ni un fake en producción. Si modificas la rúbrica o el contrato, actualiza sus pruebas y documentación relacionada; completa las verificaciones pertinentes e indica los límites pendientes.
 
 **Adecuación a Luna en esfuerzo medio:** las decisiones centrales están fijadas y las incógnitas se limitan al encaje verificable en el repositorio. No se presupone que el modelo deba inventar producto, contrato, arquitectura o pruebas para poder empezar.

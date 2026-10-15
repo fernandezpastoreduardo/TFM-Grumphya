@@ -12,7 +12,8 @@ function createRequest(path = EVALUATION_PATH, method = "POST"): Request {
     method,
     socket: { remoteAddress: REQUEST_IP },
     headers: {},
-    get: (name: string) => name.toLowerCase() === "origin" ? "http://127.0.0.1:5173" : undefined,
+    get: (name: string) =>
+      name.toLowerCase() === "origin" ? "http://127.0.0.1:5173" : undefined,
     is: (type: string) => type === "application/json",
   } as unknown as Request;
 }
@@ -69,7 +70,10 @@ describe("security middleware", () => {
 
   it("rejects registration requests without the configured origin", () => {
     const middleware = createSecurityMiddleware();
-    const request = { ...createRequest("/api/registrations"), get: () => "https://attacker.example" } as unknown as Request;
+    const request = {
+      ...createRequest("/api/registrations"),
+      get: () => "https://attacker.example",
+    } as unknown as Request;
     const { response } = createResponse();
     const next = vi.fn() as NextFunction;
 
@@ -92,6 +96,25 @@ describe("security middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it("protects anonymous profile issuance and roast submissions with origin and JSON checks", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const foreignOriginRequest = {
+      ...createRequest("/api/anonymous-usage"),
+      get: () => "https://attacker.example",
+    } as unknown as Request;
+    const foreignResponse = createResponse();
+    middleware(foreignOriginRequest, foreignResponse.response, next);
+    expect(foreignResponse.response.status).toHaveBeenCalledWith(403);
+
+    const wrongContentTypeRequest = createRequest("/api/roast");
+    wrongContentTypeRequest.is = () => false;
+    const contentResponse = createResponse();
+    middleware(wrongContentTypeRequest, contentResponse.response, next);
+    expect(contentResponse.response.status).toHaveBeenCalledWith(415);
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it("does not count CORS preflight requests", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;
@@ -106,12 +129,16 @@ describe("security middleware", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;
     const request = createRequest("/api/registration-intents", "POST");
-    for (let index = 0; index < 20; index += 1) middleware(request, createResponse().response, next);
+    for (let index = 0; index < 20; index += 1)
+      middleware(request, createResponse().response, next);
     const limited = createResponse();
     middleware(request, limited.response, next);
     expect(limited.response.status).toHaveBeenCalledWith(429);
 
-    const queryRequest = { ...createRequest("/api/registration-intents?plan=ILUMINADO", "POST"), originalUrl: "/api/registration-intents?plan=ILUMINADO" } as unknown as Request;
+    const queryRequest = {
+      ...createRequest("/api/registration-intents?plan=ILUMINADO", "POST"),
+      originalUrl: "/api/registration-intents?plan=ILUMINADO",
+    } as unknown as Request;
     const queryResponse = createResponse();
     middleware(queryRequest, queryResponse.response, next);
     expect(queryResponse.response.status).toHaveBeenCalledWith(400);

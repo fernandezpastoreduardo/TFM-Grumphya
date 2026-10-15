@@ -2,13 +2,14 @@
 
 Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión a PostgreSQL/pgvector, captura de ideas, dictado de voz, evaluación configurable, búsqueda semántica y persistencia de ideas rechazadas.
 
-El flujo de alta con plan está implementado en modo de verificación/compra simulada. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial. Los límites de solicitudes están en memoria por proceso: 10/minuto/IP para evaluación y 120/minuto/IP para la API general, sin coordinación entre réplicas. La similitud usa OpenAI `text-embedding-3-small` y pgvector; la API incrementa una vez los rechazos repetidos y conserva título seguro, embedding y contador por 24 meses. La idempotencia registra los matches y rechazos persistidos; respuestas prometedoras, insuficientes o fallos previos a persistencia no quedan cacheados y un reintento puede invocar otra vez al proveedor. El endpoint de evaluación necesita un proveedor configurado; las cuotas de negocio (3 por sesión anónima y 11 al día para Iluminado), autenticación/autorización, purga física y política de privacidad del procesamiento externo siguen pendientes. La orquestación y persistencia disponen de pruebas unitarias; falta validarlas con PostgreSQL/pgvector aislado y con un recorrido E2E funcional. Consulta el [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md).
+El flujo de alta con plan está implementado en modo de verificación/compra simulada. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial. Las cuotas anónimas son 3 evaluaciones y 3 roasts de por vida por perfil de navegador, con reserva e idempotencia en PostgreSQL. Se conservan HMAC de IP solo durante 24 horas para limitar la creación a 20 perfiles y evitar bloqueos permanentes; las solicitudes de ideas y roast están limitadas a 10/minuto/IP y la API general a 120/minuto/IP, en memoria por proceso. La similitud usa OpenAI `text-embedding-3-small` y pgvector; la API incrementa una vez los rechazos repetidos y conserva título seguro, embedding y contador por 24 meses. Las cuotas diarias de los planes, autenticación/autorización completa, purga periódica independiente del tráfico y política de privacidad del procesamiento externo siguen pendientes. Consulta el [contrato de uso anónimo](anonymous-usage.md) y el [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md).
 
 ## Documentos
 
 - [Dirección e implementación de la UI](ui.md)
 - [Stack instalado y versiones](stack.md)
 - [Desarrollo local](development.md)
+- [Límites de uso anónimo](anonymous-usage.md)
 - [Producción](production.md)
 - [Usuarios, credenciales y secretos](credentials.md)
 - [Comprobaciones y resolución de problemas](verification.md)

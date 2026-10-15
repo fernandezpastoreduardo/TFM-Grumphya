@@ -6,6 +6,8 @@ import {
 
 const IDEA_TEXT =
   "Pagamos cualquier declaración sin comprobarla para obtener ingresos recurrentes.";
+const GENERIC_TRAINING_LOG_IDEA =
+  "Una app que sirva para registrar entrenamientos";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
@@ -24,6 +26,7 @@ const CRITERION_IDS = [
   "C07",
   "C08",
   "C09",
+  "C10",
 ] as const;
 const CRITERION_REASON_CODES = {
   C01: "PRIVACIDAD_ESTRUCTURAL",
@@ -35,6 +38,7 @@ const CRITERION_REASON_CODES = {
   C07: "UTILIDAD_ANULADA",
   C08: "ECONOMIA_INCOMPATIBLE",
   C09: "HAPPY_PATH_ESTRUCTURAL",
+  C10: "DIFERENCIACION_AUSENTE",
 } as const;
 
 function createCompleteDecision() {
@@ -89,6 +93,28 @@ function createInsufficientDecision() {
   };
 }
 
+function createGenericTrainingLogRejection() {
+  return {
+    status: "RECHAZADA",
+    evaluated: [
+      ...CRITERION_IDS.slice(0, -1).map((id) => ({
+        id,
+        state: "PUNTUADO",
+        score: 50,
+      })),
+      { id: "C10", state: "PUNTUADO", score: 10 },
+    ],
+    stop_at: "C10",
+    reason_code: CRITERION_REASON_CODES.C10,
+    basis: "registrar entrenamientos",
+    safeTitle: "Registro deportivo sin propuesta propia",
+    message:
+      "Registrar entrenamientos es una función común y la idea no explica por qué alguien dejaría las opciones habituales para usar esta aplicación.",
+    hardSetup: "una app de entrenamientos que no aporta nada distinto",
+    hardConsequence: "nadie tiene un motivo concreto para cambiarse a ella",
+  };
+}
+
 function createCorePromiseRejection() {
   return {
     status: "RECHAZADA",
@@ -114,6 +140,35 @@ function createCorePromiseRejection() {
 }
 
 describe("validateModelDecision", () => {
+  it("rejects a generic training log without a reason to choose it", () => {
+    const result = validateModelDecision(
+      createGenericTrainingLogRejection(),
+      GENERIC_TRAINING_LOG_IDEA,
+    );
+
+    expect(result).toMatchObject({
+      status: "RECHAZADA",
+      stop_at: "C10",
+      reason_code: "DIFERENCIACION_AUSENTE",
+      safeTitle: "Registro deportivo sin propuesta propia",
+    });
+  });
+
+  it("requires a numeric C10 score on complete functional ideas", () => {
+    const decision = {
+      ...createCompleteDecision(),
+      evaluated: CRITERION_IDS.map((id) =>
+        id === "C10"
+          ? { id, state: "INDETERMINADO", score: null }
+          : { id, state: "PUNTUADO", score: 50 },
+      ),
+    };
+
+    expect(() => validateModelDecision(decision, IDEA_TEXT)).toThrow(
+      InvalidModelDecisionError,
+    );
+  });
+
   it.each([
     { decision: createCompleteDecision(), ideaText: IDEA_TEXT },
     { decision: createRejectedDecision(), ideaText: IDEA_TEXT },
