@@ -22,7 +22,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     theme: "rose",
   },
   "/descargate": {
-    label: "Tres envíos gratis por sesión",
+    label: "Tres envíos gratis por navegador",
     title: "Descárgate a gusto",
     intro:
       "Suelta el insulto. Yo pongo la cara de haber leído cosas peores. Probablemente.",
@@ -75,13 +75,15 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   "/verificar-cuenta": {
     label: "Verificación de correo",
     title: "Una última comprobación",
-    intro: "Validamos el enlace. Después decidirás si confirmas la contratación simulada.",
+    intro:
+      "Validamos el enlace. Después decidirás si confirmas la contratación simulada.",
     theme: "mint",
   },
   "/politica-de-privacidad": {
     label: "Información provisional",
     title: "Política de privacidad",
-    intro: "La información de privacidad se completará antes de abrir el registro al público.",
+    intro:
+      "La información de privacidad se completará antes de abrir el registro al público.",
     theme: "calm",
   },
 };

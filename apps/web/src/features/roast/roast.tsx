@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 
 // PROTOTYPE: sample exchanges and the reply below are fixtures until the roast service exists.
 const SAMPLE_EXCHANGES = [
@@ -18,25 +19,77 @@ const SAMPLE_EXCHANGES = [
       "Qué bien. Cuando encuentres a alguien dispuesto a pagar uno, me avisas.",
   },
 ] as const;
-const MAX_ROAST_ATTEMPTS = 3;
-const PROTOTYPE_ROAST_REPLY =
-  "He recibido tu mensaje. Mi respuesta definitiva todavía está de vacaciones.";
+const ROAST_ENDPOINT = "/api/roast";
+const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo.";
 
 export function Roast() {
   const [message, setMessage] = useState("");
-  const [sentMessages, setSentMessages] = useState<string[]>([]);
-  const remainingAttempts = Math.max(
-    0,
-    MAX_ROAST_ATTEMPTS - sentMessages.length,
-  );
+  const [sentMessages, setSentMessages] = useState<
+    Array<{ id: string; message: string; reply: string }>
+  >([]);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState("");
+  const isSendingRef = useRef(false);
+  const usageState = useAnonymousUsage();
+  const remainingAttempts = usageState.usage?.roasts.remaining ?? 0;
 
-  // PROTOTYPE: keep this interaction local; server-side usage counters are not wired yet.
-  function submitRoast(event: FormEvent<HTMLFormElement>) {
+  async function submitRoast(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = message.trim();
-    if (!value || remainingAttempts === 0) return;
-    setSentMessages((previous) => [...previous, value]);
-    setMessage("");
+    if (!value || remainingAttempts === 0 || isSendingRef.current) return;
+    isSendingRef.current = true;
+    setIsSending(true);
+    setError("");
+    try {
+      const response = await fetch(ROAST_ENDPOINT, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({ message: value }),
+      });
+      if (!response.ok) {
+        let errorMessage = ROAST_ERROR_MESSAGE;
+        try {
+          const payload: unknown = await response.json();
+          if (
+            typeof payload === "object" &&
+            payload !== null &&
+            "message" in payload &&
+            typeof payload.message === "string"
+          )
+            errorMessage = payload.message;
+        } catch {
+          errorMessage = ROAST_ERROR_MESSAGE;
+        }
+        throw new Error(errorMessage);
+      }
+      const payload: unknown = await response.json();
+      if (
+        typeof payload !== "object" ||
+        payload === null ||
+        !("reply" in payload) ||
+        typeof payload.reply !== "string"
+      )
+        throw new Error(ROAST_ERROR_MESSAGE);
+      setSentMessages((previous) => [
+        ...previous,
+        {
+          id: crypto.randomUUID(),
+          message: value,
+          reply: payload.reply as string,
+        },
+      ]);
+      setMessage("");
+      await usageState.refresh();
+    } catch (caught: unknown) {
+      setError(caught instanceof Error ? caught.message : ROAST_ERROR_MESSAGE);
+    } finally {
+      isSendingRef.current = false;
+      setIsSending(false);
+    }
   }
 
   return (
@@ -52,7 +105,7 @@ export function Roast() {
           </div>
           <span
             className="demo-counter"
-            aria-label={`${remainingAttempts} envíos de demostración restantes`}
+            aria-label={`${remainingAttempts} envíos gratuitos restantes`}
           >
             {remainingAttempts} <small>/ 3</small>
           </span>
@@ -81,13 +134,13 @@ export function Roast() {
               </p>
             </article>
           ))}
-          {sentMessages.map((item, index) => (
-            <article className="roast-exchange" key={`${item}-${index}`}>
+          {sentMessages.map((item) => (
+            <article className="roast-exchange" key={item.id}>
               <p className="roast-user">
                 <span className="bubble-avatar" aria-hidden="true">
                   TÚ
                 </span>
-                {item}
+                {item.message}
               </p>
               <p className="roast-reply">
                 <span
@@ -96,12 +149,15 @@ export function Roast() {
                 >
                   G
                 </span>
-                {PROTOTYPE_ROAST_REPLY}
+                {item.reply}
               </p>
             </article>
           ))}
         </div>
-        <form className="roast-composer" onSubmit={submitRoast}>
+        <form
+          className="roast-composer"
+          onSubmit={(event) => void submitRoast(event)}
+        >
           <label className="sr-only" htmlFor="roast-message">
             Tu insulto para Grumphya
           </label>
@@ -111,18 +167,27 @@ export function Roast() {
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Venga, a ver si me haces sudar…"
             maxLength={400}
-            disabled={remainingAttempts === 0}
+            disabled={
+              remainingAttempts === 0 || usageState.isLoading || isSending
+            }
           />
           <button
             type="submit"
             aria-label="Enviar insulto"
-            disabled={!message.trim() || remainingAttempts === 0}
+            disabled={
+              !message.trim() ||
+              remainingAttempts === 0 ||
+              usageState.isLoading ||
+              isSending
+            }
           >
             ↑
           </button>
         </form>
+        {error ? <p role="alert">{error}</p> : null}
         <p className="prototype-stamp">
-          La respuesta y los usos restantes son de ejemplo.
+          La respuesta es una demostración; los usos restantes los controla el
+          servidor.
         </p>
       </section>
       <aside className="roast-aside">
@@ -136,8 +201,9 @@ export function Roast() {
           Ver el plan Faltón <span aria-hidden="true">↗</span>
         </a>
         <p className="privacy-footnote">
-          No uses esto para enviar datos personales. La conversación de ejemplo
-          no se guarda.
+          No uses esto para enviar datos personales. Una cookie recuerda tus
+          tres envíos gratuitos y una señal temporal derivada de la IP ayuda a
+          frenar abusos.
         </p>
       </aside>
     </div>

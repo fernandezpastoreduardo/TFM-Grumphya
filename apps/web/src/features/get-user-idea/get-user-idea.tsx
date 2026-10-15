@@ -12,6 +12,7 @@ type GetUserIdeaProps = {
   onSubmit: (request: GetUserIdeaRequest) => void;
   onIdeaChange?: (ideaText: string) => void;
   isSubmitting?: boolean;
+  remainingAttempts?: number | null;
   error?: string;
 };
 
@@ -54,6 +55,7 @@ export function GetUserIdea({
   onSubmit,
   onIdeaChange,
   isSubmitting = false,
+  remainingAttempts,
   error,
 }: GetUserIdeaProps) {
   const [ideaText, setIdeaText] = useState("");
@@ -121,7 +123,15 @@ export function GetUserIdea({
           </label>
         ))}
       </fieldset>
-      <button className="idea-submit" type="submit" disabled={isSubmitting}>
+      <button
+        className="idea-submit"
+        type="submit"
+        disabled={
+          isSubmitting ||
+          remainingAttempts === null ||
+          (typeof remainingAttempts === "number" && remainingAttempts < 1)
+        }
+      >
         {isSubmitting ? BUTTON_LABEL.LOADING : BUTTON_LABEL.IDLE}
         <svg
           className="submit-arrow"
@@ -148,12 +158,26 @@ export function GetUserIdea({
           <span />
         </span>
       </button>
+      {remainingAttempts !== undefined ? (
+        <p className="idea-privacy-note" aria-live="polite">
+          {getUsageMessage(remainingAttempts)}
+        </p>
+      ) : null}
       <p className="idea-privacy-note">
         El texto se procesa para evaluar la idea. Si se rechaza, conservamos un
         título genérico y una representación matemática para detectar envíos
-        parecidos; no guardamos el texto original. El dictado usa el servicio de
-        voz de tu navegador: revisa la transcripción antes de enviar.
+        parecidos; no guardamos el texto original. Una cookie recuerda tus tres
+        usos gratuitos y una señal temporal derivada de la IP ayuda a frenar la
+        creación repetida de perfiles. El dictado usa el servicio de voz de tu
+        navegador: revisa la transcripción antes de enviar.
       </p>
     </form>
   );
+}
+
+function getUsageMessage(remainingAttempts: number | null): string {
+  if (remainingAttempts === null) return "Conectando con tus usos gratuitos…";
+  if (remainingAttempts === 0)
+    return "Has agotado tus tres evaluaciones gratuitas en este navegador. Consulta los planes para continuar.";
+  return `Te quedan ${remainingAttempts} de 3 evaluaciones gratuitas en este navegador.`;
 }

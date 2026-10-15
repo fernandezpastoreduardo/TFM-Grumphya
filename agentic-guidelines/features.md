@@ -1,5 +1,17 @@
 # Describes naming & functionality guides to develope features referenced on sections.md
 
+## manageUserUnknow
+
+Gestiona el acceso gratuito de visitantes sin cuenta. La identidad anónima se vincula a un perfil de navegador mediante una cookie opaca persistente, `HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`. El servidor guarda solo el hash del token y mantiene dos contadores independientes de por vida: hasta 3 evaluaciones de ideas y hasta 3 envíos de roast. No hay reinicio por sesión, día, semana ni mes; no se guarda historial personal anónimo, IP en claro, texto de ideas ni insultos para aplicar estos límites.
+
+La cookie identifica un perfil, no una persona. Borrar cookies o cambiar de navegador/dispositivo puede crear una identidad nueva; sin cuenta o identificación más invasiva no se puede prometer un límite por persona. La IP es una señal secundaria para rate limiting y detectar rotación abusiva de identidades. No es clave de identidad ni causa un bloqueo permanente: redes compartidas, VPN y cambios de dirección pueden afectar a personas distintas. No se usa fingerprinting de navegador.
+
+Las reservas de cuota son atómicas e idempotentes. La API comunica cupo disponible; el frontend solo lo presenta. Una evaluación de idea válida consume una unidad. Detectar una idea repetida y mostrar el aviso no consume; «Evaluar igualmente» reserva y consume una unidad si la evaluación termina correctamente. Un error libera la reserva. Un rechazo posterior a continuar no suma otro uso ni otro registro de idea repetida. Un envío de roast consume una unidad cuando obtiene una respuesta válida. El resultado idempotente se conserva hasta 24 horas para responder reintentos sin duplicar consumo; no constituye historial.
+
+La cuota agotada devuelve `429` con código estable, ámbito y cero usos restantes; no incluye `Retry-After` porque el límite no se reinicia. La pantalla deshabilita el envío y explica que se agotó el cupo gratuito. Las cuotas y contadores nunca se aceptan desde el navegador como autoridad.
+
+La ruta de roast está mediada por API y consume un cupo del servidor; su respuesta sigue siendo una fixture claramente identificada hasta implementar el proveedor real de roast. El backend limita la creación a 20 perfiles por IP cada 24 horas con HMAC, y limita ideas/roast a 10 solicitudes por minuto y la API general a 120 por IP/minuto. Las reglas de retención están en [uso anónimo](../doc/anonymous-usage.md).
+
 ## getUserIdea
 
 This only captures the text content from `IdeaInput`. It can be added by the user in three ways:
@@ -33,7 +45,7 @@ Contrato previsto para historial privado, no implementado aún: devolverá `Idea
 
 Al encontrar coincidencia, `updateWorstIdea` incrementa el contador agregado de esa idea inmediatamente, aunque la persona no continúe, y la UI muestra el título seguro, el contador total actualizado y una frase valorativa acorde al tono seleccionado. El envío lógico se cuenta una sola vez: si la persona continúa y la evaluación vuelve a rechazar la idea, no se incrementa otra vez. La continuación reutiliza la clave de idempotencia original, válida durante 24 horas, y el servidor permite una sola continuación. La UI ofrece una acción explícita para evaluar igualmente. Hasta implementar cuotas autoritativas, no debe afirmar que la continuación descuenta un intento disponible.
 
-**Pendiente:** la API todavía no implementa cuotas ni intentos restantes. Por tanto, no se debe afirmar que la evaluación adicional se descuenta de un límite de 3 usos anónimos o 11 usos diarios del plan Iluminado hasta implementar contadores autoritativos, reserva y confirmación de uso en servidor.
+`manageUserUnknow` controla el cupo de 3 evaluaciones de por vida por perfil anónimo y reserva un uso al continuar después de una coincidencia. Las cuotas diarias de los planes de pago y la autorización de sesión registrada son independientes y siguen pendientes.
 
 Sin coincidencia, se ejecuta `evaluationProcess`. Si el veredicto final es `RECHAZADA`, la respuesta estructurada incluye `safeTitle`; un verificador independiente lo valida antes de que la orquestación invoque `addToWorstIdeas` para añadir título, embedding y contador inicial `1`. Si el verificador falla, no se guarda ni publica la idea. Otros veredictos no se añaden al índice. La ruta de escritura no persiste el texto original.
 
@@ -45,7 +57,7 @@ La especificación funcional, el contrato, la rúbrica y el plan TDD de esta fea
 
 ## showEvaluationResults
 
-Presenta score conceptual global (0–10, dos decimales), un titular propio de Grumphya y una explicación concreta que reúna los aspectos mediocres evaluados y el defecto decisivo. El titular cambia entre `soft` y `hard`; para un rechazo en tono `hard`, la explicación usa una plantilla directa construida con la acción absurda y su consecuencia, mientras `soft` conserva el mensaje sencillo y neutral. El modelo no recibe el tono: este no cambia la evaluación ni el score. La interfaz no presenta el defecto como «bloqueo». Sin fallo estructural evidente, el score es la media de criterios puntuados dividida entre 10; insuficiente devuelve `null`. El contrato completo está en `scoring-viability-software.md`.
+Presenta score conceptual global (0–10, dos decimales), un titular propio de Grumphya y una explicación concreta que reúna los aspectos mediocres evaluados y el defecto decisivo. El titular cambia entre `soft` y `hard`; para un rechazo en tono `hard`, la explicación usa una plantilla directa construida con la acción absurda y su consecuencia, mientras `soft` conserva el mensaje sencillo y neutral. El modelo no recibe el tono: este no cambia la evaluación ni el score. La interfaz no presenta el defecto como «bloqueo». Sin fallo estructural evidente, el score es la media de criterios puntuados dividida entre 10; el filtro C10 de diferenciación en categorías maduras siempre se puntúa para que una idea funcional no quede sin nota; insuficiente devuelve `null`. El contrato completo está en `scoring-viability-software.md`.
 
 ## registerWithPlan
 
@@ -83,7 +95,7 @@ Feature `features/register-with-plan/`, con contenedor `RegisterWithPlan`. Solo 
 
 ## submitRoast
 
-La versión básica acepta tres envíos por sesión anónima o, con plan Faltón activo, once al día. Valida la entrada, reserva un uso, obtiene una respuesta y confirma el uso únicamente cuando hay respuesta válida. Si falla, libera la reserva. No crea historial personal anónimo. Las tarjetas y el ranking de roasts quedan para la entrega a corto plazo.
+La versión básica acepta tres envíos de por vida por perfil anónimo. El frontend envía el texto a la API, que valida, reserva el uso y devuelve una respuesta de demostración hasta disponer del servicio real. Solo confirma la reserva si la respuesta es válida; ante error la libera. El visitante recibe el número restante desde el servidor. No se crea historial personal anónimo.
 
 ## publicRankings
 
@@ -94,10 +106,12 @@ La versión básica acepta tres envíos por sesión anónima o, con plan Faltón
 Caso de uso principal del MVP.
 
 - Entrada: `ideaText`, `tone` (`soft` o `hard`) y contexto de usuario.
-- Valida longitud y tono en servidor. La disponibilidad de intentos aún no se comprueba porque las cuotas de negocio no están implementadas.
+- Valida longitud y tono en servidor. `manageUserUnknow` comprueba y reserva una cuota gratuita antes de realizar la evaluación; la cuota del plan Iluminado requiere aún autorización y contador diario de cuenta.
 - `IdeaSubmissionService` orquesta `searchSimilarIdea` antes de `evaluationProcess`; esta detección no lee datos de evaluación. Al coincidir, `updateWorstIdea` registra la recepción y la UI ofrece una acción explícita para continuar. Sin coincidencia, ejecuta `evaluationProcess`.
+- `searchSimilarIdea` solo busca ideas previamente rechazadas. Una idea aprobada no se persiste ni entra en Worst Ideas; por eso no se detecta como repetida hasta que alguna evaluación la rechace.
 - Tras un rechazo nuevo, invoca `addToWorstIdeas`; el embedding y el título seguro se guardan sin el texto original. Ninguna idea aprobada se incorpora al ranking.
-- La evaluación, persistencia e idempotencia de la recepción están conectadas en la API; los permisos y cuotas de uso todavía no. El evaluador real requiere configuración explícita.
+- La rúbrica C10 rechaza una función genérica en una categoría madura cuando la idea no expresa un público, necesidad, resultado o mecanismo diferencial; no afirma cifras ni nombres de competidores. Toda idea funcional completada recibe una puntuación numérica.
+- La evaluación, persistencia, idempotencia de la recepción y cuota anónima están conectadas en la API; permisos y cuotas diarias de cuenta todavía no. El evaluador real requiere configuración explícita.
 - Salida del primer corte: estado, score conceptual, titular y explicación; contrato detallado en `scoring-viability-software.md`.
 - Errores: entrada vacía, contenido no evaluable, límite agotado, proveedor de IA no disponible.
 

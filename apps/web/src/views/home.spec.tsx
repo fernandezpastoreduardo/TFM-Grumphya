@@ -13,6 +13,18 @@ const EVALUATION_RESPONSE = {
   message:
     "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
+const ANONYMOUS_USAGE_RESPONSE = {
+  ideas: { limit: 3, used: 0, remaining: 3 },
+  roasts: { limit: 3, used: 0, remaining: 3 },
+};
+
+function respondToUsageInitialization(url: unknown) {
+  if (url !== "/api/anonymous-usage") return null;
+  return Promise.resolve({
+    ok: true,
+    json: async () => ANONYMOUS_USAGE_RESPONSE,
+  });
+}
 
 describe("Home", () => {
   it("starts with the idea capture area and an empty evaluation region", () => {
@@ -33,6 +45,9 @@ describe("Home", () => {
     expect(
       screen.getByRole("region", { name: /resultado de la evaluación/i }),
     ).toBeEmptyDOMElement();
+    expect(
+      screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
+    ).toBeDisabled();
     expect(
       screen.getByText(/conectando con los servicios/i),
     ).toBeInTheDocument();
@@ -109,6 +124,8 @@ describe("Home", () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
       void _init;
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
       if (url === "/api/evaluation-process") {
         return Promise.resolve({
           ok: true,
@@ -170,7 +187,10 @@ describe("Home", () => {
 
   it("does not start scoring when the idea fails form validation", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(() => new Promise(() => undefined));
+    const fetchMock = vi.fn((url: unknown) => {
+      const usageResponse = respondToUsageInitialization(url);
+      return usageResponse ?? new Promise(() => undefined);
+    });
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
 
@@ -188,6 +208,8 @@ describe("Home", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) => {
+        const usageResponse = respondToUsageInitialization(url);
+        if (usageResponse) return usageResponse;
         if (url === "/api/evaluation-process") {
           return Promise.reject(new Error(TEST_IDEA_TEXT));
         }
@@ -219,6 +241,8 @@ describe("Home", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) => {
+        const usageResponse = respondToUsageInitialization(url);
+        if (usageResponse) return usageResponse;
         if (url === "/api/evaluation-process") {
           return Promise.resolve({
             ok: false,
@@ -264,6 +288,8 @@ describe("Home", () => {
     });
     const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
       void _init;
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
       if (url === "/api/evaluation-process") return pendingEvaluation;
       return new Promise(() => undefined);
     });
@@ -305,6 +331,8 @@ describe("Home", () => {
     ];
     const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
       void _init;
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
       if (url === "/api/evaluation-process") {
         return Promise.resolve({
           ok: true,

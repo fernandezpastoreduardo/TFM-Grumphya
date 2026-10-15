@@ -15,7 +15,7 @@ pnpm install
 pnpm db:setup
 ```
 
-`pnpm db:setup` genera `.env.docker` con una contraseña aleatoria de desarrollo y permisos de archivo `0600`; está excluida de Git. No la copies a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
+`pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y un secreto HMAC de IP aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
 
 ## Arranque
 
@@ -103,12 +103,13 @@ OPENAI_REASONING_EFFORT=medium
 
 No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.openai` además de `.env.docker`. El modelo y
-el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v6`
-aplica una lectura adversarial proporcional: no presupone honestidad ni buenas
-intenciones, y analiza abuso, impacto, verificación, contención y reparación,
-especialmente en interacciones presenciales entre desconocidos. No convierte
-riesgos exóticos ni detalles rutinarios en vetos. Cada envío se evalúa por
-separado y no pide aclaraciones.
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v7`
+aplica una lectura adversarial proporcional, incluye diferenciación frente a
+funciones comunes en categorías maduras y exige una puntuación en toda idea
+funcional. No presupone honestidad ni buenas intenciones, analiza abuso,
+impacto, verificación, contención y reparación, especialmente en interacciones
+presenciales entre desconocidos. No convierte riesgos exóticos ni detalles
+rutinarios en vetos. Cada envío se evalúa por separado y no pide aclaraciones.
 La API envía la idea, el tono elegido y la versión de política a OpenAI. El tono
 solo debe modificar la redacción de `message`, nunca el veredicto o la
 puntuación. Las respuestas se solicitan con JSON Schema estricto y `store: false`,

@@ -7,6 +7,14 @@ import { createSecurityMiddleware } from "./security/security.middleware";
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const webOrigin = process.env.WEB_ORIGIN;
+  if (
+    process.env.NODE_ENV === "production" &&
+    !process.env.ANONYMOUS_IP_HMAC_SECRET?.trim()
+  ) {
+    throw new Error(
+      "ANONYMOUS_IP_HMAC_SECRET must be configured in production.",
+    );
+  }
   if (process.env.NODE_ENV === "production" && !webOrigin) {
     throw new Error("WEB_ORIGIN must be configured in production.");
   }
@@ -23,6 +31,7 @@ async function bootstrap() {
   }
 
   app.setGlobalPrefix("api");
+  app.set("trust proxy", false);
   app.enableCors({
     origin: allowedWebOrigin,
     methods: ["GET", "POST"],

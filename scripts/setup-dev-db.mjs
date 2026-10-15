@@ -23,8 +23,16 @@ if (existsSync(envFile)) {
       }),
   );
   const password = variables.get("GRUMPHYA_DB_PASSWORD");
+  const ipHmacSecret = variables.get("ANONYMOUS_IP_HMAC_SECRET");
   if (password && !variables.has("PGPASSWORD")) {
     appendFileSync(envFile, `PGPASSWORD=${password}\n`, { mode: 0o600 });
+  }
+  if (!ipHmacSecret) {
+    appendFileSync(
+      envFile,
+      `ANONYMOUS_IP_HMAC_SECRET=${randomBytes(32).toString("base64url")}\n`,
+      { mode: 0o600 },
+    );
   }
   chmodSync(envFile, 0o600);
   console.log(
@@ -34,9 +42,11 @@ if (existsSync(envFile)) {
 }
 
 const password = randomBytes(32).toString("base64url");
+const ipHmacSecret = randomBytes(32).toString("base64url");
 const contents = [
   `GRUMPHYA_DB_PASSWORD=${password}`,
   `PGPASSWORD=${password}`,
+  `ANONYMOUS_IP_HMAC_SECRET=${ipHmacSecret}`,
   "PGHOST=127.0.0.1",
   "PGPORT=5433",
   "PGDATABASE=grumphya_dev",

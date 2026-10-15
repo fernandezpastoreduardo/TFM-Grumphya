@@ -40,15 +40,26 @@ export function createSecurityMiddleware(): RequestHandler {
       return;
     }
 
-    const isProtectedCookiePost = request.method === "POST" && (request.path.startsWith("/api/registration") || request.path === "/api/auth/refresh");
+    const isProtectedCookiePost =
+      request.method === "POST" &&
+      (request.path.startsWith("/api/registration") ||
+        request.path === "/api/auth/refresh" ||
+        request.path === "/api/anonymous-usage" ||
+        request.path === "/api/evaluation-process" ||
+        request.path === "/api/roast");
     if (isProtectedCookiePost) {
       const allowedOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
       if (request.get("origin") !== allowedOrigin) {
-        response.status(403).json({ statusCode: 403, message: "Origen de solicitud no permitido." });
+        response.status(403).json({
+          statusCode: 403,
+          message: "Origen de solicitud no permitido.",
+        });
         return;
       }
       if (!request.is("application/json")) {
-        response.status(415).json({ statusCode: 415, message: "Se requiere application/json." });
+        response
+          .status(415)
+          .json({ statusCode: 415, message: "Se requiere application/json." });
         return;
       }
     }
@@ -63,23 +74,48 @@ export function createSecurityMiddleware(): RequestHandler {
 
     const clientAddress =
       request.ip ?? request.socket.remoteAddress ?? "unknown";
-    if (request.path.startsWith("/api/registration") && request.originalUrl?.includes("?")) {
-      response.status(400).json({ statusCode: 400, message: "La URL no admite parámetros para esta solicitud." });
+    if (
+      request.path.startsWith("/api/registration") &&
+      request.originalUrl?.includes("?")
+    ) {
+      response.status(400).json({
+        statusCode: 400,
+        message: "La URL no admite parámetros para esta solicitud.",
+      });
       return;
     }
-    const isEvaluation = request.method === "POST" && request.path === "/api/evaluation-process";
-    const isRegistrationPost = request.method === "POST" && request.path.startsWith("/api/registration");
-    const isRefreshPost = request.method === "POST" && request.path === "/api/auth/refresh";
-    const registrationScope = isRefreshPost ? "session-refresh" : request.path.includes("verify") || request.path.includes("confirm")
-      ? "registration-verification"
-      : request.path.includes("intents") ? "registration-intent" : "registration-create";
-    const registrationLimit = registrationScope === "registration-intent"
-      ? REGISTRATION_INTENT_REQUEST_LIMIT
-      : registrationScope === "registration-verification" || isRefreshPost ? REGISTRATION_VERIFY_REQUEST_LIMIT : REGISTRATION_REQUEST_LIMIT;
+    const isEvaluation =
+      request.method === "POST" &&
+      (request.path === "/api/evaluation-process" ||
+        request.path === "/api/roast");
+    const isRegistrationPost =
+      request.method === "POST" && request.path.startsWith("/api/registration");
+    const isRefreshPost =
+      request.method === "POST" && request.path === "/api/auth/refresh";
+    const registrationScope = isRefreshPost
+      ? "session-refresh"
+      : request.path.includes("verify") || request.path.includes("confirm")
+        ? "registration-verification"
+        : request.path.includes("intents")
+          ? "registration-intent"
+          : "registration-create";
+    const registrationLimit =
+      registrationScope === "registration-intent"
+        ? REGISTRATION_INTENT_REQUEST_LIMIT
+        : registrationScope === "registration-verification" || isRefreshPost
+          ? REGISTRATION_VERIFY_REQUEST_LIMIT
+          : REGISTRATION_REQUEST_LIMIT;
     const limits: ReadonlyArray<readonly [string, number]> = isEvaluation
-      ? [["api", API_REQUEST_LIMIT], ["evaluation", EVALUATION_REQUEST_LIMIT]]
-      : isRegistrationPost || isRefreshPost ? [["api", API_REQUEST_LIMIT], [registrationScope, registrationLimit]]
-      : [["api", API_REQUEST_LIMIT]];
+      ? [
+          ["api", API_REQUEST_LIMIT],
+          ["evaluation", EVALUATION_REQUEST_LIMIT],
+        ]
+      : isRegistrationPost || isRefreshPost
+        ? [
+            ["api", API_REQUEST_LIMIT],
+            [registrationScope, registrationLimit],
+          ]
+        : [["api", API_REQUEST_LIMIT]];
 
     for (const [scope, limit] of limits) {
       const key = `${clientAddress}:${scope}`;

@@ -127,7 +127,7 @@ La primera entrega incluye evaluación de ideas web/móviles, dictado por voz, d
 
 **Business Rules:**
 
-- Visitantes sin cuenta: 3 evaluaciones de ideas y 3 envíos de roast por sesión anónima. El servidor controla los contadores de esa sesión; no se crea historial personal.
+- Visitantes sin cuenta: 3 evaluaciones de ideas y 3 envíos de roast de por vida por perfil de navegador, en contadores independientes controlados por servidor y PostgreSQL. Cerrar la sesión o el navegador no reinicia el cupo; borrar la cookie o cambiar de navegador/dispositivo crea otro perfil, por lo que no se promete identificación por persona. La IP se usa como señal temporal antiabuso, nunca como identidad o límite vitalicio; no se crea historial personal anónimo.
 - Cuentas con plan Iluminado activo: 11 evaluaciones de ideas al día.
 - Cuentas con plan Faltón activo: 11 envíos de roast al día.
 - Los contadores diarios se reinician a las 00:00 de `Europe/Madrid`, también en los cambios de horario de verano/invierno, mientras el plan siga vigente.

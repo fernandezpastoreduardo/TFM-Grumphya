@@ -18,7 +18,7 @@ El endpoint no devuelve criterios internos, fragmentos de la idea, puntuación 0
 
 ### EvaluateIdeaResponse
 
-- `status: 'similar_idea_match'` devuelve `safeTitle` verificado y `submissionCount` total después del incremento. No devuelve el identificador interno de la idea, embedding, texto original ni autor. Los intentos restantes no están implementados en la API todavía.
+- `status: 'similar_idea_match'` devuelve `safeTitle` verificado y `submissionCount` total después del incremento. No devuelve el identificador interno de la idea, embedding, texto original ni autor. Los usos restantes se consultan por el endpoint de `manageUserUnknow`; detectar la coincidencia no consume una evaluación y continuar reserva un uso anónimo.
 - `status: 'evaluated'` devuelve el resultado público de evaluación y, solo para `RECHAZADA` con título validado, `safeTitle`. El título no altera score ni veredicto.
 - Reenviar la misma `Idempotency-Key` y el mismo payload para continuar conserva la recepción ya contada aunque la evaluación posterior también dé `RECHAZADA`; cambiar `ideaText` o `tone` con esa clave se rechaza.
 

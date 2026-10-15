@@ -34,7 +34,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 - Path: /descargate
 - Layout: nine cards that shows user insult and grumphy reply
-  Permite 3 envíos básicos por sesión anónima y 11 al día a las cuentas con plan Faltón vigente. La experiencia ampliada de tarjetas y ranking llegará a corto plazo.
+  Permite 3 envíos gratuitos de por vida por perfil anónimo y 11 al día a las cuentas con plan Faltón vigente. El cupo anónimo se consulta y valida en el servidor; borrar la cookie puede crear otro perfil. La respuesta de roast sigue siendo una demostración mientras no exista el proveedor real.
 
 4. Notable Humans section: a ranking/list of humans whose ideas have actually passed the AI's approval evaluation (without showing the ideas themselves). The goal is to spark a bit of rivalry and gamify the experience.
    - Path: /humanos-notables
@@ -101,13 +101,13 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 ## Delivery boundary
 
-La primera entrega incluye Home con dictado por voz, evaluación y similitud, tres usos anónimos de ideas y tres de roast por sesión, alta/login asociados a Iluminado o Faltón, contratación simulada, permisos y límites reales en servidor, e historial solo para cuentas registradas. A corto plazo se completan las vistas de Worst Ideas, Roast, rankings, precios, ROI y contacto. Los pagos reales llegan a medio plazo.
+La primera entrega incluye Home con dictado por voz, evaluación y similitud, tres usos anónimos de ideas y tres de roast de por vida por perfil de navegador, alta asociada a Iluminado o Faltón, contratación simulada y datos de uso controlados en servidor. Las cuotas diarias de cuentas y el login completo siguen pendientes. El historial se reserva a cuentas registradas. A corto plazo se completan las vistas de Worst Ideas, Roast, rankings, precios, ROI y contacto. Los pagos reales llegan a medio plazo.
 
 ## Shared interaction rules
 
 - Loading, empty, validation, rate-limit and server-error states must be designed for every interactive section.
 - The frontend never decides score, verdict, permissions or remaining usage.
-- Los visitantes anónimos no tienen historial personal. La sesión anónima conserva solo identificador temporal y contadores de uso necesarios; cerrar o reiniciar la sesión puede dar lugar a una nueva prueba gratuita.
+- Los visitantes anónimos no tienen historial personal. El perfil persistente conserva únicamente un identificador opaco y contadores de uso; cerrar la sesión no reinicia el cupo. Borrar cookies o usar otro navegador puede crear un perfil nuevo. La IP se usa solo para rate limiting temporal, no como identidad permanente.
 - En producción no se sirven los datos de muestra usados en desarrollo y maquetación ni se mezclan con rankings reales.
 - Nunca se publica información sobre las ideas aprobadas. El ranking de humanos notables publica alias y número de aprobaciones. El ranking de ideas no aprobadas publica solo título breve y número de recepciones, sin autor ni texto original.
 - Every route and component must expose keyboard operation, visible focus and accessible status messages.
