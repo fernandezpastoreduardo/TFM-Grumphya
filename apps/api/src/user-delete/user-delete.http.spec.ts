@@ -74,11 +74,14 @@ describe("user deletion HTTP flow", () => {
     expect(unauthenticated.status).toBe(401);
     expect(repository.deleteUser).not.toHaveBeenCalled();
 
-    const authenticated = await requestDelete({
-      Origin: WEB_ORIGIN,
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    }, { userId: OTHER_USER_ID });
+    const authenticated = await requestDelete(
+      {
+        Origin: WEB_ORIGIN,
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      { userId: OTHER_USER_ID },
+    );
 
     expect(authenticated.status).toBe(200);
     expect(await authenticated.json()).toEqual({ deleted: true });

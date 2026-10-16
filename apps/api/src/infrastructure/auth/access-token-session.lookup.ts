@@ -7,7 +7,9 @@ export interface AccessTokenSessionLookup {
   isActive(accessTokenHash: string, userId: string): Promise<boolean>;
 }
 
-export const ACCESS_TOKEN_SESSION_LOOKUP = Symbol("ACCESS_TOKEN_SESSION_LOOKUP");
+export const ACCESS_TOKEN_SESSION_LOOKUP = Symbol(
+  "ACCESS_TOKEN_SESSION_LOOKUP",
+);
 
 @Injectable()
 export class PostgresAccessTokenSessionLookup implements AccessTokenSessionLookup {

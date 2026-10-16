@@ -1,8 +1,7 @@
 export type PlanUsageScope = "ideas" | "roasts";
 
 export type PlanUsageReservation =
-  | { state: "reserved" }
-  | { state: "cached"; response: unknown };
+  { state: "reserved" } | { state: "cached"; response: unknown };
 
 export interface PlanUsageRepository {
   reserve(

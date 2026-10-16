@@ -19,7 +19,10 @@ describe("optional access token guard", () => {
     const issued = issueAccessToken(USER_ID);
     const lookup = { isActive: vi.fn().mockResolvedValue(true) };
     const guard = new OptionalAccessTokenGuard(lookup);
-    const request = { get: (name: string) => name === "authorization" ? `Bearer ${issued.token}` : undefined };
+    const request = {
+      get: (name: string) =>
+        name === "authorization" ? `Bearer ${issued.token}` : undefined,
+    };
 
     await expect(guard.canActivate(httpContext(request))).resolves.toBe(true);
     expect(request).toMatchObject({ user: { userId: USER_ID } });

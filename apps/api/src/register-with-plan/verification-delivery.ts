@@ -17,7 +17,9 @@ export class DevelopmentVerificationDelivery implements VerificationDelivery {
 
   async deliver(_recipient: string, token: string): Promise<void> {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("Development verification delivery is disabled in production.");
+      throw new Error(
+        "Development verification delivery is disabled in production.",
+      );
     }
     this.latest = { recipient: QA_INBOX, token };
   }

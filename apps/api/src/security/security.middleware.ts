@@ -7,6 +7,7 @@ const REGISTRATION_REQUEST_LIMIT = 8;
 const REGISTRATION_INTENT_REQUEST_LIMIT = 20;
 const REGISTRATION_VERIFY_REQUEST_LIMIT = 10;
 const LOGIN_REQUEST_LIMIT = 5;
+const SESSION_LOGOUT_REQUEST_LIMIT = 10;
 const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 const CLEANUP_INTERVAL_REQUESTS = 64;
@@ -108,6 +109,8 @@ export function createSecurityMiddleware(): RequestHandler {
       request.method === "POST" && request.path === "/api/auth/refresh";
     const isLoginPost =
       request.method === "POST" && request.path === "/api/auth/login";
+    const isLogoutPost =
+      request.method === "POST" && request.path === "/api/auth/logout";
     const isAuthPost =
       request.method === "POST" && request.path.startsWith("/api/auth/");
     const isAccountPost =
@@ -118,23 +121,29 @@ export function createSecurityMiddleware(): RequestHandler {
       ? "account-delete"
       : isLoginPost
         ? "session-login"
-        : isAuthPost
-          ? "session-refresh"
-      : request.path.includes("verify") || request.path.includes("confirm")
-        ? "registration-verification"
-        : request.path.includes("intents")
-          ? "registration-intent"
-          : "registration-create";
+        : isLogoutPost
+          ? "session-logout"
+          : isAuthPost
+            ? "session-refresh"
+            : request.path.includes("verify") ||
+                request.path.includes("confirm")
+              ? "registration-verification"
+              : request.path.includes("intents")
+                ? "registration-intent"
+                : "registration-create";
     const registrationLimit =
       registrationScope === "session-login"
         ? LOGIN_REQUEST_LIMIT
-        : registrationScope === "account-delete"
-          ? ACCOUNT_DELETE_REQUEST_LIMIT
-          : registrationScope === "registration-intent"
-        ? REGISTRATION_INTENT_REQUEST_LIMIT
-        : registrationScope === "registration-verification" || isRefreshPost
-          ? REGISTRATION_VERIFY_REQUEST_LIMIT
-          : REGISTRATION_REQUEST_LIMIT;
+        : registrationScope === "session-logout"
+          ? SESSION_LOGOUT_REQUEST_LIMIT
+          : registrationScope === "account-delete"
+            ? ACCOUNT_DELETE_REQUEST_LIMIT
+            : registrationScope === "registration-intent"
+              ? REGISTRATION_INTENT_REQUEST_LIMIT
+              : registrationScope === "registration-verification" ||
+                  isRefreshPost
+                ? REGISTRATION_VERIFY_REQUEST_LIMIT
+                : REGISTRATION_REQUEST_LIMIT;
     const limits: ReadonlyArray<readonly [string, number]> = isEvaluation
       ? [
           ["api", API_REQUEST_LIMIT],

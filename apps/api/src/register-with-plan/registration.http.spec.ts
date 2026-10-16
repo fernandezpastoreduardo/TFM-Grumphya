@@ -166,22 +166,30 @@ describe("registration HTTP flow", () => {
         },
       ],
     });
-    const cancelResponse = await postProtected(
-      "/account/subscriptions/cancel",
-      { plan: "FALTON" },
+    const purchaseResponse = await postProtected(
+      "/account/subscriptions/purchase",
+      { plan: "ILUMINADO" },
       accessToken,
+      "8a4e1c42-e198-4db3-b4a8-910e25c8b6d1",
     );
-    expect(cancelResponse.status).toBe(201);
-    const cancelledProfile = await cancelResponse.json();
-    expect(cancelledProfile.plans).toEqual(
+    expect(purchaseResponse.status).toBe(201);
+    const purchasedProfile = await purchaseResponse.json();
+    expect(purchasedProfile.plans).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          plan: "FALTON",
-          status: "inactive",
-          attemptsRemaining: { ideas: 0, roasts: 0 },
+          plan: "ILUMINADO",
+          status: "active",
+          attemptsRemaining: { ideas: 11, roasts: 0 },
         }),
       ]),
     );
+    const activePurchaseResponse = await postProtected(
+      "/account/subscriptions/purchase",
+      { plan: "FALTON" },
+      accessToken,
+      "b4e1c42e-198e-4db3-b4a8-910e25c8b6d1",
+    );
+    expect(activePurchaseResponse.status).toBe(409);
   });
 
   it("logs in, rotates the refresh cookie, and revokes the session on logout", async () => {
@@ -216,7 +224,11 @@ describe("registration HTTP flow", () => {
     expect(loginBody.accessToken).not.toBe(registrationBody.accessToken);
     const originalRefreshCookie = cookieFrom(loginResponse);
 
-    const refreshResponse = await post("/auth/refresh", {}, originalRefreshCookie);
+    const refreshResponse = await post(
+      "/auth/refresh",
+      {},
+      originalRefreshCookie,
+    );
     expect(refreshResponse.status).toBe(201);
     const rotatedCookie = cookieFrom(refreshResponse);
     expect(rotatedCookie).not.toBe(originalRefreshCookie);
@@ -232,7 +244,13 @@ describe("registration HTTP flow", () => {
     );
     expect(staleRefreshResponse.status).toBe(401);
 
-    const logoutResponse = await post("/auth/logout", {}, rotatedCookie);
+    // A logout request already in flight when refresh rotates may carry the
+    // previous cookie; it must still revoke the same server-side session.
+    const logoutResponse = await post(
+      "/auth/logout",
+      {},
+      originalRefreshCookie,
+    );
     expect(logoutResponse.status).toBe(201);
     expect(logoutResponse.headers.get("set-cookie")).toContain(
       "grumphya_refresh=;",
@@ -301,7 +319,10 @@ describe("registration HTTP flow", () => {
     });
   }
 
-  async function getProtected(path: string, accessToken: string): Promise<Response> {
+  async function getProtected(
+    path: string,
+    accessToken: string,
+  ): Promise<Response> {
     return fetch(`${apiOrigin}${path}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -327,6 +348,7 @@ describe("registration HTTP flow", () => {
     path: string,
     body: object,
     accessToken: string,
+    idempotencyKey?: string,
   ): Promise<Response> {
     return fetch(`${apiOrigin}${path}`, {
       method: "POST",
@@ -334,6 +356,7 @@ describe("registration HTTP flow", () => {
         Origin: WEB_ORIGIN,
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
       },
       body: JSON.stringify(body),
     });

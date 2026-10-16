@@ -303,7 +303,8 @@ describe("AnonymousUsageController roast endpoint", () => {
   });
 
   it("routes authenticated HTTP roast requests through Faltón quota", async () => {
-    process.env.ACCESS_TOKEN_SECRET = "authenticated-roast-http-secret-min-32-bytes";
+    process.env.ACCESS_TOKEN_SECRET =
+      "authenticated-roast-http-secret-min-32-bytes";
     const usage = {
       initialize: vi.fn(),
       reserve: vi.fn(),

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Inject,
   Post,
   Req,
@@ -181,11 +182,12 @@ export class RegistrationController {
     return this.service.getUserGoodIdeas(requireUserId(request));
   }
 
-  @Post("account/subscriptions/cancel")
+  @Post("account/subscriptions/purchase")
   @UseGuards(AccessTokenGuard)
-  async cancelPlan(
+  async purchasePlan(
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey: unknown,
   ) {
     if (!hasOnlyKeys(body, ["plan"]))
       throw new RegistrationError(
@@ -194,12 +196,18 @@ export class RegistrationController {
         "Selecciona un plan válido.",
       );
     const plan = isRecord(body) ? body.plan : undefined;
-    return this.service.cancelPlanForUser(requireUserId(request), plan);
+    return this.service.purchasePlanForUser(
+      requireUserId(request),
+      plan,
+      idempotencyKey,
+    );
   }
-
 }
 
-function sessionCookieOptions(session: { rememberMe: boolean; expiresAt: Date }) {
+function sessionCookieOptions(session: {
+  rememberMe: boolean;
+  expiresAt: Date;
+}) {
   const maxAge = session.rememberMe
     ? Math.max(
         0,

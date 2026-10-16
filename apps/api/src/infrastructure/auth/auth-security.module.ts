@@ -16,6 +16,10 @@ import { OptionalAccessTokenGuard } from "./optional-access-token.guard";
       useFactory: () => new PostgresAccessTokenSessionLookup(),
     },
   ],
-  exports: [AccessTokenGuard, OptionalAccessTokenGuard, ACCESS_TOKEN_SESSION_LOOKUP],
+  exports: [
+    AccessTokenGuard,
+    OptionalAccessTokenGuard,
+    ACCESS_TOKEN_SESSION_LOOKUP,
+  ],
 })
 export class AuthSecurityModule {}

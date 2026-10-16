@@ -10,8 +10,14 @@ import type {
 const RESERVATION_TTL_MINUTES = 30;
 const IDEMPOTENCY_TTL_HOURS = 24;
 const PLAN_FOR_SCOPE = { ideas: "ILUMINADO", roasts: "FALTON" } as const;
-const COUNTER_FOR_SCOPE = { ideas: "ideas_used", roasts: "roasts_used" } as const;
-const LIMIT_FOR_SCOPE = { ideas: "ideas_per_day", roasts: "roasts_per_day" } as const;
+const COUNTER_FOR_SCOPE = {
+  ideas: "ideas_used",
+  roasts: "roasts_used",
+} as const;
+const LIMIT_FOR_SCOPE = {
+  ideas: "ideas_per_day",
+  roasts: "roasts_per_day",
+} as const;
 
 type RequestRow = {
   request_hash: string;
@@ -113,7 +119,13 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
          ON CONFLICT(user_id,plan_code,idempotency_hash) DO UPDATE SET
            request_hash=EXCLUDED.request_hash,state='reserved',response_json=NULL,
            reserved_at=now(),expires_at=EXCLUDED.expires_at`,
-        [userId, PLAN_FOR_SCOPE[scope], usageDate, idempotencyHash, requestHash],
+        [
+          userId,
+          PLAN_FOR_SCOPE[scope],
+          usageDate,
+          idempotencyHash,
+          requestHash,
+        ],
       );
       return { state: "reserved" };
     });

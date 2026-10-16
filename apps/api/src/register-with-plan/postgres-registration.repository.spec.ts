@@ -79,4 +79,15 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
       ],
     );
   });
+
+  it("revokes a session when logout arrives with its immediately previous refresh hash", async () => {
+    await repository.revokeSession(REFRESH_HASH);
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "(refresh_token_hash=$1 OR previous_refresh_token_hash=$1)",
+      ),
+      [REFRESH_HASH],
+    );
+  });
 });

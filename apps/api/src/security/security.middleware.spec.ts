@@ -153,4 +153,21 @@ describe("security middleware", () => {
     middleware(queryRequest, queryResponse.response, next);
     expect(queryResponse.response.status).toHaveBeenCalledWith(400);
   });
+
+  it("keeps logout available after the refresh limit is reached", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const refreshRequest = createRequest("/api/auth/refresh", "POST");
+
+    for (let index = 0; index < 10; index += 1) {
+      middleware(refreshRequest, createResponse().response, next);
+    }
+
+    const logoutRequest = createRequest("/api/auth/logout", "POST");
+    const { response } = createResponse();
+    middleware(logoutRequest, response, next);
+
+    expect(response.status).not.toHaveBeenCalledWith(429);
+    expect(next).toHaveBeenCalledTimes(11);
+  });
 });
