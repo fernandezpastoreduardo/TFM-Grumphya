@@ -70,6 +70,8 @@ const INVALID_DECISION_MESSAGE = "Respuesta del evaluador no válida.";
 const MIN_MESSAGE_WORDS = 8;
 const MAX_MESSAGE_WORDS = 40;
 const MAX_MESSAGE_LENGTH = 280;
+const MAX_REJECTION_MESSAGE_WORDS = 120;
+const MAX_REJECTION_MESSAGE_LENGTH = 900;
 const MIN_CONCEPTUAL_SCORE = 0;
 const MAX_CONCEPTUAL_SCORE = 79;
 const REJECTION_THRESHOLD = 15;
@@ -212,6 +214,24 @@ function isValidNeutralMessage(value: unknown): value is string {
   );
 }
 
+function isValidRejectionMessage(value: unknown): value is string {
+  return isValidMessage(
+    value,
+    MIN_MESSAGE_WORDS,
+    MAX_REJECTION_MESSAGE_WORDS,
+    MAX_REJECTION_MESSAGE_LENGTH,
+  );
+}
+
+function isValidDecisionMessage(
+  value: unknown,
+  status: EvaluationDecisionStatus,
+): value is string {
+  return status === "RECHAZADA"
+    ? isValidRejectionMessage(value)
+    : isValidNeutralMessage(value);
+}
+
 function isValidHardCopyComponent(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -230,8 +250,7 @@ function renderHardRejectionMessage(decision: ModelDecision): string {
   if (!decision.hardSetup || !decision.hardConsequence) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
-  const consequence = `${decision.hardConsequence[0]?.toLocaleLowerCase("es-ES")}${decision.hardConsequence.slice(1)}`;
-  return `¿Has visto alguna vez ${decision.hardSetup}? Pues eso: ${consequence}. A ver si le damos una vuelta más a las cosas la próxima vez.`;
+  return `¿Menudo chiringuito: ${decision.hardSetup}? ${decision.message}`;
 }
 
 function renderHardMessage(decision: ModelDecision): string {
@@ -241,11 +260,15 @@ function renderHardMessage(decision: ModelDecision): string {
   if (decision.status === "IDEA_INSUFICIENTE") {
     return "Esto aún no es una idea; es el tráiler sin película. A ver si le damos una vuelta más a las cosas la próxima vez.";
   }
-  return `Bueno, por ahora aguanta la inspección; tampoco te vengas arriba. ${decision.message}`;
+  return `Por los pelos: aguanta la inspección. No te flipes; ${decision.message}`;
 }
 
 export function renderMessage(decision: unknown, tone: unknown): string {
-  if (!isRecord(decision) || !isValidNeutralMessage(decision.message)) {
+  if (
+    !isRecord(decision) ||
+    !isDecisionStatus(decision.status) ||
+    !isValidDecisionMessage(decision.message, decision.status)
+  ) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
   if (tone !== "soft" && tone !== "hard") {
@@ -254,7 +277,11 @@ export function renderMessage(decision: unknown, tone: unknown): string {
   const parsedDecision = decision as unknown as ModelDecision;
   if (tone === "soft") return parsedDecision.message;
   const hardMessage = renderHardMessage(parsedDecision);
-  if (hardMessage.length > MAX_MESSAGE_LENGTH || !hardMessage.endsWith(".")) {
+  const maxLength =
+    parsedDecision.status === "RECHAZADA"
+      ? MAX_REJECTION_MESSAGE_LENGTH
+      : MAX_MESSAGE_LENGTH;
+  if (hardMessage.length > maxLength || !hardMessage.endsWith(".")) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
   if (
@@ -300,26 +327,23 @@ function validateRejectedDecision(
   decision: ModelDecision,
   ideaText: string,
 ): boolean {
-  const lastEvaluated = decision.evaluated.at(-1);
+  const firstFailure = decision.evaluated.find(
+    (criterion) =>
+      criterion.state === "PUNTUADO" && criterion.score < REJECTION_THRESHOLD,
+  );
   if (
-    !lastEvaluated ||
-    lastEvaluated.state !== "PUNTUADO" ||
-    lastEvaluated.score >= REJECTION_THRESHOLD ||
-    decision.stop_at !== lastEvaluated.id ||
-    decision.reason_code !== REASON_CODE_BY_CRITERION[lastEvaluated.id] ||
+    decision.evaluated.length !== EVALUATION_CRITERION_IDS.length ||
+    decision.evaluated.at(-1)?.id !== "C10" ||
+    decision.evaluated.at(-1)?.state !== "PUNTUADO" ||
+    !firstFailure ||
+    decision.stop_at !== firstFailure.id ||
+    decision.reason_code !== REASON_CODE_BY_CRITERION[firstFailure.id] ||
     decision.basis === null ||
     !ideaText.includes(decision.basis)
   ) {
     return false;
   }
-
-  return decision.evaluated
-    .slice(0, -1)
-    .every(
-      (criterion) =>
-        criterion.state !== "PUNTUADO" ||
-        criterion.score >= REJECTION_THRESHOLD,
-    );
+  return true;
 }
 
 function isSafeTitle(value: unknown, ideaText: string): value is string {
@@ -405,7 +429,7 @@ export function validateModelDecision(
   if (safeTitle !== null && typeof safeTitle !== "string") {
     throw new InvalidModelDecisionError("decision_fields");
   }
-  if (!isValidNeutralMessage(input.message)) {
+  if (!isValidDecisionMessage(input.message, input.status)) {
     throw new InvalidModelDecisionError("visible_message");
   }
 

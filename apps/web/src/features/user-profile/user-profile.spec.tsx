@@ -108,7 +108,7 @@ describe("UserProfile", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("cancels an active plan through the API and reflects the server response", async () => {
+  it("purchases only an inactive plan through the simulated payment dialog", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       if (String(input) === "/api/account/profile")
@@ -116,34 +116,44 @@ describe("UserProfile", () => {
       if (String(input) === "/api/account/good-ideas")
         return jsonResponse(GOOD_IDEAS);
       expect(init?.method).toBe("POST");
-      expect(JSON.parse(String(init?.body))).toEqual({ plan: "ILUMINADO" });
+      expect(String(input)).toBe("/api/account/subscriptions/purchase");
+      expect(JSON.parse(String(init?.body))).toEqual({ plan: "FALTON" });
+      expect(new Headers(init?.headers).get("Idempotency-Key")).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
       return jsonResponse({
         ...ACCOUNT_PROFILE,
         plans: [
+          ACCOUNT_PROFILE.plans[0],
           {
-            ...ACCOUNT_PROFILE.plans[0],
-            status: "inactive",
-            startsAt: null,
-            expiresAt: null,
-            attemptsRemaining: { ideas: 0, roasts: 0 },
+            ...ACCOUNT_PROFILE.plans[1],
+            status: "active",
+            startsAt: "2026-10-16T12:00:00.000Z",
+            expiresAt: "2026-11-16T12:00:00.000Z",
+            attemptsRemaining: { ideas: 0, roasts: 11 },
           },
-          ACCOUNT_PROFILE.plans[1],
         ],
       });
     });
     render(<UserProfile />);
 
-    await user.click(
-      await screen.findByRole("button", {
-        name: /darme de baja del plan iluminado/i,
-      }),
-    );
+    await screen.findByRole("heading", { name: "persona-lista" });
+    expect(
+      screen.getByRole("button", { name: "Pagar un café" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /baja.*iluminado/i }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pagar un café" }));
 
+    expect(await screen.findByRole("dialog")).toHaveTextContent(
+      /activando tu plan faltón/i,
+    );
     expect(
-      await screen.findByText(/la baja de iluminado se ha confirmado/i),
+      screen.getByText(/11 de 11 envíos disponibles hoy/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/0 de 11 evaluaciones disponibles hoy/i),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Pagar un café" }),
+    ).not.toBeInTheDocument();
   });
 });

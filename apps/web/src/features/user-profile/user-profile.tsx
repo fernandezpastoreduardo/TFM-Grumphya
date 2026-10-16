@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
+import { PaymentSimulationDialog } from "../register-with-plan/components/PaymentSimulationDialog";
 import { UserDelete } from "../user-delete/user-delete";
 import "./user-profile.scss";
 
@@ -52,8 +53,10 @@ const PROFILE_LOAD_ERROR =
   "No se ha podido cargar tu perfil. Comprueba la conexión e inténtalo de nuevo.";
 const SESSION_REQUIRED_ERROR =
   "Tu sesión no está activa. Entra en tu cuenta para consultar el perfil.";
-const CANCELLATION_ERROR =
-  "No se ha podido confirmar la baja. Comprueba el estado del plan e inténtalo de nuevo.";
+const PURCHASE_ERROR =
+  "No se ha podido activar el plan. Comprueba la conexión e inténtalo de nuevo.";
+const PLAN_ALREADY_ACTIVE_ERROR =
+  "Ese plan ya está activo; guárdate el café para más adelante.";
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
   active: "Activo",
   inactive: "No activo",
@@ -145,9 +148,10 @@ export function UserProfile() {
   const [goodIdeas, setGoodIdeas] = useState<GoodIdea[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [cancellingPlan, setCancellingPlan] = useState<PlanCode | null>(null);
-  const [cancellationMessage, setCancellationMessage] = useState("");
-  const [cancellationError, setCancellationError] = useState("");
+  const [purchasingPlan, setPurchasingPlan] = useState<PlanCode | null>(null);
+  const [paymentPlan, setPaymentPlan] = useState<PlanCode | null>(null);
+  const [purchaseError, setPurchaseError] = useState("");
+  const purchaseKeyRef = useRef<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -186,40 +190,51 @@ export function UserProfile() {
     void loadProfile();
   }, [loadProfile]);
 
-  async function cancelPlan(plan: PlanCode) {
-    setCancellingPlan(plan);
-    setCancellationError("");
-    setCancellationMessage("");
+  async function purchasePlan(plan: PlanCode) {
+    setPurchasingPlan(plan);
+    setPurchaseError("");
+    purchaseKeyRef.current ??= crypto.randomUUID();
     try {
       const response = await authenticatedFetch(
-        "/api/account/subscriptions/cancel",
+        "/api/account/subscriptions/purchase",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": purchaseKeyRef.current,
+          },
           body: JSON.stringify({ plan }),
         },
       );
       const body: unknown = await readJson(response);
       if (!response.ok || !isAccountProfile(body)) {
-        setCancellationError(
-          response.status === 401 ? SESSION_REQUIRED_ERROR : CANCELLATION_ERROR,
+        setPurchaseError(
+          response.status === 401
+            ? SESSION_REQUIRED_ERROR
+            : response.status === 409
+              ? PLAN_ALREADY_ACTIVE_ERROR
+              : PURCHASE_ERROR,
         );
         return;
       }
       const updatedPlan = body.plans.find((item) => item.plan === plan);
-      if (!updatedPlan || updatedPlan.status !== "inactive") {
-        setCancellationError(CANCELLATION_ERROR);
+      if (!updatedPlan || updatedPlan.status !== "active") {
+        setPurchaseError(PURCHASE_ERROR);
         return;
       }
+      purchaseKeyRef.current = null;
       setProfile(body);
-      setCancellationMessage(
-        `La baja de ${PLANS[plan].name} se ha confirmado. El servidor ya refleja el cambio.`,
-      );
+      setPaymentPlan(plan);
     } catch {
-      setCancellationError(CANCELLATION_ERROR);
+      setPurchaseError(PURCHASE_ERROR);
     } finally {
-      setCancellingPlan(null);
+      setPurchasingPlan(null);
     }
+  }
+
+  function finishPurchaseSimulation() {
+    setPaymentPlan(null);
+    void loadProfile();
   }
 
   if (loading) {
@@ -308,6 +323,10 @@ export function UserProfile() {
             Ver planes <span aria-hidden="true">↗</span>
           </a>
         </div>
+        <p className="profile-renewal-note">
+          Cada plan dura un mes y no se renueva automáticamente. Si otro mes te
+          apetece café, vuelves y lo contratas; no tendrás que cancelar nada.
+        </p>
         <div className="profile-plans-grid">
           {PLAN_CODES.map((code) => {
             const plan = profile.plans.find((item) => item.plan === code);
@@ -345,35 +364,26 @@ export function UserProfile() {
                       Vigencia hasta:{" "}
                       <strong>{expiresAt ?? "fecha no disponible"}</strong>
                     </p>
-                    <button
-                      className="profile-cancel-button"
-                      type="button"
-                      onClick={() => void cancelPlan(plan.plan)}
-                      disabled={cancellingPlan !== null}
-                      aria-label={`Darme de baja del plan ${content.name}`}
-                    >
-                      {cancellingPlan === plan.plan
-                        ? "Procesando baja…"
-                        : "Darme de baja"}
-                    </button>
                   </>
                 ) : (
-                  <a className="profile-plan-link" href="/precios">
-                    Consultar contratación
-                  </a>
+                  <button
+                    className="profile-plan-link"
+                    type="button"
+                    disabled={purchasingPlan !== null || paymentPlan !== null}
+                    onClick={() => void purchasePlan(plan.plan)}
+                  >
+                    {purchasingPlan === plan.plan
+                      ? "Preparando el café…"
+                      : "Pagar un café"}
+                  </button>
                 )}
               </article>
             );
           })}
         </div>
-        {cancellationMessage ? (
-          <p className="profile-cancellation-message" role="status">
-            {cancellationMessage}
-          </p>
-        ) : null}
-        {cancellationError ? (
-          <p className="profile-cancellation-error" role="alert">
-            {cancellationError}
+        {purchaseError ? (
+          <p className="profile-purchase-error" role="alert">
+            {purchaseError}
           </p>
         ) : null}
       </section>
@@ -429,6 +439,15 @@ export function UserProfile() {
         )}
       </section>
       <UserDelete />
+      <PaymentSimulationDialog
+        open={paymentPlan !== null}
+        heading={
+          paymentPlan === null
+            ? undefined
+            : `Estoy activando tu plan ${PLANS[paymentPlan].name}.`
+        }
+        onComplete={finishPurchaseSimulation}
+      />
     </div>
   );
 }

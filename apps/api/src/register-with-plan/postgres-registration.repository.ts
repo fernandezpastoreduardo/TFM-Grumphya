@@ -197,7 +197,8 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     await this.ensureSchema();
     await this.pool.query(
       `UPDATE auth_sessions SET revoked_at=now()
-       WHERE refresh_token_hash=$1 AND revoked_at IS NULL`,
+       WHERE (refresh_token_hash=$1 OR previous_refresh_token_hash=$1)
+         AND revoked_at IS NULL`,
       [refreshTokenHash],
     );
   }
@@ -372,14 +373,10 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       const identity = found.rows[0];
       if (!identity) throw new Error("Refresh token unavailable.");
       const rotated = await client.query(
-        `UPDATE auth_sessions SET access_token_hash=$2,refresh_token_hash=$3
+        `UPDATE auth_sessions SET access_token_hash=$2,
+           previous_refresh_token_hash=refresh_token_hash,refresh_token_hash=$3
          WHERE id=$1 AND refresh_token_hash=$4 AND revoked_at IS NULL AND expires_at > now()`,
-        [
-          identity.id,
-          accessTokenHash,
-          nextRefreshTokenHash,
-          refreshTokenHash,
-        ],
+        [identity.id, accessTokenHash, nextRefreshTokenHash, refreshTokenHash],
       );
       if (rotated.rowCount !== 1) throw new Error("Refresh token unavailable.");
       return {
@@ -445,33 +442,10 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     });
   }
 
-  async cancelSubscription(
-    refreshTokenHash: string,
-    plan: PlanCode,
-  ): Promise<AccountProfile | null> {
-    await this.ensureSchema();
-    return this.transaction(async (client) => {
-      const session = await client.query<{ user_id: string }>(
-        `SELECT user_id FROM auth_sessions
-         WHERE refresh_token_hash=$1 AND revoked_at IS NULL AND expires_at > now()
-         FOR UPDATE`,
-        [refreshTokenHash],
-      );
-      const userId = session.rows[0]?.user_id;
-      if (!userId) return null;
-      await client.query(
-        `UPDATE subscriptions SET status='cancelled'
-         WHERE user_id=$1 AND plan_code=$2 AND status='active'
-           AND starts_at <= now() AND expires_at > now()`,
-        [userId, plan],
-      );
-      return this.readProfile(client, refreshTokenHash);
-    });
-  }
-
-  async cancelSubscriptionForUser(
+  async createSubscriptionPurchase(
     userId: string,
     plan: PlanCode,
+    idempotencyKey: string,
   ): Promise<AccountProfile | null> {
     await this.ensureSchema();
     return this.transaction(async (client) => {
@@ -480,11 +454,38 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         [userId],
       );
       if (user.rowCount !== 1) return null;
-      await client.query(
-        `UPDATE subscriptions SET status='cancelled'
-         WHERE user_id=$1 AND plan_code=$2 AND status='active'
-           AND starts_at <= now() AND expires_at > now()`,
+      const previousPurchase = await client.query(
+        `SELECT id FROM simulated_purchases WHERE idempotency_key=$1 AND user_id=$2`,
+        [idempotencyKey, userId],
+      );
+      if (previousPurchase.rowCount)
+        return this.readProfileForUser(client, userId);
+
+      const activePlan = await client.query(
+        `SELECT id FROM subscriptions WHERE user_id=$1 AND plan_code=$2
+           AND status='active' AND starts_at <= now() AND expires_at > now()
+         FOR UPDATE`,
         [userId, plan],
+      );
+      if (activePlan.rowCount) throw new Error("PLAN_ALREADY_ACTIVE");
+
+      await client.query(
+        `UPDATE subscriptions SET status='expired'
+         WHERE user_id=$1 AND plan_code=$2 AND status='active' AND expires_at <= now()`,
+        [userId, plan],
+      );
+      const subscription = await client.query<{ id: string }>(
+        `INSERT INTO subscriptions(user_id,plan_code,status,starts_at,expires_at,activation_source,idempotency_key)
+         VALUES($1,$2,'active',now(),now()+interval '1 month','simulated',$3)
+         RETURNING id`,
+        [userId, plan, idempotencyKey],
+      );
+      const subscriptionId = subscription.rows[0]?.id;
+      if (!subscriptionId) throw new Error("SUBSCRIPTION_PURCHASE_FAILED");
+      await client.query(
+        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at)
+         VALUES($1,$2,$3,'confirmed',now())`,
+        [userId, subscriptionId, idempotencyKey],
       );
       return this.readProfileForUser(client, userId);
     });
@@ -578,18 +579,20 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     return result.rows.length === 0 ? null : this.toAccountProfile(result.rows);
   }
 
-  private toAccountProfile(rows: Array<{
-    email: string;
-    username: string;
-    email_verified_at: Date | null;
-    user_created_at: Date;
-    plan_code: PlanCode;
-    plan_status: "active" | "inactive";
-    starts_at: Date | null;
-    expires_at: Date | null;
-    remaining_ideas: number;
-    remaining_roasts: number;
-  }>): AccountProfile {
+  private toAccountProfile(
+    rows: Array<{
+      email: string;
+      username: string;
+      email_verified_at: Date | null;
+      user_created_at: Date;
+      plan_code: PlanCode;
+      plan_status: "active" | "inactive";
+      starts_at: Date | null;
+      expires_at: Date | null;
+      remaining_ideas: number;
+      remaining_roasts: number;
+    }>,
+  ): AccountProfile {
     const first = rows[0]!;
     return {
       user: {

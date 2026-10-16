@@ -33,7 +33,10 @@ export class AccessTokenGuard implements CanActivate {
     const claims = match ? verifyAccessToken(match[1]!) : null;
     const active =
       claims && match
-        ? await this.sessionLookup.isActive(hashAccessToken(match[1]!), claims.userId)
+        ? await this.sessionLookup.isActive(
+            hashAccessToken(match[1]!),
+            claims.userId,
+          )
         : false;
     if (!claims || !active) {
       throw new UnauthorizedException({

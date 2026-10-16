@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import styles from "./EvaluationDialog.module.scss";
 
 type EvaluationDialogProps = {

@@ -1,4 +1,7 @@
-import { UserDeleteError, type UserDeleteRepository } from "./user-delete.models";
+import {
+  UserDeleteError,
+  type UserDeleteRepository,
+} from "./user-delete.models";
 
 const SESSION_REQUIRED = "Inicia sesión para darte de baja.";
 const UUID_PATTERN =

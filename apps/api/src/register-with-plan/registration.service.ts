@@ -41,7 +41,8 @@ const DUMMY_PASSWORD_HASH = `scrypt$${"0".repeat(32)}$${"0".repeat(128)}`;
 const GENERIC_LOGIN_ERROR = {
   status: 401,
   code: "LOGIN_UNAVAILABLE",
-  message: "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.",
+  message:
+    "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.",
 } as const;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
@@ -318,7 +319,8 @@ export class RegistrationService {
   }
 
   async logout(token: string | undefined): Promise<void> {
-    if (token && isToken(token)) await this.repository.revokeSession(hashToken(token));
+    if (token && isToken(token))
+      await this.repository.revokeSession(hashToken(token));
   }
 
   async accountProfile(token: string | undefined): Promise<AccountProfile> {
@@ -365,38 +367,10 @@ export class RegistrationService {
     return profile;
   }
 
-  async cancelPlan(
-    token: string | undefined,
-    value: unknown,
-  ): Promise<AccountProfile> {
-    if (value !== "ILUMINADO" && value !== "FALTON")
-      throw new RegistrationError(
-        400,
-        "INVALID_PLAN",
-        "Selecciona un plan válido.",
-      );
-    if (!token || !isToken(token))
-      throw new RegistrationError(
-        401,
-        "SESSION_REQUIRED",
-        "Inicia sesión para gestionar tu plan.",
-      );
-    const profile = await this.repository.cancelSubscription(
-      hashToken(token),
-      value,
-    );
-    if (!profile)
-      throw new RegistrationError(
-        401,
-        "SESSION_REQUIRED",
-        "Tu sesión ha caducado. Inicia sesión para continuar.",
-      );
-    return profile;
-  }
-
-  async cancelPlanForUser(
+  async purchasePlanForUser(
     userId: string,
     value: unknown,
+    idempotencyKey: unknown,
   ): Promise<AccountProfile> {
     if (value !== "ILUMINADO" && value !== "FALTON")
       throw new RegistrationError(
@@ -404,20 +378,40 @@ export class RegistrationService {
         "INVALID_PLAN",
         "Selecciona un plan válido.",
       );
-    if (!isUuid(userId))
+    if (
+      !isUuid(userId) ||
+      typeof idempotencyKey !== "string" ||
+      !isUuid(idempotencyKey)
+    )
       throw new RegistrationError(
-        401,
-        "SESSION_REQUIRED",
-        "Inicia sesión para gestionar tu plan.",
+        400,
+        "INVALID_PURCHASE",
+        "No se ha podido identificar la contratación simulada.",
       );
-    const profile = await this.repository.cancelSubscriptionForUser(userId, value);
-    if (!profile)
-      throw new RegistrationError(
-        401,
-        "SESSION_REQUIRED",
-        "Tu sesión ha caducado. Inicia sesión para continuar.",
+    try {
+      const profile = await this.repository.createSubscriptionPurchase(
+        userId,
+        value,
+        idempotencyKey,
       );
-    return profile;
+      if (!profile)
+        throw new RegistrationError(
+          401,
+          "SESSION_REQUIRED",
+          "Tu sesión ha caducado. Inicia sesión para continuar.",
+        );
+      return profile;
+    } catch (error) {
+      if (error instanceof RegistrationError) throw error;
+      if (error instanceof Error && error.message === "PLAN_ALREADY_ACTIVE") {
+        throw new RegistrationError(
+          409,
+          "PLAN_ALREADY_ACTIVE",
+          "Ese plan ya está activo. No hace falta pagar otro café todavía.",
+        );
+      }
+      throw error;
+    }
   }
 
   private async sessionResult(

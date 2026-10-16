@@ -43,7 +43,7 @@ describe("renderMessage", () => {
         "hard",
       ),
     ).toBe(
-      "¿Has visto alguna vez un grillo usando un móvil o un ordenador? Pues eso: sin esa interacción, nadie llega a encontrarse. A ver si le damos una vuelta más a las cosas la próxima vez.",
+      "¿Menudo chiringuito: un grillo usando un móvil o un ordenador? Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
     );
     expect(renderHeadline("RECHAZADA", "soft")).toBe(
       "Vaya, justo falla donde más importa.",

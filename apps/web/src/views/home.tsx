@@ -9,6 +9,9 @@ import { EvaluationResult } from "../features/idea-evaluation/components/Evaluat
 import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
 import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../features/error-pages/error-pages";
+import { usePersistentTheme } from "../shared/hooks/use-persistent-theme";
+import { useSessionStatus } from "../infrastructure/auth/use-session-status";
+import { AccountActions } from "../shared/components/account-actions";
 import {
   evaluationProcess,
   EvaluationProcessError,
@@ -39,6 +42,16 @@ type HeroRayPlacement =
   | "hero-rays-stage-start"
   | "hero-rays-stage-end";
 const HERO_RAY_MARKS = ["short", "middle", "long"] as const;
+
+function getIdeaAttemptsRemaining(
+  isAuthenticated: boolean | null,
+  anonymousRemaining: number | undefined,
+  accountRemaining: number | undefined,
+): number | null | undefined {
+  if (isAuthenticated === true) return accountRemaining ?? null;
+  if (isAuthenticated === false) return anonymousRemaining ?? null;
+  return null;
+}
 
 function HeroRayCluster({ placement }: { placement: HeroRayPlacement }) {
   return (
@@ -79,10 +92,25 @@ export function Home() {
   } | null>(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggleTheme } = usePersistentTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isQuotaDialogOpen, setIsQuotaDialogOpen] = useState(false);
+  const quotaDialogRef = useRef<HTMLDialogElement>(null);
   const isEvaluationSubmittingRef = useRef(false);
   const anonymousUsage = useAnonymousUsage();
+  const session = useSessionStatus();
+
+  useEffect(() => {
+    const dialog = quotaDialogRef.current;
+    if (!dialog) return;
+    if (isQuotaDialogOpen && !dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    } else if (!isQuotaDialogOpen && dialog.open) {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+  }, [isQuotaDialogOpen]);
 
   useEffect(() => {
     let isMounted = true;
@@ -209,12 +237,12 @@ export function Home() {
             ))}
           </nav>
           <div className="home-nav-actions">
-            <a className="home-login-button" href="/login">
-              Entrar
-            </a>
-            <a className="home-register-button" href="/precios">
-              Crear cuenta
-            </a>
+            <AccountActions
+              isAuthenticated={session.isAuthenticated}
+              isSigningOut={session.isSigningOut}
+              onSignOut={() => void session.signOut()}
+              variant="home"
+            />
             <button
               className="theme-toggle"
               type="button"
@@ -223,7 +251,7 @@ export function Home() {
                 theme === "light" ? THEME_LABEL.LIGHT : THEME_LABEL.DARK
               }
               aria-checked={theme === "dark"}
-              onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+              onClick={toggleTheme}
             >
               <span className="theme-switch-sun" aria-hidden="true">
                 ☀
@@ -293,8 +321,20 @@ export function Home() {
         <section className="home-workspace" aria-label="Preparar una idea">
           <GetUserIdea
             onSubmit={(request) => void handleEvaluation(request)}
+            onQuotaExhausted={
+              session.isAuthenticated === false
+                ? () => setIsQuotaDialogOpen(true)
+                : undefined
+            }
             isSubmitting={isEvaluating}
-            remainingAttempts={anonymousUsage.usage?.ideas.remaining ?? null}
+            remainingAttempts={getIdeaAttemptsRemaining(
+              session.isAuthenticated,
+              anonymousUsage.usage?.ideas.remaining,
+              session.accountAttempts?.ideas,
+            )}
+            quotaKind={
+              session.isAuthenticated === true ? "account" : "anonymous"
+            }
           />
           {anonymousUsage.error ? (
             <p className="home-result-error" role="alert">
@@ -350,6 +390,39 @@ export function Home() {
           ) : null}
         </EvaluationDialog>
 
+        {isQuotaDialogOpen ? (
+          <dialog
+            ref={quotaDialogRef}
+            className="quota-exhausted-dialog"
+            aria-labelledby="quota-exhausted-title"
+            aria-describedby="quota-exhausted-copy"
+            onClose={() => setIsQuotaDialogOpen(false)}
+          >
+            <button
+              className="quota-dialog-close"
+              type="button"
+              aria-label="Cerrar aviso de usos gratuitos agotados"
+              onClick={() => setIsQuotaDialogOpen(false)}
+            >
+              ×
+            </button>
+            <img
+              src="/assets/grumphya/mascot-neutral.svg"
+              alt="Grumphya esperando un café"
+            />
+            <span className="eyebrow">El café se ha terminado</span>
+            <h2 id="quota-exhausted-title">Ya conoces el método</h2>
+            <p id="quota-exhausted-copy">
+              Ahora que sabes cómo va la app, te cuento el detalle: funciono a
+              base de café. Tus tres pruebas gratis ya se han agotado. No se
+              reinician: cada navegador tiene tres evaluaciones de por vida.
+            </p>
+            <a className="button-primary" href="/precios">
+              A ver lo que cuesta un café <span aria-hidden="true">↗</span>
+            </a>
+          </dialog>
+        ) : null}
+
         <section className="home-marketing" aria-label="Por qué usar Grumphya">
           <div>
             <span className="eyebrow">Antes de enamorarte del roadmap</span>
@@ -390,7 +463,9 @@ export function Home() {
                 aria-label="Cerrar menú"
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              <div className="home-mobile-menu mobile-menu-portal">
+              <div
+                className={`home-mobile-menu mobile-menu-portal theme-${theme}`}
+              >
                 <nav id="home-sections-menu" aria-label="Secciones principales">
                   <a href="/" aria-current="page">
                     Inicio
@@ -400,8 +475,12 @@ export function Home() {
                       {section.label}
                     </a>
                   ))}
-                  <a href="/login">Entrar</a>
-                  <a href="/precios">Crear cuenta</a>
+                  <AccountActions
+                    isAuthenticated={session.isAuthenticated}
+                    isSigningOut={session.isSigningOut}
+                    onSignOut={() => void session.signOut()}
+                    variant="home"
+                  />
                 </nav>
               </div>
             </>,

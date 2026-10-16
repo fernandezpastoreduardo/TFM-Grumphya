@@ -28,10 +28,9 @@ export class PostgresUserDeleteRepository implements UserDeleteRepository {
       await client.query("DELETE FROM subscriptions WHERE user_id=$1", [
         userId,
       ]);
-      const deletedUser = await client.query(
-        "DELETE FROM users WHERE id=$1",
-        [userId],
-      );
+      const deletedUser = await client.query("DELETE FROM users WHERE id=$1", [
+        userId,
+      ]);
       return deletedUser.rowCount === 1;
     });
   }

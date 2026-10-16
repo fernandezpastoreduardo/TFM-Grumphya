@@ -35,6 +35,7 @@ const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
 const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
 const VISIBLE_SCORE_DECIMAL_SCALE = 100;
+const REJECTION_SCORE_THRESHOLD = 15;
 const INVALID_IDEA_RESPONSE = {
   code: "INVALID_IDEA",
   message: "La idea debe tener entre 10 y 2.000 caracteres y un tono válido.",
@@ -95,7 +96,11 @@ function getPublicScore(decision: ModelDecision): number | null {
     return getAverageConceptualScore(decision);
   }
 
-  const rejectingCriterion = decision.evaluated.at(-1);
+  const rejectingCriterion = decision.evaluated.find(
+    (criterion) =>
+      criterion.state === "PUNTUADO" &&
+      criterion.score < REJECTION_SCORE_THRESHOLD,
+  );
   if (rejectingCriterion?.state !== "PUNTUADO") {
     throw new InvalidModelDecisionError();
   }

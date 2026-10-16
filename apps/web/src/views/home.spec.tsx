@@ -1,6 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { clearAccessToken } from "../infrastructure/auth/session";
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
@@ -19,6 +21,9 @@ const ANONYMOUS_USAGE_RESPONSE = {
 };
 
 function respondToUsageInitialization(url: unknown) {
+  if (url === "/api/auth/refresh") {
+    return Promise.resolve({ ok: false, status: 401, json: async () => null });
+  }
   if (url !== "/api/anonymous-usage") return null;
   return Promise.resolve({
     ok: true,
@@ -27,10 +32,22 @@ function respondToUsageInitialization(url: unknown) {
 }
 
 describe("Home", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    clearAccessToken();
+  });
+
   it("shows the 429 page when the API temporarily blocks browser profile creation", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) => {
+        if (url === "/api/auth/refresh") {
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            json: async () => null,
+          });
+        }
         if (url === "/api/anonymous-usage") {
           return Promise.resolve({
             ok: false,
@@ -82,7 +99,7 @@ describe("Home", () => {
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
     );
-    const { container } = render(<Home />);
+    const { container, unmount } = render(<Home />);
     const page = container.querySelector(".home-page");
 
     expect(page).toHaveClass("theme-light");
@@ -93,6 +110,147 @@ describe("Home", () => {
     expect(
       screen.getByRole("switch", { name: /activar modo claro/i }),
     ).toBeVisible();
+    expect(localStorage.getItem("grumphya-theme")).toBe("dark");
+    unmount();
+    render(<Home />);
+    expect(document.querySelector(".home-page")).toHaveClass("theme-dark");
+  });
+
+  it("opens the café dialog after exhausted anonymous users submit and shows it again after closing", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn((url: unknown) => {
+      if (url === "/api/auth/refresh")
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => null,
+        });
+      if (url === "/api/anonymous-usage")
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ideas: { limit: 3, used: 3, remaining: 0 },
+            roasts: { limit: 3, used: 0, remaining: 3 },
+          }),
+        });
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      TEST_IDEA_TEXT,
+    );
+    const submitButton = screen.getByRole("button", {
+      name: SUBMIT_BUTTON_NAME,
+    });
+    await user.click(submitButton);
+
+    const quotaDialog = await screen.findByRole("dialog", {
+      name: /ya conoces el método/i,
+    });
+    expect(quotaDialog).toHaveTextContent(/funciono a base de café/i);
+    expect(quotaDialog).toHaveTextContent(/tres evaluaciones de por vida/i);
+    expect(quotaDialog.textContent).not.toMatch(/por hoy/i);
+    expect(
+      screen.getByRole("link", { name: /a ver lo que cuesta un café/i }),
+    ).toHaveAttribute("href", "/precios");
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/evaluation-process",
+      expect.anything(),
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: /cerrar aviso de usos gratuitos agotados/i,
+      }),
+    );
+    await user.click(submitButton);
+    expect(
+      await screen.findByRole("dialog", { name: /ya conoces el método/i }),
+    ).toBeVisible();
+  });
+
+  it("waits for session status before applying an exhausted anonymous quota", async () => {
+    const user = userEvent.setup();
+    let resolveRefresh: ((response: Response) => void) | undefined;
+    const refreshResponse = new Promise<Response>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const fetchMock = vi.fn((url: unknown) => {
+      if (url === "/api/auth/refresh") return refreshResponse;
+      if (url === "/api/anonymous-usage") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ideas: { limit: 3, used: 3, remaining: 0 },
+            roasts: { limit: 3, used: 0, remaining: 3 },
+          }),
+        });
+      }
+      if (url === "/api/account/profile") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            plans: [
+              {
+                plan: "ILUMINADO",
+                status: "active",
+                attemptsRemaining: { ideas: 11, roasts: 0 },
+              },
+            ],
+          }),
+        });
+      }
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "evaluated",
+            result: EVALUATION_RESPONSE,
+          }),
+        });
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <StrictMode>
+        <Home />
+      </StrictMode>,
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      TEST_IDEA_TEXT,
+    );
+    const submitButton = screen.getByRole("button", {
+      name: SUBMIT_BUTTON_NAME,
+    });
+    expect(submitButton).toBeDisabled();
+    expect(
+      screen.queryByRole("dialog", { name: /ya conoces el método/i }),
+    ).not.toBeInTheDocument();
+
+    resolveRefresh?.(
+      new Response(JSON.stringify({ accessToken: "session-access-token" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await user.click(submitButton);
+
+    expect(await screen.findByText("7,15/10")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: /ya conoces el método/i }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/evaluation-process",
+      expect.anything(),
+    );
   });
 
   it("keeps the editable hero copy separate from the idea input", async () => {

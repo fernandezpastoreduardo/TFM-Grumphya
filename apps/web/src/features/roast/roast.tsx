@@ -1,6 +1,11 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../error-pages/error-pages";
+import {
+  authenticatedFetch,
+  getAccessToken,
+} from "../../infrastructure/auth/session";
+import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import "./roast.scss";
 
 // PROTOTYPE: sample exchanges and the reply below are fixtures until the roast service exists.
@@ -33,17 +38,34 @@ export function Roast() {
   const [error, setError] = useState("");
   const isSendingRef = useRef(false);
   const usageState = useAnonymousUsage();
-  const remainingAttempts = usageState.usage?.roasts.remaining ?? 0;
+  const session = useSessionStatus();
+  const isAuthenticated = session.isAuthenticated === true;
+  const remainingAttempts =
+    session.isAuthenticated === null
+      ? null
+      : isAuthenticated
+        ? (session.accountAttempts?.roasts ?? null)
+        : (usageState.usage?.roasts.remaining ?? null);
+  const quotaLimit = isAuthenticated ? 11 : 3;
+  const quotaDescription = isAuthenticated
+    ? "envíos disponibles hoy"
+    : "envíos gratuitos restantes";
 
   async function submitRoast(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = message.trim();
-    if (!value || remainingAttempts === 0 || isSendingRef.current) return;
+    if (
+      !value ||
+      (remainingAttempts === 0 && isAuthenticated) ||
+      isSendingRef.current
+    )
+      return;
     isSendingRef.current = true;
     setIsSending(true);
     setError("");
     try {
-      const response = await fetch(ROAST_ENDPOINT, {
+      const accessToken = await getAccessToken();
+      const init: RequestInit = {
         method: "POST",
         credentials: "include",
         headers: {
@@ -51,7 +73,10 @@ export function Roast() {
           "Idempotency-Key": crypto.randomUUID(),
         },
         body: JSON.stringify({ message: value }),
-      });
+      };
+      const response = accessToken
+        ? await authenticatedFetch(ROAST_ENDPOINT, init)
+        : await fetch(ROAST_ENDPOINT, init);
       if (!response.ok) {
         let errorMessage = ROAST_ERROR_MESSAGE;
         try {
@@ -111,9 +136,9 @@ export function Roast() {
           </div>
           <span
             className="demo-counter"
-            aria-label={`${remainingAttempts} envíos gratuitos restantes`}
+            aria-label={`${remainingAttempts ?? "comprobando"} de ${quotaLimit} ${quotaDescription}`}
           >
-            {remainingAttempts} <small>/ 3</small>
+            {remainingAttempts ?? "…"} <small>/ {quotaLimit}</small>
           </span>
         </div>
         <p className="prototype-stamp">
@@ -174,7 +199,9 @@ export function Roast() {
             placeholder="Venga, a ver si me haces sudar…"
             maxLength={400}
             disabled={
-              remainingAttempts === 0 || usageState.isLoading || isSending
+              remainingAttempts === null ||
+              remainingAttempts === 0 ||
+              isSending
             }
           />
           <button
@@ -182,8 +209,8 @@ export function Roast() {
             aria-label="Enviar insulto"
             disabled={
               !message.trim() ||
+              remainingAttempts === null ||
               remainingAttempts === 0 ||
-              usageState.isLoading ||
               isSending
             }
           >

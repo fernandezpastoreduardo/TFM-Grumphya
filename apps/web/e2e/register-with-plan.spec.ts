@@ -5,7 +5,7 @@ const USERNAME = "personaE2E";
 const PASSWORD = "Una contraseña segura para e2e 2026!";
 const PAYMENT_NOTICE = "el pago es simulado y no se te cobrará nada";
 
-test("selects a plan, activates the simulated purchase and manages it in the profile", async ({
+test("selects a plan, activates the simulated purchase and deletes the account from the profile", async ({
   page,
 }) => {
   await page.goto("/precios");
@@ -42,6 +42,10 @@ test("selects a plan, activates the simulated purchase and manages it in the pro
 
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
   await expect(page.getByText(EMAIL)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Mi cuenta" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Cerrar sesión" }),
+  ).toBeVisible();
   await expect(page.getByText(/correo sin verificar/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Faltón" })).toBeVisible();
   await expect(
@@ -51,24 +55,47 @@ test("selects a plan, activates the simulated purchase and manages it in the pro
     page.getByRole("heading", { name: /tus últimas ideas aprobadas/i }),
   ).toBeVisible();
 
-  await page
-    .getByRole("button", { name: /darme de baja del plan faltón/i })
-    .click();
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/perfil$/);
+  const logoutResponsePromise = page.waitForResponse("**/api/auth/logout");
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  const logoutResponse = await logoutResponsePromise;
+  expect(logoutResponse.status()).toBe(201);
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
+  await page.goto("/perfil");
+  await expect(page).toHaveURL(/\/login$/);
   await expect(
-    page.getByText(/la baja de faltón se ha confirmado/i),
+    page.getByRole("heading", { name: /no, no tenemos login/i }),
   ).toBeVisible();
-  await expect(page.getByText(/0 de 11 envíos disponibles hoy/i)).toBeVisible();
+  const protectedProfileStatus = await page.evaluate(async () => {
+    const response = await fetch("/api/account/profile");
+    return response.status;
+  });
+  expect(protectedProfileStatus).toBe(401);
 
-  await page.getByRole("button", { name: "Darme de baja" }).click();
+  await page.getByLabel("Usuario o correo").fill(USERNAME);
+  await page.getByLabel("Contraseña").fill(PASSWORD);
+  await page.getByRole("button", { name: /^entrar/i }).click();
+  await expect(page).toHaveURL(/\/perfil$/);
+  await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "Darme de baja y BORRAR MI CUENTA" })
+    .click();
   const deletionDialog = page.getByRole("dialog", {
     name: "Esta acción no se puede deshacer",
   });
-  await expect(deletionDialog).toContainText(/baja es inmediata e irreversible/i);
+  await expect(deletionDialog).toContainText(
+    /baja es inmediata e irreversible/i,
+  );
   await expect(deletionDialog).toContainText(/borrado es físico/i);
   await page.getByRole("button", { name: "Cancelar" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Darme de baja" }).click();
+  await page
+    .getByRole("button", { name: "Darme de baja y BORRAR MI CUENTA" })
+    .click();
   await page
     .getByRole("button", { name: "Confirmo que quiero darme de baja" })
     .click();

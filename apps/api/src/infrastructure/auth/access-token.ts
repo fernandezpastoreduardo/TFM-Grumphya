@@ -5,7 +5,8 @@ const JWT_ISSUER = "grumphya-api";
 const JWT_AUDIENCE = "grumphya-web";
 const JWT_ALGORITHM = "HS256";
 const JWT_TYPE = "JWT";
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type JwtHeader = { alg: string; typ: string };
 type JwtPayload = {
@@ -28,7 +29,8 @@ export class AccessTokenConfigurationError extends Error {
 }
 
 export function issueAccessToken(userId: string): IssuedAccessToken {
-  if (!UUID_PATTERN.test(userId)) throw new TypeError("Invalid user identifier.");
+  if (!UUID_PATTERN.test(userId))
+    throw new TypeError("Invalid user identifier.");
   const now = Math.floor(Date.now() / 1000);
   const header: JwtHeader = { alg: JWT_ALGORITHM, typ: JWT_TYPE };
   const payload: JwtPayload = {
@@ -40,15 +42,21 @@ export function issueAccessToken(userId: string): IssuedAccessToken {
     jti: randomUUID(),
   };
   const unsigned = `${encodeJson(header)}.${encodeJson(payload)}`;
-  const signature = createHmac("sha256", getSecret()).update(unsigned).digest("base64url");
-  return { token: `${unsigned}.${signature}`, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
+  const signature = createHmac("sha256", getSecret())
+    .update(unsigned)
+    .digest("base64url");
+  return {
+    token: `${unsigned}.${signature}`,
+    expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+  };
 }
 
 export function verifyAccessToken(token: string): VerifiedAccessToken | null {
   try {
     if (typeof token !== "string" || token.length > 2048) return null;
     const parts = token.split(".");
-    if (parts.length !== 3 || parts.some((part) => part.length === 0)) return null;
+    if (parts.length !== 3 || parts.some((part) => part.length === 0))
+      return null;
     const [encodedHeader, encodedPayload, signature] = parts;
     const header = parseJson<JwtHeader>(encodedHeader);
     const payload = parseJson<JwtPayload>(encodedPayload);
@@ -75,7 +83,10 @@ export function verifyAccessToken(token: string): VerifiedAccessToken | null {
       .update(`${encodedHeader}.${encodedPayload}`)
       .digest();
     const received = Buffer.from(signature, "base64url");
-    if (received.length !== expected.length || !timingSafeEqual(received, expected))
+    if (
+      received.length !== expected.length ||
+      !timingSafeEqual(received, expected)
+    )
       return null;
     return { userId: payload.sub };
   } catch {

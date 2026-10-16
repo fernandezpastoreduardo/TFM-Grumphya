@@ -3,25 +3,36 @@ type AuthResponse = { accessToken: string };
 const REFRESH_ENDPOINT = "/api/auth/refresh";
 const REFRESH_METHOD = "POST";
 const JSON_CONTENT_TYPE = "application/json";
+export const SESSION_EXPIRED_EVENT = "grumphya:session-expired";
 let accessToken: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
+let refreshAttempted = false;
+let sessionGeneration = 0;
 
 export function setAccessToken(token: string): void {
+  sessionGeneration += 1;
   accessToken = token;
+  refreshAttempted = false;
 }
 
 export function clearAccessToken(): void {
+  sessionGeneration += 1;
   accessToken = null;
   refreshInFlight = null;
+  refreshAttempted = false;
 }
 
 export async function getAccessToken(): Promise<string | null> {
   if (accessToken) return accessToken;
-  if (!refreshInFlight) refreshInFlight = refreshAccessToken();
+  if (refreshInFlight) return refreshInFlight;
+  if (refreshAttempted) return null;
+  refreshAttempted = true;
+  const refreshPromise = refreshAccessToken();
+  refreshInFlight = refreshPromise;
   try {
-    return await refreshInFlight;
+    return await refreshPromise;
   } finally {
-    refreshInFlight = null;
+    if (refreshInFlight === refreshPromise) refreshInFlight = null;
   }
 }
 
@@ -35,10 +46,23 @@ export async function authenticatedFetch(
   const firstResponse = await sendWithBearer(input, init, token);
   if (firstResponse.status !== 401) return firstResponse;
 
-  clearAccessToken();
-  const refreshedToken = await getAccessToken();
-  if (!refreshedToken) return firstResponse;
+  const refreshedToken = await refreshAfterUnauthorized(token);
+  if (!refreshedToken) {
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    return firstResponse;
+  }
   return sendWithBearer(input, init, refreshedToken);
+}
+
+async function refreshAfterUnauthorized(
+  rejectedToken: string,
+): Promise<string | null> {
+  if (accessToken && accessToken !== rejectedToken) return accessToken;
+  if (!refreshInFlight) {
+    accessToken = null;
+    refreshAttempted = false;
+  }
+  return getAccessToken();
 }
 
 async function sendWithBearer(
@@ -56,6 +80,7 @@ async function sendWithBearer(
 }
 
 async function refreshAccessToken(): Promise<string | null> {
+  const generation = sessionGeneration;
   try {
     const response = await fetch(REFRESH_ENDPOINT, {
       method: REFRESH_METHOD,
@@ -64,8 +89,11 @@ async function refreshAccessToken(): Promise<string | null> {
       body: "{}",
     });
     const body: unknown = await response.json();
-    if (!response.ok || !isAuthResponse(body)) return null;
-    setAccessToken(body.accessToken);
+    if (generation !== sessionGeneration) return accessToken;
+    if (!response.ok || !isAuthResponse(body))
+      return null;
+    accessToken = body.accessToken;
+    refreshAttempted = false;
     return body.accessToken;
   } catch {
     return null;

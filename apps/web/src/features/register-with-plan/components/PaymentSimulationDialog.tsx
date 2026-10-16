@@ -8,11 +8,13 @@ const SIMULATION_NOTICE =
 type PaymentSimulationDialogProps = {
   open: boolean;
   onComplete: () => void;
+  heading?: string;
 };
 
 export function PaymentSimulationDialog({
   open,
   onComplete,
+  heading = "Un momento. Estoy preparando tu cuenta.",
 }: PaymentSimulationDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const onCompleteRef = useRef(onComplete);
@@ -57,9 +59,7 @@ export function PaymentSimulationDialog({
       <section className={styles.panel}>
         <span className={styles.eyebrow}>Contratación simulada</span>
         <div className={styles.spinner} aria-hidden="true" />
-        <h2 id="payment-simulation-title">
-          Un momento. Estoy preparando tu cuenta.
-        </h2>
+        <h2 id="payment-simulation-title">{heading}</h2>
         <p
           id="payment-simulation-notice"
           className={styles.notice}

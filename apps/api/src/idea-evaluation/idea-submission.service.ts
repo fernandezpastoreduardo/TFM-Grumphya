@@ -208,12 +208,20 @@ export class IdeaSubmissionService {
         requestHash,
       );
     } catch {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       this.logger.error("IDEA_CONTINUATION_CLAIM_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
     if (!continuationClaimed) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       throw new ConflictException(INVALID_CONTINUATION_RESPONSE);
     }
 
@@ -238,7 +246,11 @@ export class IdeaSubmissionService {
       );
       return response;
     } catch (error) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       throw error;
     }
   }
@@ -275,7 +287,11 @@ export class IdeaSubmissionService {
     if (reservation?.state === "cached")
       return readCachedSubmission(reservation.response);
     if (!this.search) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
     let detailedSearch;
@@ -284,13 +300,21 @@ export class IdeaSubmissionService {
         ideaText: request.ideaText,
       });
     } catch {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       this.logger.error("IDEA_SIMILARITY_CHECK_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
 
     if (detailedSearch.result.kind === "match") {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       try {
         const submissionCount = await this.repository.updateWorstIdea(
           detailedSearch.result.ideaId,
@@ -350,7 +374,11 @@ export class IdeaSubmissionService {
       );
       return response;
     } catch (error) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
+      await this.releaseUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        authenticatedUserId,
+      );
       throw error;
     }
   }
@@ -380,7 +408,13 @@ export class IdeaSubmissionService {
     userId: string | undefined,
   ) {
     if (userId)
-      return this.planUsage!.commit(userId, "ideas", keyHash, requestHash, response);
+      return this.planUsage!.commit(
+        userId,
+        "ideas",
+        keyHash,
+        requestHash,
+        response,
+      );
     return this.anonymousUsage?.commit(
       token,
       "ideas",

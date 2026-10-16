@@ -27,7 +27,9 @@ export class OptionalAccessTokenGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<OptionalAuthenticatedRequest>();
+    const request = context
+      .switchToHttp()
+      .getRequest<OptionalAuthenticatedRequest>();
     const authorization = request.get("authorization");
     if (!authorization) return true;
 

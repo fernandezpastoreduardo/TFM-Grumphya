@@ -48,14 +48,16 @@ describe("access JWT", () => {
 
     expect(verifyAccessToken("not-a-jwt")).toBeNull();
     expect(verifyAccessToken(`${header}.${payload}.tampered`)).toBeNull();
-    process.env.ACCESS_TOKEN_SECRET = "another-test-secret-of-at-least-32-chars";
+    process.env.ACCESS_TOKEN_SECRET =
+      "another-test-secret-of-at-least-32-chars";
     expect(verifyAccessToken(issued.token)).toBeNull();
   });
 
   it("requires a sufficiently strong secret from the environment", () => {
     delete process.env.ACCESS_TOKEN_SECRET;
 
-    expect(() => issueAccessToken("00000000-0000-4000-8000-000000000001"))
-      .toThrow(AccessTokenConfigurationError);
+    expect(() =>
+      issueAccessToken("00000000-0000-4000-8000-000000000001"),
+    ).toThrow(AccessTokenConfigurationError);
   });
 });

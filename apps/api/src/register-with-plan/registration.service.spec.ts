@@ -168,7 +168,7 @@ describe("register with plan", () => {
     ).rejects.toMatchObject({ code: "INVALID_PASSWORD" });
   });
 
-  it("returns the account profile from the session and cancels the selected active plan", async () => {
+  it("returns the profile and lets an account purchase an inactive plan only once", async () => {
     const repository = new InMemoryRegistrationRepository();
     const service = new RegistrationService(repository);
     const intent = await service.createIntent("ILUMINADO");
@@ -188,21 +188,41 @@ describe("register with plan", () => {
       status: "active",
       attemptsRemaining: { ideas: 11, roasts: 0 },
     });
-    const cancelled = await service.cancelPlan(
-      session.refreshToken,
-      "ILUMINADO",
+    const userId = repository.users[0]!.id;
+    const purchased = await service.purchasePlanForUser(
+      userId,
+      "FALTON",
+      "8a4e1c42-e198-4db3-b4a8-910e25c8b6d1",
     );
     expect(
-      cancelled.plans.find((plan) => plan.plan === "ILUMINADO"),
+      purchased.plans.find((plan) => plan.plan === "FALTON"),
     ).toMatchObject({
-      plan: "ILUMINADO",
-      status: "inactive",
-      attemptsRemaining: { ideas: 0, roasts: 0 },
+      plan: "FALTON",
+      status: "active",
+      attemptsRemaining: { ideas: 0, roasts: 11 },
     });
+    await expect(
+      service.purchasePlanForUser(
+        userId,
+        "FALTON",
+        "8a4e1c42-e198-4db3-b4a8-910e25c8b6d1",
+      ),
+    ).resolves.toMatchObject({
+      plans: expect.arrayContaining([
+        expect.objectContaining({ plan: "FALTON", status: "active" }),
+      ]),
+    });
+    await expect(
+      service.purchasePlanForUser(
+        userId,
+        "FALTON",
+        "b4e1c42e-198e-4db3-b4a8-910e25c8b6d1",
+      ),
+    ).rejects.toMatchObject({ code: "PLAN_ALREADY_ACTIVE" });
     const refreshed = await service.refresh(session.refreshToken);
     expect(
       refreshed.result.account.plans.find((plan) => plan.plan === "ILUMINADO"),
-    ).toMatchObject({ status: "inactive" });
+    ).toMatchObject({ status: "active" });
     await expect(service.refresh(session.refreshToken)).rejects.toMatchObject({
       statusCode: 401,
     });
@@ -278,7 +298,9 @@ describe("register with plan", () => {
     const repository = new InMemoryRegistrationRepository();
     const service = new RegistrationService(repository);
 
-    await expect(service.getUserGoodIdeas("not-a-user-id")).rejects.toMatchObject({
+    await expect(
+      service.getUserGoodIdeas("not-a-user-id"),
+    ).rejects.toMatchObject({
       statusCode: 401,
       code: "SESSION_REQUIRED",
     });
@@ -326,7 +348,8 @@ describe("register with plan", () => {
       }),
     ]);
     const errors = attempts.map((attempt) => {
-      if (attempt.status === "fulfilled") throw new Error("Expected rejection.");
+      if (attempt.status === "fulfilled")
+        throw new Error("Expected rejection.");
       return attempt.reason.getResponse();
     });
 

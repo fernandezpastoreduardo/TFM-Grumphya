@@ -47,7 +47,9 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
 
   it("enforces the 11-per-day limit atomically, caches retries, and uses Madrid date", async () => {
     const reservations = await Promise.allSettled(
-      HASHES.map((hash) => repository.reserve(OWNER_ID, "ideas", hash, REQUEST_HASH)),
+      HASHES.map((hash) =>
+        repository.reserve(OWNER_ID, "ideas", hash, REQUEST_HASH),
+      ),
     );
     const reservedHashes = reservations.flatMap((result, index) =>
       result.status === "fulfilled" && result.value.state === "reserved"
@@ -86,7 +88,10 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
     const date = await testPool.query<{ today: string }>(
       "SELECT (now() AT TIME ZONE 'Europe/Madrid')::date::text AS today",
     );
-    expect(result.rows[0]).toEqual({ used: 11, usage_date: date.rows[0]!.today });
+    expect(result.rows[0]).toEqual({
+      used: 11,
+      usage_date: date.rows[0]!.today,
+    });
   });
 
   it("requires the matching active plan and returns a released attempt to the quota", async () => {
@@ -102,13 +107,9 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
     await expect(
       repository.reserve(faltonUser, "roasts", HASHES[0]!, REQUEST_HASH),
     ).resolves.toEqual({ state: "reserved" });
-    await repository.commit(
-      faltonUser,
-      "roasts",
-      HASHES[0]!,
-      REQUEST_HASH,
-      { reply: "ok" },
-    );
+    await repository.commit(faltonUser, "roasts", HASHES[0]!, REQUEST_HASH, {
+      reply: "ok",
+    });
 
     const result = await testPool.query<{ roasts_used: number }>(
       `SELECT roasts_used FROM account_daily_plan_usage

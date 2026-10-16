@@ -39,3 +39,7 @@ datos privados en el mensaje.
 
 La implementación y sus pruebas están en `apps/api/src/register-with-plan/`,
 `apps/api/src/get-user-profile/` y `apps/web/src/features/user-profile/`.
+
+## Contratación y vigencia de planes
+
+Cada compra activa el plan desde el momento de la contratación simulada hasta un mes después. No hay renovación automática ni cancelación anticipada. Cuando un plan esté inactivo o haya caducado, el perfil presenta «Pagar un café»; el servidor registra una nueva compra idempotente y devuelve la vigencia y los intentos diarios. Los planes activos no ofrecen botón de pago. El diálogo de pago simulado es el mismo que se usa en el alta.

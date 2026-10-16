@@ -45,6 +45,10 @@ const MIGRATIONS = [
     version: "015_account_plan_usage_requests",
     file: "015_account_plan_usage_requests.sql",
   },
+  {
+    version: "016_auth_refresh_rotation_history",
+    file: "016_auth_refresh_rotation_history.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

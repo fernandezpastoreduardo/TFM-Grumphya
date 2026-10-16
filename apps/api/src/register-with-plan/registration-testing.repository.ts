@@ -34,12 +34,13 @@ type TestRegistration = {
 type TestSubscription = {
   userId: string;
   plan: PlanCode;
-  status: "active" | "cancelled";
+  status: "active" | "expired";
 };
 type TestSession = {
   userId: string;
   accessHash: string;
   refreshHash: string;
+  previousRefreshHash?: string;
   expiresAt: Date;
   rememberMe: boolean;
 };
@@ -48,6 +49,8 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
   readonly users: TestUser[] = [];
   readonly registrations: TestRegistration[] = [];
   readonly subscriptions: TestSubscription[] = [];
+  readonly purchases: Array<{ userId: string; plan: PlanCode; key: string }> =
+    [];
   readonly sessions: TestSession[] = [];
   readonly goodIdeas: Array<
     UserGoodIdea & {
@@ -261,6 +264,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     );
     if (!session) throw new Error("Refresh token unavailable.");
     session.accessHash = accessTokenHash;
+    session.previousRefreshHash = session.refreshHash;
     session.refreshHash = nextRefreshTokenHash;
     return {
       userId: session.userId,
@@ -274,7 +278,9 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
 
   async revokeSession(refreshTokenHash: string): Promise<void> {
     const session = this.sessions.find(
-      (item) => item.refreshHash === refreshTokenHash,
+      (item) =>
+        item.refreshHash === refreshTokenHash ||
+        item.previousRefreshHash === refreshTokenHash,
     );
     if (session) session.expiresAt = new Date(0);
   }
@@ -376,7 +382,8 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     requestHash: string,
   ): Promise<boolean> {
     const existing = this.goodIdeas.find(
-      (idea) => idea.userId === userId && idea.submissionHash === submissionHash,
+      (idea) =>
+        idea.userId === userId && idea.submissionHash === submissionHash,
     );
     if (existing) return existing.requestHash === requestHash;
     this.goodIdeas.push({
@@ -390,40 +397,35 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     return true;
   }
 
-  async cancelSubscription(
-    refreshTokenHash: string,
-    plan: PlanCode,
-  ): Promise<AccountProfile | null> {
-    const session = this.sessions.find(
-      (item) =>
-        item.refreshHash === refreshTokenHash &&
-        item.expiresAt.getTime() > Date.now(),
-    );
-    if (!session) return null;
-    for (const subscription of this.subscriptions) {
-      if (
-        subscription.userId === session.userId &&
-        subscription.plan === plan
-      ) {
-        subscription.status = "cancelled";
-      }
-    }
-    return this.getProfile(refreshTokenHash);
-  }
-
-  async cancelSubscriptionForUser(
+  async createSubscriptionPurchase(
     userId: string,
     plan: PlanCode,
+    idempotencyKey: string,
   ): Promise<AccountProfile | null> {
     const session = this.sessions.find(
       (item) => item.userId === userId && item.expiresAt.getTime() > Date.now(),
     );
     if (!session) return null;
-    for (const subscription of this.subscriptions) {
-      if (subscription.userId === userId && subscription.plan === plan) {
-        subscription.status = "cancelled";
-      }
+    const priorPurchase = this.purchases.find(
+      (purchase) => purchase.key === idempotencyKey,
+    );
+    if (priorPurchase) {
+      return priorPurchase.userId === userId && priorPurchase.plan === plan
+        ? this.getProfile(session.refreshHash)
+        : null;
     }
+    if (
+      this.subscriptions.some(
+        (subscription) =>
+          subscription.userId === userId &&
+          subscription.plan === plan &&
+          subscription.status === "active",
+      )
+    ) {
+      throw new Error("PLAN_ALREADY_ACTIVE");
+    }
+    this.subscriptions.push({ userId, plan, status: "active" });
+    this.purchases.push({ userId, plan, key: idempotencyKey });
     return this.getProfile(session.refreshHash);
   }
 }

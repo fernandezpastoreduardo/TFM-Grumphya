@@ -150,6 +150,31 @@ describe("evaluationProcess frontend adapter", () => {
     });
   });
 
+  it("shows a plan-specific exhausted quota message instead of a generic error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: async () => ({
+          code: "PLAN_QUOTA_EXHAUSTED",
+          scope: "ideas",
+          remaining: 0,
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toMatchObject({
+      code: "PLAN_QUOTA_EXHAUSTED",
+      message: "Has agotado las 11 evaluaciones disponibles hoy en Iluminado.",
+    });
+  });
+
   it("projects only the public fields and accepts an insufficient result without a score", async () => {
     const publicResult = {
       status: "IDEA_INSUFICIENTE",

@@ -49,7 +49,9 @@ export interface RegistrationRepository {
     verifiedTokenHash: string,
     verifiedTokenExpiresAt: Date,
   ): Promise<VerifiedResult>;
-  getVerifiedRegistrationUserId(verifiedTokenHash: string): Promise<string | null>;
+  getVerifiedRegistrationUserId(
+    verifiedTokenHash: string,
+  ): Promise<string | null>;
   confirm(
     verifiedTokenHash: string,
     accessTokenHash: string,
@@ -70,13 +72,10 @@ export interface RegistrationRepository {
     submissionHash: string,
     requestHash: string,
   ): Promise<boolean>;
-  cancelSubscription(
-    refreshTokenHash: string,
-    plan: PlanCode,
-  ): Promise<AccountProfile | null>;
-  cancelSubscriptionForUser(
+  createSubscriptionPurchase(
     userId: string,
     plan: PlanCode,
+    idempotencyKey: string,
   ): Promise<AccountProfile | null>;
 }
 

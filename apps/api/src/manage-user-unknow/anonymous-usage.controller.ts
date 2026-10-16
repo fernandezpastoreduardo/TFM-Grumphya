@@ -47,7 +47,8 @@ export class AnonymousUsageController {
   constructor(
     @Inject(AnonymousUsageService)
     private readonly usage: AnonymousUsageService,
-    @Optional() @Inject(PlanUsageService)
+    @Optional()
+    @Inject(PlanUsageService)
     private readonly planUsage?: PlanUsageService,
   ) {}
 

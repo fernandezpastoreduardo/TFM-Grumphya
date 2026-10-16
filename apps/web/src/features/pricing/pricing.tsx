@@ -3,7 +3,9 @@ import "./pricing.scss";
 
 export function Pricing() {
   const [showLesson, setShowLesson] = useState(false);
-  const [selectingPlan, setSelectingPlan] = useState<"ILUMINADO" | "FALTON" | null>(null);
+  const [selectingPlan, setSelectingPlan] = useState<
+    "ILUMINADO" | "FALTON" | null
+  >(null);
   const [selectionError, setSelectionError] = useState("");
 
   async function selectPlan(plan: "ILUMINADO" | "FALTON") {
@@ -17,12 +19,16 @@ export function Pricing() {
         body: JSON.stringify({ plan }),
       });
       if (!response.ok) {
-        setSelectionError("No se ha podido seleccionar el plan. Inténtalo de nuevo.");
+        setSelectionError(
+          "No se ha podido seleccionar el plan. Inténtalo de nuevo.",
+        );
         return;
       }
       window.location.assign("/crear-cuenta");
     } catch {
-      setSelectionError("No se ha podido seleccionar el plan. Inténtalo de nuevo.");
+      setSelectionError(
+        "No se ha podido seleccionar el plan. Inténtalo de nuevo.",
+      );
     } finally {
       setSelectingPlan(null);
     }
@@ -30,7 +36,11 @@ export function Pricing() {
 
   return (
     <>
-      {selectionError ? <p className="registration-error" role="alert">{selectionError}</p> : null}
+      {selectionError ? (
+        <p className="registration-error" role="alert">
+          {selectionError}
+        </p>
+      ) : null}
       <div className="pricing-grid">
         <article className="price-card price-card-illuminated">
           <span className="plan-tag">Para evaluar ideas</span>
@@ -46,8 +56,14 @@ export function Pricing() {
             <li>Modo suave o modo “dame lo peor”</li>
             <li>Historial de tus ideas</li>
           </ul>
-          <button className="button-primary" type="button" disabled={selectingPlan !== null} onClick={() => void selectPlan("ILUMINADO")}>
-            {selectingPlan === "ILUMINADO" ? "Preparando…" : "Elegir Iluminado"} <span aria-hidden="true">↗</span>
+          <button
+            className="button-primary"
+            type="button"
+            disabled={selectingPlan !== null}
+            onClick={() => void selectPlan("ILUMINADO")}
+          >
+            {selectingPlan === "ILUMINADO" ? "Preparando…" : "Elegir Iluminado"}{" "}
+            <span aria-hidden="true">↗</span>
           </button>
           <p className="prototype-stamp">
             Contratación simulada · no se procesa ningún pago.
@@ -68,8 +84,14 @@ export function Pricing() {
             <li>Acceso a respuestas ampliadas</li>
             <li>Ranking “Heckler del día” previsto</li>
           </ul>
-          <button className="button-primary" type="button" disabled={selectingPlan !== null} onClick={() => void selectPlan("FALTON")}>
-            {selectingPlan === "FALTON" ? "Preparando…" : "Elegir Faltón"} <span aria-hidden="true">↗</span>
+          <button
+            className="button-primary"
+            type="button"
+            disabled={selectingPlan !== null}
+            onClick={() => void selectPlan("FALTON")}
+          >
+            {selectingPlan === "FALTON" ? "Preparando…" : "Elegir Faltón"}{" "}
+            <span aria-hidden="true">↗</span>
           </button>
           <p className="prototype-stamp">
             Contratación simulada · no se procesa ningún pago.
@@ -92,6 +114,11 @@ export function Pricing() {
           <small>* No contratable. Respira.</small>
         </button>
       </div>
+      <p className="plan-renewal-copy">
+        Un mes, sin renovación automática. Si quieres seguir, vuelves a
+        contratar; no tendrás que perseguir un botón de cancelar. Somos
+        gruñones, no una trampa.
+      </p>
       {showLesson ? (
         <dialog
           open

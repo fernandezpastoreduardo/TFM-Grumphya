@@ -2,7 +2,7 @@
 
 ## Comportamiento
 
-La página de perfil ofrece la acción «Darme de baja». Antes de enviar la
+La página de perfil ofrece la acción «Darme de baja y BORRAR MI CUENTA». Antes de enviar la
 solicitud se abre un diálogo accesible que explica que la eliminación es
 inmediata e irreversible y afecta al usuario, sus ideas aprobadas, sus planes,
 sesiones e intentos restantes. «Cancelar» cierra el diálogo sin enviar una

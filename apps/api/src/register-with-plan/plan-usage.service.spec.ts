@@ -27,13 +27,9 @@ describe("PlanUsageService", () => {
     await expect(
       service.reserve(USER_ID, "ideas", IDEMPOTENCY_HASH, REQUEST_HASH),
     ).resolves.toEqual({ state: "reserved" });
-    await service.commit(
-      USER_ID,
-      "ideas",
-      IDEMPOTENCY_HASH,
-      REQUEST_HASH,
-      { status: "evaluated" },
-    );
+    await service.commit(USER_ID, "ideas", IDEMPOTENCY_HASH, REQUEST_HASH, {
+      status: "evaluated",
+    });
     await service.release(USER_ID, "ideas", IDEMPOTENCY_HASH);
 
     expect(repository.reserve).toHaveBeenCalledWith(

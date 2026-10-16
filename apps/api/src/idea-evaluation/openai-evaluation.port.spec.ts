@@ -34,6 +34,9 @@ const QUOTED_BASIS_DECISION = {
     { id: "C05", state: "PUNTUADO", score: 79 },
     { id: "C06", state: "PUNTUADO", score: 79 },
     { id: "C07", state: "PUNTUADO", score: 10 },
+    { id: "C08", state: "PUNTUADO", score: 79 },
+    { id: "C09", state: "PUNTUADO", score: 79 },
+    { id: "C10", state: "PUNTUADO", score: 79 },
   ],
   stop_at: "C07",
   reason_code: "UTILIDAD_ANULADA",
@@ -175,7 +178,7 @@ describe("OpenAiEvaluationPort", () => {
       "Evita tecnicismos y las palabras bloqueo o bloqueante",
     );
     expect(request).toContain(
-      "Si criterios previos con score de 15 a 34 refuerzan el defecto, resume como máximo dos",
+      "Si hay rechazo, explica todos los criterios con puntuación inferior a 15",
     );
     expect(request).toContain("hardSetup");
     expect(request).toContain("hardConsequence");
