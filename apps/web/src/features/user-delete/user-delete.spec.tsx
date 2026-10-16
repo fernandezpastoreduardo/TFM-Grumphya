@@ -41,13 +41,17 @@ describe("UserDelete", () => {
     const user = userEvent.setup();
     render(<UserDelete />);
 
-    await user.click(screen.getByRole("button", { name: "Darme de baja" }));
+    await user.click(
+      screen.getByRole("button", { name: "Darme de baja y BORRAR MI CUENTA" }),
+    );
 
     const dialog = screen.getByRole("dialog", {
       name: "Esta acción no se puede deshacer",
     });
     expect(dialog).toHaveTextContent(/la baja es inmediata/i);
-    expect(dialog).toHaveTextContent(/usuario, tus ideas aprobadas y los intentos restantes/i);
+    expect(dialog).toHaveTextContent(
+      /usuario, tus ideas aprobadas y los intentos restantes/i,
+    );
     expect(dialog).toHaveTextContent(/borrado es físico/i);
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
 
@@ -61,7 +65,9 @@ describe("UserDelete", () => {
     authenticatedFetch.mockResolvedValue(jsonResponse({ deleted: true }));
     render(<UserDelete onDeleted={onDeleted} />);
 
-    await user.click(screen.getByRole("button", { name: "Darme de baja" }));
+    await user.click(
+      screen.getByRole("button", { name: "Darme de baja y BORRAR MI CUENTA" }),
+    );
     await user.click(
       screen.getByRole("button", {
         name: "Confirmo que quiero darme de baja",
@@ -82,7 +88,9 @@ describe("UserDelete", () => {
     authenticatedFetch.mockResolvedValue(jsonResponse({}, 503));
     render(<UserDelete />);
 
-    await user.click(screen.getByRole("button", { name: "Darme de baja" }));
+    await user.click(
+      screen.getByRole("button", { name: "Darme de baja y BORRAR MI CUENTA" }),
+    );
     await user.click(
       screen.getByRole("button", {
         name: "Confirmo que quiero darme de baja",

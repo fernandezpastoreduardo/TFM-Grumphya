@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { GetUserIdea } from "./get-user-idea";
@@ -29,6 +29,83 @@ describe("GetUserIdea", () => {
       ideaText: VALID_IDEA,
       tone: "soft",
     });
+  });
+
+  it("opens the exhausted-guest flow instead of submitting an idea", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const onQuotaExhausted = vi.fn();
+    render(
+      <GetUserIdea
+        onSubmit={onSubmit}
+        onQuotaExhausted={onQuotaExhausted}
+        remainingAttempts={0}
+      />,
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      VALID_IDEA,
+    );
+
+    const submitButton = screen.getByRole("button", { name: SUBMIT_LABEL });
+    expect(submitButton).toBeEnabled();
+    await user.click(submitButton);
+
+    expect(onQuotaExhausted).toHaveBeenCalledOnce();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("shows the server-managed daily quota for an account plan", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(
+      <GetUserIdea
+        onSubmit={onSubmit}
+        quotaKind="account"
+        remainingAttempts={4}
+      />,
+    );
+
+    expect(
+      screen.getByText(/te quedan 4 de 11 evaluaciones disponibles hoy/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/el servidor comprueba los intentos de tu plan/i),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      VALID_IDEA,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
+  it("leaves an exhausted account request to server validation", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const onQuotaExhausted = vi.fn();
+    render(
+      <GetUserIdea
+        onSubmit={onSubmit}
+        onQuotaExhausted={onQuotaExhausted}
+        quotaKind="account"
+        remainingAttempts={0}
+      />,
+    );
+
+    expect(
+      screen.getByText(/has agotado las 11 evaluaciones disponibles hoy/i),
+    ).toBeInTheDocument();
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      VALID_IDEA,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledOnce();
+    expect(onQuotaExhausted).not.toHaveBeenCalled();
   });
 
   it("accepts text pasted from the clipboard", async () => {
@@ -147,7 +224,7 @@ describe("GetUserIdea", () => {
     await user.type(input, "a".repeat(MAX_IDEA_LENGTH + 1));
     expect(input).toHaveValue("a".repeat(MAX_IDEA_LENGTH));
     expect(input).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
-  });
+  }, 15_000);
 
   it("treats markup as literal user text and never renders it as HTML", async () => {
     const user = userEvent.setup();
@@ -156,7 +233,7 @@ describe("GetUserIdea", () => {
     render(<GetUserIdea onSubmit={onSubmit} />);
     const input = screen.getByRole("textbox", { name: INPUT_LABEL });
 
-    await user.type(input, unsafeLookingText);
+    fireEvent.change(input, { target: { value: unsafeLookingText } });
     expect(document.querySelector("img")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
 

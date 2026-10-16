@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import "./mobile-navigation.scss";
 import "./section-page-frame.scss";
 import "./shared-components.scss";
+import { AccountActions } from "./account-actions";
+import { usePersistentTheme } from "../hooks/use-persistent-theme";
+import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 
 export type SectionPageMeta = {
   label: string;
@@ -19,7 +22,6 @@ const SECTION_LINKS = [
   { path: "/buenas-practicas", label: "Buenas prácticas" },
   { path: "/precios", label: "Planes" },
   { path: "/contacto", label: "Contacto" },
-  { path: "/login", label: "Entrar" },
 ] as const;
 
 function SectionHeader({
@@ -27,11 +29,17 @@ function SectionHeader({
   onThemeToggle,
   isMenuOpen,
   onMenuToggle,
+  isAuthenticated,
+  isSigningOut,
+  onSignOut,
 }: {
   theme: "light" | "dark";
   onThemeToggle: () => void;
   isMenuOpen: boolean;
   onMenuToggle: () => void;
+  isAuthenticated: boolean | null;
+  isSigningOut: boolean;
+  onSignOut: () => void;
 }) {
   return (
     <header className="site-header">
@@ -55,6 +63,12 @@ function SectionHeader({
           </a>
         ))}
       </nav>
+      <AccountActions
+        isAuthenticated={isAuthenticated}
+        isSigningOut={isSigningOut}
+        onSignOut={onSignOut}
+        variant="site"
+      />
       <button
         className="site-theme-toggle"
         type="button"
@@ -134,16 +148,20 @@ export function SectionPageFrame({
   page: SectionPageMeta;
   children: ReactNode;
 }) {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const { theme, toggleTheme } = usePersistentTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const session = useSessionStatus();
   return (
     <div className={`app-page theme-${theme}${isMenuOpen ? " menu-open" : ""}`}>
       <div className="app-frame">
         <SectionHeader
           theme={theme}
-          onThemeToggle={() => setTheme(theme === "light" ? "dark" : "light")}
+          onThemeToggle={toggleTheme}
           isMenuOpen={isMenuOpen}
           onMenuToggle={() => setIsMenuOpen((open) => !open)}
+          isAuthenticated={session.isAuthenticated}
+          isSigningOut={session.isSigningOut}
+          onSignOut={() => void session.signOut()}
         />
         <main className="section-main">
           <SectionHero page={page} />
@@ -191,6 +209,12 @@ export function SectionPageFrame({
                       {item.label}
                     </a>
                   ))}
+                  <AccountActions
+                    isAuthenticated={session.isAuthenticated}
+                    isSigningOut={session.isSigningOut}
+                    onSignOut={() => void session.signOut()}
+                    variant="site"
+                  />
                 </nav>
               </div>
             </>,

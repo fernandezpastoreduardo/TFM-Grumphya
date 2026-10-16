@@ -16,7 +16,10 @@ const GENERIC_VERIFICATION_ERROR =
   "No se ha podido verificar el correo. El enlace puede haber caducado o ya haberse utilizado. Solicita uno nuevo o vuelve a intentarlo.";
 const CONFIRMATION_ERROR =
   "El correo ya está verificado, pero no se ha podido activar el plan. Puedes volver a intentarlo.";
-const PLAN_NAMES: Record<Plan, string> = { ILUMINADO: "Iluminado", FALTON: "Faltón" };
+const PLAN_NAMES: Record<Plan, string> = {
+  ILUMINADO: "Iluminado",
+  FALTON: "Faltón",
+};
 
 async function readJson(response: Response): Promise<unknown> {
   try {
@@ -62,7 +65,11 @@ export function RegistrationVerification() {
     verificationStarted.current = true;
     async function verifyEmail() {
       const token = window.location.hash.slice(1);
-      window.history.replaceState({}, "", window.location.pathname + window.location.search);
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + window.location.search,
+      );
       if (!token) {
         setStatus("verification_error");
         return;
@@ -110,38 +117,80 @@ export function RegistrationVerification() {
   }
 
   if (status === "checking") {
-    return <p role="status">Verificando el enlace. Un momento; no lo abras veinte veces.</p>;
+    return (
+      <p role="status">
+        Verificando el enlace. Un momento; no lo abras veinte veces.
+      </p>
+    );
   }
   if (status === "verification_error") {
     return (
-      <section className="content-card registration-pending" aria-labelledby="verification-error-title">
+      <section
+        className="content-card registration-pending"
+        aria-labelledby="verification-error-title"
+      >
         <span className="eyebrow">Verificación no completada</span>
-        <h2 id="verification-error-title">No se ha podido verificar el correo</h2>
+        <h2 id="verification-error-title">
+          No se ha podido verificar el correo
+        </h2>
         <p role="alert">{GENERIC_VERIFICATION_ERROR}</p>
-        <a className="button-primary" href="/precios">Volver a los planes</a>
+        <a className="button-primary" href="/precios">
+          Volver a los planes
+        </a>
       </section>
     );
   }
-  if (status === "verified" || status === "confirming" || status === "confirmation_error") {
+  if (
+    status === "verified" ||
+    status === "confirming" ||
+    status === "confirmation_error"
+  ) {
     return (
-      <section className="content-card registration-pending" aria-labelledby="email-verified-title">
+      <section
+        className="content-card registration-pending"
+        aria-labelledby="email-verified-title"
+      >
         <span className="eyebrow">Correo verificado</span>
         <h2 id="email-verified-title">Correo verificado</h2>
-        <p>Has verificado el correo. Tu plan {plan ? PLAN_NAMES[plan] : ""} todavía no está activo.</p>
-        {status === "confirmation_error" ? <p role="alert">{CONFIRMATION_ERROR}</p> : null}
-        {status === "confirming" ? <p role="status">Confirmando la contratación simulada…</p> : null}
-        <button className="button-primary" type="button" onClick={() => void confirmSimulatedPlan()} disabled={status === "confirming"}>
-          {status === "confirming" ? "Confirmando…" : status === "confirmation_error" ? "Reintentar confirmación" : "Confirmar contratación simulada"}
+        <p>
+          Has verificado el correo. Tu plan {plan ? PLAN_NAMES[plan] : ""}{" "}
+          todavía no está activo.
+        </p>
+        {status === "confirmation_error" ? (
+          <p role="alert">{CONFIRMATION_ERROR}</p>
+        ) : null}
+        {status === "confirming" ? (
+          <p role="status">Confirmando la contratación simulada…</p>
+        ) : null}
+        <button
+          className="button-primary"
+          type="button"
+          onClick={() => void confirmSimulatedPlan()}
+          disabled={status === "confirming"}
+        >
+          {status === "confirming"
+            ? "Confirmando…"
+            : status === "confirmation_error"
+              ? "Reintentar confirmación"
+              : "Confirmar contratación simulada"}
         </button>
       </section>
     );
   }
   return (
-    <section className="content-card registration-pending" aria-labelledby="registration-complete-title">
+    <section
+      className="content-card registration-pending"
+      aria-labelledby="registration-complete-title"
+    >
       <span className="eyebrow">Contratación simulada completada</span>
       <h2 id="registration-complete-title">Contratación simulada completada</h2>
-      <p role="status">El plan {plan ? PLAN_NAMES[plan] : ""} está activo en el servidor. No se ha procesado ningún pago.</p>
-      <a className="button-primary" href="/">Volver al inicio</a>
+      <p role="status">
+        El plan {plan ? PLAN_NAMES[plan] : ""} está activo en el servidor. No se
+        ha procesado ningún pago.
+      </p>
+      <a className="button-primary" href="/">
+        Volver al inicio
+      </a>
     </section>
   );
 }

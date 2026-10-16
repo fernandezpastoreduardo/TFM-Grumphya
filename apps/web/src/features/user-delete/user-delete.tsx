@@ -10,7 +10,7 @@ const DELETE_ERROR =
 const SESSION_REQUIRED_ERROR =
   "Tu sesión ya no está activa. Entra en tu cuenta para continuar.";
 const BUTTON_TEXT = {
-  TRIGGER: "Darme de baja",
+  TRIGGER: "Darme de baja y BORRAR MI CUENTA",
   CANCEL: "Cancelar",
   CONFIRM: "Confirmo que quiero darme de baja",
   DELETING: "Eliminando tu cuenta…",
@@ -106,10 +106,10 @@ export function UserDelete({ onDeleted }: { onDeleted?: () => void } = {}) {
           <span className="eyebrow">Baja inmediata</span>
           <h2 id="delete-dialog-title">Esta acción no se puede deshacer</h2>
           <p id="delete-dialog-description">
-            La baja es inmediata e irreversible. En cuanto confirmes,
-            borraremos tu usuario, tus ideas aprobadas y los intentos restantes
-            asociados a tu cuenta. También se eliminarán tus planes y sesiones.
-            El borrado es físico.
+            La baja es inmediata e irreversible. En cuanto confirmes, borraremos
+            tu usuario, tus ideas aprobadas y los intentos restantes asociados a
+            tu cuenta. También se eliminarán tus planes y sesiones. El borrado
+            es físico.
           </p>
           {error ? <p role="alert">{error}</p> : null}
           <div className="profile-delete-actions">

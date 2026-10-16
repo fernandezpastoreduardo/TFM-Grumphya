@@ -305,6 +305,11 @@ export function RegisterWithPlan() {
             El plan se activa en el servidor. El pago se simula y no se procesa
             dinero real. La verificación del correo queda pendiente.
           </p>
+          <p className="auth-privacy">
+            Dura un mes y no se renueva automáticamente. Si quieres otro,
+            vuelves a contratar; no tendrás que cancelar nada. Aquí no ponemos
+            trampas de calendario.
+          </p>
         </section>
         <aside className="auth-aside">
           <div className="auth-creature" aria-hidden="true" />

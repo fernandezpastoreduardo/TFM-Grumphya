@@ -188,11 +188,6 @@
   background: #fffefa;
 }
 
-.profile-plan-status-cancelled {
-  color: #6b2433;
-  background: #fff0f1;
-}
-
 .profile-plan-allowance {
   margin: 18px 0 8px;
   font:
@@ -206,44 +201,27 @@
   line-height: 1.45;
 }
 
-.profile-cancel-button {
-  min-height: 42px;
-  border: 2px solid #713243;
-  border-radius: 12px;
-  padding: 8px 12px;
-  color: #591c2d;
-  background: #fff7f6;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.profile-cancel-button:hover {
-  color: #fff;
-  background: #713243;
-}
-
 .profile-plan-link {
   display: inline-flex;
   min-height: 42px;
   align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 12px;
+  padding: 8px 12px;
   color: #101b20;
+  background: #f4c95d;
+  font: inherit;
   font-weight: 900;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
-.profile-cancellation-message {
-  margin: 14px 0 0;
-  border-left: 4px solid #26745e;
-  border-radius: 4px 12px 12px 4px;
-  padding: 11px 13px;
-  color: #123f34;
-  background: #e0f3df;
-  font-weight: 800;
-  line-height: 1.45;
+.profile-plan-link:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
-.profile-cancellation-error {
+.profile-purchase-error {
   margin: 14px 0 0;
   border-left: 4px solid #a33450;
   border-radius: 4px 12px 12px 4px;
@@ -252,6 +230,16 @@
   background: #f7dce2;
   font-weight: 800;
   line-height: 1.45;
+}
+
+.profile-renewal-note {
+  margin: 0 0 16px;
+  border-left: 4px solid var(--color-teal-dark);
+  border-radius: 4px 12px 12px 4px;
+  padding: 11px 13px;
+  background: color-mix(in srgb, var(--color-paper) 70%, transparent);
+  font-weight: 750;
+  line-height: 1.5;
 }
 
 .theme-dark .profile-account-card,

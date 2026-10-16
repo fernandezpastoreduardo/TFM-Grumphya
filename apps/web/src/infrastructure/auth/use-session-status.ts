@@ -1,0 +1,94 @@
+import { useEffect, useState } from "react";
+import {
+  authenticatedFetch,
+  clearAccessToken,
+  SESSION_EXPIRED_EVENT,
+} from "./session";
+
+export type AccountAttempts = { ideas: number; roasts: number };
+
+export function useSessionStatus() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [accountAttempts, setAccountAttempts] =
+    useState<AccountAttempts | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const markSessionExpired = () => {
+      setIsAuthenticated(false);
+      setAccountAttempts(null);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, markSessionExpired);
+    authenticatedFetch("/api/account/profile")
+      .then(async (response) => {
+        if (isMounted) setIsAuthenticated(response.ok);
+        if (!response.ok) return;
+        const profile: unknown = await response.json();
+        const attempts = readActivePlanAttempts(profile);
+        if (isMounted) setAccountAttempts(attempts);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setIsAuthenticated(false);
+          setAccountAttempts(null);
+        }
+      });
+    return () => {
+      isMounted = false;
+      window.removeEventListener(SESSION_EXPIRED_EVENT, markSessionExpired);
+    };
+  }, []);
+
+  async function signOut() {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+    } catch {
+      // Clear the local token even if the request cannot reach the server.
+    } finally {
+      clearAccessToken();
+      setIsAuthenticated(false);
+      setAccountAttempts(null);
+      setIsSigningOut(false);
+      window.location.assign("/");
+    }
+  }
+
+  return { isAuthenticated, accountAttempts, isSigningOut, signOut };
+}
+
+function readActivePlanAttempts(value: unknown): AccountAttempts | null {
+  if (!isRecord(value) || !Array.isArray(value.plans)) return null;
+  const activePlans = value.plans.filter(
+    (plan) => isRecord(plan) && plan.status === "active",
+  );
+  const activeIdeasPlan = activePlans.find(
+    (plan) => isRecord(plan) && plan.plan === "ILUMINADO",
+  );
+  const activeRoastPlan = activePlans.find(
+    (plan) => isRecord(plan) && plan.plan === "FALTON",
+  );
+  return {
+    ideas: getRemaining(activeIdeasPlan, "ideas"),
+    roasts: getRemaining(activeRoastPlan, "roasts"),
+  };
+}
+
+function getRemaining(value: unknown, scope: "ideas" | "roasts"): number {
+  if (!isRecord(value) || !isRecord(value.attemptsRemaining)) return 0;
+  const remaining = value.attemptsRemaining[scope];
+  return typeof remaining === "number" && Number.isSafeInteger(remaining)
+    ? remaining
+    : 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

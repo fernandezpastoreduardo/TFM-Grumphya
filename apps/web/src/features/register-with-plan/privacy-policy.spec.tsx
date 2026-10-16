@@ -6,7 +6,9 @@ describe("PrivacyPolicy", () => {
   it("clearly presents a provisional privacy policy page", () => {
     render(<PrivacyPolicy />);
 
-    expect(screen.getByRole("heading", { name: /política de privacidad/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /política de privacidad/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/versión provisional/i)).toBeInTheDocument();
   });
 });

@@ -58,28 +58,61 @@ export function AuthenticationPage() {
         <h2>No, no tenemos login con el súper</h2>
         <form onSubmit={submitAuth}>
           <label htmlFor="login-identifier">Usuario o correo</label>
-          <input id="login-identifier" name="identifier" autoComplete="username" required minLength={3} maxLength={254} placeholder="Tu alias o correo" />
+          <input
+            id="login-identifier"
+            name="identifier"
+            autoComplete="username"
+            required
+            minLength={3}
+            maxLength={254}
+            placeholder="Tu alias o correo"
+          />
           <label htmlFor="login-password">Contraseña</label>
-          <input id="login-password" name="password" type="password" autoComplete="current-password" required placeholder="Tu contraseña" />
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            placeholder="Tu contraseña"
+          />
           <label className="remember-option" htmlFor="login-remember">
-            <input id="login-remember" type="checkbox" name="remember" /> Recordarme en este dispositivo
+            <input id="login-remember" type="checkbox" name="remember" />{" "}
+            Recordarme en este dispositivo
           </label>
-          <button className="button-primary" type="submit" disabled={submitting}>
-            {submitting ? "Entrando…" : "Entrar"} <span aria-hidden="true">↗</span>
+          <button
+            className="button-primary"
+            type="submit"
+            disabled={submitting}
+          >
+            {submitting ? "Entrando…" : "Entrar"}{" "}
+            <span aria-hidden="true">↗</span>
           </button>
         </form>
-        {notice ? <p className="auth-notice" role="status">{notice}</p> : null}
+        {notice ? (
+          <p className="auth-notice" role="status">
+            {notice}
+          </p>
+        ) : null}
         <div className="login-copy">
-          <p>¿Quieres hacer login con Google, GitHub o la app del supermercado?</p>
+          <p>
+            ¿Quieres hacer login con Google, GitHub o la app del supermercado?
+          </p>
           <strong>Pues no se puede.</strong>
-          <p>Tus buenas ideas, las aprobadas, son tuyas. Las malas pueden acabar en un ranking sin tu nombre ni el texto original.</p>
+          <p>
+            Tus buenas ideas, las aprobadas, son tuyas. Las malas pueden acabar
+            en un ranking sin tu nombre ni el texto original.
+          </p>
           <p>Ánimo, que no cuesta tanto poner un usuario y una contraseña.</p>
         </div>
       </section>
       <aside className="auth-aside">
         <div className="auth-creature" aria-hidden="true" />
         <h2>Tu historial no es público.</h2>
-        <p>El acceso real usará sesión segura, errores genéricos y límites aplicados por el servidor.</p>
+        <p>
+          El acceso real usará sesión segura, errores genéricos y límites
+          aplicados por el servidor.
+        </p>
       </aside>
     </div>
   );

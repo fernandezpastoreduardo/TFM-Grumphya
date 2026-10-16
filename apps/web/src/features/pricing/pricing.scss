@@ -83,6 +83,15 @@
 .price-card .prototype-stamp {
   font-size: 0.64rem;
 }
+.plan-renewal-copy {
+  margin: 15px 0 0;
+  border-left: 4px solid var(--color-teal-dark);
+  border-radius: 4px 14px 14px 4px;
+  padding: 12px 15px;
+  background: color-mix(in srgb, var(--color-paper) 72%, transparent);
+  font-weight: 800;
+  line-height: 1.5;
+}
 .ultra-card {
   position: relative;
   gap: 14px;
