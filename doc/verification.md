@@ -211,3 +211,24 @@ Límites registrados en esa revisión: el rate limit por ruta en memoria es por 
 - La idempotencia es por usuario, plan, hash de clave y hash HMAC del payload. Repetir la misma clave con el mismo payload devuelve el cuerpo cacheado sin otro consumo; otro payload con esa clave se rechaza. El TTL lógico vence 24 horas después de la reserva original, sin renovarse al reintentar. `response_json` contiene el cuerpo completo de respuesta y puede incluir salida generada derivada del payload, pero no guarda el payload fuente como campo independiente. El borrado físico es oportunista, en lotes de hasta 500 reservas posteriores; no hay tarea periódica y no se garantiza eliminación física a las 24 horas. Una reserva incompleta responde `409 REQUEST_IN_PROGRESS` durante 30 minutos y luego se puede recuperar.
 - Las claves UUID de idempotencia se normalizan a minúsculas antes de calcular los hashes, de modo que la misma clave en mayúsculas y minúsculas representa la misma petición. Dos pruebas enfocadas cubren evaluación y roast (2/2).
 - Verificación final: `pnpm test` pasó con API 250/250 (35 archivos) y web 81/81 (19 archivos), cero omisiones. `pnpm lint` y `pnpm typecheck` pasaron; `pnpm test:e2e` pasó 2/2. La suite SQL usó todas las variables de test contra el cluster PostgreSQL temporal `postgres` en `127.0.0.1:55439`; cada spec creó y eliminó únicamente sus schemas UUID, sin modificar bases de datos existentes.
+
+## Páginas de error de la interfaz, 16 de octubre de 2026
+
+- Las rutas desconocidas muestran el 404; un error de renderizado React muestra el 500; el límite temporal `ANONYMOUS_PROFILE_RATE_LIMITED` muestra el 429 con su ventana `Retry-After`. Los errores recuperables de API en formularios siguen en contexto.
+- Se unificaron mascota y accesorios de cada lámina en tres ilustraciones PNG transparentes por estado, conservando sus escalas, posiciones y solapes. El marco existente aporta navegación, telón, público, tema y pie.
+- Verificación: `pnpm --filter @grumphya/web test` (93 pruebas), `typecheck`, `lint` y `build` pasan. `pnpm --filter @grumphya/web test:e2e -- error-pages.spec.ts` pasó 4 pruebas Chromium en total: los dos nuevos casos de errores y los dos E2E preexistentes.
+- La apertura de los tres estados quedó disponible en las pestañas de revisión de `http://127.0.0.1:4173/__preview/errors/{404,429,500}`. Las previsualizaciones se compilan solo para desarrollo. En producción, el servidor SPA debe redirigir las rutas frontend desconocidas a `index.html` para que React pueda representar el 404.
+
+## Contraste del modo oscuro, 16 de octubre de 2026
+
+- Se ajustaron colores de texto para superficies claras en controles, avisos,
+  listados y menús móviles; los diálogos oscuros conservan texto claro y sus
+  acciones sobre fondos claros usan texto oscuro. La regla visual queda en
+  `doc/ui.md`.
+- Verificación: `pnpm --filter @grumphya/web test` pasó 93/93; `pnpm lint`,
+  `pnpm --filter @grumphya/web build` y `git diff --check` pasaron. La revisión
+  visual en modo oscuro no detectó texto claro sobre superficies claras en la
+  vista inspeccionada.
+- La ejecución completa de `pnpm test` tuvo 12 fallos en pruebas HTTP de API
+  porque el entorno devolvió `listen EPERM` al abrir sockets locales; otras
+  227 pruebas de API pasaron y 11 se omitieron.

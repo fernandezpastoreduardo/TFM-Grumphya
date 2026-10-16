@@ -28,8 +28,14 @@ Formularios accesibles. Los errores de autenticación deben ser genéricos y nun
 
 La vista `/politica-de-privacidad` provisional muestra un título y los estilos del sitio e indica que el contenido está pendiente de completar. No debe aparentar ofrecer información legal completa.
 
-### ErrorCreature
+### ErrorPages
 
-Componente presentacional para estados 400, 429 y 500. El copy y la ilustración deben respetar `copy-style.md` y `UI-aestethics.md`.
+Componente presentacional de las páginas 404, 429 y 500. Reutiliza el marco
+compartido de navegación, tema y escena; usa una ilustración PNG transparente por
+error que integra la mascota y los accesorios de la lámina aprobada. El 404 corresponde a rutas desconocidas,
+el 429 al límite temporal de creación de perfiles anónimos y el 500 a errores
+de renderizado React. Los errores recuperables de API permanecen en contexto.
+El copy, las acciones y el contraste siguen `copy-style.md` y
+`UI-aestethics.md`. Las rutas de previsualización solo existen en desarrollo.
 
 Los componentes específicos permanecen dentro de su feature hasta que exista un segundo consumidor real.

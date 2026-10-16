@@ -8,6 +8,7 @@ import { EvaluationDialog } from "../features/idea-evaluation/components/Evaluat
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
 import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
 import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
+import { ErrorPages } from "../features/error-pages/error-pages";
 import {
   evaluationProcess,
   EvaluationProcessError,
@@ -174,6 +175,10 @@ export function Home() {
     setSimilarIdeaMatch(null);
     setPendingEvaluation(null);
     setEvaluationResult(result);
+  }
+
+  if (anonymousUsage.errorStatus === 429) {
+    return <ErrorPages status="429" detail={anonymousUsage.error} />;
   }
 
   return (

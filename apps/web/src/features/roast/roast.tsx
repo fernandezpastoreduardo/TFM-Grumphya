@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
+import { ErrorPages } from "../error-pages/error-pages";
 import "./roast.scss";
 
 // PROTOTYPE: sample exchanges and the reply below are fixtures until the roast service exists.
@@ -91,6 +92,10 @@ export function Roast() {
       isSendingRef.current = false;
       setIsSending(false);
     }
+  }
+
+  if (usageState.errorStatus === 429) {
+    return <ErrorPages status="429" detail={usageState.error} />;
   }
 
   return (

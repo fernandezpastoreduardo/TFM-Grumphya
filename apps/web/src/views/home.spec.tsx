@@ -27,6 +27,29 @@ function respondToUsageInitialization(url: unknown) {
 }
 
 describe("Home", () => {
+  it("shows the 429 page when the API temporarily blocks browser profile creation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) => {
+        if (url === "/api/anonymous-usage") {
+          return Promise.resolve({
+            ok: false,
+            status: 429,
+            headers: { get: () => "120" },
+            json: async () => ({ code: "ANONYMOUS_PROFILE_RATE_LIMITED" }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      }),
+    );
+    render(<Home />);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "429" }),
+    ).toBeVisible();
+    expect(screen.getByText(/dentro de 2 min/i)).toBeVisible();
+  });
+
   it("starts with the idea capture area and an empty evaluation region", () => {
     vi.stubGlobal(
       "fetch",

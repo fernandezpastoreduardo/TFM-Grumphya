@@ -53,6 +53,7 @@ describe("useAnonymousUsage", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.error).toContain("dentro de 1 h");
+    expect(result.current.errorStatus).toBe(429);
   });
 
   it("reloads server counts after a completed operation", async () => {

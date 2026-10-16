@@ -38,3 +38,5 @@ More examples of copy directly in spanish:
 - Idea repetida: reconocer la repetición y mostrar el contador sin exponer datos de otros usuarios.
 - Límite agotado: tono breve, claro y sin prometer una evaluación que no se va a ejecutar.
 - Error 500: la criatura aparece tranquila mientras algo arde; explicar que no se ha guardado una evaluación incompleta.
+- Error 404: «Por aquí no hay ninguna sección. La dirección se ha inventado el destino.» Ofrecer volver al inicio y, si hay historial, volver atrás.
+- Error 429 temporal: usar el copy de `UI-aestethics.md`, explicar el tiempo devuelto por `Retry-After` y no inventar una hora de reinicio.

@@ -80,6 +80,13 @@ migrados. El CSS legado separado por vistas conserva algunos selectores globales
 mientras se convierten gradualmente; no se debe volver a añadir ese CSS a una
 hoja global única.
 
+### Previsualizar páginas de error
+
+Con Vite en desarrollo, abre `/__preview/errors/404`,
+`/__preview/errors/429` o `/__preview/errors/500`. Estas rutas fuerzan solo la
+presentación: no consumen cuota ni simulan respuestas de la API. Consulta
+[`error-pages.md`](error-pages.md) para los casos conectados y sus límites.
+
 ## Dictado de ideas
 
 `transcriptUserIdea` ofrece dictado temporal en español (`es-ES`) mediante la

@@ -13,4 +13,18 @@ describe("SectionPage", () => {
       screen.queryByText(/quiero una app que haga mi trabajo mientras duermo/i),
     ).not.toBeInTheDocument();
   });
+
+  it("shows the 404 page for an unknown path", () => {
+    render(<SectionPage path="/no-existe" />);
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "404" }),
+    ).toBeVisible();
+    expect(screen.getByText("Por aquí no hay ninguna sección.")).toBeVisible();
+    expect(
+      screen.queryByRole("heading", {
+        name: "Primero el problema. Luego el código.",
+      }),
+    ).not.toBeInTheDocument();
+  });
 });

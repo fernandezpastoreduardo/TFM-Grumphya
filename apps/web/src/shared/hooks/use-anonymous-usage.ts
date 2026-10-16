@@ -11,6 +11,8 @@ export type AnonymousUsage = {
   roasts: AnonymousQuota;
 };
 
+export type AnonymousUsageErrorStatus = 429 | null;
+
 const ANONYMOUS_USAGE_ENDPOINT = "/api/anonymous-usage";
 const USAGE_UNAVAILABLE_MESSAGE =
   "No se han podido cargar tus usos. Recarga la página para intentarlo de nuevo.";
@@ -50,10 +52,13 @@ export function useAnonymousUsage() {
   const [usage, setUsage] = useState<AnonymousUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [errorStatus, setErrorStatus] =
+    useState<AnonymousUsageErrorStatus>(null);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError("");
+    setErrorStatus(null);
     try {
       const response = await fetch(ANONYMOUS_USAGE_ENDPOINT, {
         method: "POST",
@@ -85,6 +90,7 @@ export function useAnonymousUsage() {
             setError(
               `Se han creado demasiados perfiles desde esta red. Vuelve a intentarlo ${retryMessage}.`,
             );
+            setErrorStatus(429);
             return;
           }
         }
@@ -105,7 +111,7 @@ export function useAnonymousUsage() {
     void refresh();
   }, [refresh]);
 
-  return { usage, isLoading, error, refresh };
+  return { usage, isLoading, error, errorStatus, refresh };
 }
 
 function formatRetryAfter(seconds: number): string {

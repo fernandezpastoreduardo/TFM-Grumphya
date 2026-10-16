@@ -4,6 +4,7 @@ import {
   SectionPageFrame,
   type SectionPageMeta,
 } from "../shared/components/section-page-frame";
+import { ErrorPages } from "../features/error-pages/error-pages";
 
 const PAGE_META: Record<string, SectionPageMeta> = {
   "/lo-peor-de-lo-peor": {
@@ -165,7 +166,8 @@ function SectionContent({ path }: { path: string }) {
 }
 
 export function SectionPage({ path }: { path: string }) {
-  const page = PAGE_META[path] ?? PAGE_META["/buenas-practicas"];
+  const page = PAGE_META[path];
+  if (!page) return <ErrorPages status="404" />;
   return (
     <SectionPageFrame page={page}>
       <SectionContent path={path} />

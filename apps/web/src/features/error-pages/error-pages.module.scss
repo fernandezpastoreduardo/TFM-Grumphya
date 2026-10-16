@@ -1,0 +1,187 @@
+.errorPage {
+  position: relative;
+  display: grid;
+  min-height: min(620px, calc(100vh - 190px));
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  align-items: center;
+  overflow: hidden;
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 30px;
+  padding: clamp(24px, 5vw, 64px);
+  background: var(--color-mint);
+  box-shadow: 7px 8px 0 #226b7026;
+}
+
+.errorCopy {
+  position: relative;
+  z-index: 1;
+  max-width: 650px;
+}
+
+.errorKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: #ffffff92;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.errorKicker span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #db4960;
+  box-shadow: 0 0 0 3px #db496033;
+}
+
+.errorCode {
+  display: inline-block;
+  margin: 20px 0 14px;
+  transform: rotate(-2deg);
+  background: #ffdf70;
+  padding: 0 16px 4px;
+  font:
+    700 clamp(5.8rem, 13vw, 10rem) / 0.9 "Fredoka",
+    sans-serif;
+  letter-spacing: -0.075em;
+}
+
+.errorHeadline {
+  max-width: 630px;
+  margin: 0 0 12px;
+  background: #f18aa0;
+  padding: 4px 10px 7px;
+  font:
+    600 clamp(1.55rem, 3.4vw, 2.65rem) / 1.05 "Fredoka",
+    sans-serif;
+  letter-spacing: -0.035em;
+}
+
+.errorDescription {
+  max-width: 520px;
+  margin: 0;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.errorActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 22px;
+  margin-top: 26px;
+}
+
+.primaryAction {
+  display: inline-flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 2px solid #087887;
+  border-radius: 999px;
+  padding: 11px 26px;
+  color: #fff;
+  background: #087f89;
+  box-shadow: 0 4px 0 #15585e;
+  font-size: 1rem;
+  font-weight: 900;
+  text-decoration: none;
+  transition: transform 120ms ease;
+}
+
+.primaryAction:hover,
+.primaryAction:focus-visible {
+  transform: translateY(-2px);
+}
+
+.primaryAction:focus-visible,
+.secondaryAction:focus-visible {
+  outline: 3px solid var(--color-ink);
+  outline-offset: 4px;
+}
+
+.secondaryAction {
+  border: 0;
+  padding: 8px 2px;
+  color: var(--color-teal-dark);
+  background: transparent;
+  cursor: pointer;
+  font-weight: 900;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.errorStage {
+  position: relative;
+  align-self: stretch;
+  min-height: 320px;
+  filter: drop-shadow(4px 7px 0 #1a4e5030);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.scene404 {
+  background-image: url("/assets/grumphya/error-scene-404.png");
+}
+
+.scene429 {
+  background-image: url("/assets/grumphya/error-scene-429.png");
+}
+
+.scene500 {
+  background-image: url("/assets/grumphya/error-scene-500.png");
+}
+
+:global(.theme-dark) .errorPage {
+  background: var(--color-mint-deep);
+}
+
+:global(.theme-dark) .errorKicker {
+  color: #172123;
+  background: #f5f6e9;
+}
+
+:global(.theme-dark) .secondaryAction {
+  color: #d5fff0;
+}
+
+@media (max-width: 700px) {
+  .errorPage {
+    min-height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 24px 20px 18px;
+  }
+
+  .errorCode {
+    margin-top: 16px;
+    font-size: clamp(5.5rem, 24vw, 8rem);
+  }
+
+  .errorHeadline {
+    font-size: clamp(1.55rem, 7.3vw, 2.1rem);
+  }
+
+  .errorStage {
+    min-height: 230px;
+  }
+
+  .errorActions {
+    gap: 10px 18px;
+    margin-top: 20px;
+  }
+
+  .primaryAction {
+    min-height: 50px;
+    padding-inline: 22px;
+  }
+}

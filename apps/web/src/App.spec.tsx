@@ -22,4 +22,30 @@ describe("App", () => {
     ).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it("shows a 404 page for an unknown browser path", async () => {
+    window.history.pushState({}, "", "/ruta-que-no-existe");
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "404" }),
+    ).toBeVisible();
+    expect(screen.getByText("Por aquí no hay ninguna sección.")).toBeVisible();
+    window.history.pushState({}, "", "/");
+  });
+
+  it.each(["404", "429", "500"] as const)(
+    "exposes the %s error preview only from the development route",
+    async (status) => {
+      window.history.pushState({}, "", `/__preview/errors/${status}`);
+
+      render(<App />);
+
+      expect(
+        await screen.findByRole("heading", { level: 1, name: status }),
+      ).toBeVisible();
+      window.history.pushState({}, "", "/");
+    },
+  );
 });

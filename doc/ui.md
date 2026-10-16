@@ -47,6 +47,9 @@ la lámina maestra está en
   derecha.
 - El cambio claro/oscuro se presenta como un switch con accionador turquesa; el
   selector de tono sigue siendo un control separado.
+- En modo oscuro, los controles y superficies claras conservan texto oscuro;
+  los diálogos y paneles oscuros conservan texto claro. Se comprueba también
+  la combinación de colores de popups, avisos y botones secundarios.
 - La versión de escritorio y la móvil conservan la misma identidad. En móvil,
   la composición se apila y mantiene separación entre grupos para que el
   textarea, las opciones, la acción y la mascota se lean como pasos distintos.
@@ -63,6 +66,19 @@ la lámina maestra está en
 - Los SVG decorativos se ocultan a tecnologías de asistencia. Los controles
   tienen semántica nativa, nombre accesible, estado anunciado y foco visible.
   Los colores no son la única forma de comunicar selección o estado.
+
+## Errores
+
+Las rutas desconocidas muestran el 404 con la criatura indicando una puerta
+equivocada; los fallos de renderizado muestran el 500 con una llama pequeña y
+la mascota tranquila; y el límite temporal de creación de perfiles muestra el
+429 con la criatura impaciente. Las tres pantallas heredan navegación, telón,
+público, tema y pie del marco común; cada una usa una ilustración PNG
+transparente que integra mascota, accesorios, proporción y solapes de su lámina:
+puerta, tarima y cartel de X en 404; brasero con llama en 500; señal de mano y
+barrera en 429. El copy y las acciones permanecen como contenido HTML.
+El copy, los siguientes pasos y las rutas locales de revisión están descritos
+en [`error-pages.md`](error-pages.md).
 
 ## Código fuente principal
 

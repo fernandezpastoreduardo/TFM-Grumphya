@@ -1,4 +1,9 @@
 import { lazy, Suspense } from "react";
+import {
+  ErrorPages,
+  ErrorPagesBoundary,
+  type ErrorPageStatus,
+} from "./features/error-pages/error-pages";
 
 const Home = lazy(() =>
   import("./views/home").then((module) => ({ default: module.Home })),
@@ -11,18 +16,30 @@ const SectionPage = lazy(() =>
 
 export function App() {
   return (
-    <Suspense
-      fallback={
-        <p className="route-loading" role="status" aria-live="polite">
-          Cargando Grumphya…
-        </p>
-      }
-    >
-      {window.location.pathname === "/" ? (
-        <Home />
-      ) : (
-        <SectionPage path={window.location.pathname} />
-      )}
-    </Suspense>
+    <ErrorPagesBoundary>
+      <Suspense
+        fallback={
+          <p className="route-loading" role="status" aria-live="polite">
+            Cargando Grumphya…
+          </p>
+        }
+      >
+        {renderCurrentRoute()}
+      </Suspense>
+    </ErrorPagesBoundary>
   );
+}
+
+const PREVIEW_ERROR_PATHS: Record<string, ErrorPageStatus> = {
+  "/__preview/errors/404": "404",
+  "/__preview/errors/429": "429",
+  "/__preview/errors/500": "500",
+};
+
+function renderCurrentRoute() {
+  const path = window.location.pathname;
+  if (import.meta.env.DEV && path in PREVIEW_ERROR_PATHS) {
+    return <ErrorPages status={PREVIEW_ERROR_PATHS[path]} />;
+  }
+  return path === "/" ? <Home /> : <SectionPage path={path} />;
 }
