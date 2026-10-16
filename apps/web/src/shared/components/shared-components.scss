@@ -121,6 +121,17 @@
   color: var(--color-ink);
   background: var(--color-paper);
 }
+.theme-dark .button-secondary {
+  color: #172123;
+}
+.theme-dark .button-primary {
+  border-color: #087887;
+  color: #fff;
+  background: #087887;
+}
+.theme-dark .button-primary:hover {
+  background: #164f53;
+}
 .prototype-dialog {
   position: fixed;
   z-index: 20;
@@ -159,6 +170,11 @@
   color: inherit;
   font-size: 1.4rem;
   cursor: pointer;
+}
+.theme-dark .prototype-dialog {
+  border-color: #a8ddcf;
+  color: #f3fff3;
+  background: #1b2b2b;
 }
 @media (max-width: 640px) {
   .content-card {

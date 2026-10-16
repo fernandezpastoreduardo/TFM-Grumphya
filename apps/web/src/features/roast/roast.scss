@@ -71,6 +71,10 @@
   border-radius: 17px 17px 5px 17px;
   background: #ffe2e7;
 }
+.theme-dark .roast-user,
+.theme-dark .roast-reply {
+  color: #172123;
+}
 .roast-reply {
   justify-self: start;
 }
@@ -120,6 +124,9 @@
   background: var(--color-teal-dark);
   font-size: 1.4rem;
   cursor: pointer;
+}
+.theme-dark .roast-composer button {
+  color: #172123;
 }
 .roast-composer button:disabled {
   opacity: 0.45;

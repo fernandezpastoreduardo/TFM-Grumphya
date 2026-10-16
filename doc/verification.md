@@ -225,10 +225,8 @@ Límites registrados en esa revisión: el rate limit por ruta en memoria es por 
   listados y menús móviles; los diálogos oscuros conservan texto claro y sus
   acciones sobre fondos claros usan texto oscuro. La regla visual queda en
   `doc/ui.md`.
-- Verificación: `pnpm --filter @grumphya/web test` pasó 93/93; `pnpm lint`,
+- Verificación: `pnpm test` pasó con API 239/239 y web 93/93; 11 pruebas de API
+  que requieren PostgreSQL se omitieron. `pnpm lint`,
   `pnpm --filter @grumphya/web build` y `git diff --check` pasaron. La revisión
   visual en modo oscuro no detectó texto claro sobre superficies claras en la
   vista inspeccionada.
-- La ejecución completa de `pnpm test` tuvo 12 fallos en pruebas HTTP de API
-  porque el entorno devolvió `listen EPERM` al abrir sockets locales; otras
-  227 pruebas de API pasaron y 11 se omitieron.

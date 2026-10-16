@@ -48,6 +48,14 @@
   font-size: 0.68rem;
   font-weight: 800;
 }
+.theme-dark .idea-ranking li {
+  border-color: #79aaa0;
+  color: #172123;
+  background: #e3eee6;
+}
+.theme-dark .ranking-count small {
+  color: #405655;
+}
 .personal-empty {
   position: relative;
   overflow: hidden;

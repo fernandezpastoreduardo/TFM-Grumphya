@@ -93,6 +93,10 @@
   color: #fff;
   background: var(--color-teal-dark);
 }
+.theme-dark .site-nav-home:hover,
+.theme-dark .site-nav-home:focus-visible {
+  color: #172123;
+}
 .site-theme-toggle {
   justify-content: center;
   border-color: var(--color-teal-dark);
@@ -957,6 +961,16 @@
 .site-mobile-menu nav a[aria-current="page"]:hover {
   color: #174a40;
   background: #b7f1c5;
+}
+
+.theme-dark .site-mobile-menu nav {
+  background: #f0f8ed;
+}
+
+.theme-dark .site-mobile-menu nav a,
+.theme-dark .site-mobile-menu nav a:hover,
+.theme-dark .site-mobile-menu nav a:focus-visible {
+  color: #172123;
 }
 
 @media (max-width: 640px) {
