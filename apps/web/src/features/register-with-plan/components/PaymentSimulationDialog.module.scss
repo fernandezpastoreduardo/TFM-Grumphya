@@ -1,0 +1,138 @@
+.dialog {
+  width: min(540px, calc(100vw - 28px));
+  max-width: none;
+  max-height: min(88dvh, 680px);
+  margin: auto;
+  overflow: visible;
+  border: 2px solid var(--color-ink);
+  border-radius: 24px 24px 24px 8px;
+  padding: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: 8px 8px 0 var(--color-ink);
+
+  &::backdrop {
+    background: rgb(20 47 51 / 58%);
+    backdrop-filter: blur(3px);
+  }
+}
+
+.panel {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: clamp(24px, 6vw, 38px);
+  text-align: center;
+
+  &::after {
+    position: absolute;
+    z-index: 0;
+    top: 74px;
+    right: 18px;
+    width: 70px;
+    height: 95px;
+    background: url("/assets/grumphya/mascot-neutral.svg") center / contain
+      no-repeat;
+    content: "";
+    opacity: 0.92;
+    pointer-events: none;
+  }
+}
+
+.eyebrow {
+  justify-self: start;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+  padding: 5px 11px;
+  background: #f4c95d;
+  color: var(--color-ink);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.spinner {
+  width: 76px;
+  height: 76px;
+  margin-top: 7px;
+  border: 8px solid #c8eee5;
+  border-top-color: var(--color-teal-dark);
+  border-right-color: #f18aa0;
+  border-radius: 50%;
+  animation: payment-turn 0.9s linear infinite;
+}
+
+.panel h2 {
+  max-width: 18ch;
+  margin: 0;
+  font:
+    600 clamp(1.45rem, 5vw, 2rem) / 1.1 "Fredoka",
+    "Trebuchet MS",
+    sans-serif;
+}
+
+.notice {
+  max-width: 43ch;
+  margin: 0;
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 18px 18px 18px 5px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--color-mint) 58%, var(--color-paper));
+  color: var(--color-ink);
+  font-size: 0.96rem;
+  font-weight: 750;
+  line-height: 1.5;
+  text-align: left;
+}
+
+:global(.theme-dark) .dialog {
+  background: #1b2b2b;
+  color: #f5f5eb;
+
+  .notice {
+    background: #294645;
+    color: #f5f5eb;
+  }
+
+  .eyebrow {
+    background: #f4c95d;
+    color: #183234;
+  }
+}
+
+@keyframes payment-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (max-width: 520px) {
+  .dialog {
+    width: calc(100vw - 24px);
+    border-radius: 20px 20px 20px 8px;
+    box-shadow: 5px 5px 0 var(--color-ink);
+  }
+
+  .panel {
+    gap: 14px;
+    padding: 22px 18px;
+
+    &::after {
+      top: 66px;
+      right: 10px;
+      width: 50px;
+      height: 70px;
+    }
+  }
+
+  .spinner {
+    width: 64px;
+    height: 64px;
+  }
+
+  .notice {
+    font-size: 0.9rem;
+  }
+}

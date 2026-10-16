@@ -64,6 +64,13 @@ const PAGE_META: Record<string, SectionPageMeta> = {
       "La contratación de esta versión es simulada. No introduzcas datos bancarios porque no hacen falta.",
     theme: "blue",
   },
+  "/perfil": {
+    label: "Tu cuenta",
+    title: "Tu cuenta. Tus planes. Tus intentos.",
+    intro:
+      "Aquí tienes el estado de tu contratación simulada y tus datos. La cuenta ya está activa; el correo todavía está pendiente de verificación.",
+    theme: "mint",
+  },
   "/verificar-cuenta": {
     label: "Verificación de correo",
     title: "Una última comprobación",
@@ -118,6 +125,11 @@ const SECTION_CONTENT_BY_PATH: Record<
     import("../features/register-with-plan/register-with-plan").then(
       (module) => ({ default: module.RegisterWithPlan }),
     ),
+  ),
+  "/perfil": lazy(() =>
+    import("../features/user-profile/user-profile").then((module) => ({
+      default: module.UserProfile,
+    })),
   ),
   "/verificar-cuenta": lazy(() =>
     import("../features/register-with-plan/registration-verification").then(

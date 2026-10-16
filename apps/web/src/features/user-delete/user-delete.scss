@@ -1,0 +1,94 @@
+.profile-delete-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-top: 3rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid rgba(155, 63, 46, 0.24);
+  border-radius: 1.25rem;
+  background: rgba(255, 247, 243, 0.78);
+
+  h2 {
+    margin: 0.45rem 0;
+  }
+
+  p {
+    max-width: 42rem;
+    margin: 0;
+  }
+}
+
+.profile-delete-trigger,
+.profile-delete-confirm {
+  border: 1px solid #8d3028;
+  border-radius: 999px;
+  padding: 0.85rem 1.2rem;
+  color: #fff;
+  background: #8d3028;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.7;
+  }
+}
+
+.profile-delete-dialog {
+  width: min(34rem, calc(100vw - 2rem));
+  max-width: none;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border: 1px solid rgba(68, 41, 37, 0.16);
+  border-radius: 1.5rem;
+  color: #302421;
+  background: #fffaf5;
+  box-shadow: 0 1.5rem 5rem rgba(31, 20, 18, 0.28);
+
+  &::backdrop {
+    background: rgba(33, 24, 22, 0.56);
+    backdrop-filter: blur(3px);
+  }
+
+  h2 {
+    margin: 0.5rem 0 0.75rem;
+  }
+
+  p {
+    line-height: 1.6;
+  }
+
+  [role="alert"] {
+    color: #8d3028;
+    font-weight: 700;
+  }
+}
+
+.profile-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+
+  button {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .profile-delete-section {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-delete-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+}

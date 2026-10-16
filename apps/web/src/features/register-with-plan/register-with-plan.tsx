@@ -1,29 +1,37 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
+import { PaymentSimulationDialog } from "./components/PaymentSimulationDialog";
+import { setAccessToken } from "../../infrastructure/auth/session";
 
 type Plan = "ILUMINADO" | "FALTON";
 type PlanResponse = { plan: Plan };
 type RegistrationResponse = {
-  status: "pending_email_verification";
-  message: string;
+  status: "active";
+  plan: Plan;
+  account: unknown;
+  accessToken: string;
+  expiresIn: number;
 };
-type RegistrationField = "email" | "username" | "password" | "privacyPolicyAcknowledged";
+type RegistrationField =
+  "email" | "username" | "password" | "privacyPolicyAcknowledged";
 
 const EMAIL_ERROR = "Venga ya, ese correo no es de verdad, escribe bien anda.";
-const USERNAME_ERROR = "Ese nombre necesita al menos 3 caracteres. Prueba con otro.";
+const USERNAME_ERROR =
+  "Ese nombre necesita al menos 3 caracteres. Prueba con otro.";
 const PASSWORD_ERROR = "La contraseña necesita al menos 12 caracteres.";
-const STRONG_PASSWORD_ERROR = "Usa al menos 12 caracteres e incluye mayúscula, minúscula, número y carácter especial.";
-const PRIVACY_ERROR = "Debes confirmar que has leído la política de privacidad.";
+const STRONG_PASSWORD_ERROR =
+  "Usa al menos 12 caracteres e incluye mayúscula, minúscula, número y carácter especial.";
+const PRIVACY_ERROR =
+  "Debes confirmar que has leído la política de privacidad.";
 const GENERIC_ERROR =
-  "No se ha podido confirmar el alta. Para evitar un envío duplicado, vuelve a cargar la página antes de intentarlo otra vez.";
+  "No se ha podido completar el alta. Para evitar duplicados, vuelve a cargar la página antes de intentarlo otra vez.";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const USERNAME_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
+const USERNAME_PATTERN =
+  /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
 const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
 const PASSWORD_LOWERCASE_PATTERN = /\p{Ll}/u;
 const PASSWORD_NUMBER_PATTERN = /\p{N}/u;
 const PASSWORD_SPECIAL_PATTERN = /[^\p{L}\p{N}\s]/u;
-const QA_MAILBOX = "fernandezpastoreduardo@gmail.com";
-const TEST_MAIL_ERROR = "No se ha podido abrir el enlace de pruebas. Comprueba que la API local esté activa e inténtalo otra vez.";
 const PLAN_NAMES: Record<Plan, string> = {
   ILUMINADO: "Iluminado",
   FALTON: "Faltón",
@@ -51,14 +59,17 @@ function isRegistrationResponse(value: unknown): value is RegistrationResponse {
     typeof value === "object" &&
     value !== null &&
     "status" in value &&
-    value.status === "pending_email_verification" &&
-    "message" in value &&
-    typeof value.message === "string"
+    value.status === "active" &&
+    "plan" in value &&
+    (value.plan === "ILUMINADO" || value.plan === "FALTON") &&
+    "account" in value &&
+    typeof value.account === "object" &&
+    value.account !== null &&
+    "accessToken" in value &&
+    typeof value.accessToken === "string" &&
+    "expiresIn" in value &&
+    typeof value.expiresIn === "number"
   );
-}
-
-function isVerificationLink(value: unknown): value is { verificationUrl: string } {
-  return typeof value === "object" && value !== null && "verificationUrl" in value && typeof value.verificationUrl === "string";
 }
 
 export function RegisterWithPlan() {
@@ -69,9 +80,7 @@ export function RegisterWithPlan() {
   const submissionLocked = useRef(false);
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<RegistrationField | null>(null);
-  const [pendingMessage, setPendingMessage] = useState("");
-  const [openingVerification, setOpeningVerification] = useState(false);
-  const [testMailError, setTestMailError] = useState("");
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -103,7 +112,8 @@ export function RegisterWithPlan() {
     const email = String(formData.get("email") ?? "").trim();
     const username = String(formData.get("username") ?? "").trim();
     const password = String(formData.get("password") ?? "");
-    const privacyPolicyAcknowledged = formData.get("privacyPolicyAcknowledged") === "on";
+    const privacyPolicyAcknowledged =
+      formData.get("privacyPolicyAcknowledged") === "on";
 
     if (!EMAIL_PATTERN.test(email)) {
       setError(EMAIL_ERROR);
@@ -142,12 +152,19 @@ export function RegisterWithPlan() {
         }),
       });
       const body: unknown = await readJson(response);
-      if (response.status === 202 && isRegistrationResponse(body)) {
-        setSubmitted(true);
-        setPendingMessage(body.message);
+      if (response.ok && isRegistrationResponse(body) && body.plan === plan) {
+        setAccessToken(body.accessToken);
+        setProcessingPayment(true);
         return;
       }
-      setError(GENERIC_ERROR);
+      const responseMessage =
+        typeof body === "object" &&
+        body !== null &&
+        "message" in body &&
+        typeof body.message === "string"
+          ? body.message
+          : GENERIC_ERROR;
+      setError(responseMessage);
     } catch {
       setError(GENERIC_ERROR);
     } finally {
@@ -155,94 +172,163 @@ export function RegisterWithPlan() {
     }
   }
 
-  async function openTestVerification() {
-    setOpeningVerification(true);
-    setTestMailError("");
-    try {
-      const response = await fetch("/api/registration-test-mail/latest", { credentials: "same-origin" });
-      const body: unknown = await readJson(response);
-      if (!response.ok || !isVerificationLink(body)) {
-        setTestMailError(TEST_MAIL_ERROR);
-        return;
-      }
-      const url = new URL(body.verificationUrl, window.location.origin);
-      if (url.pathname !== "/verificar-cuenta" || !/^[a-f0-9]{64}$/.test(url.hash.slice(1))) {
-        setTestMailError(TEST_MAIL_ERROR);
-        return;
-      }
-      window.location.assign(`${url.pathname}${url.hash}`);
-    } catch {
-      setTestMailError(TEST_MAIL_ERROR);
-    } finally {
-      setOpeningVerification(false);
-    }
+  function navigateToProfile() {
+    window.location.assign("/perfil");
   }
 
   if (loadingPlan) {
-    return <p className="auth-notice" role="status">Comprobando el plan seleccionado…</p>;
+    return (
+      <p className="auth-notice" role="status">
+        Comprobando el plan seleccionado…
+      </p>
+    );
   }
   if (plan === null) {
     return (
-      <section className="content-card account-plan-required" aria-labelledby="plan-required-title">
+      <section
+        className="content-card account-plan-required"
+        aria-labelledby="plan-required-title"
+      >
         <span className="eyebrow">Primero, una decisión</span>
-        <h2 id="plan-required-title">Elige un plan antes de crear la cuenta.</h2>
-        <p>El alta solo está disponible al seleccionar Iluminado o Faltón. El plan gratis no necesita registro.</p>
-        <a className="button-primary" href="/precios">Ver los planes <span aria-hidden="true">↗</span></a>
+        <h2 id="plan-required-title">
+          Elige un plan antes de crear la cuenta.
+        </h2>
+        <p>
+          El alta solo está disponible al seleccionar Iluminado o Faltón. El
+          plan gratis no necesita registro.
+        </p>
+        <a className="button-primary" href="/precios">
+          Ver los planes <span aria-hidden="true">↗</span>
+        </a>
       </section>
     );
   }
-  if (pendingMessage) {
-    return (
-      <section className="content-card registration-pending" aria-labelledby="registration-pending-title">
-        <span className="eyebrow">Alta pendiente de verificación</span>
-        <h2 id="registration-pending-title">Continúa con la verificación de prueba</h2>
-        <p role="status">{pendingMessage}</p>
-        <p className="registration-test-notice"><strong>Modo de pruebas:</strong> no se envía un correo real. El buzón QA configurado es {QA_MAILBOX}; puedes abrir el enlace generado localmente para verificar y después confirmar la contratación simulada.</p>
-        {testMailError ? <p role="alert">{testMailError}</p> : null}
-        <button className="button-primary" type="button" onClick={() => void openTestVerification()} disabled={openingVerification}>
-          {openingVerification ? "Abriendo enlace…" : "Abrir enlace de verificación de pruebas"}
-        </button>
-        <p>La cuenta y el plan aún no están activos.</p>
-      </section>
-    );
-  }
-
   return (
-    <div className="auth-layout">
-      <section className="content-card auth-card" aria-labelledby="registration-title">
-        <span className="eyebrow">Plan seleccionado: {PLAN_NAMES[plan]}</span>
-        <h2 id="registration-title">Vamos a ponerle nombre a la cuenta</h2>
-        <p className="registration-test-notice"><strong>Modo de pruebas:</strong> no se envía un correo real. El buzón QA configurado es {QA_MAILBOX}, pero este prototipo solo genera un enlace local. No uses este flujo para una cuenta real.</p>
-        <form onSubmit={submitRegistration} noValidate aria-busy={submitting}>
-          <label htmlFor="registration-email">Correo electrónico</label>
-          <input id="registration-email" name="email" type="email" autoComplete="email" required aria-invalid={errorField === "email"} aria-describedby={errorField === "email" ? "registration-error" : undefined} />
-          <label htmlFor="registration-username">Nombre de usuario</label>
-          <input id="registration-username" name="username" autoComplete="username" required minLength={3} maxLength={30} aria-invalid={errorField === "username"} aria-describedby={errorField === "username" ? "registration-error" : undefined} />
-          <label htmlFor="registration-password">Contraseña</label>
-          <p id="registration-password-help">Mínimo 12 caracteres, con mayúscula, minúscula, número y carácter especial.</p>
-          <input id="registration-password" name="password" type="password" autoComplete="new-password" required minLength={12} maxLength={128} aria-describedby={errorField === "password" ? "registration-error registration-password-help" : "registration-password-help"} aria-invalid={errorField === "password"} />
-          <label className="registration-privacy" htmlFor="privacy-policy-acknowledged">
-            <input id="privacy-policy-acknowledged" name="privacyPolicyAcknowledged" type="checkbox" required aria-invalid={errorField === "privacyPolicyAcknowledged"} aria-describedby={errorField === "privacyPolicyAcknowledged" ? "registration-error" : undefined} />
-            <span>He leído la <a href="/politica-de-privacidad">política de privacidad</a>.</span>
-          </label>
-          {error ? <p className="registration-error" id="registration-error" role="alert">{error}</p> : null}
-          <button className="button-primary" type="submit" disabled={submitting || submitted}>
-            {submitting ? "Enviando…" : submitted ? "Envío bloqueado" : "Crear cuenta"} <span aria-hidden="true">↗</span>
-          </button>
-        </form>
-        <p className="auth-privacy">Cuando completes la verificación, podrás confirmar la contratación simulada. No se procesa ningún pago.</p>
-      </section>
-      <aside className="auth-aside">
-        <div className="auth-creature" aria-hidden="true" />
-        <h2>Tus ideas aprobadas son tuyas.</h2>
-        <p>El servidor comprobará el plan seleccionado y solo lo activará al completar la verificación y la contratación simulada.</p>
-      </aside>
-    </div>
+    <>
+      <div className="auth-layout">
+        <section
+          className="content-card auth-card"
+          aria-labelledby="registration-title"
+        >
+          <span className="eyebrow">Plan seleccionado: {PLAN_NAMES[plan]}</span>
+          <h2 id="registration-title">Vamos a ponerle nombre a la cuenta</h2>
+          <form onSubmit={submitRegistration} noValidate aria-busy={submitting}>
+            <label htmlFor="registration-email">Correo electrónico</label>
+            <input
+              id="registration-email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              aria-invalid={errorField === "email"}
+              aria-describedby={
+                errorField === "email" ? "registration-error" : undefined
+              }
+            />
+            <label htmlFor="registration-username">Nombre de usuario</label>
+            <input
+              id="registration-username"
+              name="username"
+              autoComplete="username"
+              required
+              minLength={3}
+              maxLength={30}
+              aria-invalid={errorField === "username"}
+              aria-describedby={
+                errorField === "username" ? "registration-error" : undefined
+              }
+            />
+            <label htmlFor="registration-password">Contraseña</label>
+            <p id="registration-password-help">
+              Mínimo 12 caracteres, con mayúscula, minúscula, número y carácter
+              especial.
+            </p>
+            <input
+              id="registration-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={12}
+              maxLength={128}
+              aria-describedby={
+                errorField === "password"
+                  ? "registration-error registration-password-help"
+                  : "registration-password-help"
+              }
+              aria-invalid={errorField === "password"}
+            />
+            <label
+              className="registration-privacy"
+              htmlFor="privacy-policy-acknowledged"
+            >
+              <input
+                id="privacy-policy-acknowledged"
+                name="privacyPolicyAcknowledged"
+                type="checkbox"
+                required
+                aria-invalid={errorField === "privacyPolicyAcknowledged"}
+                aria-describedby={
+                  errorField === "privacyPolicyAcknowledged"
+                    ? "registration-error"
+                    : undefined
+                }
+              />
+              <span>
+                He leído la{" "}
+                <a href="/politica-de-privacidad">política de privacidad</a>.
+              </span>
+            </label>
+            {error ? (
+              <p
+                className="registration-error"
+                id="registration-error"
+                role="alert"
+              >
+                {error}
+              </p>
+            ) : null}
+            <button
+              className="button-primary"
+              type="submit"
+              disabled={submitting || submitted}
+            >
+              {submitting
+                ? "Dándote de alta…"
+                : submitted
+                  ? "Alta enviada"
+                  : "Dáme de alta y te pago un café"}{" "}
+              <span aria-hidden="true">↗</span>
+            </button>
+          </form>
+          <p className="auth-privacy">
+            El plan se activa en el servidor. El pago se simula y no se procesa
+            dinero real. La verificación del correo queda pendiente.
+          </p>
+        </section>
+        <aside className="auth-aside">
+          <div className="auth-creature" aria-hidden="true" />
+          <h2>Tus ideas aprobadas son tuyas.</h2>
+          <p>
+            El servidor valida el plan elegido y activa la cuenta junto con la
+            suscripción simulada.
+          </p>
+        </aside>
+      </div>
+      <PaymentSimulationDialog
+        open={processingPayment}
+        onComplete={navigateToProfile}
+      />
+    </>
   );
 }
 
 function isStrongPassword(password: string): boolean {
   if (password.length < 12 || password.length > 128) return false;
-  return PASSWORD_UPPERCASE_PATTERN.test(password) && PASSWORD_LOWERCASE_PATTERN.test(password)
-    && PASSWORD_NUMBER_PATTERN.test(password) && PASSWORD_SPECIAL_PATTERN.test(password);
+  return (
+    PASSWORD_UPPERCASE_PATTERN.test(password) &&
+    PASSWORD_LOWERCASE_PATTERN.test(password) &&
+    PASSWORD_NUMBER_PATTERN.test(password) &&
+    PASSWORD_SPECIAL_PATTERN.test(password)
+  );
 }

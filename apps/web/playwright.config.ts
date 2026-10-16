@@ -21,6 +21,8 @@ export default defineConfig({
       env: {
         EVALUATION_TEST_PORT: API_TEST_PORT,
         WEB_ORIGIN: `http://127.0.0.1:${WEB_TEST_PORT}`,
+        ACCESS_TOKEN_SECRET:
+          "playwright-isolated-test-secret-with-at-least-32-bytes",
       },
     },
     {

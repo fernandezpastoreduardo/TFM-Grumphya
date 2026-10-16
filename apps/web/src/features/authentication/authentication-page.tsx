@@ -1,12 +1,54 @@
 import { useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
+import { setAccessToken } from "../../infrastructure/auth/session";
+
+const LOGIN_ENDPOINT = "/api/auth/login";
+const LOGIN_ERROR =
+  "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.";
+
+function isLoginResponse(value: unknown): value is { accessToken: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "accessToken" in value &&
+    typeof value.accessToken === "string" &&
+    value.accessToken.length > 0
+  );
+}
 
 export function AuthenticationPage() {
   const [notice, setNotice] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function submitAuth(event: FormEvent<HTMLFormElement>) {
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice("No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.");
+    if (submitting) return;
+    const form = new FormData(event.currentTarget);
+    setSubmitting(true);
+    setNotice("");
+    try {
+      const response = await fetch(LOGIN_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: form.get("identifier"),
+          password: form.get("password"),
+          rememberMe: form.get("remember") === "on",
+        }),
+      });
+      const body: unknown = await response.json();
+      if (!response.ok || !isLoginResponse(body)) {
+        setNotice(LOGIN_ERROR);
+        return;
+      }
+      setAccessToken(body.accessToken);
+      window.location.assign("/perfil");
+    } catch {
+      setNotice(LOGIN_ERROR);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -15,14 +57,16 @@ export function AuthenticationPage() {
         <span className="eyebrow">Acceso con usuario y contraseña</span>
         <h2>No, no tenemos login con el súper</h2>
         <form onSubmit={submitAuth}>
-          <label htmlFor="login-username">Usuario</label>
-          <input id="login-username" name="username" autoComplete="username" required minLength={3} placeholder="Tu alias" />
+          <label htmlFor="login-identifier">Usuario o correo</label>
+          <input id="login-identifier" name="identifier" autoComplete="username" required minLength={3} maxLength={254} placeholder="Tu alias o correo" />
           <label htmlFor="login-password">Contraseña</label>
           <input id="login-password" name="password" type="password" autoComplete="current-password" required placeholder="Tu contraseña" />
           <label className="remember-option" htmlFor="login-remember">
             <input id="login-remember" type="checkbox" name="remember" /> Recordarme en este dispositivo
           </label>
-          <button className="button-primary" type="submit">Entrar <span aria-hidden="true">↗</span></button>
+          <button className="button-primary" type="submit" disabled={submitting}>
+            {submitting ? "Entrando…" : "Entrar"} <span aria-hidden="true">↗</span>
+          </button>
         </form>
         {notice ? <p className="auth-notice" role="status">{notice}</p> : null}
         <div className="login-copy">
