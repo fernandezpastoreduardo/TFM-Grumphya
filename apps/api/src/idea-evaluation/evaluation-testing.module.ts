@@ -9,10 +9,21 @@ import { IdeaSubmissionService } from "./idea-submission.service";
 import { WORST_IDEAS_REPOSITORY } from "../worst-ideas/worst-ideas.tokens";
 import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
 import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
+import {
+  ACCESS_TOKEN_SESSION_LOOKUP,
+} from "../infrastructure/auth/access-token-session.lookup";
+import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
+import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
 
 @Module({
   controllers: [EvaluationProcessController, EvaluationTestReadinessController],
   providers: [
+    AccessTokenGuard,
+    OptionalAccessTokenGuard,
+    {
+      provide: ACCESS_TOKEN_SESSION_LOOKUP,
+      useValue: { isActive: async () => false },
+    },
     EvaluationProcessService,
     FakeEvaluationPort,
     { provide: EVALUATION_PORT, useExisting: FakeEvaluationPort },

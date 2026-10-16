@@ -5,10 +5,15 @@ import {
   Injectable,
   Logger,
   ServiceUnavailableException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
 import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import type { AnonymousUsageService } from "../manage-user-unknow/anonymous-usage.service";
+import type { RegistrationRepository } from "../register-with-plan/registration.repository";
+import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
+import type { PlanUsageReservation } from "../register-with-plan/plan-usage.models";
+import type { ReservationResult } from "../manage-user-unknow/anonymous-usage.models";
 import {
   InvalidEvaluationInputError,
   normalizeAndValidateRequest,
@@ -36,6 +41,14 @@ const INVALID_REJECTION_TITLE_RESPONSE = {
   code: "INVALID_REJECTION_TITLE",
   message: "No se ha podido guardar el resultado de la evaluación.",
 };
+const APPROVED_IDEA_PERSISTENCE_ERROR = {
+  code: "APPROVED_IDEA_UNAVAILABLE",
+  message: "No se ha podido guardar la idea en tu perfil ahora.",
+};
+const APPROVED_IDEA_TITLE_LIMIT = 160;
+const APPROVED_IDEA_WHITESPACE_PATTERN = /\s+/gu;
+const USER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 type EvaluationRequest = ReturnType<typeof normalizeAndValidateRequest>;
 
@@ -100,22 +113,30 @@ export class IdeaSubmissionService {
     private readonly repository: WorstIdeasRepository,
     private readonly evaluation: EvaluationProcessService,
     private readonly anonymousUsage?: AnonymousUsageService,
+    private readonly registrationRepository?: Pick<
+      RegistrationRepository,
+      "saveGoodIdea"
+    >,
+    private readonly planUsage?: PlanUsageService,
   ) {}
 
   async submit(
     input: unknown,
     idempotencyKeyInput: unknown,
     anonymousVisitorToken?: unknown,
+    authenticatedUserId?: unknown,
   ): Promise<IdeaSubmissionResponse> {
     const request = parseRequest(input);
+    const userId = readAuthenticatedUserId(authenticatedUserId);
     if (
       typeof idempotencyKeyInput !== "string" ||
       !IDEMPOTENCY_KEY_PATTERN.test(idempotencyKeyInput)
     ) {
       throw new BadRequestException(INVALID_REQUEST_RESPONSE);
     }
-    const idempotencyHash = hashIdempotencyKey(idempotencyKeyInput);
-    const requestHash = hashSubmissionRequest(request, idempotencyKeyInput);
+    const canonicalIdempotencyKey = idempotencyKeyInput.toLowerCase();
+    const idempotencyHash = hashIdempotencyKey(canonicalIdempotencyKey);
+    const requestHash = hashSubmissionRequest(request, canonicalIdempotencyKey);
     let keyBoundToDifferentRequest: boolean;
     try {
       keyBoundToDifferentRequest =
@@ -137,6 +158,7 @@ export class IdeaSubmissionService {
         idempotencyHash,
         requestHash,
         anonymousVisitorToken,
+        userId,
       );
     }
 
@@ -145,6 +167,7 @@ export class IdeaSubmissionService {
       idempotencyHash,
       requestHash,
       anonymousVisitorToken,
+      userId,
     );
   }
 
@@ -153,6 +176,7 @@ export class IdeaSubmissionService {
     idempotencyHash: string,
     requestHash: string,
     anonymousVisitorToken: unknown,
+    authenticatedUserId: string | undefined,
   ): Promise<IdeaSubmissionResponse> {
     let previousMatch;
     try {
@@ -172,6 +196,7 @@ export class IdeaSubmissionService {
       anonymousVisitorToken,
       idempotencyHash,
       requestHash,
+      authenticatedUserId,
     );
     if (reservation?.state === "cached")
       return readCachedSubmission(reservation.response);
@@ -183,12 +208,12 @@ export class IdeaSubmissionService {
         requestHash,
       );
     } catch {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       this.logger.error("IDEA_CONTINUATION_CLAIM_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
     if (!continuationClaimed) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       throw new ConflictException(INVALID_CONTINUATION_RESPONSE);
     }
 
@@ -196,16 +221,24 @@ export class IdeaSubmissionService {
       const result = await this.evaluation.evaluate(
         this.toEvaluationRequest(request),
       );
+      await this.persistApprovedIdeaIfNeeded(
+        authenticatedUserId,
+        idempotencyHash,
+        requestHash,
+        request.ideaText,
+        result,
+      );
       const response: IdeaSubmissionResponse = { status: "evaluated", result };
       await this.commitUsage(
         anonymousVisitorToken,
         idempotencyHash,
         requestHash,
         response,
+        authenticatedUserId,
       );
       return response;
     } catch (error) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       throw error;
     }
   }
@@ -215,6 +248,7 @@ export class IdeaSubmissionService {
     idempotencyHash: string,
     requestHash: string,
     anonymousVisitorToken: unknown,
+    authenticatedUserId: string | undefined,
   ): Promise<IdeaSubmissionResponse> {
     try {
       const previousMatch = await this.repository.getIdempotentMatch(
@@ -236,11 +270,12 @@ export class IdeaSubmissionService {
       anonymousVisitorToken,
       idempotencyHash,
       requestHash,
+      authenticatedUserId,
     );
     if (reservation?.state === "cached")
       return readCachedSubmission(reservation.response);
     if (!this.search) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
     let detailedSearch;
@@ -249,13 +284,13 @@ export class IdeaSubmissionService {
         ideaText: request.ideaText,
       });
     } catch {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       this.logger.error("IDEA_SIMILARITY_CHECK_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
 
     if (detailedSearch.result.kind === "match") {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       try {
         const submissionCount = await this.repository.updateWorstIdea(
           detailedSearch.result.ideaId,
@@ -298,22 +333,43 @@ export class IdeaSubmissionService {
           );
         }
       }
+      await this.persistApprovedIdeaIfNeeded(
+        authenticatedUserId,
+        idempotencyHash,
+        requestHash,
+        request.ideaText,
+        result,
+      );
       const response: IdeaSubmissionResponse = { status: "evaluated", result };
       await this.commitUsage(
         anonymousVisitorToken,
         idempotencyHash,
         requestHash,
         response,
+        authenticatedUserId,
       );
       return response;
     } catch (error) {
-      await this.releaseUsage(anonymousVisitorToken, idempotencyHash);
+      await this.releaseUsage(anonymousVisitorToken, idempotencyHash, authenticatedUserId);
       throw error;
     }
   }
 
-  private reserveUsage(token: unknown, keyHash: string, requestHash: string) {
-    return this.anonymousUsage?.reserve(token, "ideas", keyHash, requestHash);
+  private reserveUsage(
+    token: unknown,
+    keyHash: string,
+    requestHash: string,
+    userId: string | undefined,
+  ): Promise<ReservationResult | PlanUsageReservation | undefined> {
+    if (userId) {
+      if (!this.planUsage)
+        throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
+      return this.planUsage.reserve(userId, "ideas", keyHash, requestHash);
+    }
+    return (
+      this.anonymousUsage?.reserve(token, "ideas", keyHash, requestHash) ??
+      Promise.resolve(undefined)
+    );
   }
 
   private commitUsage(
@@ -321,7 +377,10 @@ export class IdeaSubmissionService {
     keyHash: string,
     requestHash: string,
     response: IdeaSubmissionResponse,
+    userId: string | undefined,
   ) {
+    if (userId)
+      return this.planUsage!.commit(userId, "ideas", keyHash, requestHash, response);
     return this.anonymousUsage?.commit(
       token,
       "ideas",
@@ -331,13 +390,72 @@ export class IdeaSubmissionService {
     );
   }
 
-  private releaseUsage(token: unknown, keyHash: string) {
+  private releaseUsage(
+    token: unknown,
+    keyHash: string,
+    userId: string | undefined,
+  ) {
+    if (userId) return this.planUsage!.release(userId, "ideas", keyHash);
     return this.anonymousUsage?.release(token, "ideas", keyHash);
+  }
+
+  private async persistApprovedIdeaIfNeeded(
+    userId: string | undefined,
+    submissionHash: string,
+    requestHash: string,
+    ideaText: string,
+    result: EvaluationProcessResponse,
+  ): Promise<void> {
+    if (!userId || result.status !== "SIN_BLOQUEO_EVIDENTE") return;
+    if (!this.registrationRepository) {
+      this.logger.error("APPROVED_IDEA_PERSISTENCE_UNAVAILABLE");
+      throw new ServiceUnavailableException(APPROVED_IDEA_PERSISTENCE_ERROR);
+    }
+    let sameRequest: boolean;
+    try {
+      sameRequest = await this.registrationRepository.saveGoodIdea(
+        userId,
+        createApprovedIdeaTitle(ideaText),
+        submissionHash,
+        requestHash,
+      );
+    } catch {
+      this.logger.error("APPROVED_IDEA_PERSISTENCE_FAILED");
+      throw new ServiceUnavailableException(APPROVED_IDEA_PERSISTENCE_ERROR);
+    }
+    if (!sameRequest)
+      throw new ConflictException(INVALID_CONTINUATION_RESPONSE);
   }
 
   private toEvaluationRequest(request: EvaluationRequest) {
     return { ideaText: request.ideaText, tone: request.tone };
   }
+}
+
+function readAuthenticatedUserId(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "string" && USER_ID_PATTERN.test(value)) return value;
+  throw new UnauthorizedException({
+    code: "SESSION_REQUIRED",
+    message: "Tu sesión no es válida. Inicia sesión para continuar.",
+  });
+}
+
+function createApprovedIdeaTitle(ideaText: string): string {
+  const withoutControlCharacters = Array.from(ideaText)
+    .filter((character) => !isControlCharacter(character))
+    .join("");
+  return withoutControlCharacters
+    .replace(APPROVED_IDEA_WHITESPACE_PATTERN, " ")
+    .trim()
+    .slice(0, APPROVED_IDEA_TITLE_LIMIT)
+    .trimEnd();
+}
+
+function isControlCharacter(character: string): boolean {
+  const codePoint = character.codePointAt(0);
+  if (codePoint === undefined) return false;
+  return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
 }
 
 function readCachedSubmission(input: unknown): IdeaSubmissionResponse {

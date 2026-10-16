@@ -10,6 +10,10 @@ import { OpenAiTextEmbeddingPort } from "./infrastructure/ai/openai-text-embeddi
 import { TEXT_EMBEDDING_PORT } from "./infrastructure/ai/text-embedding.tokens";
 import { createPostgresPool } from "./infrastructure/database/postgres-pool";
 import { RegistrationModule } from "./register-with-plan/registration.module";
+import {
+  REGISTRATION_REPOSITORY,
+  type RegistrationRepository,
+} from "./register-with-plan/registration.repository";
 import { AnonymousUsageController } from "./manage-user-unknow/anonymous-usage.controller";
 import { ANONYMOUS_USAGE_REPOSITORY } from "./manage-user-unknow/anonymous-usage.models";
 import { PostgresAnonymousUsageRepository } from "./manage-user-unknow/postgres-anonymous-usage.repository";
@@ -20,6 +24,9 @@ import { OpenAiSemanticIdeaFingerprintPort } from "./search-similar-idea/openai-
 import { PostgresWorstIdeasRepository } from "./worst-ideas/postgres-worst-ideas.repository";
 import type { WorstIdeasRepository } from "./worst-ideas/worst-ideas.models";
 import { WORST_IDEAS_REPOSITORY } from "./worst-ideas/worst-ideas.tokens";
+import { UserDeleteModule } from "./user-delete/user-delete.module";
+import { AuthSecurityModule } from "./infrastructure/auth/auth-security.module";
+import { PlanUsageService } from "./register-with-plan/plan-usage.service";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createTextEmbeddingProvider(): OpenAiTextEmbeddingPort | undefined {
@@ -71,12 +78,21 @@ function createIdeaSubmissionService(
   repository: WorstIdeasRepository,
   evaluation: EvaluationProcessService,
   usage: AnonymousUsageService,
+  registration: RegistrationRepository,
+  planUsage: PlanUsageService,
 ): IdeaSubmissionService {
-  return new IdeaSubmissionService(search, repository, evaluation, usage);
+  return new IdeaSubmissionService(
+    search,
+    repository,
+    evaluation,
+    usage,
+    registration,
+    planUsage,
+  );
 }
 
 @Module({
-  imports: [RegistrationModule],
+  imports: [AuthSecurityModule, RegistrationModule, UserDeleteModule],
   controllers: [
     HealthController,
     EvaluationProcessController,
@@ -122,6 +138,8 @@ function createIdeaSubmissionService(
         WORST_IDEAS_REPOSITORY,
         EvaluationProcessService,
         AnonymousUsageService,
+        REGISTRATION_REPOSITORY,
+        PlanUsageService,
       ],
     },
   ],

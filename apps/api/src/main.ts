@@ -4,6 +4,8 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { createSecurityMiddleware } from "./security/security.middleware";
 
+const ACCESS_TOKEN_SECRET_MIN_BYTES = 32;
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const webOrigin = process.env.WEB_ORIGIN;
@@ -17,6 +19,14 @@ async function bootstrap() {
   }
   if (process.env.NODE_ENV === "production" && !webOrigin) {
     throw new Error("WEB_ORIGIN must be configured in production.");
+  }
+  if (
+    Buffer.byteLength(process.env.ACCESS_TOKEN_SECRET ?? "", "utf8") <
+    ACCESS_TOKEN_SECRET_MIN_BYTES
+  ) {
+    throw new Error(
+      "ACCESS_TOKEN_SECRET must be configured with at least 32 bytes.",
+    );
   }
   const allowedWebOrigin = webOrigin ?? "http://127.0.0.1:5173";
   const parsedWebOrigin = new URL(allowedWebOrigin);
@@ -34,8 +44,8 @@ async function bootstrap() {
   app.set("trust proxy", false);
   app.enableCors({
     origin: allowedWebOrigin,
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type", "Idempotency-Key"],
+    methods: ["GET", "POST", "DELETE"],
+    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
     maxAge: 600,
     credentials: true,
   });

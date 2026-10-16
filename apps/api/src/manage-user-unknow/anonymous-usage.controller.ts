@@ -4,9 +4,11 @@ import {
   Controller,
   Headers,
   Inject,
+  Optional,
   Post,
   Req,
   Res,
+  UseGuards,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { createHash, createHmac } from "node:crypto";
@@ -16,6 +18,9 @@ import {
 } from "./anonymous-usage.service";
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
+import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import { PlanUsageService } from "../register-with-plan/plan-usage.service";
+import { ServiceUnavailableException } from "@nestjs/common";
 
 const VISITOR_COOKIE = "grumphya_anon";
 const COOKIE_MAX_AGE = 400 * 24 * 60 * 60 * 1000;
@@ -28,12 +33,22 @@ const INVALID_ROAST_SUBMISSION = {
   code: "INVALID_ROAST_SUBMISSION",
   message: "No se ha podido enviar el mensaje.",
 };
+const PLAN_USAGE_UNAVAILABLE = {
+  code: "PLAN_USAGE_UNAVAILABLE",
+  message: "No se ha podido comprobar el uso de tu plan ahora.",
+};
+
+type OptionalAuthenticatedRequest = Request & {
+  user?: { userId: string };
+};
 
 @Controller()
 export class AnonymousUsageController {
   constructor(
     @Inject(AnonymousUsageService)
     private readonly usage: AnonymousUsageService,
+    @Optional() @Inject(PlanUsageService)
+    private readonly planUsage?: PlanUsageService,
   ) {}
 
   @Post("anonymous-usage")
@@ -69,8 +84,9 @@ export class AnonymousUsageController {
   }
 
   @Post("roast")
+  @UseGuards(OptionalAccessTokenGuard)
   async roast(
-    @Req() request: Request,
+    @Req() request: OptionalAuthenticatedRequest,
     @Body() input: unknown,
     @Headers("idempotency-key") idempotencyKey: unknown,
   ) {
@@ -81,10 +97,39 @@ export class AnonymousUsageController {
     ) {
       throw new BadRequestException(INVALID_ROAST_SUBMISSION);
     }
-    const keyHash = createHash("sha256").update(idempotencyKey).digest("hex");
-    const requestHash = createHmac("sha256", idempotencyKey)
+    const canonicalIdempotencyKey = idempotencyKey.toLowerCase();
+    const keyHash = createHash("sha256")
+      .update(canonicalIdempotencyKey)
+      .digest("hex");
+    const requestHash = createHmac("sha256", canonicalIdempotencyKey)
       .update(message)
       .digest("hex");
+    const userId = request.user?.userId;
+    if (userId) {
+      if (!this.planUsage)
+        throw new ServiceUnavailableException(PLAN_USAGE_UNAVAILABLE);
+      const reservation = await this.planUsage.reserve(
+        userId,
+        "roasts",
+        keyHash,
+        requestHash,
+      );
+      if (reservation.state === "cached") return reservation.response;
+      try {
+        const result = { reply: ROAST_REPLY };
+        await this.planUsage.commit(
+          userId,
+          "roasts",
+          keyHash,
+          requestHash,
+          result,
+        );
+        return result;
+      } catch (error) {
+        await this.planUsage.release(userId, "roasts", keyHash);
+        throw error;
+      }
+    }
     const reservation = await this.usage.reserve(
       readCookie(request, VISITOR_COOKIE),
       "roasts",

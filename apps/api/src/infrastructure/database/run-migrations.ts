@@ -20,6 +20,31 @@ const MIGRATIONS = [
     file: "007_idempotency_request_hash.sql",
   },
   { version: "008_anonymous_usage", file: "008_anonymous_usage.sql" },
+  {
+    version: "009_account_daily_plan_usage",
+    file: "009_account_daily_plan_usage.sql",
+  },
+  { version: "010_approved_ideas", file: "010_approved_ideas.sql" },
+  {
+    version: "011_approved_idea_idempotency",
+    file: "011_approved_idea_idempotency.sql",
+  },
+  {
+    version: "012_auth_session_persistence",
+    file: "012_auth_session_persistence.sql",
+  },
+  {
+    version: "013_approved_idea_request_hash",
+    file: "013_approved_idea_request_hash.sql",
+  },
+  {
+    version: "014_ephemeral_auth_retention_indexes",
+    file: "014_ephemeral_auth_retention_indexes.sql",
+  },
+  {
+    version: "015_account_plan_usage_requests",
+    file: "015_account_plan_usage_requests.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

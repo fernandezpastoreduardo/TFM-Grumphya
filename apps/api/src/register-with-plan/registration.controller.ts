@@ -2,11 +2,12 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
   Inject,
   Post,
   Req,
   Res,
+  UseGuards,
+  UnauthorizedException,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { RegistrationError } from "./registration.models";
@@ -15,24 +16,23 @@ import {
   type RegistrationRepository,
 } from "./registration.repository";
 import { RegistrationService } from "./registration.service";
-import { DevelopmentVerificationDelivery } from "./verification-delivery";
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
+import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 
 const INTENT_COOKIE = "grumphya_registration_intent";
 const VERIFIED_COOKIE = "grumphya_verified_registration";
 const REFRESH_COOKIE = "grumphya_refresh";
 const INTENT_COOKIE_OPTIONS = privateCookieOptions(15 * 60 * 1000);
+type AuthenticatedRequest = Request & { user?: { userId: string } };
 
 @Controller()
 export class RegistrationController {
   private readonly service: RegistrationService;
   constructor(
     @Inject(REGISTRATION_REPOSITORY) repository: RegistrationRepository,
-    @Inject(DevelopmentVerificationDelivery)
-    private readonly delivery: DevelopmentVerificationDelivery,
   ) {
-    this.service = new RegistrationService(repository, delivery);
+    this.service = new RegistrationService(repository);
   }
 
   @Post("registration-intents")
@@ -67,18 +67,22 @@ export class RegistrationController {
   }
 
   @Post("registrations")
-  @HttpCode(202)
   async register(
     @Req() request: Request,
     @Body() body: unknown,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const result = await this.service.register(
+    const session = await this.service.register(
       readCookie(request, INTENT_COOKIE),
       body,
     );
+    response.cookie(
+      REFRESH_COOKIE,
+      session.refreshToken,
+      sessionCookieOptions(session),
+    );
     response.clearCookie(INTENT_COOKIE, privateCookieOptions());
-    return result;
+    return session.result;
   }
 
   @Post("registrations/verify")
@@ -119,7 +123,7 @@ export class RegistrationController {
     response.cookie(
       REFRESH_COOKIE,
       session.refreshToken,
-      sessionCookieOptions(),
+      sessionCookieOptions(session),
     );
     response.clearCookie(VERIFIED_COOKIE, privateCookieOptions());
     return session.result;
@@ -136,33 +140,83 @@ export class RegistrationController {
     response.cookie(
       REFRESH_COOKIE,
       session.refreshToken,
-      sessionCookieOptions(),
+      sessionCookieOptions(session),
     );
     return session.result;
   }
 
-  @Get("registration-test-mail/latest")
-  latestTestMail(@Req() request: Request) {
-    if (
-      process.env.NODE_ENV === "production" ||
-      !isLoopback(request.ip ?? request.socket.remoteAddress ?? "")
-    ) {
-      throw new RegistrationError(404, "NOT_FOUND", "No encontrado.");
-    }
-    const latest = this.delivery.getLatest();
-    if (!latest)
-      throw new RegistrationError(
-        404,
-        "NOT_FOUND",
-        "No hay mensajes pendientes.",
-      );
-    const webOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
-    return { verificationUrl: `${webOrigin}/verificar-cuenta#${latest.token}` };
+  @Post("auth/login")
+  async login(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const session = await this.service.login(body);
+    response.cookie(
+      REFRESH_COOKIE,
+      session.refreshToken,
+      sessionCookieOptions(session),
+    );
+    return session.result;
   }
+
+  @Post("auth/logout")
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.service.logout(readCookie(request, REFRESH_COOKIE));
+    response.clearCookie(REFRESH_COOKIE, privateCookieOptions());
+    return { status: "signed_out" };
+  }
+
+  @Get("account/profile")
+  @UseGuards(AccessTokenGuard)
+  async accountProfile(@Req() request: AuthenticatedRequest) {
+    return this.service.getUserProfile(requireUserId(request));
+  }
+
+  @Get("account/good-ideas")
+  @UseGuards(AccessTokenGuard)
+  async goodIdeas(@Req() request: AuthenticatedRequest) {
+    return this.service.getUserGoodIdeas(requireUserId(request));
+  }
+
+  @Post("account/subscriptions/cancel")
+  @UseGuards(AccessTokenGuard)
+  async cancelPlan(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    if (!hasOnlyKeys(body, ["plan"]))
+      throw new RegistrationError(
+        400,
+        "INVALID_PLAN",
+        "Selecciona un plan válido.",
+      );
+    const plan = isRecord(body) ? body.plan : undefined;
+    return this.service.cancelPlanForUser(requireUserId(request), plan);
+  }
+
 }
 
-function sessionCookieOptions() {
-  return privateCookieOptions();
+function sessionCookieOptions(session: { rememberMe: boolean; expiresAt: Date }) {
+  const maxAge = session.rememberMe
+    ? Math.max(
+        0,
+        Math.ceil((session.expiresAt.getTime() - Date.now()) / 1000) * 1000,
+      )
+    : undefined;
+  return privateCookieOptions(maxAge);
+}
+function requireUserId(request: AuthenticatedRequest): string {
+  const userId = request.user?.userId;
+  if (!userId)
+    throw new UnauthorizedException({
+      statusCode: 401,
+      code: "SESSION_REQUIRED",
+      message: "Tu sesión ha caducado. Inicia sesión para continuar.",
+    });
+  return userId;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -170,11 +224,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function hasOnlyKeys(value: unknown, allowedKeys: readonly string[]): boolean {
   if (!isRecord(value)) return false;
   return Object.keys(value).every((key) => allowedKeys.includes(key));
-}
-function isLoopback(address: string): boolean {
-  return (
-    address === "::1" ||
-    address === "127.0.0.1" ||
-    address === "::ffff:127.0.0.1"
-  );
 }

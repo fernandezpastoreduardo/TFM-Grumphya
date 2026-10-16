@@ -48,6 +48,16 @@ describe("security middleware", () => {
     );
   });
 
+  it("disables HTTP caching for private account responses", () => {
+    const middleware = createSecurityMiddleware();
+    const request = createRequest("/api/account/profile", "GET");
+    const { response, headers } = createResponse();
+
+    middleware(request, response, vi.fn() as NextFunction);
+
+    expect(headers.get("Cache-Control")).toBe("no-store");
+  });
+
   it("limits evaluation requests by client IP and returns a retry hint", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;

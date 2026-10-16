@@ -6,6 +6,8 @@ const EVALUATION_REQUEST_LIMIT = 10;
 const REGISTRATION_REQUEST_LIMIT = 8;
 const REGISTRATION_INTENT_REQUEST_LIMIT = 20;
 const REGISTRATION_VERIFY_REQUEST_LIMIT = 10;
+const LOGIN_REQUEST_LIMIT = 5;
+const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
@@ -35,19 +37,31 @@ export function createSecurityMiddleware(): RequestHandler {
 
   return (request, response, next) => {
     setSecurityHeaders(response);
+    if (
+      request.path === "/api/account" ||
+      request.path.startsWith("/api/account/") ||
+      request.path === "/api/auth" ||
+      request.path.startsWith("/api/auth/") ||
+      request.path.startsWith("/api/registration")
+    ) {
+      response.setHeader("Cache-Control", "no-store");
+    }
     if (request.method === "OPTIONS") {
       next();
       return;
     }
 
-    const isProtectedCookiePost =
-      request.method === "POST" &&
+    const isProtectedCookieMutation =
+      (request.method === "POST" ||
+        (request.method === "DELETE" && request.path === "/api/account")) &&
       (request.path.startsWith("/api/registration") ||
-        request.path === "/api/auth/refresh" ||
+        request.path.startsWith("/api/account/") ||
+        request.path === "/api/account" ||
+        request.path.startsWith("/api/auth/") ||
         request.path === "/api/anonymous-usage" ||
         request.path === "/api/evaluation-process" ||
         request.path === "/api/roast");
-    if (isProtectedCookiePost) {
+    if (isProtectedCookieMutation) {
       const allowedOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
       if (request.get("origin") !== allowedOrigin) {
         response.status(403).json({
@@ -92,15 +106,31 @@ export function createSecurityMiddleware(): RequestHandler {
       request.method === "POST" && request.path.startsWith("/api/registration");
     const isRefreshPost =
       request.method === "POST" && request.path === "/api/auth/refresh";
-    const registrationScope = isRefreshPost
-      ? "session-refresh"
+    const isLoginPost =
+      request.method === "POST" && request.path === "/api/auth/login";
+    const isAuthPost =
+      request.method === "POST" && request.path.startsWith("/api/auth/");
+    const isAccountPost =
+      request.method === "POST" && request.path.startsWith("/api/account/");
+    const isAccountDelete =
+      request.method === "DELETE" && request.path === "/api/account";
+    const registrationScope = isAccountDelete
+      ? "account-delete"
+      : isLoginPost
+        ? "session-login"
+        : isAuthPost
+          ? "session-refresh"
       : request.path.includes("verify") || request.path.includes("confirm")
         ? "registration-verification"
         : request.path.includes("intents")
           ? "registration-intent"
           : "registration-create";
     const registrationLimit =
-      registrationScope === "registration-intent"
+      registrationScope === "session-login"
+        ? LOGIN_REQUEST_LIMIT
+        : registrationScope === "account-delete"
+          ? ACCOUNT_DELETE_REQUEST_LIMIT
+          : registrationScope === "registration-intent"
         ? REGISTRATION_INTENT_REQUEST_LIMIT
         : registrationScope === "registration-verification" || isRefreshPost
           ? REGISTRATION_VERIFY_REQUEST_LIMIT
@@ -110,7 +140,7 @@ export function createSecurityMiddleware(): RequestHandler {
           ["api", API_REQUEST_LIMIT],
           ["evaluation", EVALUATION_REQUEST_LIMIT],
         ]
-      : isRegistrationPost || isRefreshPost
+      : isRegistrationPost || isAuthPost || isAccountPost || isAccountDelete
         ? [
             ["api", API_REQUEST_LIMIT],
             [registrationScope, registrationLimit],

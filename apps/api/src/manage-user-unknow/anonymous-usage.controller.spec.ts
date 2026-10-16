@@ -1,11 +1,25 @@
 import { BadRequestException } from "@nestjs/common";
+import { createHash } from "node:crypto";
+import { Module } from "@nestjs/common";
 import type { Response } from "express";
-import { describe, expect, it, vi } from "vitest";
+import type { NestExpressApplication } from "@nestjs/platform-express";
+import { NestFactory } from "@nestjs/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnonymousUsageService } from "./anonymous-usage.service";
 import { AnonymousUsageController } from "./anonymous-usage.controller";
+import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
+import { PlanUsageService as PlanUsageServiceToken } from "../register-with-plan/plan-usage.service";
+import { AnonymousUsageService as AnonymousUsageServiceToken } from "./anonymous-usage.service";
+import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
+import { issueAccessToken } from "../infrastructure/auth/access-token";
 
 const ROAST_MESSAGE = "Grumphya, hoy has venido especialmente inspirada.";
 const IDEMPOTENCY_KEY = "d54e74e8-4d23-46d4-9944-0b39bcda0914";
+const UPPERCASE_IDEMPOTENCY_KEY = IDEMPOTENCY_KEY.toUpperCase();
+const IDEMPOTENCY_HASH = createHash("sha256")
+  .update(IDEMPOTENCY_KEY)
+  .digest("hex");
 const RESERVED = {
   state: "reserved" as const,
   usage: {
@@ -15,8 +29,43 @@ const RESERVED = {
 };
 const REPLY =
   "He recibido tu mensaje. Mi respuesta definitiva todavía está de vacaciones.";
+const AUTHENTICATED_USER_ID = "123e4567-e89b-42d3-a456-426614174000";
+const PREVIOUS_ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 
-function createController() {
+async function startAuthenticatedRoastHttpApplication(
+  usage: AnonymousUsageService,
+  planUsage: PlanUsageService,
+): Promise<NestExpressApplication> {
+  @Module({
+    controllers: [AnonymousUsageController],
+    providers: [
+      { provide: AnonymousUsageServiceToken, useValue: usage },
+      { provide: PlanUsageServiceToken, useValue: planUsage },
+      OptionalAccessTokenGuard,
+      {
+        provide: ACCESS_TOKEN_SESSION_LOOKUP,
+        useValue: { isActive: async () => true },
+      },
+    ],
+  })
+  class AuthenticatedRoastTestingModule {}
+
+  const application = await NestFactory.create<NestExpressApplication>(
+    AuthenticatedRoastTestingModule,
+    { logger: false },
+  );
+  application.setGlobalPrefix("api");
+  await application.listen(0, "127.0.0.1");
+  return application;
+}
+
+afterEach(() => {
+  if (PREVIOUS_ACCESS_TOKEN_SECRET === undefined)
+    delete process.env.ACCESS_TOKEN_SECRET;
+  else process.env.ACCESS_TOKEN_SECRET = PREVIOUS_ACCESS_TOKEN_SECRET;
+});
+
+function createController(planUsageMock?: PlanUsageService) {
   const usage = {
     initialize: vi
       .fn()
@@ -30,7 +79,10 @@ function createController() {
     commit: ReturnType<typeof vi.fn>;
     release: ReturnType<typeof vi.fn>;
   };
-  return { controller: new AnonymousUsageController(usage), usage };
+  return {
+    controller: new AnonymousUsageController(usage, planUsageMock),
+    usage,
+  };
 }
 
 describe("AnonymousUsageController roast endpoint", () => {
@@ -113,6 +165,45 @@ describe("AnonymousUsageController roast endpoint", () => {
     expect(usage.commit).not.toHaveBeenCalled();
   });
 
+  it("replays a guest roast when the idempotency UUID casing changes", async () => {
+    const { controller, usage } = createController();
+    usage.reserve.mockResolvedValueOnce(RESERVED).mockResolvedValueOnce({
+      state: "cached",
+      response: { reply: REPLY },
+      usage: RESERVED.usage,
+    });
+    const request = {
+      headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+    await expect(
+      controller.roast(
+        request,
+        { message: ROAST_MESSAGE },
+        UPPERCASE_IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toEqual({ reply: REPLY });
+
+    expect(usage.reserve).toHaveBeenNthCalledWith(
+      1,
+      "a".repeat(43),
+      "roasts",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(usage.reserve).toHaveBeenNthCalledWith(
+      2,
+      "a".repeat(43),
+      "roasts",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(usage.commit).toHaveBeenCalledOnce();
+  });
+
   it("rejects extra fields and oversized messages before reserving a use", async () => {
     const { controller, usage } = createController();
     const request = {
@@ -147,5 +238,118 @@ describe("AnonymousUsageController roast endpoint", () => {
       "roasts",
       expect.stringMatching(/^[a-f0-9]{64}$/u),
     );
+  });
+
+  it("uses the Faltón plan quota for an authenticated roast and skips the guest counter", async () => {
+    const planUsage = {
+      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const { controller, usage } = createController(planUsage);
+    const request = {
+      headers: {},
+      user: { userId: "123e4567-e89b-42d3-a456-426614174000" },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+
+    expect(planUsage.reserve).toHaveBeenCalledWith(
+      "123e4567-e89b-42d3-a456-426614174000",
+      "roasts",
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(planUsage.commit).toHaveBeenCalledWith(
+      "123e4567-e89b-42d3-a456-426614174000",
+      "roasts",
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+      { reply: REPLY },
+    );
+    expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("returns the cached authenticated roast response without a second commit", async () => {
+    const planUsage = {
+      reserve: vi.fn().mockResolvedValue({
+        state: "cached",
+        response: { reply: REPLY },
+      }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const { controller, usage } = createController(planUsage);
+    const request = {
+      headers: {},
+      user: { userId: "123e4567-e89b-42d3-a456-426614174000" },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+    expect(planUsage.commit).not.toHaveBeenCalled();
+    expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("routes authenticated HTTP roast requests through Faltón quota", async () => {
+    process.env.ACCESS_TOKEN_SECRET = "authenticated-roast-http-secret-min-32-bytes";
+    const usage = {
+      initialize: vi.fn(),
+      reserve: vi.fn(),
+      commit: vi.fn(),
+      release: vi.fn(),
+    } as unknown as AnonymousUsageService;
+    const planUsage = {
+      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const application = await startAuthenticatedRoastHttpApplication(
+      usage,
+      planUsage,
+    );
+
+    try {
+      const response = await fetch(
+        new URL("/api/roast", await application.getUrl()),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": IDEMPOTENCY_KEY,
+            Authorization: `Bearer ${issueAccessToken(AUTHENTICATED_USER_ID).token}`,
+          },
+          body: JSON.stringify({ message: ROAST_MESSAGE }),
+        },
+      );
+
+      expect(response.status).toBe(201);
+      expect(await response.json()).toEqual({ reply: REPLY });
+      expect(planUsage.reserve).toHaveBeenCalledWith(
+        AUTHENTICATED_USER_ID,
+        "roasts",
+        expect.stringMatching(/^[a-f0-9]{64}$/u),
+        expect.stringMatching(/^[a-f0-9]{64}$/u),
+      );
+      expect(planUsage.commit).toHaveBeenCalledOnce();
+      expect(usage.reserve).not.toHaveBeenCalled();
+    } finally {
+      await application.close();
+    }
   });
 });

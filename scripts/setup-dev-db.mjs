@@ -24,6 +24,7 @@ if (existsSync(envFile)) {
   );
   const password = variables.get("GRUMPHYA_DB_PASSWORD");
   const ipHmacSecret = variables.get("ANONYMOUS_IP_HMAC_SECRET");
+  const accessTokenSecret = variables.get("ACCESS_TOKEN_SECRET");
   if (password && !variables.has("PGPASSWORD")) {
     appendFileSync(envFile, `PGPASSWORD=${password}\n`, { mode: 0o600 });
   }
@@ -31,6 +32,13 @@ if (existsSync(envFile)) {
     appendFileSync(
       envFile,
       `ANONYMOUS_IP_HMAC_SECRET=${randomBytes(32).toString("base64url")}\n`,
+      { mode: 0o600 },
+    );
+  }
+  if (!accessTokenSecret) {
+    appendFileSync(
+      envFile,
+      `ACCESS_TOKEN_SECRET=${randomBytes(48).toString("base64url")}\n`,
       { mode: 0o600 },
     );
   }
@@ -43,10 +51,12 @@ if (existsSync(envFile)) {
 
 const password = randomBytes(32).toString("base64url");
 const ipHmacSecret = randomBytes(32).toString("base64url");
+const accessTokenSecret = randomBytes(48).toString("base64url");
 const contents = [
   `GRUMPHYA_DB_PASSWORD=${password}`,
   `PGPASSWORD=${password}`,
   `ANONYMOUS_IP_HMAC_SECRET=${ipHmacSecret}`,
+  `ACCESS_TOKEN_SECRET=${accessTokenSecret}`,
   "PGHOST=127.0.0.1",
   "PGPORT=5433",
   "PGDATABASE=grumphya_dev",
@@ -62,5 +72,5 @@ try {
 }
 
 console.log(
-  "Created .env.docker with a random local database password (mode 0600); it is ignored by Git.",
+  "Created .env.docker with random local secrets (mode 0600); it is ignored by Git.",
 );

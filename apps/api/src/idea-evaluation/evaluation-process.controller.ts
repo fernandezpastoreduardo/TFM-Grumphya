@@ -1,7 +1,20 @@
-import { Body, Controller, Headers, Inject, Post, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Headers,
+  Inject,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import type { Request } from "express";
 import { IdeaSubmissionService } from "./idea-submission.service";
 import { readCookie } from "../infrastructure/http/read-cookie";
+import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+
+type OptionalAuthenticatedRequest = Request & {
+  user?: { userId: string };
+};
 
 @Controller("evaluation-process")
 export class EvaluationProcessController {
@@ -11,15 +24,17 @@ export class EvaluationProcessController {
   ) {}
 
   @Post()
+  @UseGuards(OptionalAccessTokenGuard)
   evaluate(
     @Body() input: unknown,
     @Headers("idempotency-key") idempotencyKey: unknown,
-    @Req() request: Request,
+    @Req() request: OptionalAuthenticatedRequest,
   ) {
     return this.ideaSubmission.submit(
       input,
       idempotencyKey,
       readCookie(request, "grumphya_anon"),
+      request.user?.userId,
     );
   }
 }

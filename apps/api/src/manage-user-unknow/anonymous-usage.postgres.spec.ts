@@ -25,7 +25,7 @@ describe.skipIf(!DATABASE_URL)("Postgres anonymous usage persistence", () => {
     await adminPool.query(`CREATE SCHEMA "${schemaName}"`);
     testPool = new Pool({
       connectionString: DATABASE_URL,
-      options: `-c search_path=${schemaName}`,
+      options: `-c search_path=${schemaName},public`,
       connectionTimeoutMillis: 2_000,
     });
     repository = new PostgresAnonymousUsageRepository(testPool);

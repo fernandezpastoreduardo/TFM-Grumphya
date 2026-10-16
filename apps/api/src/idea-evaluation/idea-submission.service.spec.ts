@@ -1,15 +1,17 @@
 import { ConflictException, BadRequestException } from "@nestjs/common";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
 import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import type { EvaluationProcessService } from "./evaluation-process.service";
 import { IdeaSubmissionService } from "./idea-submission.service";
+import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
 
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const GRASSHOPPER_PARAPHRASE =
   "hacer un tinder pero en lugar de para personas para saltamontes";
 const IDEMPOTENCY_KEY = "d54e74e8-4d23-46d4-9944-0b39bcda0914";
+const UPPERCASE_IDEMPOTENCY_KEY = IDEMPOTENCY_KEY.toUpperCase();
 const SAFE_TITLE = "Coordinación sin salvaguardas verificables";
 const EVALUATION_RESULT = {
   status: "RECHAZADA" as const,
@@ -19,15 +21,25 @@ const EVALUATION_RESULT = {
     "Acceder sin permiso a datos convierte el servicio en una invasión directa de la privacidad de sus usuarios.",
   safeTitle: SAFE_TITLE,
 };
+const PROMISING_EVALUATION_RESULT = {
+  status: "SIN_BLOQUEO_EVIDENTE" as const,
+  score: 82,
+  headline: "La idea supera el primer filtro.",
+  message: "Los riesgos principales se pueden comprobar con pruebas pequeñas.",
+};
 const VALID_REQUEST = { ideaText: IDEA_TEXT, tone: "soft" as const };
 const EMBEDDING = [0.1, 0.2, 0.3];
 const IDEMPOTENCY_HASH = createHash("sha256")
   .update(IDEMPOTENCY_KEY)
   .digest("hex");
+const REQUEST_HASH = createHmac("sha256", IDEMPOTENCY_KEY)
+  .update(JSON.stringify({ ideaText: IDEA_TEXT, tone: "soft" }))
+  .digest("hex");
 
 function createDependencies(
   searchResult: unknown = { kind: "no-match" },
   evaluationResult: unknown = EVALUATION_RESULT,
+  planUsage?: PlanUsageService,
 ) {
   const search = {
     executeDetailed: vi.fn().mockResolvedValue({
@@ -45,11 +57,26 @@ function createDependencies(
   const evaluation = {
     evaluate: vi.fn().mockResolvedValue(evaluationResult),
   } as unknown as EvaluationProcessService;
+  const goodIdeas = { saveGoodIdea: vi.fn().mockResolvedValue(true) };
+  const planQuota = planUsage ?? {
+    reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+    commit: vi.fn().mockResolvedValue(undefined),
+    release: vi.fn().mockResolvedValue(undefined),
+  };
   return {
-    service: new IdeaSubmissionService(search, repository, evaluation),
+    service: new IdeaSubmissionService(
+      search,
+      repository,
+      evaluation,
+      undefined,
+      goodIdeas,
+      planQuota as PlanUsageService,
+    ),
     search,
     repository,
     evaluation,
+    goodIdeas,
+    planUsage: planQuota,
   };
 }
 
@@ -80,6 +107,126 @@ describe("IdeaSubmissionService", () => {
       expect.stringMatching(/^[a-f0-9]{64}$/),
     );
     expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("consumes the authenticated Iluminado quota only after evaluation succeeds", async () => {
+    const planUsage = {
+      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const { service, evaluation } = createDependencies(
+      { kind: "no-match" },
+      PROMISING_EVALUATION_RESULT,
+      planUsage,
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, undefined, "123e4567-e89b-42d3-a456-426614174000"),
+    ).resolves.toMatchObject({ status: "evaluated" });
+
+    expect(planUsage.reserve).toHaveBeenCalledWith(
+      "123e4567-e89b-42d3-a456-426614174000",
+      "ideas",
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+    expect(planUsage.commit).toHaveBeenCalledWith(
+      "123e4567-e89b-42d3-a456-426614174000",
+      "ideas",
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+      expect.objectContaining({ status: "evaluated" }),
+    );
+    expect(evaluation.evaluate).toHaveBeenCalledOnce();
+  });
+
+  it("replays the same authenticated evaluation when the idempotency UUID casing changes", async () => {
+    const cachedResponse = {
+      status: "evaluated",
+      result: PROMISING_EVALUATION_RESULT,
+    };
+    const planUsage = {
+      reserve: vi
+        .fn()
+        .mockResolvedValueOnce({ state: "reserved" })
+        .mockResolvedValueOnce({ state: "cached", response: cachedResponse }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const { service, evaluation } = createDependencies(
+      { kind: "no-match" },
+      PROMISING_EVALUATION_RESULT,
+      planUsage,
+    );
+    const userId = "123e4567-e89b-42d3-a456-426614174000";
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, undefined, userId),
+    ).resolves.toEqual(cachedResponse);
+    await expect(
+      service.submit(
+        VALID_REQUEST,
+        UPPERCASE_IDEMPOTENCY_KEY,
+        undefined,
+        userId,
+      ),
+    ).resolves.toEqual(cachedResponse);
+
+    expect(planUsage.reserve).toHaveBeenNthCalledWith(
+      1,
+      userId,
+      "ideas",
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+    expect(planUsage.reserve).toHaveBeenNthCalledWith(
+      2,
+      userId,
+      "ideas",
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+    expect(evaluation.evaluate).toHaveBeenCalledOnce();
+    expect(planUsage.commit).toHaveBeenCalledOnce();
+  });
+
+  it("releases the authenticated quota reservation after a transient evaluation failure", async () => {
+    const transientFailure = new Error("evaluation unavailable");
+    const planUsage = {
+      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const { service, evaluation } = createDependencies(
+      { kind: "no-match" },
+      transientFailure,
+      planUsage,
+    );
+    vi.mocked(evaluation.evaluate).mockRejectedValue(transientFailure);
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, undefined, "123e4567-e89b-42d3-a456-426614174000"),
+    ).rejects.toThrow(transientFailure);
+
+    expect(planUsage.commit).not.toHaveBeenCalled();
+    expect(planUsage.release).toHaveBeenCalledWith(
+      "123e4567-e89b-42d3-a456-426614174000",
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
   });
 
   it("shows a simulated >0.90 grasshopper match without evaluating and increments once", async () => {
@@ -147,6 +294,80 @@ describe("IdeaSubmissionService", () => {
     await service.submit(VALID_REQUEST, IDEMPOTENCY_KEY);
 
     expect(repository.addToWorstIdeas).not.toHaveBeenCalled();
+  });
+
+  it("stores a promising evaluation privately for the authenticated owner", async () => {
+    const userId = "00000000-0000-4000-8000-000000000001";
+    const { service, goodIdeas } = createDependencies(
+      { kind: "no-match" },
+      PROMISING_EVALUATION_RESULT,
+    );
+
+    await service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, undefined, userId);
+
+    expect(goodIdeas.saveGoodIdea).toHaveBeenCalledExactlyOnceWith(
+      userId,
+      IDEA_TEXT,
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+  });
+
+  it("does not store a promising evaluation for an anonymous visitor", async () => {
+    const { service, goodIdeas } = createDependencies(
+      { kind: "no-match" },
+      PROMISING_EVALUATION_RESULT,
+    );
+
+    await service.submit(VALID_REQUEST, IDEMPOTENCY_KEY);
+
+    expect(goodIdeas.saveGoodIdea).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reused idempotency key with a different promising idea", async () => {
+    const { service, goodIdeas } = createDependencies(
+      { kind: "no-match" },
+      PROMISING_EVALUATION_RESULT,
+    );
+    vi.mocked(goodIdeas.saveGoodIdea).mockResolvedValue(false);
+
+    await expect(
+      service.submit(
+        VALID_REQUEST,
+        IDEMPOTENCY_KEY,
+        undefined,
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("fails closed without exposing idea text when approved idea storage fails", async () => {
+    const privateIdea = `${IDEA_TEXT} contiene información privada`;
+    const loggerError = vi
+      .spyOn((await import("@nestjs/common")).Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    const { service, goodIdeas } = createDependencies(
+      { kind: "no-match" },
+      PROMISING_EVALUATION_RESULT,
+    );
+    vi.mocked(goodIdeas.saveGoodIdea).mockRejectedValue(
+      new Error(privateIdea),
+    );
+
+    await expect(
+      service.submit(
+        { ...VALID_REQUEST, ideaText: privateIdea },
+        IDEMPOTENCY_KEY,
+        undefined,
+        "00000000-0000-4000-8000-000000000001",
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: "APPROVED_IDEA_UNAVAILABLE",
+        message: "No se ha podido guardar la idea en tu perfil ahora.",
+      },
+    });
+    expect(JSON.stringify(loggerError.mock.calls)).not.toContain(privateIdea);
   });
 
   it("fails closed when a rejected result has no safe public title", async () => {
@@ -288,6 +509,12 @@ describe("IdeaSubmissionService", () => {
 
     await expect(
       service.submit({ ...VALID_REQUEST, unexpected: true }, IDEMPOTENCY_KEY),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.submit(
+        { ...VALID_REQUEST, userId: "00000000-0000-4000-8000-000000000001" },
+        IDEMPOTENCY_KEY,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.submit(VALID_REQUEST, "idea-key"),

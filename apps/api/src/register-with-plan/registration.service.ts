@@ -1,6 +1,7 @@
 import {
   createHash,
   randomBytes,
+  randomUUID,
   scrypt as scryptCallback,
   timingSafeEqual,
 } from "node:crypto";
@@ -10,13 +11,18 @@ import {
   type PlanCode,
   type RegistrationInput,
   type RegistrationIntent,
-  type RegistrationResult,
   type VerifiedResult,
   type SessionIssue,
   type SessionIdentity,
+  type AccountProfile,
+  type UserGoodIdeas,
 } from "./registration.models";
 import type { RegistrationRepository } from "./registration.repository";
-import type { VerificationDelivery } from "./verification-delivery";
+import {
+  ACCESS_TOKEN_TTL_SECONDS,
+  issueAccessToken,
+} from "../infrastructure/auth/access-token";
+import { hashAccessToken } from "../infrastructure/auth/access-token-session.lookup";
 
 const SCRYPT_OPTIONS = { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
@@ -28,10 +34,15 @@ function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
   });
 }
 const INTENT_TTL_MS = 15 * 60 * 1000;
-const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const REMEMBERED_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const VERIFIED_SESSION_TTL_MS = 15 * 60 * 1000;
-const ACCESS_TOKEN_TTL_SECONDS = 10 * 60;
+const DUMMY_PASSWORD_HASH = `scrypt$${"0".repeat(32)}$${"0".repeat(128)}`;
+const GENERIC_LOGIN_ERROR = {
+  status: 401,
+  code: "LOGIN_UNAVAILABLE",
+  message: "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.",
+} as const;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
 const PASSWORD_LOWERCASE_PATTERN = /\p{Ll}/u;
@@ -39,8 +50,6 @@ const PASSWORD_NUMBER_PATTERN = /\p{N}/u;
 const PASSWORD_SPECIAL_PATTERN = /[^\p{L}\p{N}\s]/u;
 const USERNAME_PATTERN =
   /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
-const REGISTRATION_PENDING_MESSAGE =
-  "Solicitud recibida. Completa la verificación para continuar con el alta.";
 const GENERIC_CONFLICT = {
   status: 409,
   code: "REGISTRATION_UNAVAILABLE",
@@ -72,10 +81,7 @@ export async function verifyPassword(
 }
 
 export class RegistrationService {
-  constructor(
-    private readonly repository: RegistrationRepository,
-    private readonly delivery: VerificationDelivery,
-  ) {}
+  constructor(private readonly repository: RegistrationRepository) {}
 
   async createIntent(value: unknown): Promise<RegistrationIntent> {
     if (value !== "ILUMINADO" && value !== "FALTON") {
@@ -99,7 +105,7 @@ export class RegistrationService {
   async register(
     token: string | undefined,
     value: unknown,
-  ): Promise<RegistrationResult> {
+  ): Promise<SessionIssue> {
     const intentPlan = await this.currentIntent(token);
     if (!token || !intentPlan)
       throw new RegistrationError(
@@ -109,20 +115,31 @@ export class RegistrationService {
       );
     const input = validateRegistrationInput(value);
     const passwordHash = await hashPassword(input.password);
-    const verificationToken = newToken();
+    const userId = randomUUID();
+    const accessToken = issueAccessToken(userId).token;
+    const refreshToken = newToken();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
     try {
-      const pending = await this.repository.consumeIntentAndRegister(
+      const registration = await this.repository.activateWithRegistration(
+        userId,
         hashToken(token),
         input,
         passwordHash,
-        hashToken(verificationToken),
-        new Date(Date.now() + VERIFICATION_TTL_MS),
+        hashToken(accessToken),
+        hashToken(refreshToken),
+        expiresAt,
       );
-      await this.delivery.deliver(pending.email, verificationToken);
       return {
-        status: "pending_email_verification",
-        message: REGISTRATION_PENDING_MESSAGE,
-        verificationExpiresAt: pending.verificationExpiresAt.toISOString(),
+        result: {
+          status: "active",
+          plan: registration.plan,
+          account: registration.account,
+          accessToken,
+          expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+        },
+        refreshToken,
+        rememberMe: false,
+        expiresAt,
       };
     } catch (error) {
       if (error instanceof RegistrationError) throw error;
@@ -173,23 +190,38 @@ export class RegistrationService {
         "VERIFICATION_REQUIRED",
         "Verifica tu correo antes de confirmar el plan.",
       );
-    const accessToken = newToken();
+    const userId = await this.repository.getVerifiedRegistrationUserId(
+      hashToken(token),
+    );
+    if (!userId)
+      throw new RegistrationError(
+        400,
+        "VERIFICATION_REQUIRED",
+        "Verifica tu correo antes de confirmar el plan.",
+      );
+    const accessToken = issueAccessToken(userId).token;
     const refreshToken = newToken();
+    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
     try {
       const registration = await this.repository.confirm(
         hashToken(token),
         hashToken(accessToken),
         hashToken(refreshToken),
-        new Date(Date.now() + SESSION_TTL_MS),
+        expiresAt,
       );
+      const account = await this.repository.getProfile(hashToken(refreshToken));
+      if (!account) throw new Error("Confirmed account could not be loaded.");
       return {
         result: {
           status: "active",
           plan: registration.plan,
+          account,
           accessToken,
           expiresIn: ACCESS_TOKEN_TTL_SECONDS,
         },
         refreshToken,
+        rememberMe: false,
+        expiresAt,
       };
     } catch {
       throw new RegistrationError(
@@ -207,14 +239,22 @@ export class RegistrationService {
         "SESSION_REQUIRED",
         "Tu sesión ha caducado. Inicia sesión para continuar.",
       );
-    const accessToken = newToken();
+    const previousIdentity = await this.repository.getSessionIdentity(
+      hashToken(token),
+    );
+    if (!previousIdentity)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    const accessToken = issueAccessToken(previousIdentity.userId).token;
     const refreshToken = newToken();
     try {
       const identity = await this.repository.rotateSession(
         hashToken(token),
         hashToken(accessToken),
         hashToken(refreshToken),
-        new Date(Date.now() + SESSION_TTL_MS),
       );
       return this.sessionResult(identity, accessToken, refreshToken);
     } catch {
@@ -226,19 +266,183 @@ export class RegistrationService {
     }
   }
 
-  private sessionResult(
-    identity: SessionIdentity,
-    accessToken: string,
-    refreshToken: string,
-  ): SessionIssue {
+  async login(value: unknown): Promise<SessionIssue> {
+    if (!isRecord(value)) throw loginUnavailable();
+    const allowedFields = new Set(["identifier", "password", "rememberMe"]);
+    if (
+      Object.keys(value).some((key) => !allowedFields.has(key)) ||
+      typeof value.identifier !== "string" ||
+      value.identifier.trim().length < 3 ||
+      value.identifier.length > 254 ||
+      typeof value.password !== "string" ||
+      value.password.length > 128 ||
+      typeof value.rememberMe !== "boolean"
+    ) {
+      throw loginUnavailable();
+    }
+    const identity = await this.repository.findLoginIdentity(value.identifier);
+    const passwordMatches = await verifyPassword(
+      value.password,
+      identity?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
+    if (!identity || !passwordMatches) throw loginUnavailable();
+
+    const accessToken = issueAccessToken(identity.userId).token;
+    const refreshToken = newToken();
+    const rememberMe = value.rememberMe;
+    const expiresAt = new Date(
+      Date.now() + (rememberMe ? REMEMBERED_SESSION_TTL_MS : SESSION_TTL_MS),
+    );
+    await this.repository.createSession(
+      identity.userId,
+      hashAccessToken(accessToken),
+      hashToken(refreshToken),
+      expiresAt,
+      rememberMe,
+    );
+    const account = await this.repository.getProfileForUser(identity.userId);
+    if (!account) throw loginUnavailable();
+    const activePlan = account.plans.find((plan) => plan.status === "active");
     return {
       result: {
         status: "active",
-        plan: identity.plan,
+        plan: activePlan?.plan ?? "ILUMINADO",
+        account,
         accessToken,
         expiresIn: ACCESS_TOKEN_TTL_SECONDS,
       },
       refreshToken,
+      rememberMe,
+      expiresAt,
+    };
+  }
+
+  async logout(token: string | undefined): Promise<void> {
+    if (token && isToken(token)) await this.repository.revokeSession(hashToken(token));
+  }
+
+  async accountProfile(token: string | undefined): Promise<AccountProfile> {
+    if (!token || !isToken(token))
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Inicia sesión para consultar tu perfil.",
+      );
+    const profile = await this.repository.getProfile(hashToken(token));
+    if (!profile)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    return profile;
+  }
+
+  async getUserGoodIdeas(userId: string): Promise<UserGoodIdeas> {
+    if (!isUuid(userId))
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Inicia sesión para consultar tus ideas aprobadas.",
+      );
+    return { ideas: await this.repository.listGoodIdeas(userId) };
+  }
+
+  async getUserProfile(userId: string): Promise<AccountProfile> {
+    if (!isUuid(userId))
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Inicia sesión para consultar tu perfil.",
+      );
+    const profile = await this.repository.getProfileForUser(userId);
+    if (!profile)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    return profile;
+  }
+
+  async cancelPlan(
+    token: string | undefined,
+    value: unknown,
+  ): Promise<AccountProfile> {
+    if (value !== "ILUMINADO" && value !== "FALTON")
+      throw new RegistrationError(
+        400,
+        "INVALID_PLAN",
+        "Selecciona un plan válido.",
+      );
+    if (!token || !isToken(token))
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Inicia sesión para gestionar tu plan.",
+      );
+    const profile = await this.repository.cancelSubscription(
+      hashToken(token),
+      value,
+    );
+    if (!profile)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    return profile;
+  }
+
+  async cancelPlanForUser(
+    userId: string,
+    value: unknown,
+  ): Promise<AccountProfile> {
+    if (value !== "ILUMINADO" && value !== "FALTON")
+      throw new RegistrationError(
+        400,
+        "INVALID_PLAN",
+        "Selecciona un plan válido.",
+      );
+    if (!isUuid(userId))
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Inicia sesión para gestionar tu plan.",
+      );
+    const profile = await this.repository.cancelSubscriptionForUser(userId, value);
+    if (!profile)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    return profile;
+  }
+
+  private async sessionResult(
+    identity: SessionIdentity,
+    accessToken: string,
+    refreshToken: string,
+  ): Promise<SessionIssue> {
+    const account = await this.repository.getProfileForUser(identity.userId);
+    if (!account)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    return {
+      result: {
+        status: "active",
+        plan: identity.plan,
+        account,
+        accessToken,
+        expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      },
+      refreshToken,
+      rememberMe: identity.rememberMe,
+      expiresAt: identity.expiresAt,
     };
   }
 }
@@ -354,11 +558,24 @@ async function hashPassword(password: string): Promise<string> {
   return `scrypt$${salt.toString("hex")}$${derived.toString("hex")}`;
 }
 
+function loginUnavailable(): RegistrationError {
+  return new RegistrationError(
+    GENERIC_LOGIN_ERROR.status,
+    GENERIC_LOGIN_ERROR.code,
+    GENERIC_LOGIN_ERROR.message,
+  );
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function isToken(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
+}
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 function isUniqueViolation(error: unknown): boolean {
   return isRecord(error) && error.code === "23505";
