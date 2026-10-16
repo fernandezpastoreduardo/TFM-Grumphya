@@ -11,9 +11,11 @@ import { validateIdeaText } from "./validate-idea-text";
 
 type GetUserIdeaProps = {
   onSubmit: (request: GetUserIdeaRequest) => void;
+  onQuotaExhausted?: () => void;
   onIdeaChange?: (ideaText: string) => void;
   isSubmitting?: boolean;
   remainingAttempts?: number | null;
+  quotaKind?: "anonymous" | "account";
   error?: string;
 };
 
@@ -54,9 +56,11 @@ function getValidationMessage(reason: InvalidIdeaTextReason): string {
 
 export function GetUserIdea({
   onSubmit,
+  onQuotaExhausted,
   onIdeaChange,
   isSubmitting = false,
   remainingAttempts,
+  quotaKind = "anonymous",
   error,
 }: GetUserIdeaProps) {
   const [ideaText, setIdeaText] = useState("");
@@ -72,6 +76,14 @@ export function GetUserIdea({
     }
 
     setValidationError("");
+    if (
+      quotaKind === "anonymous" &&
+      remainingAttempts === 0 &&
+      onQuotaExhausted
+    ) {
+      onQuotaExhausted();
+      return;
+    }
     onSubmit({ ideaText: validation.value, tone });
   }
 
@@ -127,11 +139,7 @@ export function GetUserIdea({
       <button
         className="idea-submit"
         type="submit"
-        disabled={
-          isSubmitting ||
-          remainingAttempts === null ||
-          (typeof remainingAttempts === "number" && remainingAttempts < 1)
-        }
+        disabled={isSubmitting || remainingAttempts === null}
       >
         {isSubmitting ? BUTTON_LABEL.LOADING : BUTTON_LABEL.IDLE}
         <svg
@@ -161,24 +169,37 @@ export function GetUserIdea({
       </button>
       {remainingAttempts !== undefined ? (
         <p className="idea-privacy-note" aria-live="polite">
-          {getUsageMessage(remainingAttempts)}
+          {getUsageMessage(remainingAttempts, quotaKind)}
         </p>
       ) : null}
       <p className="idea-privacy-note">
         El texto se procesa para evaluar la idea. Si se rechaza, conservamos un
         título genérico y una representación matemática para detectar envíos
-        parecidos; no guardamos el texto original. Una cookie recuerda tus tres
-        usos gratuitos y una señal temporal derivada de la IP ayuda a frenar la
-        creación repetida de perfiles. El dictado usa el servicio de voz de tu
-        navegador: revisa la transcripción antes de enviar.
+        parecidos; no guardamos el texto original. {getQuotaPrivacyCopy(quotaKind)}
+        El dictado usa el servicio de voz de tu navegador: revisa la
+        transcripción antes de enviar.
       </p>
     </form>
   );
 }
 
-function getUsageMessage(remainingAttempts: number | null): string {
-  if (remainingAttempts === null) return "Conectando con tus usos gratuitos…";
+function getUsageMessage(
+  remainingAttempts: number | null,
+  quotaKind: "anonymous" | "account",
+): string {
+  if (remainingAttempts === null) return "Comprobando tus intentos disponibles…";
+  if (quotaKind === "account") {
+    if (remainingAttempts === 0)
+      return "Has agotado las 11 evaluaciones disponibles hoy en Iluminado.";
+    return `Te quedan ${remainingAttempts} de 11 evaluaciones disponibles hoy en Iluminado.`;
+  }
   if (remainingAttempts === 0)
     return "Has agotado tus tres evaluaciones gratuitas en este navegador. Consulta los planes para continuar.";
   return `Te quedan ${remainingAttempts} de 3 evaluaciones gratuitas en este navegador.`;
+}
+
+function getQuotaPrivacyCopy(quotaKind: "anonymous" | "account"): string {
+  if (quotaKind === "account")
+    return "El servidor comprueba los intentos de tu plan y los reinicia cada día. ";
+  return "Una cookie recuerda tus tres usos gratuitos y una señal temporal derivada de la IP ayuda a frenar la creación repetida de perfiles. ";
 }

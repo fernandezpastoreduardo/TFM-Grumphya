@@ -1,3 +1,8 @@
+import {
+  authenticatedFetch,
+  getAccessToken,
+} from "../../infrastructure/auth/session";
+
 export type EvaluationStatus =
   "RECHAZADA" | "SIN_BLOQUEO_EVIDENTE" | "IDEA_INSUFICIENTE";
 
@@ -27,15 +32,22 @@ const EVALUATION_TIMEOUT_MESSAGE =
   "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.";
 const EVALUATION_TIMEOUT_CODE = "EVALUATION_TIMEOUT";
 const ANONYMOUS_QUOTA_EXHAUSTED_CODE = "ANONYMOUS_QUOTA_EXHAUSTED";
+const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
+const ACTIVE_PLAN_REQUIRED_CODE = "ACTIVE_PLAN_REQUIRED";
 const QUOTA_EXHAUSTED_MESSAGES = {
   ideas:
     "Has agotado tus tres evaluaciones gratuitas. Consulta los planes para continuar.",
   roasts:
     "Has agotado tus tres envíos gratuitos. Consulta los planes para continuar.",
 } as const;
+const PLAN_QUOTA_EXHAUSTED_MESSAGES = {
+  ideas: "Has agotado las 11 evaluaciones disponibles hoy en Iluminado.",
+  roasts: "Has agotado los 11 envíos disponibles hoy en Faltón.",
+} as const;
 const MAX_PUBLIC_SCORE = 10;
 const MAX_PUBLIC_HEADLINE_LENGTH = 120;
 const MAX_PUBLIC_MESSAGE_LENGTH = 280;
+const MAX_PUBLIC_REJECTION_MESSAGE_LENGTH = 1_000;
 const MAX_PUBLIC_SAFE_TITLE_LENGTH = 160;
 const MIN_PUBLIC_SAFE_TITLE_LENGTH = 8;
 
@@ -84,7 +96,10 @@ function parseEvaluationResponse(
     headline.length > MAX_PUBLIC_HEADLINE_LENGTH ||
     typeof message !== "string" ||
     message.trim().length === 0 ||
-    message.length > MAX_PUBLIC_MESSAGE_LENGTH ||
+    message.length >
+      (status === "RECHAZADA"
+        ? MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
+        : MAX_PUBLIC_MESSAGE_LENGTH) ||
     (status === "IDEA_INSUFICIENTE" && score !== null) ||
     (status !== "IDEA_INSUFICIENTE" && score === null)
   ) {
@@ -146,7 +161,8 @@ export async function evaluationProcess(
 ): Promise<EvaluationSubmissionResult> {
   let response: Response;
   try {
-    response = await fetch(EVALUATION_ENDPOINT, {
+    const accessToken = await getAccessToken();
+    const init: RequestInit = {
       method: "POST",
       credentials: "include",
       headers: {
@@ -157,7 +173,10 @@ export async function evaluationProcess(
         ...request,
         ...(continueAnyway ? { continueAnyway: true } : {}),
       }),
-    });
+    };
+    response = accessToken
+      ? await authenticatedFetch(EVALUATION_ENDPOINT, init)
+      : await fetch(EVALUATION_ENDPOINT, init);
   } catch {
     throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);
   }
@@ -186,6 +205,20 @@ export async function evaluationProcess(
         errorScope === "roasts"
           ? QUOTA_EXHAUSTED_MESSAGES.roasts
           : QUOTA_EXHAUSTED_MESSAGES.ideas,
+      );
+    }
+    if (errorCode === PLAN_QUOTA_EXHAUSTED_CODE) {
+      throw new EvaluationProcessError(
+        PLAN_QUOTA_EXHAUSTED_CODE,
+        errorScope === "roasts"
+          ? PLAN_QUOTA_EXHAUSTED_MESSAGES.roasts
+          : PLAN_QUOTA_EXHAUSTED_MESSAGES.ideas,
+      );
+    }
+    if (errorCode === ACTIVE_PLAN_REQUIRED_CODE) {
+      throw new EvaluationProcessError(
+        ACTIVE_PLAN_REQUIRED_CODE,
+        "Necesitas un plan Iluminado activo para evaluar ideas.",
       );
     }
     throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);
