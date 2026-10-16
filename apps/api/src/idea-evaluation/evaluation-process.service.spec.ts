@@ -24,13 +24,13 @@ const REJECTION_MESSAGE =
 const HARD_SETUP = "un servicio que accede a datos personales sin permiso";
 const HARD_CONSEQUENCE = "los usuarios pierden el control de su información";
 const HARD_REJECTION_MESSAGE =
-  "¿Has visto alguna vez un servicio que accede a datos personales sin permiso? Pues eso: los usuarios pierden el control de su información. A ver si le damos una vuelta más a las cosas la próxima vez.";
+  "¿Menudo chiringuito: un servicio que accede a datos personales sin permiso? Acceder sin autorización a datos personales convierte el servicio en una invasión directa de la privacidad de sus usuarios.";
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.13,
   headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
   message:
-    "Bueno, por ahora aguanta la inspección; tampoco te vengas arriba. Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+    "Por los pelos: aguanta la inspección. No te flipes; Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 const UNAVAILABLE_RESPONSE = {
   code: "EVALUATOR_UNAVAILABLE",
@@ -73,7 +73,18 @@ function createCompleteDecision(): ModelDecision {
 function createRejectedDecision(): ModelDecision {
   return {
     status: "RECHAZADA",
-    evaluated: [{ id: "C01", state: "PUNTUADO", score: 13 }],
+    evaluated: [
+      { id: "C01", state: "PUNTUADO", score: 13 },
+      { id: "C02", state: "PUNTUADO", score: 50 },
+      { id: "C03", state: "PUNTUADO", score: 50 },
+      { id: "C04", state: "PUNTUADO", score: 50 },
+      { id: "C05", state: "PUNTUADO", score: 50 },
+      { id: "C06", state: "PUNTUADO", score: 50 },
+      { id: "C07", state: "PUNTUADO", score: 50 },
+      { id: "C08", state: "PUNTUADO", score: 50 },
+      { id: "C09", state: "PUNTUADO", score: 50 },
+      { id: "C10", state: "PUNTUADO", score: 60 },
+    ],
     stop_at: "C01",
     reason_code: "PRIVACIDAD_ESTRUCTURAL",
     basis: "sin autorización",
@@ -147,7 +158,7 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual(EXPECTED_NEUTRAL_RESULT);
   });
 
-  it("returns the score of the aspect that triggered an early rejection", async () => {
+  it("returns the score of the first failed criterion after evaluating all ten", async () => {
     const port = createPort(createRejectedDecision());
     const service = new EvaluationProcessService(port);
 

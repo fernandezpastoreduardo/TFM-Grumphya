@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   InvalidModelDecisionError,
+  renderMessage,
   validateModelDecision,
 } from "./evaluation-decision";
 
@@ -68,6 +69,11 @@ function createRejectedDecision() {
       { id: "C03", state: "INDETERMINADO", score: null },
       { id: "C04", state: "PUNTUADO", score: 60 },
       { id: "C05", state: "PUNTUADO", score: 10 },
+      { id: "C06", state: "PUNTUADO", score: 50 },
+      { id: "C07", state: "PUNTUADO", score: 50 },
+      { id: "C08", state: "PUNTUADO", score: 50 },
+      { id: "C09", state: "PUNTUADO", score: 50 },
+      { id: "C10", state: "PUNTUADO", score: 50 },
     ],
     stop_at: "C05",
     reason_code: CRITERION_REASON_CODES.C05,
@@ -126,6 +132,9 @@ function createCorePromiseRejection() {
       { id: "C05", state: "PUNTUADO", score: 79 },
       { id: "C06", state: "PUNTUADO", score: 79 },
       { id: "C07", state: "PUNTUADO", score: 10 },
+      { id: "C08", state: "PUNTUADO", score: 50 },
+      { id: "C09", state: "PUNTUADO", score: 50 },
+      { id: "C10", state: "PUNTUADO", score: 50 },
     ],
     stop_at: "C07",
     reason_code: CRITERION_REASON_CODES.C07,
@@ -187,6 +196,56 @@ describe("validateModelDecision", () => {
         TIME_SENSITIVE_PROMISE_IDEA,
       ),
     ).toEqual(createCorePromiseRejection());
+  });
+
+  it("accepts all evaluated criteria and keeps the first failed criterion as the primary reason", () => {
+    const multiFailureDecision = {
+      ...createRejectedDecision(),
+      evaluated: [
+        ...createRejectedDecision().evaluated.slice(0, 5),
+        { id: "C06", state: "PUNTUADO", score: 12 },
+        { id: "C07", state: "PUNTUADO", score: 9 },
+        { id: "C08", state: "PUNTUADO", score: 40 },
+        { id: "C09", state: "PUNTUADO", score: 14 },
+        { id: "C10", state: "PUNTUADO", score: 52 },
+      ],
+      message:
+        "Falla al comprobar declaraciones, deja conflictos sin remedio, pierde la utilidad principal y depende de una ejecución perfecta en varios puntos esenciales del servicio.",
+    };
+
+    expect(
+      validateModelDecision(multiFailureDecision, IDEA_TEXT),
+    ).toMatchObject({
+      status: "RECHAZADA",
+      stop_at: "C05",
+      reason_code: "HONESTIDAD_ESTRUCTURAL",
+      evaluated: expect.arrayContaining([
+        { id: "C05", state: "PUNTUADO", score: 10 },
+        { id: "C06", state: "PUNTUADO", score: 12 },
+        { id: "C07", state: "PUNTUADO", score: 9 },
+        { id: "C09", state: "PUNTUADO", score: 14 },
+        { id: "C10", state: "PUNTUADO", score: 52 },
+      ]),
+    });
+  });
+
+  it("accepts a longer rejection explanation when it names every failed point", () => {
+    const extendedExplanation = `${"explica ".repeat(45)}las consecuencias.`;
+    const decision = {
+      ...createRejectedDecision(),
+      message: extendedExplanation,
+    };
+
+    expect(validateModelDecision(decision, IDEA_TEXT).message).toBe(
+      extendedExplanation,
+    );
+  });
+
+  it("makes the hard rejection reply much sharper than the neutral reply", () => {
+    const decision = createRejectedDecision();
+
+    expect(renderMessage(decision, "soft")).toBe(REJECTION_MESSAGE);
+    expect(renderMessage(decision, "hard")).toMatch(/menudo chiringuito/i);
   });
 
   it("rejects quotation marks added around a basis fragment", () => {
@@ -396,7 +455,7 @@ describe("validateModelDecision", () => {
         ...createRejectedDecision(),
         evaluated: createRejectedDecision().evaluated.map((item, index) =>
           index === createRejectedDecision().evaluated.length - 1
-            ? { ...item, score: 20 }
+            ? { ...item, state: "INDETERMINADO", score: null }
             : item,
         ),
       },

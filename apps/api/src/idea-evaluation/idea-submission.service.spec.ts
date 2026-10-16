@@ -126,7 +126,12 @@ describe("IdeaSubmissionService", () => {
     );
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, undefined, "123e4567-e89b-42d3-a456-426614174000"),
+      service.submit(
+        VALID_REQUEST,
+        IDEMPOTENCY_KEY,
+        undefined,
+        "123e4567-e89b-42d3-a456-426614174000",
+      ),
     ).resolves.toMatchObject({ status: "evaluated" });
 
     expect(planUsage.reserve).toHaveBeenCalledWith(
@@ -218,7 +223,12 @@ describe("IdeaSubmissionService", () => {
     vi.mocked(evaluation.evaluate).mockRejectedValue(transientFailure);
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, undefined, "123e4567-e89b-42d3-a456-426614174000"),
+      service.submit(
+        VALID_REQUEST,
+        IDEMPOTENCY_KEY,
+        undefined,
+        "123e4567-e89b-42d3-a456-426614174000",
+      ),
     ).rejects.toThrow(transientFailure);
 
     expect(planUsage.commit).not.toHaveBeenCalled();
@@ -350,9 +360,7 @@ describe("IdeaSubmissionService", () => {
       { kind: "no-match" },
       PROMISING_EVALUATION_RESULT,
     );
-    vi.mocked(goodIdeas.saveGoodIdea).mockRejectedValue(
-      new Error(privateIdea),
-    );
+    vi.mocked(goodIdeas.saveGoodIdea).mockRejectedValue(new Error(privateIdea));
 
     await expect(
       service.submit(
