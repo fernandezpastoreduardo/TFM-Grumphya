@@ -6,7 +6,7 @@ Cada perfil de navegador sin cuenta dispone de **3 evaluaciones de ideas y 3 env
 
 La identidad se transporta mediante una cookie opaca, aleatoria y persistente (`HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`). La API guarda el hash del token, nunca el valor de la cookie. La identidad y sus contadores no caducan automáticamente. El navegador puede eliminar la cookie o el usuario puede cambiar de dispositivo, con lo que se crea otro perfil: este mecanismo no ofrece identificación permanente de personas.
 
-El perfil anónimo no genera historial. No se guardan los textos de ideas o insultos en las tablas de cuotas. La respuesta final de una petición idempotente puede conservarse hasta 24 horas para devolverla a un reintento sin volver a consumir cupo; después se purga.
+El perfil anónimo no genera historial. Las tablas no conservan el texto original de la idea o el insulto como payload fuente; la caché idempotente conserva el cuerpo final de respuesta, que puede contener salida generada derivada de la petición. El TTL lógico de esa respuesta es de 24 horas: pasado ese plazo deja de estar disponible para reintentos, pero el borrado físico es oportunista al procesar reservas posteriores, sin garantía de eliminar la fila exactamente a las 24 horas ni un job periódico de purga.
 
 ## Consumo y reintentos
 

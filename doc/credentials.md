@@ -5,7 +5,7 @@
 - GitHub: repositorio privado `fernandezpastoreduardo/TFM-Grumphya`; el acceso se realiza mediante la sesión SSH/CLI ya configurada en el equipo. No copiar ni documentar su token o clave privada.
 - Desarrollo Docker PostgreSQL: base/rol `grumphya_dev`, puerto enlazado solo a `127.0.0.1:5433`; `pnpm db:setup` genera una contraseña aleatoria en `.env.docker` con permisos `0600`. El archivo está ignorado por Git.
 - PostgreSQL Homebrew preexistente: la base y extensión creadas en la verificación inicial permanecen en `5432`; el flujo de la app usa el contenedor independiente en `5433`.
-- Cuentas Grumphya: el alta con plan, verificación local simulada, activación de plan simulada y refresh de sesión están implementados; el login general y la cuenta administrativa no están implementados. Revisa [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md) para los controles existentes y pendientes del alta.
+- Cuentas Grumphya: el alta con plan y activación simulada están implementados; el login usa alias o correo y contraseña. La verificación real del correo y el segundo factor siguen pendientes. Revisa [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md) para los controles y límites restantes.
 - Embeddings: adaptador OpenAI API `text-embedding-3-small` implementado. `OPENAI_API_KEY` se configura en el archivo local ignorado `.env.openai`; el valor y la vigencia de la clave no se documentan ni se muestran, y deben gestionarse desde OpenAI Platform. El evaluador requiere además activar `EVALUATION_PROVIDER=openai` en `.env.openai` antes de procesar evaluaciones. Pagos, correo real y producción siguen sin configurar.
 
 ## Cómo tratar secretos futuros
@@ -16,6 +16,14 @@
 - Los refresh tokens deben ser aleatorios, almacenarse de forma revocable/hasheada en servidor y salir únicamente en cookie `HttpOnly`, `Secure`, `SameSite` según la especificación funcional.
 - Claves de firma, cifrado, DB runtime, migrador, proveedor IA y GitHub/deploy son secretos distintos por entorno; no compartir credenciales entre staging y producción.
 - Nunca registrar tokens, contraseñas, cookies, audio, texto privado de ideas o secretos en logs/telemetría.
+
+## Sesiones de usuario
+
+- La API firma JWT de acceso con HS256, `iss=grumphya-api`, `aud=grumphya-web`, `sub` UUID, `jti` UUID aleatorio por emisión y vencimiento de 10 minutos. `ACCESS_TOKEN_SECRET` es obligatorio y debe aportar al menos 32 bytes; se carga desde el secret manager en despliegue y el script local genera un secreto aleatorio en `.env.docker` ignorado por Git.
+- El access token viaja en `Authorization: Bearer` y se conserva solo en memoria del navegador. Los endpoints de perfil, ideas aprobadas, cancelación y baja requieren firma válida y una fila de sesión activa en SQL.
+- Las rutas protegidas autentican con `Authorization: Bearer <accessToken>`. El refresh token no autoriza endpoints: es aleatorio, solo se entrega en cookie `HttpOnly`, `SameSite=Strict`, `Secure` en producción, `Path=/api`; la base almacena su hash. Cada refresh rota el refresh token y el hash del JWT activo. `POST /api/auth/logout` revoca la sesión.
+- «Recordarme» fija una vigencia máxima de 30 días desde el login. Sin marcarlo, la cookie es de sesión y la sesión caduca en servidor a las 24 horas. La rotación no amplía la fecha absoluta de caducidad.
+- Login limita los intentos por IP, usa un mensaje genérico para credenciales inválidas y verifica las contraseñas existentes con scrypt. Las mutaciones con cookie exigen `Origin` exacto y JSON; el borrado de cuenta también se limita y valida CSRF.
 
 ## Rotación y respuesta
 

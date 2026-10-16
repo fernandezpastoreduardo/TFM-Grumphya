@@ -8,7 +8,7 @@ No se ha elegido proveedor cloud ni se han creado cuentas, dominios o recursos d
 2. Ejecutar `apps/api` como servicio Node.js detrás de un reverse proxy HTTPS, con réplicas sin estado.
 3. Usar PostgreSQL 17 gestionado con pgvector 0.8.x, TLS obligatorio, copias de seguridad cifradas y recuperación probada.
 4. Mantener secretos en el secret manager del proveedor. No hornear secretos en imágenes, variables `VITE_*`, artefactos web o Git.
-5. Aplicar migraciones como paso controlado de release con identidad de migración distinta de la cuenta de runtime.
+5. Aplicar migraciones como paso controlado de release con identidad de migración distinta de la cuenta de runtime. Esto es el objetivo de despliegue, aún no el comportamiento actual del repositorio.
 
 La primera entrega no requiere Redis, Kubernetes, almacenamiento de archivos ni pagos reales. Añádelos solo con una necesidad funcional/operativa concreta.
 
@@ -27,6 +27,17 @@ pnpm build
 - Comando runtime API: `pnpm --filter @grumphya/api start`.
 - Fija la imagen/runtime de Node en una versión LTS soportada y parcheada; no despliegues dependencias de desarrollo.
 - Configura proxy para reenviar `/api/*` al servicio y servir rutas SPA; solo expón HTTPS en Internet.
+
+## Estado actual de migraciones
+
+La API ejecuta las migraciones pendientes de forma diferida cuando algunos
+repositorios se inicializan por primera vez; `PostgresPlanUsageRepository`, por
+ejemplo, llama a `runMigrations` desde `ensureSchema` al reservar o consultar
+uso de plan. En ese flujo se usan las credenciales de PostgreSQL del runtime.
+Todavía no hay un paso de release separado que aplique migraciones con la
+identidad `grumphya_migrator`. Antes de desplegar con tráfico real, definir y
+probar la estrategia de migración explícita, revisar los permisos necesarios y
+evitar que el primer request de usuario tenga que ejecutar DDL.
 
 ## Variables requeridas para API
 
@@ -49,7 +60,7 @@ En producción la API escucha en la interfaz privada del contenedor/servicio; no
 ## Identidades y mínimos privilegios
 
 - `grumphya_runtime`: cuenta de base de datos no-superusuario, limitada al esquema y operaciones que requiere la app; sin permisos de crear roles/extensiones.
-- `grumphya_migrator`: credencial separada, usada únicamente por el pipeline de despliegue para migraciones. No está presente en procesos de usuario.
+- `grumphya_migrator`: identidad objetivo, separada para el pipeline de despliegue de migraciones. El comportamiento actual aún ejecuta migraciones desde la API con las credenciales runtime; separar esa operación es trabajo pendiente antes de producción.
 - Usuarios de la aplicación: creados por el flujo de registro con plan; credenciales de usuario final se almacenan como hash de contraseña, nunca en claro.
 - Administrador de aplicación: no se crea una cuenta predefinida ni un usuario/clave compartidos. Definir un proceso de bootstrap auditado antes de añadir funciones administrativas.
 - GitHub Actions/deploy: identidad OIDC o token de alcance mínimo, con expiración/rotación; nunca clave personal compartida.

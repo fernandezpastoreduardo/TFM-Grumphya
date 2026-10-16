@@ -1,0 +1,11 @@
+# Ideas aprobadas privadas
+
+Las ideas aprobadas que aparecen en el perfil se guardan en `approved_ideas`, creada por `apps/api/migrations/010_approved_ideas.sql`; `011_approved_idea_idempotency.sql` añade protección frente a reintentos y `013_approved_idea_request_hash.sql` vincula cada clave al payload, tras la migración de sesiones `012_auth_session_persistence.sql`.
+
+La fila contiene el identificador, el usuario propietario, un título privado de hasta 160 caracteres, un hash de idempotencia, el hash de la solicitud y la fecha de creación. El título se deriva del texto de la propia idea normalizando espacios, retirando caracteres de control y limitándolo a 160 caracteres; no se guardan notas ni evaluaciones. El texto/título aprobado nunca se publica en rankings. Solo se guarda cuando una evaluación autenticada termina con `SIN_BLOQUEO_EVIDENTE`; visitantes anónimos no crean historial. La API obtiene el propietario exclusivamente del `AccessTokenGuard` (o del guard opcional de la evaluación) y filtra por ese `user_id`; nunca acepta un propietario del cuerpo o la query.
+
+`submission_hash` se calcula con SHA-256 sobre el `Idempotency-Key`; `request_hash` es un HMAC-SHA-256 del payload y no almacena la clave ni el texto de idea. El índice único `(user_id, submission_hash)` evita duplicados por reintentos. La inserción y comprobación se hacen en una transacción: misma clave y payload devuelve no-op; si la clave se reutiliza con otro payload, el primer título queda intacto y la API responde con conflicto genérico. No se registra el texto de idea en logs. El contrato de lectura del perfil es `{ ideas: [{ id, title, createdAt }] }`; devuelve las diez más recientes, ordenadas por fecha e ID descendentes.
+
+La relación usa `ON DELETE CASCADE`, por lo que el borrado físico de un usuario elimina también sus ideas aprobadas. El índice compuesto por usuario y fecha respalda la consulta del perfil. No se cargan ideas de muestra en la base de datos de producción.
+
+Las pruebas del servicio cubren escritura solo para una cuenta autenticada con resultado prometedor, ausencia de escritura anónima, hash de idempotencia, y error de persistencia sin filtrar datos. Las pruebas de repositorio PostgreSQL comprueban aislamiento por propietario, orden y borrado en cascada.
