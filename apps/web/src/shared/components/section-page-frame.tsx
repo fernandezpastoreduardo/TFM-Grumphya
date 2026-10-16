@@ -130,9 +130,11 @@ function SectionHero({ page }: { page: SectionPageMeta }) {
 export function SectionPageFrame({
   page,
   children,
+  showHero = true,
 }: {
   page: SectionPageMeta;
   children: ReactNode;
+  showHero?: boolean;
 }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -146,7 +148,7 @@ export function SectionPageFrame({
           onMenuToggle={() => setIsMenuOpen((open) => !open)}
         />
         <main className="section-main">
-          <SectionHero page={page} />
+          {showHero ? <SectionHero page={page} /> : null}
           {children}
         </main>
         <footer className="site-footer">
