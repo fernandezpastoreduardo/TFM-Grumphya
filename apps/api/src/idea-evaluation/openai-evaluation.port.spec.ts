@@ -168,6 +168,9 @@ describe("OpenAiEvaluationPort", () => {
     expect(request).toContain("el tono solo afecta la presentación posterior");
     expect(request).toContain("español sencillo");
     expect(request).toContain(
+      "nunca incluyas los códigos C01–C10 ni los reason codes internos",
+    );
+    expect(request).toContain(
       "fragmento literal breve de la idea que sostenga el defecto",
     );
     expect(request).toContain(

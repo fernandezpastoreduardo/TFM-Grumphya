@@ -13,6 +13,7 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 - `status: 'RECHAZADA' | 'SIN_BLOQUEO_EVIDENTE' | 'IDEA_INSUFICIENTE'`.
 - `score: number | null`; escala global 0–10. `RECHAZADA`: nota del aspecto de veto dividida entre 10. `SIN_BLOQUEO_EVIDENTE`: media aritmética de los criterios `PUNTUADO`, dividida entre 10 y redondeada a dos decimales; `null` si ninguno se puntuó. `IDEA_INSUFICIENTE`: `null`.
 - `message: string`; una frase visible. La UI presenta el score con dos decimales en `es-ES`.
+- El `message` público no incluye IDs de criterio (`C01`–`C10`) ni `reason_code`. El backend sustituye aliases internos que aparezcan accidentalmente por una descripción legible en español.
 
 El endpoint no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos de persistencia. La orquestación de similitud/persistencia vive en `POST /api/evaluation-process`; no existe historial personal de evaluaciones en el contrato actual.
 

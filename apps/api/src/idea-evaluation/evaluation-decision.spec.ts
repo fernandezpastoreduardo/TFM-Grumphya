@@ -245,7 +245,7 @@ describe("validateModelDecision", () => {
     const decision = createRejectedDecision();
 
     expect(renderMessage(decision, "soft")).toBe(REJECTION_MESSAGE);
-    expect(renderMessage(decision, "hard")).toMatch(/menudo chiringuito/i);
+    expect(renderMessage(decision, "hard")).toBe(REJECTION_MESSAGE);
   });
 
   it("rejects quotation marks added around a basis fragment", () => {

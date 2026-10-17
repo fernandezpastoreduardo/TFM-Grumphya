@@ -43,7 +43,7 @@ describe("renderMessage", () => {
         "hard",
       ),
     ).toBe(
-      "¿Menudo chiringuito: un grillo usando un móvil o un ordenador? Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+      "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
     );
     expect(renderHeadline("RECHAZADA", "soft")).toBe(
       "Vaya, justo falla donde más importa.",
@@ -74,5 +74,63 @@ describe("renderMessage", () => {
     expect(() => renderHeadline("RECHAZADA", "snarky")).toThrowError(
       new Error("Tono de evaluación no válido."),
     );
+  });
+
+  it("explains criterion aliases in ordinary language instead of exposing their codes", () => {
+    const decision = {
+      ...DECISION,
+      message:
+        "El criterio C05 revela una dependencia de afirmaciones sin verificar y C10 muestra una diferencia concreta frente a otras aplicaciones.",
+    };
+
+    const rendered = renderMessage(decision, "soft");
+
+    expect(rendered).not.toMatch(/\bC(?:0[1-9]|10)\b/u);
+    expect(rendered).toContain(
+      "confianza en afirmaciones que no se pueden verificar",
+    );
+    expect(rendered).toContain(
+      "diferencia concreta frente a otras aplicaciones",
+    );
+  });
+
+  it.each([
+    ["C01", "privacidad y el acceso a datos"],
+    ["C02", "riesgo de daño grave"],
+    ["C03", "engaño o la explotación"],
+    ["C04", "contradicción o la falta de un mecanismo imprescindible"],
+    ["C05", "confianza en afirmaciones que no se pueden verificar"],
+    ["C06", "conflicto sin una forma de resolverlo"],
+    ["C07", "función que no cumple su promesa"],
+    ["C08", "incompatibilidad entre ingresos y costes"],
+    ["C09", "falta de una alternativa cuando algo falla"],
+    ["C10", "diferencia frente a otras aplicaciones"],
+    ["PRIVACIDAD_ESTRUCTURAL", "privacidad y el acceso a datos"],
+    ["PELIGRO_ESTRUCTURAL", "riesgo de daño grave"],
+    ["ETICA_ESTRUCTURAL", "engaño o la explotación"],
+    [
+      "CONTRADICCION_NUCLEO",
+      "contradicción o la falta de un mecanismo imprescindible",
+    ],
+    [
+      "HONESTIDAD_ESTRUCTURAL",
+      "confianza en afirmaciones que no se pueden verificar",
+    ],
+    ["CONFLICTO_ESTRUCTURAL", "conflicto sin una forma de resolverlo"],
+    ["UTILIDAD_ANULADA", "función que no cumple su promesa"],
+    ["ECONOMIA_INCOMPATIBLE", "incompatibilidad entre ingresos y costes"],
+    ["HAPPY_PATH_ESTRUCTURAL", "falta de una alternativa cuando algo falla"],
+    ["DIFERENCIACION_AUSENTE", "diferencia frente a otras aplicaciones"],
+  ])("replaces the internal rubric alias %s", (alias, explanation) => {
+    const rendered = renderMessage(
+      {
+        ...DECISION,
+        message: `La propuesta falla en el criterio ${alias} y eso afecta directamente a sus usuarios.`,
+      },
+      "soft",
+    );
+
+    expect(rendered).not.toContain(alias);
+    expect(rendered).toContain(explanation);
   });
 });

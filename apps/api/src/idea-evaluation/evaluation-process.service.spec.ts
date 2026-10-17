@@ -24,7 +24,7 @@ const REJECTION_MESSAGE =
 const HARD_SETUP = "un servicio que accede a datos personales sin permiso";
 const HARD_CONSEQUENCE = "los usuarios pierden el control de su información";
 const HARD_REJECTION_MESSAGE =
-  "¿Menudo chiringuito: un servicio que accede a datos personales sin permiso? Acceder sin autorización a datos personales convierte el servicio en una invasión directa de la privacidad de sus usuarios.";
+  REJECTION_MESSAGE;
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.13,

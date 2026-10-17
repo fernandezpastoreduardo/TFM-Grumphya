@@ -275,7 +275,7 @@ Configurar una única llamada al modelo para recorrer la rúbrica y devolver una
 
 **Límite técnico importante:** una sola llamada con instrucciones de parada no permite al backend verificar exactamente qué procesos internos realizó el modelo. Sí limita el recorrido declarado y la salida. No prometer que se puede probar una detención interna de su razonamiento.
 
-La respuesta estructurada debe incluir la evaluación completa hasta C10; el backend comprueba que los diez criterios están presentes y ordenados.
+La respuesta estructurada debe incluir la evaluación completa hasta C10; el backend comprueba que los diez criterios están presentes y ordenados. `message` es texto dirigido a la persona usuaria y no debe contener IDs de criterio (`C01`–`C10`) ni `reason_code`; estos códigos pertenecen al contrato interno. La capa de presentación del servidor vuelve a retirar los aliases conocidos si el modelo los incluye accidentalmente.
 
 ### 5.3 Reglas deterministas
 
@@ -332,6 +332,11 @@ El mensaje explicativo debe ser factual, mordaz y útil; la pulla va dirigida al
 mecanismo, no a quien tuvo la idea. Debe explicar el defecto y el perjuicio previsible de cada criterio que
 suspende; no se corta el análisis al primer suspenso ni se inventan fallos
 posteriores que no hayan sido evaluados.
+
+Los IDs de criterios y los `reason_code` son internos: no se escriben en el
+mensaje dirigido a la persona. El prompt pide descripciones comprensibles; tras
+validar y aplicar el tono, el backend reemplaza cualquier alias conocido por
+una explicación breve en español común antes de construir la respuesta pública.
 
 **Límites de `message`:** si no hay rechazo, 8–40 palabras y ≤280 unidades
 UTF-16. En `RECHAZADA`, 8–120 palabras y ≤900 unidades UTF-16 para explicar
@@ -474,6 +479,9 @@ nota de rechazo del criterio que activa el veto y compone un titular de UI
 según estado y tono. La media de los demás estados se calcula en servidor.
 
 message: explicación clara, mordaz y factual. Si no hay rechazo, 8-40 palabras y máximo 280 unidades UTF-16. Si hay rechazo, 8-120 palabras y máximo 900 unidades UTF-16; explica todos los criterios con score <15 y el perjuicio de cada uno. Sin llamarlo «bloqueo» ni usar jerga de informe.
+No incluyas en message IDs internos C01–C10 ni reason codes; explica el defecto
+con palabras comunes. Estos identificadores pueden aparecer en campos
+estructurados internos, pero nunca en la explicación visible.
 Nombra la acción concreta que alguien tendría que realizar en la vida real;
 no la sustituyas por etiquetas abstractas como «mecanismo central», «se rompe»
 o «la idea se desarma». Por ejemplo, para citas para saltamontes: «Los

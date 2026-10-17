@@ -89,6 +89,34 @@ const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
 const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
 const HARD_COPY_MIN_LENGTH = 8;
 const HARD_COPY_MAX_LENGTH = 140;
+const INTERNAL_RUBRIC_ALIASES: Record<string, string> = {
+  C01: "la privacidad y el acceso a datos",
+  C02: "el riesgo de daño grave",
+  C03: "el engaño o la explotación",
+  C04: "la contradicción o la falta de un mecanismo imprescindible",
+  C05: "la confianza en afirmaciones que no se pueden verificar",
+  C06: "el conflicto sin una forma de resolverlo",
+  C07: "la función que no cumple su promesa",
+  C08: "la incompatibilidad entre ingresos y costes",
+  C09: "la falta de una alternativa cuando algo falla",
+  C10: "la diferencia frente a otras aplicaciones",
+  PRIVACIDAD_ESTRUCTURAL: "la privacidad y el acceso a datos",
+  PELIGRO_ESTRUCTURAL: "el riesgo de daño grave",
+  ETICA_ESTRUCTURAL: "el engaño o la explotación",
+  CONTRADICCION_NUCLEO: "la contradicción o la falta de un mecanismo imprescindible",
+  HONESTIDAD_ESTRUCTURAL: "la confianza en afirmaciones que no se pueden verificar",
+  CONFLICTO_ESTRUCTURAL: "el conflicto sin una forma de resolverlo",
+  UTILIDAD_ANULADA: "la función que no cumple su promesa",
+  ECONOMIA_INCOMPATIBLE: "la incompatibilidad entre ingresos y costes",
+  HAPPY_PATH_ESTRUCTURAL: "la falta de una alternativa cuando algo falla",
+  DIFERENCIACION_AUSENTE: "la diferencia frente a otras aplicaciones",
+};
+const INTERNAL_RUBRIC_ALIAS_SOURCE =
+  "C(?:0[1-9]|10)|PRIVACIDAD_ESTRUCTURAL|PELIGRO_ESTRUCTURAL|ETICA_ESTRUCTURAL|CONTRADICCION_NUCLEO|HONESTIDAD_ESTRUCTURAL|CONFLICTO_ESTRUCTURAL|UTILIDAD_ANULADA|ECONOMIA_INCOMPATIBLE|HAPPY_PATH_ESTRUCTURAL|DIFERENCIACION_AUSENTE";
+const INTERNAL_RUBRIC_ALIAS_PATTERN = new RegExp(
+  `\\b(?:${INTERNAL_RUBRIC_ALIAS_SOURCE})\\b`,
+  "giu",
+);
 export type ModelDecisionValidationCode =
   | "response_shape"
   | "criteria_prefix"
@@ -250,7 +278,21 @@ function renderHardRejectionMessage(decision: ModelDecision): string {
   if (!decision.hardSetup || !decision.hardConsequence) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
-  return `¿Menudo chiringuito: ${decision.hardSetup}? ${decision.message}`;
+  return decision.message;
+}
+
+function removeInternalRubricAliases(message: string): string {
+  const messageWithoutCriterionLabels = message.replace(
+    new RegExp(
+      `\\b(?:el\\s+)?criterio\\s+(${INTERNAL_RUBRIC_ALIAS_SOURCE})\\b`,
+      "giu",
+    ),
+    (_match, alias: string) => INTERNAL_RUBRIC_ALIASES[alias.toUpperCase()] ?? alias,
+  );
+  return messageWithoutCriterionLabels.replace(
+    INTERNAL_RUBRIC_ALIAS_PATTERN,
+    (alias) => INTERNAL_RUBRIC_ALIASES[alias.toUpperCase()] ?? alias,
+  );
 }
 
 function renderHardMessage(decision: ModelDecision): string {
@@ -275,7 +317,9 @@ export function renderMessage(decision: unknown, tone: unknown): string {
     throw new Error(INVALID_TONE_MESSAGE);
   }
   const parsedDecision = decision as unknown as ModelDecision;
-  if (tone === "soft") return parsedDecision.message;
+  if (tone === "soft") {
+    return removeInternalRubricAliases(parsedDecision.message);
+  }
   const hardMessage = renderHardMessage(parsedDecision);
   const maxLength =
     parsedDecision.status === "RECHAZADA"
@@ -291,7 +335,7 @@ export function renderMessage(decision: unknown, tone: unknown): string {
   ) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
-  return hardMessage;
+  return removeInternalRubricAliases(hardMessage);
 }
 
 export function renderHeadline(status: unknown, tone: unknown): string {
