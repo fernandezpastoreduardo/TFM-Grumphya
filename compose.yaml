@@ -17,5 +17,61 @@ services:
       timeout: 3s
       retries: 15
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: grumphya-app:local
+    restart: unless-stopped
+    command: ["pnpm", "--filter", "@grumphya/api", "start:dev"]
+    env_file:
+      - .env.docker
+      - .env.openai
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 3000
+      PGHOST: db
+      PGPORT: 5432
+      WEB_ORIGIN: http://127.0.0.1:5173
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: grumphya-app:local
+    restart: unless-stopped
+    command:
+      ["pnpm", "--filter", "@grumphya/web", "exec", "vite", "--host", "0.0.0.0"]
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:5173/').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 volumes:
   grumphya-postgres-data:

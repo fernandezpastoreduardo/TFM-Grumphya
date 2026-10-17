@@ -6,7 +6,7 @@
 - Docker Desktop y PostgreSQL 17 con extensión pgvector 0.8.x (arranca con Compose).
 - Para tests E2E: navegador Chromium de Playwright.
 
-En este Mac, Node/pnpm estaban disponibles; Docker Desktop está instalado y probado. PostgreSQL de Homebrew también está instalado, pero el proyecto usa su propio contenedor aislado; el puerto publicado predeterminado es 5433. Si otro proyecto ya ocupa ese puerto, cambia `PGPORT` y `GRUMPHYA_DB_HOST_PORT` al mismo puerto libre en `.env.docker`.
+En este Mac, Node/pnpm estaban disponibles; Docker Desktop está instalado y probado. PostgreSQL de Homebrew también está instalado, pero el proyecto usa su propio contenedor aislado; el puerto publicado predeterminado es 5433. Si otro proyecto ya ocupa ese puerto, cambia `GRUMPHYA_DB_HOST_PORT` en `.env.docker`; para el flujo mixto con API en el host, cambia además `PGPORT` al mismo puerto. En Compose la API conecta a `db:5432` por la red interna.
 
 ## Preparación local
 
@@ -18,6 +18,44 @@ pnpm db:setup
 `pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y un secreto HMAC de IP aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
 
 ## Arranque
+
+### Stack completo en Docker
+
+Para revisión local con base de datos persistente, prepara primero los archivos
+de entorno locales con `pnpm db:setup` y asegúrate de que exista `.env.openai`
+(puede no contener credenciales si no vas a usar funciones de IA). Compose
+requiere ambos archivos; no copies sus valores a documentación o Git. Después
+arranca o renueva los tres servicios:
+
+```sh
+docker compose --env-file .env.docker up -d --build --force-recreate --wait
+```
+
+Compose espera a que `db`, `api` y `web` estén sanos. Los puertos se publican
+solo en loopback: PostgreSQL `127.0.0.1:5433`, API `127.0.0.1:3000` y web
+`127.0.0.1:5173`. Si cambias el puerto publicado de PostgreSQL, ajusta
+`GRUMPHYA_DB_HOST_PORT` en `.env.docker` y recrea los servicios. La API dentro
+de Compose conecta a `db:5432` por la red Docker, así que `PGPORT` no necesita
+cambiar. En el flujo mixto (API ejecutada en el host), alinea también `PGPORT`
+con el puerto publicado y reinicia los procesos.
+
+La base vive en el volumen con nombre de Compose `grumphya-postgres-data`.
+Reiniciar o recrear contenedores, incluido el comando anterior, conserva ese
+volumen y los datos. Para detener y retirar contenedores/red sin borrar la base:
+
+```sh
+docker compose --env-file .env.docker down
+```
+
+No uses `docker compose down -v`: `-v` elimina también el volumen y borra los
+datos persistidos. La configuración de puertos, healthchecks y montaje está en
+[`compose.yaml`](../compose.yaml); el build y los puertos expuestos están en
+[`Dockerfile`](../Dockerfile), y [`.dockerignore`](../.dockerignore) excluye
+archivos de entorno y artefactos locales del contexto de build.
+
+### Arranque mixto con Node y base en Docker
+
+Para desarrollar con Vite y NestJS ejecutados en el host, usa el flujo mixto:
 
 En una terminal:
 
@@ -160,7 +198,8 @@ Valores locales por defecto:
 | `API_PORT`   | `3000`                     | Puerto HTTP de NestJS                                  |
 | `WEB_ORIGIN` | `http://localhost:5173`    | Origen CORS permitido por API                          |
 | `PGHOST`     | `127.0.0.1`                | PostgreSQL local de Docker                             |
-| `PGPORT`     | `5433`                     | Puerto publicado por Compose; ajústalo si está ocupado |
+| `PGPORT`     | `5433`                     | Puerto publicado al que conecta la API cuando corre en el host; en Compose se usa `db:5432` |
+| `GRUMPHYA_DB_HOST_PORT` | `5433`           | Puerto loopback publicado por Compose para PostgreSQL |
 | `PGDATABASE` | `grumphya_dev`             | Base aislada de desarrollo                             |
 | `PGUSER`     | `grumphya_dev`             | Rol local del contenedor                               |
 | `PGPASSWORD` | aleatoria en `.env.docker` | Solo desarrollo; archivo ignorado por Git              |
