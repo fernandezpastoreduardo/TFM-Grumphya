@@ -22,9 +22,9 @@ pnpm db:setup
 ### Stack completo en Docker
 
 Para revisión local con base de datos persistente, prepara primero los archivos
-de entorno locales con `pnpm db:setup` y asegúrate de que exista `.env.openai`
-(puede no contener credenciales si no vas a usar funciones de IA). Compose
-requiere ambos archivos; no copies sus valores a documentación o Git. Después
+de entorno locales con `pnpm db:setup` y asegúrate de que existan `.env.openai`
+y `.env` (pueden no contener credenciales si no vas a usar funciones de IA).
+Compose requiere esos archivos; no copies sus valores a documentación o Git. Después
 arranca o renueva los tres servicios:
 
 ```sh
@@ -52,6 +52,25 @@ datos persistidos. La configuración de puertos, healthchecks y montaje está en
 [`compose.yaml`](../compose.yaml); el build y los puertos expuestos están en
 [`Dockerfile`](../Dockerfile), y [`.dockerignore`](../.dockerignore) excluye
 archivos de entorno y artefactos locales del contexto de build.
+
+Los servicios API y web usan el usuario sin privilegios `node` de la imagen;
+el build asigna `/workspace` a ese usuario antes de cambiar la identidad de
+runtime. Los entrypoints `docker/api-entrypoint.sh` y
+`docker/postgres-entrypoint.sh` leen desde `/run/secrets` solo los ajustes que
+necesita cada servicio. El contenedor de API recibe el secreto de DB como
+`PGPASSWORD` y elimina `GRUMPHYA_DB_PASSWORD` del entorno antes de iniciar
+NestJS. Además, aplica una allowlist distinta a cada archivo: `.env.docker`
+solo puede definir credenciales de PostgreSQL, JWT y HMAC; `.env.openai` solo
+configuración de proveedor, modelo, razonamiento y timeout; `.env` solo
+`OPENAI_API_KEY`. Así, un
+archivo de proveedor no puede sobrescribir secretos de DB o autenticación.
+
+Compose usa secretos respaldados por archivos locales: se montan en los
+contenedores como archivos y no se copian a la imagen gracias a
+`.dockerignore`. En Compose local esos archivos no equivalen a un secret manager
+cifrado en reposo; protégelos con permisos del sistema, mantenlos ignorados por
+Git y no muestres sus contenidos. `docker compose --env-file .env.docker config`
+debe mostrar las rutas de los secretos, no sus valores.
 
 ### Arranque mixto con Node y base en Docker
 
@@ -157,13 +176,18 @@ reinicia `pnpm dev`:
 
 ```dotenv
 EVALUATION_PROVIDER=openai
-OPENAI_API_KEY=<clave-de-tu-proyecto-api>
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_REASONING_EFFORT=medium
 ```
 
+Guarda `OPENAI_API_KEY` en el archivo local ignorado `.env`. El valor de
+`EVALUATION_PROVIDER` y los ajustes del modelo se guardan en `.env.openai`;
+Compose entrega esos archivos a los entrypoints mediante `/run/secrets`, que
+exportan solo las variables permitidas. `docker compose config` muestra las
+rutas de origen de los secretos, no sus valores.
+
 No pegues una clave real en Git, documentación compartida, tickets o historial
-del shell. `pnpm dev` carga `.env.openai` además de `.env.docker`. El modelo y
+del shell. `pnpm dev` carga `.env.docker`, `.env.openai` y `.env`. El modelo y
 el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v7`
 aplica una lectura adversarial proporcional, incluye diferenciación frente a
 funciones comunes en categorías maduras y exige una puntuación en toda idea

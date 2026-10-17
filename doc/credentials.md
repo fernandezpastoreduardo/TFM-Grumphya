@@ -3,10 +3,16 @@
 ## Lo que existe ahora
 
 - GitHub: repositorio privado `fernandezpastoreduardo/TFM-Grumphya`; el acceso se realiza mediante la sesión SSH/CLI ya configurada en el equipo. No copiar ni documentar su token o clave privada.
-- Desarrollo Docker PostgreSQL: base/rol `grumphya_dev`, puerto enlazado solo a `127.0.0.1:5433`; `pnpm db:setup` genera una contraseña aleatoria en `.env.docker` con permisos `0600`. El archivo está ignorado por Git.
+- Desarrollo Docker PostgreSQL: base/rol `grumphya_dev`, puerto enlazado solo a `127.0.0.1:5433`; `pnpm db:setup` genera una contraseña aleatoria en `.env.docker` con permisos `0600`. Mantén también `.env.openai` y `.env` con permisos `0600`. Los tres archivos están ignorados por Git.
 - PostgreSQL Homebrew preexistente: la base y extensión creadas en la verificación inicial permanecen en `5432`; el flujo de la app usa el contenedor independiente en `5433`.
 - Cuentas Grumphya: el alta con plan y activación simulada están implementados; el login usa alias o correo y contraseña. La verificación real del correo y el segundo factor siguen pendientes. Revisa [plan de seguridad del registro y similitud](security-and-similarity-roadmap.md) para los controles y límites restantes.
-- Embeddings: adaptador OpenAI API `text-embedding-3-small` implementado. `OPENAI_API_KEY` se configura en el archivo local ignorado `.env.openai`; el valor y la vigencia de la clave no se documentan ni se muestran, y deben gestionarse desde OpenAI Platform. El evaluador requiere además activar `EVALUATION_PROVIDER=openai` en `.env.openai` antes de procesar evaluaciones. Pagos, correo real y producción siguen sin configurar.
+- Embeddings: adaptador OpenAI API `text-embedding-3-small` implementado. `OPENAI_API_KEY` se configura en el archivo local ignorado `.env`; el valor y la vigencia de la clave no se documentan ni se muestran, y deben gestionarse desde OpenAI Platform. El evaluador requiere además activar `EVALUATION_PROVIDER=openai` en `.env.openai` antes de procesar evaluaciones. En Compose, `.env.docker`, `.env.openai` y `.env` se montan desde el host como secretos de archivo en `/run/secrets`. El entrypoint de API usa allowlists separadas por archivo: `.env.docker` para PostgreSQL/JWT/HMAC, `.env.openai` para proveedor/modelo/timeout y `.env` únicamente para `OPENAI_API_KEY`, evitando que un archivo sobrescriba credenciales de otro ámbito. Es una protección de transporte al contenedor local, no cifrado en reposo ni sustituto de un secret manager. `docker compose config` debe mostrar rutas, nunca los valores. Pagos, correo real y producción siguen sin configurar.
+
+### Rotación en Docker local
+
+- Tras cambiar `ACCESS_TOKEN_SECRET`, `ANONYMOUS_IP_HMAC_SECRET` o la configuración/clave OpenAI, recrea la API para que vuelva a leer los archivos montados. Rotar `ACCESS_TOKEN_SECRET` invalida los access tokens ya emitidos; rotar `ANONYMOUS_IP_HMAC_SECRET` cambia la señal antiabuso de los perfiles anónimos existentes.
+- Cambiar `GRUMPHYA_DB_PASSWORD` en `.env.docker` no modifica la contraseña del rol PostgreSQL en un volumen ya inicializado. Coordina el cambio con `ALTER ROLE` en la base existente y recrea la API con el nuevo secreto. No elimines el volumen como mecanismo de rotación.
+- Los secretos respaldados por archivos locales requieren rotación manual. En producción se debe usar el secret manager del proveedor y su procedimiento de rotación.
 
 ## Cómo tratar secretos futuros
 

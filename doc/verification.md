@@ -247,3 +247,17 @@ Límites registrados en esa revisión: el rate limit por ruta en memoria es por 
 - Verificación tras resolver conflictos: `pnpm test` pasó con API 244/244 y
   web 107/107; 11 pruebas de API que requieren PostgreSQL se omitieron.
   `pnpm lint`, `pnpm typecheck` y `pnpm build` pasaron.
+
+## Copy de resultados de evaluación, 17 de octubre de 2026
+
+- Se retiró el prefijo «¿Menudo chiringuito:» de la respuesta de evaluación en tono `hard`; el titular del tono permanece separado de la explicación.
+- La API transforma códigos internos de criterios (`C01`–`C10`) y reason codes en descripciones en español común antes de devolver el mensaje público. El prompt también indica que no se deben exponer esos códigos.
+- TDD: se añadieron regresiones para el prefijo y para mensajes que incluyan `C05`/`C10`; pruebas focalizadas de renderer, servicio y adaptador de evaluación pasan (85/85).
+
+## Regresión completa y arranque Docker, 17 de octubre de 2026
+
+- `pnpm test`: API 284 aprobadas y 14 omitidas (34 archivos pasaron; 8 se omitieron); web 120 aprobadas. Las pruebas omitidas requieren una URL de base de datos de pruebas aislada que no estaba configurada en esta ejecución.
+- `pnpm lint`: correcto. La comprobación de seguridad y validación de Compose también pasó.
+- Smoke test de la aplicación en Compose: API, PostgreSQL y pgvector saludables; web respondió HTTP 200. Los servicios API y web se ejecutan como `node`; API y PostgreSQL leen sus ajustes mediante entrypoints y secretos respaldados por archivos locales. El entrypoint de API aplica allowlists separadas por archivo de origen: DB/JWT/HMAC desde `.env.docker`, configuración OpenAI desde `.env.openai` y solo `OPENAI_API_KEY` desde `.env`.
+- No se hizo una llamada live al proveedor OpenAI como parte de esta verificación. Los tests no demuestran disponibilidad de credenciales ni una evaluación en producción.
+- Rotación de secretos Docker local es manual. Recrear API vuelve a leer cambios de configuración; cambiar la contraseña DB requiere actualizar el rol PostgreSQL existente de forma coordinada. Los detalles y efectos de rotación están en [credenciales](credentials.md).

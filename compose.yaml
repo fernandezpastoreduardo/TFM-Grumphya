@@ -2,15 +2,15 @@ services:
   db:
     image: pgvector/pgvector:0.8.7-pg17
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${PGDATABASE:?Run pnpm db:setup first}
-      POSTGRES_USER: ${PGUSER:?Run pnpm db:setup first}
-      POSTGRES_PASSWORD: ${GRUMPHYA_DB_PASSWORD:?Run pnpm db:setup first}
+    command: ["/bin/sh", "/docker/postgres-entrypoint.sh"]
+    secrets:
+      - grumphya_env
     ports:
       - "127.0.0.1:${GRUMPHYA_DB_HOST_PORT:-5433}:5432"
     volumes:
       - grumphya-postgres-data:/var/lib/postgresql/data
       - ./docker/initdb/001-enable-pgvector.sql:/docker-entrypoint-initdb.d/001-enable-pgvector.sql:ro
+      - ./docker/postgres-entrypoint.sh:/docker/postgres-entrypoint.sh:ro
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
@@ -23,10 +23,12 @@ services:
       dockerfile: Dockerfile
     image: grumphya-app:local
     restart: unless-stopped
-    command: ["pnpm", "--filter", "@grumphya/api", "start:dev"]
-    env_file:
-      - .env.docker
-      - .env.openai
+    command:
+      ["sh", "/workspace/docker/api-entrypoint.sh", "pnpm", "--filter", "@grumphya/api", "start:dev"]
+    secrets:
+      - grumphya_env
+      - openai_settings
+      - openai_key
     environment:
       API_HOST: 0.0.0.0
       API_PORT: 3000
@@ -75,3 +77,11 @@ services:
 
 volumes:
   grumphya-postgres-data:
+
+secrets:
+  grumphya_env:
+    file: ./.env.docker
+  openai_settings:
+    file: ./.env.openai
+  openai_key:
+    file: ./.env
