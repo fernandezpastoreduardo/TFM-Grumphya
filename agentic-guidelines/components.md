@@ -39,3 +39,24 @@ El copy, las acciones y el contraste siguen `copy-style.md` y
 `UI-aestethics.md`. Las rutas de previsualización solo existen en desarrollo.
 
 Los componentes específicos permanecen dentro de su feature hasta que exista un segundo consumidor real.
+
+### WorstIdeasAll
+
+Listado de las peores ideas de todos los usuarios ordenado por cantidad de veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado
+
+### WorstIdeasUser
+
+Listado de las peores ideas del usuario logueado ordenado por veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado.
++ Si el usuario no está logueado debe aparecer el contenido indicado en el prototipo:
+
+    Tu historial
+    Tú también tienes tus pinitos.
+    Cuando tengas cuenta, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.
+
+    Ver planes para crear una cuenta↗
+
++ Si el usuario está logueado pero no tiene ideas rechazadas debe aparecer el siguiente contenido al estilo del prototipo:
+
+    Tu historial
+    Tú también harás tus pinitos.
+    Cuando plantes alguno, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.

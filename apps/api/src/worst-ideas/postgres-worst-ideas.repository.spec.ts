@@ -127,6 +127,13 @@ class FakePgPool {
     { safe_title: SAFE_TITLE, rejected_count: "7" },
     { safe_title: "Un calendario para no hacer nada", rejected_count: "3" },
   ];
+  userHistoryRows: Array<{
+    safe_title: string;
+    submission_count: string;
+  }> = [
+    { safe_title: SAFE_TITLE, submission_count: "4" },
+    { safe_title: "Un calendario para no hacer nada", submission_count: "2" },
+  ];
 
   async connect(): Promise<PoolClient> {
     return this.client as unknown as PoolClient;
@@ -141,6 +148,15 @@ class FakePgPool {
       return {
         rows: this.rankingRows as unknown as Row[],
         rowCount: this.rankingRows.length,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
+    if (sql.includes("FROM user_rejected_ideas AS history")) {
+      return {
+        rows: this.userHistoryRows as unknown as Row[],
+        rowCount: this.userHistoryRows.length,
         command: "SELECT",
         oid: 0,
         fields: [],
@@ -174,6 +190,27 @@ const makeRepository = (pool: FakePgPool): PostgresWorstIdeasRepository =>
   );
 
 describe("PostgresWorstIdeasRepository", () => {
+  it("lists only the requested user's safe titles and submission counts", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+    const userId = "00000000-0000-4000-8000-000000000001";
+
+    await expect(repository.getIdeaListWorstUser(userId)).resolves.toEqual([
+      { safeTitle: SAFE_TITLE, count: 4 },
+      { safeTitle: "Un calendario para no hacer nada", count: 2 },
+    ]);
+
+    expect(pool.queries[0]?.values).toEqual([userId]);
+    expect(pool.queries[0]?.sql).toContain("WHERE history.user_id = $1");
+    expect(pool.queries[0]?.sql).toContain(
+      "ORDER BY history.submission_count DESC, ideas.safe_title ASC",
+    );
+    expect(pool.queries[0]?.sql).toContain("ideas.safe_title");
+    expect(pool.queries[0]?.sql).toContain("history.submission_count");
+    expect(pool.queries[0]?.sql).not.toContain("original_idea");
+    expect(pool.queries[0]?.sql).not.toContain("idea_text");
+  });
+
   it("lists only safe titles and weekly counts ordered by the lowest score", async () => {
     const pool = new FakePgPool();
     const repository = makeRepository(pool);

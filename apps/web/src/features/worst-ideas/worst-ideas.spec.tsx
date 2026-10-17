@@ -117,9 +117,12 @@ describe("WorstIdeasAll", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
-  it("keeps the personal history mock outside the public ranking feature", () => {
+  it("keeps the personal history in its own aside", async () => {
     render(<WorstIdeas />);
 
-    expect(screen.getByRole("heading", { name: "Tú también tienes tus pinitos." })).toBeInTheDocument();
+    expect(screen.getByRole("complementary", { name: "Tu historial" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Tú también tienes tus pinitos." }),
+    ).toBeInTheDocument();
   });
 });

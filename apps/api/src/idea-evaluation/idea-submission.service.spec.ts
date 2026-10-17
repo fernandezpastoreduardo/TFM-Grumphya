@@ -35,6 +35,7 @@ const IDEMPOTENCY_HASH = createHash("sha256")
 const REQUEST_HASH = createHmac("sha256", IDEMPOTENCY_KEY)
   .update(JSON.stringify({ ideaText: IDEA_TEXT, tone: "soft" }))
   .digest("hex");
+const AUTHENTICATED_USER_ID = "00000000-0000-4000-8000-000000000001";
 
 function createDependencies(
   searchResult: unknown = { kind: "no-match" },
@@ -81,6 +82,50 @@ function createDependencies(
 }
 
 describe("IdeaSubmissionService", () => {
+  it("attributes a newly rejected idea to the authenticated user", async () => {
+    const { service, repository } = createDependencies();
+
+    await service.submit(
+      VALID_REQUEST,
+      IDEMPOTENCY_KEY,
+      undefined,
+      AUTHENTICATED_USER_ID,
+    );
+
+    expect(repository.addToWorstIdeas).toHaveBeenCalledWith(
+      SAFE_TITLE,
+      EVALUATION_RESULT.score,
+      EMBEDDING,
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+      AUTHENTICATED_USER_ID,
+    );
+  });
+
+  it("attributes a matched rejected idea to the authenticated user", async () => {
+    const { service, repository } = createDependencies({
+      kind: "match",
+      ideaId: "idea-1",
+      semanticTitle: SAFE_TITLE,
+      similarity: 0.92,
+      submissionCount: 23,
+    });
+
+    await service.submit(
+      VALID_REQUEST,
+      IDEMPOTENCY_KEY,
+      undefined,
+      AUTHENTICATED_USER_ID,
+    );
+
+    expect(repository.updateWorstIdea).toHaveBeenCalledWith(
+      "idea-1",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+      AUTHENTICATED_USER_ID,
+    );
+  });
+
   it("checks similarity first, counts the match once and returns only safe public fields", async () => {
     const { service, search, repository, evaluation } = createDependencies({
       kind: "match",

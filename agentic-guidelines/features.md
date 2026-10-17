@@ -37,7 +37,7 @@ Implementado en la API como endpoint público `GET /api/worst-ideas` y consumido
 
 ## getIdeaListWorstUser
 
-Contrato previsto para historial privado, no implementado aún: devolverá `IdeaListItemWorstUser` del usuario autenticado. Los visitantes anónimos no tienen historial personal.
+Implementado como endpoint privado `GET /api/account/worst-ideas`, consumido por el componente `WorstIdeasUser` de `/lo-peor-de-lo-peor`. `AccessTokenGuard` exige una sesión activa; el controlador obtiene el propietario exclusivamente de `request.user.userId`, nunca de parámetros ni del cuerpo de la solicitud. Devuelve un array `IdeaListItemWorstUser[]` con `{ safeTitle, count }`: una fila por idea rechazada canónica atribuida a esa cuenta, ordenada por recuento descendente y `safeTitle` ascendente. El recuento refleja las recepciones del usuario para esa idea; envíos autenticados nuevos y coincidencias semánticas lo incrementan dentro de la misma transacción que actualiza el registro común, con idempotencia por envío. No incluye autor, texto original, score, embedding ni ID interno. El endpoint tiene un límite específico de 30 solicitudes por minuto y dirección IP, además del límite general de 120 por minuto; ambos contadores son locales al proceso y no se comparten entre réplicas. Los visitantes anónimos no generan historial personal; la UI trata un `401` como estado sin sesión e invita a crear una cuenta. Si no hay ideas muestra un estado vacío distinto; fallos de carga permiten reintentar. La migración `018_user_rejected_ideas.sql` no retrocarga rechazos anteriores: el historial individual empieza a acumularse con el seguimiento autenticado habilitado.
 
 ## searchSimilarIdea
 

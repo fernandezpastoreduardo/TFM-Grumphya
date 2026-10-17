@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { WorstIdeasUser } from "./worst-ideas-user";
 import "./worst-ideas.scss";
 
 const WORST_IDEAS_ENDPOINT = "/api/worst-ideas";
@@ -137,20 +138,7 @@ export function WorstIdeas() {
   return (
     <div className="section-content-grid">
       <WorstIdeasAll />
-      <aside className="content-card personal-empty">
-        <span className="eyebrow">Tu historial</span>
-        <h2>Tú también tienes tus pinitos.</h2>
-        <p>
-          Cuando tengas cuenta, aquí podrás revisar tus ideas rechazadas. Solo
-          tú verás tu historial.
-        </p>
-        <a className="button-secondary" href="/precios">
-          Ver planes para crear una cuenta <span aria-hidden="true">↗</span>
-        </a>
-        <p className="prototype-stamp">
-          Vista de demostración; el historial todavía no está disponible.
-        </p>
-      </aside>
+      <WorstIdeasUser />
     </div>
   );
 }

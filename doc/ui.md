@@ -123,6 +123,26 @@ ascendente, después cantidad semanal descendente y título seguro ascendente;
 los registros históricos sin score quedan al final. No se altera el requisito
 ni el código en esta actualización documental.
 
+## Historial privado de ideas rechazadas
+
+La tarjeta «Tu historial» la presenta `WorstIdeasUser` y consulta
+`GET /api/account/worst-ideas` mediante el adaptador autenticado. La API requiere
+una sesión activa y determina el propietario desde el access JWT validado. El
+frontend no envía identificador de usuario. La lista muestra título seguro y
+número de recepciones propias para esa idea, con cantidad descendente y título
+ascendente como desempate.
+
+La tarjeta distingue carga, error recuperable, persona sin sesión, historial
+vacío e historial con datos. Sin sesión invita a crear una cuenta; con sesión
+pero sin rechazos explica que el historial aparecerá al enviar una idea que sea
+rechazada. Los errores permiten reintentar y no exponen datos del servidor. El
+historial es privado, no se guarda en `localStorage` y no muestra texto
+original, score, autor, embedding ni identificadores internos. La migración
+`018_user_rejected_ideas.sql` inicia el seguimiento sin retrocargar rechazos
+anteriores. La API limita este endpoint a 30 solicitudes por minuto y dirección
+IP, además del tope general de 120; ambos límites son locales al proceso y no
+se comparten entre réplicas.
+
 ## Errores
 
 Las rutas desconocidas muestran el 404 con la criatura indicando una puerta

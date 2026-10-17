@@ -10,6 +10,7 @@ const LOGIN_REQUEST_LIMIT = 5;
 const SESSION_LOGOUT_REQUEST_LIMIT = 10;
 const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
 const WORST_IDEAS_READ_REQUEST_LIMIT = 30;
+const WORST_IDEAS_USER_READ_REQUEST_LIMIT = 30;
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
@@ -106,6 +107,9 @@ export function createSecurityMiddleware(): RequestHandler {
         request.path === "/api/roast");
     const isWorstIdeasRead =
       request.method === "GET" && request.path === "/api/worst-ideas";
+    const isWorstIdeasUserRead =
+      request.method === "GET" &&
+      request.path === "/api/account/worst-ideas";
     const isRegistrationPost =
       request.method === "POST" && request.path.startsWith("/api/registration");
     const isRefreshPost =
@@ -156,6 +160,11 @@ export function createSecurityMiddleware(): RequestHandler {
         ? [
             ["api", API_REQUEST_LIMIT],
             ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT],
+          ]
+      : isWorstIdeasUserRead
+        ? [
+            ["api", API_REQUEST_LIMIT],
+            ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
           ]
       : isRegistrationPost || isAuthPost || isAccountPost || isAccountDelete
         ? [

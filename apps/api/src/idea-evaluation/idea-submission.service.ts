@@ -316,11 +316,18 @@ export class IdeaSubmissionService {
         authenticatedUserId,
       );
       try {
-        const submissionCount = await this.repository.updateWorstIdea(
-          detailedSearch.result.ideaId,
-          idempotencyHash,
-          requestHash,
-        );
+        const submissionCount = authenticatedUserId
+          ? await this.repository.updateWorstIdea(
+              detailedSearch.result.ideaId,
+              idempotencyHash,
+              requestHash,
+              authenticatedUserId,
+            )
+          : await this.repository.updateWorstIdea(
+              detailedSearch.result.ideaId,
+              idempotencyHash,
+              requestHash,
+            );
         return {
           status: "similar_idea_match",
           safeTitle: detailedSearch.result.semanticTitle,
@@ -344,13 +351,24 @@ export class IdeaSubmissionService {
           );
         }
         try {
-          await this.repository.addToWorstIdeas(
-            result.safeTitle,
-            result.score,
-            detailedSearch.embedding,
-            idempotencyHash,
-            requestHash,
-          );
+          if (authenticatedUserId) {
+            await this.repository.addToWorstIdeas(
+              result.safeTitle,
+              result.score,
+              detailedSearch.embedding,
+              idempotencyHash,
+              requestHash,
+              authenticatedUserId,
+            );
+          } else {
+            await this.repository.addToWorstIdeas(
+              result.safeTitle,
+              result.score,
+              detailedSearch.embedding,
+              idempotencyHash,
+              requestHash,
+            );
+          }
         } catch {
           this.logger.error("IDEA_REJECTION_PERSISTENCE_FAILED");
           throw new ServiceUnavailableException(

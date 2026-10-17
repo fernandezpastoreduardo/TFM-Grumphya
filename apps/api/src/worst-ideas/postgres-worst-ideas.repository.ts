@@ -2,6 +2,7 @@ import { Pool, type PoolClient } from "pg";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import type {
   IdeaListItemWorstAll,
+  IdeaListItemWorstUser,
   IdempotentRejectedIdeaMatch,
   RejectedIdeaMatch,
   RejectedIdeaSubmissionType,
@@ -36,6 +37,11 @@ interface WorstIdeaRankingRow {
   rejected_count: number | string;
 }
 
+interface WorstIdeaUserRow {
+  safe_title: string;
+  submission_count: number | string;
+}
+
 export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
   private ready?: Promise<void>;
 
@@ -60,6 +66,24 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     return result.rows.map((row) => ({
       safeTitle: row.safe_title,
       weeklyCount: Number(row.rejected_count),
+    }));
+  }
+
+  async getIdeaListWorstUser(
+    userId: string,
+  ): Promise<IdeaListItemWorstUser[]> {
+    await this.ensureSchema();
+    const result = await this.pool.query<WorstIdeaUserRow>(
+      `SELECT ideas.safe_title, history.submission_count
+       FROM user_rejected_ideas AS history
+       JOIN rejected_ideas AS ideas ON ideas.id = history.rejected_idea_id
+       WHERE history.user_id = $1
+       ORDER BY history.submission_count DESC, ideas.safe_title ASC`,
+      [userId],
+    );
+    return result.rows.map((row) => ({
+      safeTitle: row.safe_title,
+      count: Number(row.submission_count),
     }));
   }
 
@@ -104,6 +128,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     embedding: readonly number[],
     idempotencyHash: string,
     requestHash: string,
+    userId?: string,
   ): Promise<string> {
     await this.ensureSchema();
     this.validateInput(
@@ -142,6 +167,8 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
         throw new Error("Rejected idea insert returned no identifier.");
       await this.attachIdempotency(client, idempotencyHash, ideaId);
       await this.incrementWeeklyAggregate(client, ideaId);
+      if (userId)
+        await this.recordUserRejectedIdea(client, userId, ideaId);
       return ideaId;
     });
   }
@@ -219,6 +246,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     ideaId: string,
     idempotencyHash: string,
     requestHash: string,
+    userId?: string,
   ): Promise<number> {
     await this.ensureSchema();
     if (!ideaId || !idempotencyHash)
@@ -248,8 +276,26 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
         throw new Error("Rejected idea is unavailable.");
       await this.attachIdempotency(client, idempotencyHash, ideaId);
       await this.incrementWeeklyAggregate(client, ideaId);
+      if (userId)
+        await this.recordUserRejectedIdea(client, userId, ideaId);
       return Number(updated.rows[0]!.count);
     });
+  }
+
+  private async recordUserRejectedIdea(
+    client: PoolClient,
+    userId: string,
+    ideaId: string,
+  ): Promise<void> {
+    await client.query(
+      `INSERT INTO user_rejected_ideas
+         (user_id, rejected_idea_id, submission_count, last_submitted_at)
+       VALUES ($1, $2, 1, now())
+       ON CONFLICT (user_id, rejected_idea_id) DO UPDATE
+       SET submission_count = user_rejected_ideas.submission_count + 1,
+           last_submitted_at = now()`,
+      [userId, ideaId],
+    );
   }
 
   private async reserveIdempotency(

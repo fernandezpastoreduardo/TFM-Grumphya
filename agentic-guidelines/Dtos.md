@@ -69,7 +69,11 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 
 ### IdeaListItemWorstUser
 
-Vista privada del usuario autenticado. Incluye `title`, `score`, `timesSubmitted` y `submittedAt` (ISO 8601) de sus envíos rechazados. Un visitante anónimo recibe estado vacío; no hay historial local de sus ideas.
+- `GET /api/account/worst-ideas` requiere `Authorization: Bearer <access JWT>` válido y devuelve un array de estos DTOs solo para el usuario de la sesión.
+- `safeTitle: string`: título seguro de la idea rechazada.
+- `count: number`: número de recepciones atribuidas a ese usuario para la idea canónica.
+- Orden: `count` descendente y `safeTitle` ascendente. No se devuelve score, ID interno, autor, embedding ni texto original.
+- El endpoint no acepta `userId` del cliente. Sin una sesión válida responde `401`; los visitantes anónimos no tienen historial almacenado.
 
 ### NotableHumanItem
 

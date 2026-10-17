@@ -20,10 +20,16 @@ export interface IdeaListItemWorstAll {
   weeklyCount: number;
 }
 
+export interface IdeaListItemWorstUser {
+  safeTitle: string;
+  count: number;
+}
+
 export type RejectedIdeaSubmissionType = "match" | "new_rejection";
 
 export interface WorstIdeasRepository {
   getIdeaListWorstAll(): Promise<IdeaListItemWorstAll[]>;
+  getIdeaListWorstUser(userId: string): Promise<IdeaListItemWorstUser[]>;
   searchRejected(
     embedding: readonly number[],
     limit: number,
@@ -34,6 +40,7 @@ export interface WorstIdeasRepository {
     embedding: readonly number[],
     idempotencyHash: string,
     requestHash: string,
+    userId?: string,
   ): Promise<string>;
   getIdempotentMatch(
     idempotencyHash: string,
@@ -51,5 +58,6 @@ export interface WorstIdeasRepository {
     ideaId: string,
     idempotencyHash: string,
     requestHash: string,
+    userId?: string,
   ): Promise<number>;
 }

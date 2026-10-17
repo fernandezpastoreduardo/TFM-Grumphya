@@ -26,6 +26,8 @@ import type { WorstIdeasRepository } from "./worst-ideas/worst-ideas.models";
 import { WORST_IDEAS_REPOSITORY } from "./worst-ideas/worst-ideas.tokens";
 import { GetIdeaListWorstAll } from "./worst-ideas/get-idea-list-worst-all.service";
 import { GetIdeaListWorstAllController } from "./worst-ideas/get-idea-list-worst-all.controller";
+import { GetIdeaListWorstUserController } from "./worst-ideas/get-idea-list-worst-user.controller";
+import { GetIdeaListWorstUser } from "./worst-ideas/get-idea-list-worst-user.service";
 import { UserDeleteModule } from "./user-delete/user-delete.module";
 import { AuthSecurityModule } from "./infrastructure/auth/auth-security.module";
 import { PlanUsageService } from "./register-with-plan/plan-usage.service";
@@ -100,6 +102,7 @@ function createIdeaSubmissionService(
     EvaluationProcessController,
     AnonymousUsageController,
     GetIdeaListWorstAllController,
+    GetIdeaListWorstUserController,
   ],
   providers: [
     EvaluationProcessService,
@@ -124,6 +127,7 @@ function createIdeaSubmissionService(
     },
     AnonymousUsageService,
     GetIdeaListWorstAll,
+    GetIdeaListWorstUser,
     {
       provide: IDEA_SUBMISSION_SEARCH,
       useFactory: createIdeaSearch,
