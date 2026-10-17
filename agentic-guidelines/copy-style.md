@@ -28,6 +28,8 @@ More examples of copy directly in spanish:
 - No afirmar que una idea fracasará; hablar de señales, supuestos y riesgos.
 - Decir «Tus buenas ideas, las aprobadas, son tuyas». No prometer que ninguna idea se publica: de las rechazadas se puede mostrar solo un título breve y su número de recepciones, jamás el autor o el texto original.
 - En «Humanos notables» se muestra el alias y cuántas ideas se le han aprobado, sin información de esas ideas.
+- La sección de ideas rechazadas se titula «El muro de la vergüenza»; su humor
+  se dirige a las ideas y conserva la protección de datos descrita arriba.
 - Los datos de muestra se usan solo en desarrollo, pruebas y entregables de maquetación; no aparecen ante usuarios finales.
 - Los errores técnicos no culpan al usuario y ofrecen una acción siguiente.
 

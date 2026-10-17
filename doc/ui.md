@@ -50,6 +50,33 @@ la lámina maestra está en
 - En modo oscuro, los controles y superficies claras conservan texto oscuro;
   los diálogos y paneles oscuros conservan texto claro. Se comprueba también
   la combinación de colores de popups, avisos y botones secundarios.
+- La revisión de contraste cubre Home (incluidos radio, notas y errores), los
+  códigos de las páginas de error, la navegación y las vistas de Planes,
+  Contacto, Buenas prácticas, Humanos notables, Descárgate, Peores ideas y
+  Login. Los textos de controles mantienen tamaño y peso coherentes; los
+  estados activos del nav usan el rosa de «Dame tu mejor golpe» con texto
+  oscuro. En los errores, el código numérico conserva tinta oscura sobre el
+  amarillo también en el tema oscuro.
+- Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
+  distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
+  para Planes, `ultrachachi-reality-check.png` para su popup, y
+  `good-practices-problem-scout.png`, `notable-ideas-applause.png`,
+  `roast-vent.png`/`roast-plan-callout.png`, `worst-ideas-wall.png` y
+  `login-credentials.png`/`login-privacy.png` para Buenas prácticas, Humanos
+  notables, Descárgate, Peores ideas y Login respectivamente. Se mantienen
+  transparentes y sin copy incrustado; la UI conserva el contenido legible en
+  HTML. Las escenas de error existentes siguen siendo sus propios assets.
+- Para crear nuevas poses se usan como modelo los SVG aprobados de
+  `ideas-and-designs/revision-vectorial/revisados/` y las escenas completas
+  `error-scene-404.png`, `error-scene-429.png` y `error-scene-500.png`. La
+  especie, silueta, proporciones, cara gruñona, paleta turquesa y contorno
+  grueso de Grumphya no se reinterpretan. Solo varían la pose y los accesorios
+  sencillos que requiera cada sección; no se añaden rasgos físicos, ropa ni
+  expresiones alegres. Cada PNG debe conservar transparencia, carecer de texto
+  y revisarse a tamaño real sobre fondos claros y oscuros. Si la mascota deja
+  de parecer la misma, se descarta y se vuelve a generar. La primera muestra
+  validada para esta tanda es `plans-coffee.png`.
+- La sección Peores ideas usa el título «El muro de la vergüenza».
 - La versión de escritorio y la móvil conservan la misma identidad. En móvil,
   la composición se apila y mantiene separación entre grupos para que el
   textarea, las opciones, la acción y la mascota se lean como pasos distintos.

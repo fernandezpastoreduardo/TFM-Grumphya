@@ -31,11 +31,48 @@ margin.
 - Los botones de selección de tono mantienen sus paneles azul y rosa, texto negro en ambos temas y las variantes de la mascota llorando y con guantes. La mascota nace del borde inferior izquierdo del botón, con aire por encima, y el texto queda a su derecha. El botón principal de evaluación conserva el formato aprobado; sus controles interactivos usan el turquesa como color de acción por defecto. La selección de tono es una excepción deliberada.
 - En móvil, el menú abre un panel legible por encima de la capa de atenuación. La capa bloquea la interacción con el fondo y se cierra al pulsar fuera; el botón del menú queda disponible para mostrar la X y cerrar el panel.
 
+### Contraste y assets por sección
+
+- El tema oscuro mantiene contraste legible en Home, errores, navegación,
+  Planes, Contacto, Buenas prácticas, Humanos notables, Descárgate, Peores
+  ideas y Login. Los fondos claros llevan texto oscuro; los paneles oscuros,
+  texto claro. El código de error numérico usa texto negro sobre amarillo.
+  Los estados activos de navegación usan el rosa de «Dame tu mejor golpe» con
+  texto oscuro. La jerarquía y el tamaño de los controles de cuenta del nav
+  deben ser coherentes.
+- Las ilustraciones de sección pueden ser PNG transparentes originales de
+  Grumphya cuando se crean expresamente para una escena; no son una
+  reinterpretación de los SVG aprobados de `ideas-and-designs`. Deben ser
+  propias de su contexto, sin texto incrustado, y no repetirse entre secciones:
+  Planes, popup de UltraChachi, Buenas prácticas, Humanos notables, Descárgate,
+  Peores ideas y Login usan escenas diferenciadas. La ilustración acompaña al
+  contenido HTML sin reducir su contraste ni competir con su lectura.
+- **La identidad de Grumphya es fija.** Antes de crear una pose, usar como
+  referencia visual principal los SVG aprobados en
+  `ideas-and-designs/revision-vectorial/revisados/` y como referencia de
+  ilustración completa las escenas existentes `error-scene-404.png`,
+  `error-scene-429.png` y `error-scene-500.png` en
+  `apps/web/public/assets/grumphya/`. Mantener especie, silueta y proporciones,
+  cabeza grande y redondeada, dos orejas puntiagudas, cuerpo compacto, patas y
+  brazos cortos, ojos entornados, nariz triangular rosa, boca ceñuda, mejillas
+  rosas, contorno oscuro grueso y paleta turquesa. La expresión sigue siendo
+  gruñona, escéptica o impasible, según la escena. Se pueden variar pose y
+  accesorios sencillos que la situación necesite; no se inventan rasgos
+  físicos, ropa, anatomía, expresiones alegres ni personalidad nueva. Cada
+  escena debe parecer la misma mascota dibujada por el mismo equipo, no un
+  personaje inspirado en ella.
+- Al generar una ilustración, incluir una referencia visual aprobada en el
+  proceso y revisar el PNG final a tamaño real sobre fondos claros y oscuros.
+  Rechazar y regenerar cualquier resultado que cambie la cara, el contorno, la
+  complexión o la paleta de Grumphya. Las variaciones aprobadas de tono y las
+  escenas de error sirven como guía de actitudes: la acción puede cambiar, el
+  carácter reconocible permanece.
+
 ## Reglas visuales obligatorias para todas las fases
 
 - En móvil vertical se conserva el orden de lectura y se reorganiza la composición para el espacio disponible; no es una web de escritorio encogida.
 - En escritorio se adapta la misma identidad y el mismo orden de lectura; se puede aprovechar el ancho con columnas, sin estirar controles ni convertir la vista en una maqueta distinta.
-- Toda mascota tomada de `ideas-and-designs` se integra como vector SVG, con fondo transparente. No se rasteriza ni se encierra en una tarjeta blanca incluida en la ilustración; el fondo de la interfaz, si lo necesita, pertenece al componente de UI.
+- Toda mascota tomada de `ideas-and-designs` se integra como vector SVG, con fondo transparente. No se rasteriza ni se encierra en una tarjeta blanca incluida en la ilustración; el fondo de la interfaz, si lo necesita, pertenece al componente de UI. Las nuevas escenas ilustradas para una sección pueden entregarse como PNG transparente original, con el mismo cuidado de no incorporar fondos de UI ni texto.
 - La referencia original se conserva. Si un SVG trae un fondo opaco, se prepara una variante vectorial transparente y se verifica visualmente antes de integrarla.
 - La interfaz debe tener una dirección visual propia de Grumphya: criaturas y expresiones con intención, composición con carácter y jerarquía reconocible. No se acepta una plantilla SaaS genérica ni ilustración de stock como sustituto.
 - Estas reglas aplican desde el prototipo y en cada fase; pulir accesibilidad o responsive no es motivo para diluir la identidad visual.
