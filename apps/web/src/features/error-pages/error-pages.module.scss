@@ -150,6 +150,10 @@
   background: #f5f6e9;
 }
 
+:global(.theme-dark) .errorCode {
+  color: #172123;
+}
+
 :global(.theme-dark) .secondaryAction {
   color: #d5fff0;
 }

@@ -61,6 +61,14 @@
     600 1.3rem "Fredoka",
     sans-serif;
 }
+
+.theme-dark .contact-card {
+  color: #172123;
+}
+
+.theme-dark .contact-plan-note {
+  color: #334b4b;
+}
 .contact-layout {
   grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
 }

@@ -1020,3 +1020,27 @@
 .theme-dark .idea-tone-option .idea-tone-description {
   color: #172123 !important;
 }
+
+.theme-dark .idea-tone-option input {
+  accent-color: #000;
+}
+
+.idea-privacy-note {
+  font-size: 0.82rem;
+}
+
+.theme-dark .idea-privacy-note {
+  color: #fff;
+}
+
+.theme-dark .idea-input-error {
+  border-color: #a71938;
+  color: #8d1530;
+  background: #fff0f2;
+}
+
+@media (max-width: 640px) {
+  .idea-privacy-note {
+    font-size: 0.76rem;
+  }
+}

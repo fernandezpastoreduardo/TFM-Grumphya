@@ -288,8 +288,26 @@
 }
 
 .theme-dark .home-result-error {
-  border-color: #f2a2b5;
-  color: #ffe0e8;
+  border-color: #b42342;
+  color: #8f1733;
+  background: #fff0f2;
+}
+
+.theme-dark .home-nav-link.is-current {
+  border-color: #f28da3;
+  color: #172123;
+  background: #f28da3;
+}
+
+.home-page.theme-dark::after {
+  z-index: 0;
+  opacity: 0.44;
+}
+
+.home-page.theme-dark .home-nav-link.is-current {
+  border-color: #f28da3;
+  color: #172123;
+  background: #f28da3;
 }
 
 .home-footer {
@@ -2023,6 +2041,18 @@
 .home-login-button {
   background: #fffefa;
 }
+
+/* Keep both account actions visually consistent, including their typography. */
+.home-login-button,
+.home-register-button {
+  font: 900 0.79rem/1.15 "Nunito Sans", "Trebuchet MS", sans-serif;
+}
+
+.theme-dark .home-nav-link.is-current {
+  border-color: var(--color-pink);
+  color: #fffefa;
+  background: var(--color-pink);
+}
 .hero-rays-copy-start {
   left: -38px;
   transform: rotate(-9deg);
@@ -2753,6 +2783,20 @@
   .theme-toggle[aria-checked="true"] .theme-switch-thumb {
     transform: translateX(39px);
   }
+}
+
+.home-workspace,
+.idea-privacy-note,
+.home-result,
+.home-footer {
+  position: relative;
+  z-index: 21;
+}
+
+.theme-dark .home-nav-link.is-current {
+  border-color: #f28da3;
+  color: #172123;
+  background: #f28da3;
 }
 @media (max-width: 979px) {
   .home-mobile-menu.mobile-menu-portal nav {

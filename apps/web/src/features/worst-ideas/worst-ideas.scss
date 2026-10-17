@@ -111,6 +111,28 @@
     0 2px 0 #18565d0a;
 }
 
+.theme-dark .ranking-card {
+  color: #172123;
+}
+
+.theme-dark .idea-ranking .ranking-position {
+  color: #245e58;
+}
+
+.theme-dark .idea-ranking .ranking-count strong {
+  color: #9e3048;
+}
+
+.theme-dark .ranking-card .eyebrow,
+.theme-dark .ranking-card .privacy-footnote,
+.theme-dark .ranking-card .prototype-stamp {
+  color: #314b4b;
+}
+
+.theme-dark .personal-empty {
+  color: #f3fff3;
+}
+
 .personal-empty {
   border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
   border-radius: 22px;
