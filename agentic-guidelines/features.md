@@ -33,7 +33,7 @@ Forma parte de la primera entrega. Solicita permiso de micrófono, transcribe te
 
 ## getIdeaListWorstAll
 
-Contrato previsto para el ranking público, no implementado aún: devolverá `IdeaListItemWorstAll` para ideas rechazadas de la semana ISO actual en `Europe/Madrid`, ordenadas por el menor score de la rúbrica v1. La respuesta pública incluirá solo título y cantidad semanal, nunca autor ni texto original.
+Implementado en la API como endpoint público `GET /api/worst-ideas`. Devuelve `IdeaListItemWorstAll[]` de la semana ISO actual en `Europe/Madrid`, ordenado por score ascendente de la rúbrica v1 (los históricos sin score quedan al final), luego por cantidad semanal descendente y título seguro ascendente. La respuesta incluye solo `safeTitle` y `weeklyCount`; nunca autor, embedding ni texto original. El score conceptual se persiste con el rechazo para permitir la ordenación y no forma parte de la respuesta. El endpoint tiene un límite específico de 30 solicitudes por minuto y dirección IP, además del límite general de 120 por minuto; ambos contadores son locales al proceso y no se comparten entre réplicas. El componente visual sigue usando datos de muestra y queda fuera de este alcance.
 
 ## getIdeaListWorstUser
 

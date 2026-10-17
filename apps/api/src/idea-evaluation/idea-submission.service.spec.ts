@@ -284,6 +284,7 @@ describe("IdeaSubmissionService", () => {
     expect(evaluation.evaluate).toHaveBeenCalledWith(VALID_REQUEST);
     expect(repository.addToWorstIdeas).toHaveBeenCalledWith(
       SAFE_TITLE,
+      EVALUATION_RESULT.score,
       EMBEDDING,
       IDEMPOTENCY_HASH,
       expect.stringMatching(/^[a-f0-9]{64}$/),

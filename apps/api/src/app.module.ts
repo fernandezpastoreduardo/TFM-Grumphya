@@ -24,6 +24,8 @@ import { OpenAiSemanticIdeaFingerprintPort } from "./search-similar-idea/openai-
 import { PostgresWorstIdeasRepository } from "./worst-ideas/postgres-worst-ideas.repository";
 import type { WorstIdeasRepository } from "./worst-ideas/worst-ideas.models";
 import { WORST_IDEAS_REPOSITORY } from "./worst-ideas/worst-ideas.tokens";
+import { GetIdeaListWorstAll } from "./worst-ideas/get-idea-list-worst-all.service";
+import { GetIdeaListWorstAllController } from "./worst-ideas/get-idea-list-worst-all.controller";
 import { UserDeleteModule } from "./user-delete/user-delete.module";
 import { AuthSecurityModule } from "./infrastructure/auth/auth-security.module";
 import { PlanUsageService } from "./register-with-plan/plan-usage.service";
@@ -97,6 +99,7 @@ function createIdeaSubmissionService(
     HealthController,
     EvaluationProcessController,
     AnonymousUsageController,
+    GetIdeaListWorstAllController,
   ],
   providers: [
     EvaluationProcessService,
@@ -120,6 +123,7 @@ function createIdeaSubmissionService(
         new PostgresAnonymousUsageRepository(createPostgresPool()),
     },
     AnonymousUsageService,
+    GetIdeaListWorstAll,
     {
       provide: IDEA_SUBMISSION_SEARCH,
       useFactory: createIdeaSearch,

@@ -4,6 +4,7 @@ import { PostgresWorstIdeasRepository } from "./postgres-worst-ideas.repository"
 
 const VALID_EMBEDDING = Array.from({ length: 1536 }, () => 0.25);
 const SAFE_TITLE = "La red social de las tostadoras";
+const REJECTION_SCORE = 2.4;
 const IDEMPOTENCY_HASH = "sha256:anonymized-hash";
 const REQUEST_HASH = "hmac:anonymized-request-hash";
 const IDEA_ID = "5d5e03ab-753d-4fa0-b5ec-f1d55abe4382";
@@ -119,6 +120,13 @@ class FakePgClient {
 class FakePgPool {
   readonly client = new FakePgClient();
   readonly queries: CapturedQuery[] = [];
+  rankingRows: Array<{
+    safe_title: string;
+    rejected_count: string;
+  }> = [
+    { safe_title: SAFE_TITLE, rejected_count: "7" },
+    { safe_title: "Un calendario para no hacer nada", rejected_count: "3" },
+  ];
 
   async connect(): Promise<PoolClient> {
     return this.client as unknown as PoolClient;
@@ -129,6 +137,15 @@ class FakePgPool {
     values?: unknown[],
   ): Promise<QueryResult<Row>> {
     this.queries.push({ sql, values });
+    if (sql.includes("FROM rejected_idea_weekly_counts")) {
+      return {
+        rows: this.rankingRows as unknown as Row[],
+        rowCount: this.rankingRows.length,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
     return {
       rows: [
         {
@@ -157,6 +174,30 @@ const makeRepository = (pool: FakePgPool): PostgresWorstIdeasRepository =>
   );
 
 describe("PostgresWorstIdeasRepository", () => {
+  it("lists only safe titles and weekly counts ordered by the lowest score", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+
+    await expect(repository.getIdeaListWorstAll()).resolves.toEqual([
+      { safeTitle: SAFE_TITLE, weeklyCount: 7 },
+      { safeTitle: "Un calendario para no hacer nada", weeklyCount: 3 },
+    ]);
+
+    expect(pool.queries[0]?.sql).toContain("Europe/Madrid");
+    expect(pool.queries[0]?.sql).toContain(
+      "weekly.week_start = date_trunc('week', now() AT TIME ZONE 'Europe/Madrid')::date",
+    );
+    expect(pool.queries[0]?.sql).toContain(
+      "JOIN rejected_ideas AS ideas ON ideas.id = weekly.rejected_idea_id",
+    );
+    expect(pool.queries[0]?.sql).toContain("ideas.safe_title");
+    expect(pool.queries[0]?.sql).toContain("weekly.rejected_count");
+    expect(pool.queries[0]?.sql).toContain("rubric_score ASC NULLS LAST");
+    expect(pool.queries[0]?.sql).toContain("rejected_count DESC");
+    expect(pool.queries[0]?.sql).not.toContain("idea_text");
+    expect(pool.queries[0]?.sql).not.toContain("user_id");
+  });
+
   it("searches by vector distance and returns only safe public fields", async () => {
     const pool = new FakePgPool();
     const repository = makeRepository(pool);
@@ -203,6 +244,7 @@ describe("PostgresWorstIdeasRepository", () => {
     await expect(
       repository.addToWorstIdeas(
         SAFE_TITLE,
+        REJECTION_SCORE,
         VALID_EMBEDDING,
         IDEMPOTENCY_HASH,
         REQUEST_HASH,
@@ -224,6 +266,7 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(insert?.sql).not.toContain("idea_text");
     expect(insert?.values).toEqual([
       SAFE_TITLE,
+      REJECTION_SCORE,
       `[${VALID_EMBEDDING.join(",")}]`,
       "openai",
       "text-embedding-3-small-semantic-v1",
@@ -247,6 +290,7 @@ describe("PostgresWorstIdeasRepository", () => {
     await expect(
       repository.addToWorstIdeas(
         SAFE_TITLE,
+        REJECTION_SCORE,
         VALID_EMBEDDING,
         IDEMPOTENCY_HASH,
         REQUEST_HASH,
@@ -383,6 +427,7 @@ describe("PostgresWorstIdeasRepository", () => {
 
     await repository.addToWorstIdeas(
       SAFE_TITLE,
+      REJECTION_SCORE,
       VALID_EMBEDDING,
       IDEMPOTENCY_HASH,
       REQUEST_HASH,
@@ -399,6 +444,26 @@ describe("PostgresWorstIdeasRepository", () => {
     ]);
   });
 
+  it("persists the rubric score with the rejected idea", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+
+    await repository.addToWorstIdeas(
+      SAFE_TITLE,
+      REJECTION_SCORE,
+      VALID_EMBEDDING,
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+
+    const insert = pool.client.queries.find(({ sql }) =>
+      sql.includes("INSERT INTO rejected_ideas"),
+    );
+    expect(insert?.sql).toContain("(safe_title, rubric_score, embedding,");
+    expect(insert?.values?.[0]).toBe(SAFE_TITLE);
+    expect(insert?.values?.[1]).toBe(REJECTION_SCORE);
+  });
+
   it("rejects invalid embeddings before querying", async () => {
     const pool = new FakePgPool();
     const repository = makeRepository(pool);
@@ -407,5 +472,21 @@ describe("PostgresWorstIdeasRepository", () => {
       "Rejected idea embedding is invalid.",
     );
     expect(pool.queries).toHaveLength(0);
+  });
+
+  it("rejects an out-of-range public score before writing", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+
+    await expect(
+      repository.addToWorstIdeas(
+        SAFE_TITLE,
+        10.1,
+        VALID_EMBEDDING,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
+    ).rejects.toThrow("Rejected idea input is invalid.");
+    expect(pool.client.queries).toHaveLength(0);
   });
 });

@@ -49,6 +49,10 @@ const MIGRATIONS = [
     version: "016_auth_refresh_rotation_history",
     file: "016_auth_refresh_rotation_history.sql",
   },
+  {
+    version: "017_worst_ideas_rubric_score",
+    file: "017_worst_ideas_rubric_score.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

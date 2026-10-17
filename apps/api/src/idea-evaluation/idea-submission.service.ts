@@ -337,7 +337,7 @@ export class IdeaSubmissionService {
         this.toEvaluationRequest(request),
       );
       if (result.status === "RECHAZADA") {
-        if (!result.safeTitle) {
+        if (!result.safeTitle || result.score === null) {
           this.logger.error("IDEA_REJECTION_TITLE_UNAVAILABLE");
           throw new ServiceUnavailableException(
             INVALID_REJECTION_TITLE_RESPONSE,
@@ -346,6 +346,7 @@ export class IdeaSubmissionService {
         try {
           await this.repository.addToWorstIdeas(
             result.safeTitle,
+            result.score,
             detailedSearch.embedding,
             idempotencyHash,
             requestHash,

@@ -1,6 +1,7 @@
 import { Pool, type PoolClient } from "pg";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import type {
+  IdeaListItemWorstAll,
   IdempotentRejectedIdeaMatch,
   RejectedIdeaMatch,
   RejectedIdeaSubmissionType,
@@ -30,6 +31,11 @@ interface RejectedIdeaRow {
   dimension: number;
 }
 
+interface WorstIdeaRankingRow {
+  safe_title: string;
+  rejected_count: number | string;
+}
+
 export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
   private ready?: Promise<void>;
 
@@ -39,6 +45,23 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
       pool: Pool,
     ) => Promise<void> = runMigrations,
   ) {}
+
+  async getIdeaListWorstAll(): Promise<IdeaListItemWorstAll[]> {
+    await this.ensureSchema();
+    const result = await this.pool.query<WorstIdeaRankingRow>(
+      `SELECT ideas.safe_title, weekly.rejected_count
+       FROM rejected_idea_weekly_counts AS weekly
+       JOIN rejected_ideas AS ideas ON ideas.id = weekly.rejected_idea_id
+       WHERE weekly.week_start = date_trunc('week', now() AT TIME ZONE '${MADRID_TIME_ZONE}')::date
+       ORDER BY ideas.rubric_score ASC NULLS LAST,
+                weekly.rejected_count DESC,
+                ideas.safe_title ASC`,
+    );
+    return result.rows.map((row) => ({
+      safeTitle: row.safe_title,
+      weeklyCount: Number(row.rejected_count),
+    }));
+  }
 
   async searchRejected(
     embedding: readonly number[],
@@ -77,12 +100,19 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
 
   async addToWorstIdeas(
     safeTitle: string,
+    score: number,
     embedding: readonly number[],
     idempotencyHash: string,
     requestHash: string,
   ): Promise<string> {
     await this.ensureSchema();
-    this.validateInput(safeTitle, embedding, idempotencyHash, requestHash);
+    this.validateInput(
+      safeTitle,
+      score,
+      embedding,
+      idempotencyHash,
+      requestHash,
+    );
     return this.transaction(async (client) => {
       const reserved = await this.reserveIdempotency(
         client,
@@ -95,11 +125,12 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
 
       const inserted = await client.query<{ id: string }>(
         `INSERT INTO rejected_ideas
-           (safe_title, embedding, count, last_received_at, embedding_source, embedding_version, embedding_dimension)
-         VALUES ($1, $2${SQL_VECTOR_CAST}, 1, now(), $3, $4, $5)
+           (safe_title, rubric_score, embedding, count, last_received_at, embedding_source, embedding_version, embedding_dimension)
+         VALUES ($1, $2, $3${SQL_VECTOR_CAST}, 1, now(), $4, $5, $6)
          RETURNING id`,
         [
           safeTitle,
+          score,
           this.serializeEmbedding(embedding),
           VECTOR_SOURCE,
           VECTOR_VERSION,
@@ -342,6 +373,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
 
   private validateInput(
     safeTitle: string,
+    score: number,
     embedding: readonly number[],
     idempotencyHash: string,
     requestHash: string,
@@ -350,6 +382,9 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     if (
       !safeTitle.trim() ||
       safeTitle.length > 160 ||
+      !Number.isFinite(score) ||
+      score < 0 ||
+      score > 10 ||
       !idempotencyHash.trim() ||
       !requestHash.trim()
     ) {

@@ -15,15 +15,22 @@ export interface IdempotentRejectedIdeaMatch {
   count: number;
 }
 
+export interface IdeaListItemWorstAll {
+  safeTitle: string;
+  weeklyCount: number;
+}
+
 export type RejectedIdeaSubmissionType = "match" | "new_rejection";
 
 export interface WorstIdeasRepository {
+  getIdeaListWorstAll(): Promise<IdeaListItemWorstAll[]>;
   searchRejected(
     embedding: readonly number[],
     limit: number,
   ): Promise<RejectedIdeaMatch[]>;
   addToWorstIdeas(
     safeTitle: string,
+    score: number,
     embedding: readonly number[],
     idempotencyHash: string,
     requestHash: string,
