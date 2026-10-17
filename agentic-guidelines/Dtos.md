@@ -64,7 +64,7 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 - `GET /api/worst-ideas` es público y devuelve una lista JSON de estos DTOs para la semana ISO actual de `Europe/Madrid`.
 - `safeTitle: string`: título genérico seguro de la idea rechazada; no incluye autor ni texto original.
 - `weeklyCount: number`: número de recepciones agregadas para esa idea durante la semana actual.
-- Orden: score de rúbrica ascendente, valores históricos sin score al final; en empate, `weeklyCount` descendente y `safeTitle` ascendente. El score solo ordena y no se devuelve en el DTO.
+- Orden: `weeklyCount` descendente y `safeTitle` ascendente como desempate. El score de rúbrica no participa en el orden ni se devuelve en el DTO.
 - Lista vacía si no hay registros semanales. No se mezclan datos de muestra.
 
 ### IdeaListItemWorstUser

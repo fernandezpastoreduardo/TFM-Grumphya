@@ -211,7 +211,7 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(pool.queries[0]?.sql).not.toContain("idea_text");
   });
 
-  it("lists only safe titles and weekly counts ordered by the lowest score", async () => {
+  it("prioritizes weekly repetition count over the rubric score", async () => {
     const pool = new FakePgPool();
     const repository = makeRepository(pool);
 
@@ -229,8 +229,10 @@ describe("PostgresWorstIdeasRepository", () => {
     );
     expect(pool.queries[0]?.sql).toContain("ideas.safe_title");
     expect(pool.queries[0]?.sql).toContain("weekly.rejected_count");
-    expect(pool.queries[0]?.sql).toContain("rubric_score ASC NULLS LAST");
-    expect(pool.queries[0]?.sql).toContain("rejected_count DESC");
+    expect(pool.queries[0]?.sql).toMatch(
+      /ORDER BY\s+weekly\.rejected_count DESC,\s+ideas\.safe_title ASC/,
+    );
+    expect(pool.queries[0]?.sql).not.toContain("rubric_score ASC");
     expect(pool.queries[0]?.sql).not.toContain("idea_text");
     expect(pool.queries[0]?.sql).not.toContain("user_id");
   });

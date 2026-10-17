@@ -59,8 +59,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
        FROM rejected_idea_weekly_counts AS weekly
        JOIN rejected_ideas AS ideas ON ideas.id = weekly.rejected_idea_id
        WHERE weekly.week_start = date_trunc('week', now() AT TIME ZONE '${MADRID_TIME_ZONE}')::date
-       ORDER BY ideas.rubric_score ASC NULLS LAST,
-                weekly.rejected_count DESC,
+       ORDER BY weekly.rejected_count DESC,
                 ideas.safe_title ASC`,
     );
     return result.rows.map((row) => ({
@@ -69,9 +68,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     }));
   }
 
-  async getIdeaListWorstUser(
-    userId: string,
-  ): Promise<IdeaListItemWorstUser[]> {
+  async getIdeaListWorstUser(userId: string): Promise<IdeaListItemWorstUser[]> {
     await this.ensureSchema();
     const result = await this.pool.query<WorstIdeaUserRow>(
       `SELECT ideas.safe_title, history.submission_count
@@ -167,8 +164,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
         throw new Error("Rejected idea insert returned no identifier.");
       await this.attachIdempotency(client, idempotencyHash, ideaId);
       await this.incrementWeeklyAggregate(client, ideaId);
-      if (userId)
-        await this.recordUserRejectedIdea(client, userId, ideaId);
+      if (userId) await this.recordUserRejectedIdea(client, userId, ideaId);
       return ideaId;
     });
   }
@@ -276,8 +272,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
         throw new Error("Rejected idea is unavailable.");
       await this.attachIdempotency(client, idempotencyHash, ideaId);
       await this.incrementWeeklyAggregate(client, ideaId);
-      if (userId)
-        await this.recordUserRejectedIdea(client, userId, ideaId);
+      if (userId) await this.recordUserRejectedIdea(client, userId, ideaId);
       return Number(updated.rows[0]!.count);
     });
   }

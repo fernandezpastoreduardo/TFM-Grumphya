@@ -116,12 +116,10 @@ El endpoint y el DTO se especifican en `agentic-guidelines/Dtos.md`; la
 implementación automatizada del componente está cubierta en
 `apps/web/src/features/worst-ideas/worst-ideas.spec.tsx`.
 
-**Pendiente de alineación de orden:** el requisito local conservado en
-`agentic-guidelines/components.md` pide ordenar por cantidad descendente. La
-implementación actual conserva el orden que devuelve la API: score conceptual
-ascendente, después cantidad semanal descendente y título seguro ascendente;
-los registros históricos sin score quedan al final. No se altera el requisito
-ni el código en esta actualización documental.
+El ranking ordena por cantidad de recepciones durante la semana, de mayor a
+menor, y usa el título seguro ascendente para desempatar. El score de rúbrica
+almacenado no cambia la posición, por lo que una idea con menos repeticiones no
+puede superar a otra con más recepciones por haber recibido un score menor.
 
 ## Historial privado de ideas rechazadas
 
