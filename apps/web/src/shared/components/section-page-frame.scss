@@ -227,6 +227,26 @@
   background-image: url("/assets/grumphya/mascot-pointing.svg");
   transform: rotate(2deg);
 }
+.section-hero-mascot.mascot-plans {
+  background-image: url("/assets/grumphya/plans-coffee.png");
+  transform: none;
+}
+.section-hero-mascot.mascot-good-practices {
+  background-image: url("/assets/grumphya/good-practices-problem-scout.png");
+  transform: none;
+}
+.section-hero-mascot.mascot-roast {
+  background-image: url("/assets/grumphya/roast-vent.png");
+  transform: none;
+}
+.section-hero-mascot.mascot-worst-ideas {
+  background-image: url("/assets/grumphya/worst-ideas-wall.png");
+  transform: none;
+}
+.section-hero-mascot.mascot-login {
+  background-image: url("/assets/grumphya/login-credentials.png");
+  transform: none;
+}
 .hero-scribble {
   position: absolute;
   right: 24%;
@@ -776,6 +796,16 @@
   color: #055e6c;
   background: transparent;
   box-shadow: none;
+}
+
+.theme-dark .site-nav a[aria-current="page"] {
+  color: #fffefa;
+  background: var(--color-pink);
+  box-shadow: inset 0 -3px var(--color-pink);
+}
+
+.theme-dark .site-account-link {
+  color: #172123;
 }
 
 .section-main {
@@ -1535,4 +1565,20 @@
     color: #fffefa;
     background: var(--color-pink);
   }
+}
+
+.theme-dark .section-kicker {
+  color: #172123;
+  background: #fffefa;
+}
+
+.app-page.theme-dark::after {
+  z-index: 0;
+  opacity: 0.44;
+}
+
+.app-page.theme-dark .site-nav a[aria-current="page"] {
+  border-color: #f28da3;
+  color: #172123;
+  background: #f28da3;
 }

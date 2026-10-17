@@ -52,9 +52,12 @@ export function GoodPractices() {
         </article>
       </div>
       <aside className="calm-note">
-        <span className="calm-eyes" aria-hidden="true">
-          ◉ ◉
-        </span>
+        <img
+          className="calm-mascot"
+          src="/assets/grumphya/good-practices-problem-scout.png"
+          alt=""
+          aria-hidden="true"
+        />
         <div>
           <strong>Sobre IA y vibe-coding</strong>
           <p>

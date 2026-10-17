@@ -62,6 +62,14 @@
   font-size: 0.82rem;
   line-height: 1.5;
 }
+
+.theme-dark .auth-card {
+  color: #172123;
+}
+
+.theme-dark .auth-privacy {
+  color: #334b4b;
+}
 .auth-aside {
   border: 2px solid var(--color-teal-dark);
   border-radius: 24px;
@@ -83,6 +91,10 @@
   height: 220px;
   background: url("/assets/grumphya/mascot-neutral.svg") center
     bottom / contain no-repeat;
+}
+
+.auth-creature-privacy {
+  background-image: url("/assets/grumphya/login-privacy.png");
 }
 .account-plan-required {
   display: grid;

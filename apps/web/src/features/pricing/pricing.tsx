@@ -133,9 +133,12 @@ export function Pricing() {
           >
             ×
           </button>
-          <span className="dialog-flashlight" aria-hidden="true">
-            ◉
-          </span>
+          <img
+            className="dialog-mascot"
+            src="/assets/grumphya/ultrachachi-reality-check.png"
+            alt=""
+            aria-hidden="true"
+          />
           <span className="eyebrow">Una lección gratis</span>
           <h2 id="ultra-dialog-title">¿Aún estamos así de verde?</h2>
           <p>

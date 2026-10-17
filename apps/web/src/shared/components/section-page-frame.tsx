@@ -12,7 +12,14 @@ export type SectionPageMeta = {
   title: string;
   intro: string;
   theme: "rose" | "blue" | "mint" | "calm";
-  mascot?: "judge" | "pointing";
+  mascot?:
+    | "judge"
+    | "pointing"
+    | "plans"
+    | "good-practices"
+    | "roast"
+    | "worst-ideas"
+    | "login";
 };
 
 const SECTION_LINKS = [
@@ -117,6 +124,7 @@ function SectionHeader({
 }
 
 function SectionHero({ page }: { page: SectionPageMeta }) {
+  const mascotClass = page.mascot ? ` mascot-${page.mascot}` : "";
   return (
     <section className={`section-hero section-hero-${page.theme}`}>
       <div className="section-hero-copy">
@@ -130,7 +138,7 @@ function SectionHero({ page }: { page: SectionPageMeta }) {
         <p>{page.intro}</p>
       </div>
       <div
-        className={`section-hero-mascot${page.mascot === "pointing" ? " mascot-pointing" : ""}`}
+        className={`section-hero-mascot${mascotClass}`}
         role="img"
         aria-label="Grumphya, la criatura que examina las ideas"
       />

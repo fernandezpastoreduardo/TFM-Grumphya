@@ -59,9 +59,12 @@ export function NotableHumans() {
         </p>
       </section>
       <aside className="human-callout">
-        <div className="human-callout-face" aria-hidden="true">
-          ◉‿◉
-        </div>
+        <img
+          className="human-callout-mascot"
+          src="/assets/grumphya/notable-ideas-applause.png"
+          alt=""
+          aria-hidden="true"
+        />
         <span className="eyebrow">Tu turno</span>
         <h2>La próxima idea brillante podría ser tuya.</h2>
         <p>

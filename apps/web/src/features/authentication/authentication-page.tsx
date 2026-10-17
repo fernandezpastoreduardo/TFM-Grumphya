@@ -107,7 +107,10 @@ export function AuthenticationPage() {
         </div>
       </section>
       <aside className="auth-aside">
-        <div className="auth-creature" aria-hidden="true" />
+        <div
+          className="auth-creature auth-creature-privacy"
+          aria-hidden="true"
+        />
         <h2>Tu historial no es público.</h2>
         <p>
           El acceso real usará sesión segura, errores genéricos y límites

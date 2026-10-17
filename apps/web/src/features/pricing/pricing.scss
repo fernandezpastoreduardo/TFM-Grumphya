@@ -92,6 +92,25 @@
   font-weight: 800;
   line-height: 1.5;
 }
+
+.theme-dark .price-card-illuminated {
+  color: #172123;
+  background: #e1f0cb;
+}
+
+.theme-dark .price-card-roast {
+  color: #172123;
+  background: #f7dce2;
+}
+
+.theme-dark .ultra-card {
+  color: #172123;
+  background: #d6d1df;
+}
+
+.theme-dark .price-card .prototype-stamp {
+  color: #405655;
+}
 .ultra-card {
   position: relative;
   gap: 14px;
@@ -137,14 +156,12 @@
   font-size: 0.61rem;
   font-weight: 900;
 }
-.dialog-flashlight {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  place-items: center;
-  border-radius: 50%;
-  background: #ffe694;
-  font-size: 1.6rem;
+.dialog-mascot {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 12px;
+  object-fit: contain;
 }
 @media (max-width: 640px) {
   .pricing-grid {
@@ -195,6 +212,27 @@
 
 .price-card p {
   line-height: 1.55;
+}
+
+.theme-dark .ultra-card {
+  color: #172123;
+  background: #d6d1df;
+}
+
+.theme-dark .price-card,
+.theme-dark .ultra-card {
+  color: #172123;
+}
+
+.theme-dark .plan-renewal-copy {
+  border-left-color: #f493b1;
+  color: #f3fff3;
+  background: #315c56;
+}
+
+.theme-dark .ultra-card .eyebrow,
+.theme-dark .ultra-card > small {
+  color: #263a3b;
 }
 
 .price-card h2 {

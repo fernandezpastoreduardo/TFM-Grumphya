@@ -143,10 +143,9 @@
 .aside-creature {
   height: 172px;
   margin: -8px auto 10px;
-  background: url("/assets/grumphya/mascot-neutral.svg")
+  background: url("/assets/grumphya/roast-plan-callout.png")
     center / contain no-repeat;
   filter: drop-shadow(4px 7px 0 #1a4e5030);
-  background-image: url("/assets/grumphya/mascot-hands-on-hips.svg");
 }
 .roast-aside h2 {
   font-size: 1.9rem;
@@ -236,6 +235,25 @@
 
 .roast-composer button {
   background: #0bb0b7;
+}
+
+.theme-dark .roast-demo {
+  color: #172123;
+}
+
+.theme-dark .roast-demo .eyebrow,
+.theme-dark .roast-demo .prototype-stamp,
+.theme-dark .roast-demo .privacy-footnote {
+  color: #314b4b;
+}
+
+.theme-dark .roast-aside {
+  color: #172123;
+}
+
+.theme-dark .roast-aside .eyebrow,
+.theme-dark .roast-aside .privacy-footnote {
+  color: #314b4b;
 }
 
 .roast-aside {
