@@ -94,6 +94,35 @@ la lámina maestra está en
   tienen semántica nativa, nombre accesible, estado anunciado y foco visible.
   Los colores no son la única forma de comunicar selección o estado.
 
+## Ranking público de ideas rechazadas
+
+La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». El componente
+`WorstIdeasAll` obtiene los datos reales de `GET /api/worst-ideas`; no incluye
+filas de ejemplo en el ranking público. Cada fila muestra su puesto, el título
+seguro y el número de recepciones de la semana actual. El pie aclara que no se
+muestran autor ni texto original.
+
+Mientras espera la respuesta anuncia «Cargando el ranking semanal…». Si la
+petición falla o el JSON no cumple el contrato, muestra un mensaje genérico y
+un botón «Volver a intentarlo». Una respuesta válida vacía se muestra como un
+estado informativo, y una lista con datos se presenta como lista ordenada con
+nombre accesible. Las peticiones se cancelan al desmontar el componente; no se
+reflejan detalles internos del error.
+
+Las filas y mensajes mantienen texto oscuro sobre superficies claras también
+en el tema oscuro. En pantallas estrechas las filas reducen sus columnas,
+espaciado y tipografía para conservar la lectura del puesto, título y cantidad.
+El endpoint y el DTO se especifican en `agentic-guidelines/Dtos.md`; la
+implementación automatizada del componente está cubierta en
+`apps/web/src/features/worst-ideas/worst-ideas.spec.tsx`.
+
+**Pendiente de alineación de orden:** el requisito local conservado en
+`agentic-guidelines/components.md` pide ordenar por cantidad descendente. La
+implementación actual conserva el orden que devuelve la API: score conceptual
+ascendente, después cantidad semanal descendente y título seguro ascendente;
+los registros históricos sin score quedan al final. No se altera el requisito
+ni el código en esta actualización documental.
+
 ## Errores
 
 Las rutas desconocidas muestran el 404 con la criatura indicando una puerta

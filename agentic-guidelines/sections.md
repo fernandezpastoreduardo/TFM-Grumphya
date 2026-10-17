@@ -25,10 +25,10 @@ if you need more info about any feature of any section refer to ./agentic-guidel
   - Worst current logged user's ideas
     - Copy: Tú también haces tus pinitos. Estos son los peores que has plantado... hasta ahora.
 - Features:
-  - getIdeaListWorstAll: gets response and gives it to TableWorstAll Component
-  - getIdeaListWorstUser: gets response and gives it to TableWorstUser Component
+  - getIdeaListWorstAll: el componente implementado `WorstIdeasAll` consume la respuesta.
+  - getIdeaListWorstUser: componente `WorstIdeasUser`, pendiente de implementación.
     - Si no hay usuario autenticado, la tabla personal muestra un estado vacío con invitación a crear cuenta: los visitantes anónimos no tienen historial, tampoco en `localStorage`.
-- El ranking público semanal muestra solo el título breve y la cantidad de recepciones durante la semana ISO actual de ideas rechazadas; nunca el usuario, texto original ni identificadores de autor.
+- `WorstIdeasAll` carga el ranking público desde `GET /api/worst-ideas`, valida el contrato en ejecución y presenta los estados de carga, error recuperable, lista vacía y resultados. El ranking semanal muestra solo título seguro y cantidad de recepciones; nunca usuario, texto original ni identificadores de autor. El contrato API y su orden están especificados en `Dtos.md`.
 
 3. "Vent / Roast to your heart's content" section
 
