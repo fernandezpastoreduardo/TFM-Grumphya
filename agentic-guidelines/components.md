@@ -42,11 +42,11 @@ Los componentes específicos permanecen dentro de su feature hasta que exista un
 
 ### WorstIdeasAll
 
-Listado de las peores ideas de todos los usuarios ordenado por cantidad de veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado
+Listado de hasta diez de las peores ideas de todos los usuarios, ordenado por cantidad de veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado
 
 ### WorstIdeasUser
 
-Listado de las peores ideas del usuario logueado ordenado por veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado.
+Listado de hasta diez de las peores ideas del usuario logueado ordenado por veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado.
 + Si el usuario no está logueado debe aparecer el contenido indicado en el prototipo:
 
     Tu historial
@@ -66,3 +66,9 @@ Listado de las peores ideas del usuario logueado ordenado por veces que se han i
 - El contenedor de roast presenta la conversación con mensajes de ambos lados, siguiendo el formato de mensajería del prototipo, y conecta el envío con la feature `submitRoast`.
 - `RoastInput` permite escribir y enviar el mensaje, muestra el estado de envío y los errores, evita el doble envío y comunica los intentos restantes devueltos o confirmados por el servidor.
 - El componente tiene etiqueta accesible, contador de caracteres, feedback anunciado por lectores de pantalla y contraste legible en los modos claro y oscuro.
+
+### RoastRanking
+
+- Componente local a `roast`, porque solo se utiliza en esa sección; recibe el estado del ranking y la acción de reintento desde su contenedor.
+- Presenta hasta diez usuarios activos con envíos contabilizados, ordenados como describe `getRoastRanking`. Presenta el primer usuario como ganador, fuera de la tabla. La tabla contiene los puestos 2–10 y, en cada fila, únicamente el nombre de usuario y la cantidad de mensajes de roast.
+- Contempla estados de carga, error recuperable y lista vacía, con nombres accesibles y feedback anunciado.

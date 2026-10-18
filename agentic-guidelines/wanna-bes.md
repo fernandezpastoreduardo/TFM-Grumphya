@@ -6,11 +6,17 @@ Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un ro
 
 **Estado:** pendiente de priorización e incorporación al roadmap.
 
-Los límites por minuto de la API guardan sus contadores en memoria por proceso. Hoy esto incluye el límite general de 120 solicitudes por IP/minuto y el límite de 10 solicitudes por IP/minuto para evaluación y roast. Al ejecutar varias réplicas, cada una aplica su propio contador; si el balanceador distribuye las peticiones, el límite efectivo puede multiplicarse. Al reiniciar un proceso, sus contadores se pierden.
+Los límites por minuto de la API guardan sus contadores en memoria por proceso. Hoy esto incluye el límite general de 120 solicitudes por IP/minuto, el límite de 10 para evaluación y envío de roast, y límites dedicados de 30 para lectura de Worst Ideas y de `GET /api/roast-ranking`. Al ejecutar varias réplicas, cada una aplica su propio contador; si el balanceador distribuye las peticiones, el límite efectivo puede multiplicarse. Al reiniciar un proceso, sus contadores se pierden.
 
 El límite secundario de creación de perfiles anónimos —20 por IP en 24 horas— sí se persiste en PostgreSQL y no comparte esta limitación.
 
 **Mejora a valorar:** mover los contadores por minuto a un almacén compartido, como Redis, o a un gateway que aplique el límite antes de distribuir las solicitudes. Definir la estrategia al preparar el despliegue con varias réplicas y comprobar límites simultáneos y recuperación ante reinicios.
+
+## Privacidad del ranking de roast antes de apertura pública
+
+**Estado:** pendiente; requisito previo a abrir el servicio a usuarios reales.
+
+`GET /api/roast-ranking` publica el alias y el contador acumulado de envíos de roast de hasta diez cuentas activas. Un alias elegido por una persona puede contener datos personales o servir como dato de contacto. Completar la política de privacidad para explicar con claridad qué se publica, con qué finalidad y durante cuánto tiempo; revisar el riesgo de que los alias elegidos identifiquen o contacten a la persona, y decidir cómo tratarlo antes de la apertura pública. La política actual es provisional e incompleta. Este punto sigue siendo una condición de preparación para producción; el ranking no debe interpretarse como autorización para publicar el servicio.
 
 ## Verificación de correo en las nuevas altas
 

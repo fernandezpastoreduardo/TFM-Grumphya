@@ -100,7 +100,8 @@ La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». El componen
 `WorstIdeasAll` obtiene los datos reales de `GET /api/worst-ideas`; no incluye
 filas de ejemplo en el ranking público. Cada fila muestra su puesto, el título
 seguro y el número de recepciones de la semana actual. El pie aclara que no se
-muestran autor ni texto original.
+muestran autor ni texto original. La API limita el ranking a diez ideas; el
+componente valida el contrato de cada fila y presenta esa respuesta.
 
 Mientras espera la respuesta anuncia «Cargando el ranking semanal…». Si la
 petición falla o el JSON no cumple el contrato, muestra un mensaje genérico y
@@ -134,12 +135,24 @@ La tarjeta distingue carga, error recuperable, persona sin sesión, historial
 vacío e historial con datos. Sin sesión invita a crear una cuenta; con sesión
 pero sin rechazos explica que el historial aparecerá al enviar una idea que sea
 rechazada. Los errores permiten reintentar y no exponen datos del servidor. El
-historial es privado, no se guarda en `localStorage` y no muestra texto
-original, score, autor, embedding ni identificadores internos. La migración
+historial está limitado a diez filas, es privado, no se guarda en `localStorage`
+y no muestra texto original, score, autor, embedding ni identificadores
+internos. La migración
 `018_user_rejected_ideas.sql` inicia el seguimiento sin retrocargar rechazos
 anteriores. La API limita este endpoint a 30 solicitudes por minuto y dirección
 IP, además del tope general de 120; ambos límites son locales al proceso y no
 se comparten entre réplicas.
+
+## Ranking de roast «Faltón máximo»
+
+La sección `/descargate` obtiene `GET /api/roast-ranking` y presenta hasta diez
+cuentas activas con mensajes de roast contabilizados. Destaca el primer puesto
+como ganador y coloca los puestos 2–10 en una tabla. Solo muestra el alias y el
+contador acumulado; el endpoint no expone IDs, correos ni mensajes enviados.
+La interfaz valida el límite de diez y la forma de cada fila, y contempla
+carga, error recuperable y lista vacía.
+El endpoint tiene un límite dedicado de 30 solicitudes por minuto y dirección IP,
+además del límite general de la API; los contadores son locales al proceso.
 
 ## Errores
 

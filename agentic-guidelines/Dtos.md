@@ -57,6 +57,13 @@ Las solicitudes autenticadas requieren `Idempotency-Key` UUID. Se guarda el hash
 - Una respuesta válida es `{ reply: string }`. La API la genera con OpenAI y valida su estructura, longitud y ausencia de insultos explícitos antes de confirmar el uso. Si el proveedor no está disponible o la respuesta no cumple el contrato, responde con error y libera la reserva.
 - Errores relevantes: `400 INVALID_ROAST_SUBMISSION`, `409 REQUEST_IN_PROGRESS`, `409 IDEMPOTENCY_CONFLICT`, `429 ANONYMOUS_QUOTA_EXHAUSTED`, `429 PLAN_QUOTA_EXHAUSTED` y `503 ROAST_REPLY_UNAVAILABLE`. Los mensajes fuente no se guardan como historial.
 
+### getRoastRanking
+
+- `GET /api/roast-ranking` es público y devuelve un array de hasta diez cuentas activas que hayan enviado al menos un roast.
+- Cada elemento tiene solo `{ username: string, roastMessagesSent: number }`. No expone correo, identificadores internos ni contenido de mensajes.
+- Orden: cantidad de mensajes descendente y nombre de usuario ascendente para desempatar. Si no hay participantes, devuelve `[]`.
+- La interfaz destaca el primer elemento como ganador separado de la tabla; los elementos restantes ocupan los puestos 2–10.
+
 ### ErrorResponse
 
 - `code: string` estable para el frontend.
@@ -73,6 +80,7 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 - `safeTitle: string`: título genérico seguro de la idea rechazada; no incluye autor ni texto original.
 - `weeklyCount: number`: número de recepciones agregadas para esa idea durante la semana actual.
 - Orden: `weeklyCount` descendente y `safeTitle` ascendente como desempate. El score de rúbrica no participa en el orden ni se devuelve en el DTO.
+- Devuelve como máximo 10 elementos.
 - Lista vacía si no hay registros semanales. No se mezclan datos de muestra.
 
 ### IdeaListItemWorstUser
@@ -81,6 +89,7 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 - `safeTitle: string`: título seguro de la idea rechazada.
 - `count: number`: número de recepciones atribuidas a ese usuario para la idea canónica.
 - Orden: `count` descendente y `safeTitle` ascendente. No se devuelve score, ID interno, autor, embedding ni texto original.
+- Devuelve como máximo 10 elementos.
 - El endpoint no acepta `userId` del cliente. Sin una sesión válida responde `401`; los visitantes anónimos no tienen historial almacenado.
 
 ### NotableHumanItem
