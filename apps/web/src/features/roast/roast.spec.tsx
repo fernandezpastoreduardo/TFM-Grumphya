@@ -6,7 +6,8 @@ import { Roast } from "./roast";
 const ROAST_INPUT_LABEL = /tu insulto/i;
 const SUBMIT_ROAST_LABEL = /enviar insulto/i;
 const ROAST_PLAN_CALLOUT_HEADING = /te has quedado con ganas/i;
-const FIRST_SAMPLE_ROAST = "Quiero una app que haga mi trabajo mientras duermo.";
+const FIRST_SAMPLE_ROAST =
+  "Quiero una app que haga mi trabajo mientras duermo.";
 const SUBMITTED_ROAST = "Una app que cobra por mis ideas";
 const SERVER_ROAST_REPLY = "Respuesta del servidor.";
 
@@ -79,7 +80,9 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("8 de 11 envíos disponibles hoy"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+    ).toBeEnabled();
     expect(
       screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
     ).not.toBeInTheDocument();
@@ -110,8 +113,12 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("0 de 11 envíos disponibles hoy"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeDisabled();
-    expect(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL })).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: SUBMIT_ROAST_LABEL }),
+    ).toBeDisabled();
     expect(
       screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
     ).not.toBeInTheDocument();
@@ -131,7 +138,9 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("3 de 3 envíos gratuitos restantes"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+    ).toBeEnabled();
     expect(
       screen.getByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
     ).toBeInTheDocument();
@@ -149,13 +158,13 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("1 de 3 envíos gratuitos restantes"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+    ).toBeEnabled();
     expect(
       screen.getByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText(FIRST_SAMPLE_ROAST),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(FIRST_SAMPLE_ROAST)).not.toBeInTheDocument();
   });
 
   it("hides demo exchanges for a Faltón user with roast history from the ranking counter", () => {
@@ -170,10 +179,10 @@ describe("Roast", () => {
 
     render(<Roast />);
 
+    expect(screen.queryByText(FIRST_SAMPLE_ROAST)).not.toBeInTheDocument();
     expect(
-      screen.queryByText(FIRST_SAMPLE_ROAST),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("11 de 11 envíos disponibles hoy")).toBeInTheDocument();
+      screen.getByLabelText("11 de 11 envíos disponibles hoy"),
+    ).toBeInTheDocument();
   });
 
   it("clarifies that only the opening exchanges are examples", () => {
@@ -202,25 +211,22 @@ describe("Roast", () => {
 
     render(<Roast />);
 
-    expect(
-      screen.queryByText(FIRST_SAMPLE_ROAST),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(FIRST_SAMPLE_ROAST)).not.toBeInTheDocument();
   });
 
   it("replaces the demo with the user's submitted exchange for this session", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ reply: SERVER_ROAST_REPLY }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ reply: SERVER_ROAST_REPLY }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
     render(<Roast />);
 
-    expect(
-      screen.getByText(FIRST_SAMPLE_ROAST),
-    ).toBeInTheDocument();
+    expect(screen.getByText(FIRST_SAMPLE_ROAST)).toBeInTheDocument();
 
     await user.type(
       screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
@@ -229,15 +235,9 @@ describe("Roast", () => {
     await user.click(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL }));
 
     await waitFor(() => {
-      expect(
-        screen.queryByText(
-          FIRST_SAMPLE_ROAST,
-        ),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(FIRST_SAMPLE_ROAST)).not.toBeInTheDocument();
     });
-    expect(
-      screen.getByText(SUBMITTED_ROAST),
-    ).toBeInTheDocument();
+    expect(screen.getByText(SUBMITTED_ROAST)).toBeInTheDocument();
     expect(screen.getByText(SERVER_ROAST_REPLY)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledOnce();
   });
@@ -248,11 +248,18 @@ describe("Roast", () => {
       { username: "TeaSpiller", roastMessagesSent: 21 },
     ]);
 
-    render(<Roast />);
+    const { container } = render(<Roast />);
 
     await waitFor(() => {
       expect(screen.getByText("GrumpyWinner")).toBeInTheDocument();
     });
     expect(screen.getByText("TeaSpiller")).toBeInTheDocument();
+    const sidebar = container.querySelector(".roast-sidebar");
+    expect(sidebar).toContainElement(
+      screen.getByRole("region", { name: /faltón máximo/i }),
+    );
+    expect(sidebar).toContainElement(
+      screen.getByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
+    );
   });
 });
