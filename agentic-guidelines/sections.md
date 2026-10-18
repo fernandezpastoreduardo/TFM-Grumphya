@@ -35,12 +35,12 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 - Path: /descargate
 - Layout: nine cards that shows user insult and grumphy reply
   Permite 3 envíos gratuitos de por vida por perfil de navegador a visitantes y a cuentas autenticadas sin Faltón vigente. Faltón vigente concede 11 envíos diarios, sin consumir el cupo gratuito de roast. El backend reserva la cuota adecuada transaccionalmente y la confirma solo al entregar una respuesta válida; ante un error libera la reserva. La API genera la respuesta con OpenAI y valida su forma y contenido antes de devolverla. Las peticiones autenticadas son idempotentes por clave/payload durante 24 horas lógicas desde la reserva original; el borrado físico es oportunista. Una reserva en curso devuelve `409` durante 30 minutos.
-- `getRoastRanking` presenta hasta diez usuarios con roast contabilizado: el primer puesto aparece como ganador y los puestos 2–10 en tabla con alias y número de mensajes. El endpoint público no expone identificadores, correos ni mensajes enviados.
+- `getRoastRanking` presenta hasta diez usuarios con roast contabilizado: el primer puesto aparece como ganador y los puestos 2–10 en tabla con alias, avatar opcional y número de mensajes. El endpoint público no expone identificadores, correos ni mensajes enviados.
 
 4. Notable Humans section: a ranking/list of humans whose ideas have actually passed the AI's approval evaluation (without showing the ideas themselves). The goal is to spark a bit of rivalry and gamify the experience.
    - Path: /humanos-notables
    - Features:
-     - `getBestListBestUsers` entrega hasta diez cuentas activas ordenadas por cantidad de aprobaciones; mostrar solo alias y número de aprobaciones. Nunca título, texto, resumen ni evaluación de sus ideas aprobadas.
+     - `getBestListBestUsers` entrega hasta diez cuentas activas ordenadas por cantidad de aprobaciones; mostrar alias, avatar opcional y número de aprobaciones. Nunca título, texto, resumen ni evaluación de sus ideas aprobadas.
      - El componente `BestUsers` sigue el formato del prototipo y resalta el primer puesto.
      - UI must be a part of copy to encourage user to have the next great idea to be in that ranking.
 
@@ -70,6 +70,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    Tus buenas ideas, las aprobadas, son tuyas y solo tuyas.
    - Features:
      - Al elegir Iluminado o Faltón sin sesión, enviar el plan por `POST` al servidor para crear una intención temporal de alta y navegar a `/crear-cuenta` sin parámetros de plan en URL. El servidor conserva el plan y valida su vigencia; la integración de pagos reales queda para medio plazo.
+     - Una sesión autenticada que elige un plan desde `/precios` navega a `/perfil` para contratar allí el plan inactivo. Una cuenta autenticada que abre `/crear-cuenta` también se redirige a `/perfil`.
      - UltraChachi es una tarjeta humorística con popup, no un plan contratable ni una promesa real de uso ilimitado.
 
 8. Login
@@ -98,11 +99,12 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 - Path: `/politica-de-privacidad`
 - Vista provisional con título y estilos del sitio, claramente identificada como contenido pendiente de completar. No debe presentarse como una política legal completa ni habilitar altas públicas hasta que se publique la información requerida.
+- La función de avatar envía la imagen procesada a OpenAI para moderación y publica la imagen aprobada en el perfil, el nav y rankings. La política debe identificar finalidad, proveedor, conservación, base jurídica y derechos antes de habilitar el servicio a usuarios reales.
 - El enlace desde el formulario de alta debe ser visible, descriptivo, accesible por teclado y abrir la ruta interna.
 
 ## Delivery boundary
 
-La primera entrega incluye Home con dictado por voz, evaluación y similitud, tres usos anónimos de ideas y tres de roast de por vida por perfil de navegador, alta asociada a Iluminado o Faltón, contratación simulada, login con access JWT y perfil dinámico. Iluminado permite 11 evaluaciones y Faltón 11 roasts por día local de `Europe/Madrid`, con reserva transaccional, idempotencia por clave/payload y respuesta cacheada durante 24 horas desde la reserva original. Ese TTL es lógico: las filas caducadas se borran oportunistamente con reservas posteriores, sin garantía de borrado físico al cumplirse 24 horas. Las reservas incompletas devuelven `409` durante 30 minutos y luego pueden recuperarse; los errores liberan el intento. La verificación de correo en nuevas altas y el segundo factor de login siguen pendientes. El perfil conserva los datos de cuenta, suscripciones, intentos restantes e ideas aprobadas privadas. Las listas de Worst Ideas están implementadas con un máximo de diez filas, y «Descárgate a gusto» muestra el ranking Roast «Faltón máximo» con hasta diez cuentas. A corto plazo quedan por completar las vistas restantes de rankings, precios, ROI y contacto. Los pagos reales llegan a medio plazo.
+La primera entrega incluye Home con dictado por voz, evaluación y similitud, tres usos anónimos de ideas y tres de roast de por vida por perfil de navegador, alta asociada a Iluminado o Faltón, contratación simulada, login con access JWT y perfil dinámico. Iluminado permite 11 evaluaciones y Faltón 11 roasts por día local de `Europe/Madrid`, con reserva transaccional, idempotencia por clave/payload y respuesta cacheada durante 24 horas desde la reserva original. Ese TTL es lógico: las filas caducadas se borran oportunistamente con reservas posteriores, sin garantía de borrado físico al cumplirse 24 horas. Las reservas incompletas devuelven `409` durante 30 minutos y luego pueden recuperarse; los errores liberan el intento. La verificación de correo en nuevas altas y el segundo factor de login siguen pendientes. El perfil conserva los datos de cuenta, suscripciones, intentos restantes e ideas aprobadas privadas, y permite gestionar un avatar público WebP de 128 × 128 procesado y moderado en servidor con la clave OpenAI existente. Los archivos se conservan en un volumen Docker separado. La moderación automática puede fallar y no equivale a una garantía de seguridad; la política de privacidad sigue siendo provisional y debe completarse antes de abrir el servicio. Las listas de Worst Ideas están implementadas con un máximo de diez filas, y «Descárgate a gusto» muestra el ranking Roast «Faltón máximo» con hasta diez cuentas. A corto plazo quedan por completar las vistas restantes de rankings, precios, ROI y contacto. Los pagos reales llegan a medio plazo.
 
 ## Shared interaction rules
 

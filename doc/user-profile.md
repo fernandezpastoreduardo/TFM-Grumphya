@@ -3,7 +3,8 @@
 `GET /api/account/profile` exige un access JWT válido. `AccessTokenGuard`
 valida el bearer y establece `request.user.userId`; el endpoint no acepta el
 identificador del usuario desde el cuerpo ni la query. La respuesta contiene
-el alias, correo, estado de verificación, fecha de alta y ambos planes.
+el alias, correo, estado de verificación, fecha de alta, contador de roasts,
+URL pública opcional del avatar y ambos planes.
 
 Los permisos del plan se derivan de las suscripciones vigentes en PostgreSQL.
 El perfil muestra el plan activo, su vigencia y los intentos restantes para el
@@ -31,6 +32,48 @@ más recientes, ordenadas por `created_at DESC, id DESC`. Si la cuenta no tiene
 ideas aprobadas, responde con una lista vacía. El perfil no presenta datos de
 muestra.
 
+## Avatar de cuenta
+
+Una cuenta autenticada puede subir un avatar con `POST /api/account/avatar`
+(multipart con una sola parte de archivo, campo `avatar`). El endpoint exige
+Bearer válido y `Origin` exacto de `WEB_ORIGIN`; admite como máximo tres
+subidas por minuto y por IP en cada proceso. Solo se aceptan JPEG, PNG y WebP
+rasterizados de hasta 5 MiB; el formato decodificado debe coincidir con el
+MIME declarado, así que un SVG o formato disfrazado se rechaza. La API decodifica
+y vuelve a codificar la imagen en WebP de 128 × 128 píxeles,
+recorta al centro de atención, limita la entrada a 20 megapíxeles y elimina
+metadatos al recodificar. Los bytes originales no se conservan. La clave
+OpenAI existente se usa solo en el servidor para comprobar el WebP procesado
+con `omni-moderation-latest`; no se devuelve la imagen si la moderación la
+marca, si falta la clave o si el servicio devuelve una respuesta inválida/no
+disponible. El navegador muestra el resultado solo después de que el servidor
+lo haya guardado.
+
+La automatización es un filtro de riesgo, no una garantía de que la imagen sea
+apta ni una clasificación legal por edades. Puede equivocarse o no detectar
+contenido, y no sustituye revisión humana. La moderación de imágenes no está
+diseñada para detectar CSAM; no se deben subir imágenes conocidas o sospechosas
+de ese tipo. El usuario debe escoger una imagen pública apropiada. La imagen
+procesada se envía a OpenAI para moderación, así que la política de privacidad
+provisional debe completarse antes de ofrecer la función a personas usuarias
+reales.
+
+El archivo se guarda fuera del árbol público de la web en el directorio
+configurado por `USER_AVATAR_DIRECTORY` (por defecto `var/avatars`), bajo un
+nombre aleatorio con permisos locales restrictivos. En Docker, Compose lo monta
+como volumen nombrado `grumphya-avatar-data` en `/workspace/var/avatars`; recrear
+contenedores conserva tanto la base como los avatares. La base solo guarda la
+clave opaca. `GET /api/avatars/:avatarKey` sirve la imagen WebP moderada sin
+autenticación para que pueda aparecer en el perfil, el nav y los rankings
+públicos; no expone correo ni ID interno. El avatar se puede identificar
+públicamente junto al alias del ranking. Si se elimina o sustituye un avatar,
+el anterior debe dejar de estar disponible.
+
+Antes de subirlo, el control del perfil informa que el avatar aparecerá en
+rankings públicos y que OpenAI hace una revisión automática. El aviso no
+sustituye a una política de privacidad completa ni a la información legal sobre
+el tratamiento por el proveedor.
+
 La web usa `authenticatedFetch`, que obtiene el access token en memoria y lo
 renueva mediante el refresh token HttpOnly cuando es necesario. El refresh token
 no se expone a JavaScript. Los fallos de autenticación presentan un enlace para
@@ -39,6 +82,14 @@ datos privados en el mensaje.
 
 La implementación y sus pruebas están en `apps/api/src/register-with-plan/`,
 `apps/api/src/get-user-profile/` y `apps/web/src/features/user-profile/`.
+El procesamiento, moderación y almacenamiento del avatar viven en
+`apps/api/src/user-avatar/`; la migración `021_user_avatar.sql` añade la clave
+opaca del avatar a `users`.
+
+Si una persona ya inició sesión, elegir cualquiera de los planes desde
+`/precios` la lleva a `/perfil`, desde donde puede contratar el plan inactivo.
+La ruta `/crear-cuenta` también redirige a `/perfil` para cuentas autenticadas;
+los visitantes no autenticados pueden completar el alta allí.
 
 ## Contratación y vigencia de planes
 

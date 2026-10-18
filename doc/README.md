@@ -2,7 +2,7 @@
 
 Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión a PostgreSQL/pgvector, captura de ideas, dictado de voz, evaluación configurable, búsqueda semántica y persistencia de ideas rechazadas.
 
-El alta con plan crea y activa directamente la cuenta, la suscripción simulada y la sesión en una transacción. Tras el envío del formulario se muestra durante cinco segundos el modal de pago simulado y después se abre el perfil. No se procesa dinero real; las nuevas cuentas quedan activas con el correo aún sin verificar, y la verificación de email está pendiente. La autenticación está implementada con access JWT de 10 minutos y refresh token rotatorio en cookie HttpOnly; el perfil y sus acciones requieren sesión válida y consultan los permisos del plan en el servidor. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial.
+El alta con plan crea y activa directamente la cuenta, la suscripción simulada y la sesión en una transacción. Tras el envío del formulario se muestra durante cinco segundos el modal de pago simulado y después se abre el perfil. No se procesa dinero real; las nuevas cuentas quedan activas con el correo aún sin verificar, y la verificación de email está pendiente. La autenticación está implementada con access JWT de 10 minutos y refresh token rotatorio en cookie HttpOnly; el perfil y sus acciones requieren sesión válida y consultan los permisos del plan en el servidor. Las cuentas pueden gestionar un avatar público, transformado a WebP de 128 × 128 y moderado en servidor por OpenAI con la clave existente; se conserva en un volumen Docker propio. La política de privacidad aún es provisional, así que esta integración no está lista para exponer a usuarios reales hasta completar la información del tratamiento externo. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial.
 
 Las cuotas gratuitas son independientes por ámbito: una cuenta sin Iluminado conserva sus tres evaluaciones gratuitas y una cuenta sin Faltón conserva sus tres envíos gratuitos del perfil de navegador. Un plan activo solo aplica a su ámbito y no consume el cupo gratuito del otro.
 
@@ -16,6 +16,8 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts de por vida por perfil de nav
 - [Límites de uso anónimo](anonymous-usage.md)
 - [Producción](production.md)
 - [Usuarios, credenciales y secretos](credentials.md)
+- [Perfil, contratación de plan y avatar](user-profile.md)
+- [Baja física de cuenta](user-delete.md)
 - [Comprobaciones y resolución de problemas](verification.md)
 
 ## Estado de preparación

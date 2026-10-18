@@ -13,6 +13,8 @@ La ruta está protegida por `AccessTokenGuard`; el identificador del usuario
 procede exclusivamente de `request.user.userId`, nunca de parámetros o del
 cuerpo de la solicitud. Al completar, la API responde `{"deleted":true}` y
 borra la cookie HttpOnly de refresh. La interfaz redirige a la página inicial.
+La operación elimina también el archivo privado del avatar del usuario; la URL
+pública de ese avatar deja de servirlo tras la baja.
 
 ## Persistencia y privacidad
 
@@ -25,10 +27,17 @@ físicamente los datos dependientes al borrar el usuario. Las ideas rechazadas
 son agregadas y anónimas, no contienen una relación de usuario que pueda
 eliminarse.
 
+Antes de retirar el archivo de avatar, el repositorio conserva temporalmente
+una copia en memoria. Si falla una consulta o el `COMMIT`, revierte la
+transacción y restaura el archivo. Si también falla la restauración, registra
+un error sin datos personales; en ese caso el usuario de SQL permanece por el
+rollback, pero el avatar podría faltar y requerir reparación operativa.
+
 No se realiza un borrado lógico ni se conservan datos de perfil para recuperar
 la cuenta. El endpoint solo usa la identidad autenticada actual. Un identificador
 ausente, inválido o asociado a una sesión caducada se responde como sesión no
-autenticada. Los fallos de base de datos revierten la transacción completa.
+autenticada. Los fallos de base de datos revierten la transacción SQL; la
+restauración del archivo tras un fallo se intenta y su posible fallo se registra.
 
 ## Cobertura automatizada
 
