@@ -33,6 +33,11 @@ export function Roast() {
   const isAuthenticated = session.isAuthenticated === true;
   const hasActiveRoastPlan =
     isAuthenticated && session.accountAttempts?.roastsPlanActive === true;
+  const shouldShowRoastPlanCallout =
+    session.isAuthenticated === false ||
+    (session.isAuthenticated === true &&
+      session.accountAttempts !== null &&
+      !session.accountAttempts.roastsPlanActive);
   const availableAttempts = getRoastAttemptsRemaining(
     session.isAuthenticated,
     session.accountAttempts,
@@ -152,22 +157,24 @@ export function Roast() {
             : "Los mensajes de roast no se guardan para futuras visitas. Los intercambios de esta sesión aparecen aquí."}
         </p>
       </section>
-      <aside className="roast-aside">
-        <div className="aside-creature" aria-hidden="true" />
-        <h2>¿Te has quedado con ganas?</h2>
-        <p>
-          El plan Faltón amplía tus envíos diarios. Once, sí. A alguien le hizo
-          gracia el número.
-        </p>
-        <a className="button-primary" href="/precios">
-          Ver el plan Faltón <span aria-hidden="true">↗</span>
-        </a>
-        <p className="privacy-footnote">
-          No uses esto para enviar datos personales. Una cookie recuerda tus
-          tres envíos gratuitos y una señal temporal derivada de la IP ayuda a
-          frenar abusos.
-        </p>
-      </aside>
+      {shouldShowRoastPlanCallout ? (
+        <aside className="roast-aside">
+          <div className="aside-creature" aria-hidden="true" />
+          <h2>¿Te has quedado con ganas?</h2>
+          <p>
+            El plan Faltón amplía tus envíos diarios. Once, sí. A alguien le hizo
+            gracia el número.
+          </p>
+          <a className="button-primary" href="/precios">
+            Ver el plan Faltón <span aria-hidden="true">↗</span>
+          </a>
+          <p className="privacy-footnote">
+            No uses esto para enviar datos personales. Una cookie recuerda tus
+            tres envíos gratuitos y una señal temporal derivada de la IP ayuda a
+            frenar abusos.
+          </p>
+        </aside>
+      ) : null}
     </div>
   );
 }

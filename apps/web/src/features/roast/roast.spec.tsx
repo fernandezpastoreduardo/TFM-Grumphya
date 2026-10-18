@@ -5,6 +5,7 @@ import { Roast } from "./roast";
 
 const ROAST_INPUT_LABEL = /tu insulto/i;
 const SUBMIT_ROAST_LABEL = /enviar insulto/i;
+const ROAST_PLAN_CALLOUT_HEADING = /te has quedado con ganas/i;
 const FIRST_SAMPLE_ROAST = "Quiero una app que haga mi trabajo mientras duermo.";
 const SUBMITTED_ROAST = "Una app que cobra por mis ideas";
 const SERVER_ROAST_REPLY = "Respuesta del servidor.";
@@ -72,6 +73,20 @@ describe("Roast", () => {
       screen.getByLabelText("8 de 11 envíos disponibles hoy"),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("waits for the signed-in account's plan before showing the callout", () => {
+    mocks.session.isAuthenticated = true;
+    mocks.session.accountAttempts = null;
+
+    render(<Roast />);
+
+    expect(
+      screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
+    ).not.toBeInTheDocument();
   });
 
   it("disables roast submission when the signed-in user's daily quota is empty", () => {
@@ -90,6 +105,9 @@ describe("Roast", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeDisabled();
     expect(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL })).toBeDisabled();
+    expect(
+      screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps three free roasts for an authenticated user with only Iluminado", () => {
@@ -107,6 +125,9 @@ describe("Roast", () => {
       screen.getByLabelText("3 de 3 envíos gratuitos restantes"),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.getByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the independent lifetime quota for anonymous roast users", () => {
@@ -122,6 +143,9 @@ describe("Roast", () => {
       screen.getByLabelText("1 de 3 envíos gratuitos restantes"),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.getByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(FIRST_SAMPLE_ROAST),
     ).not.toBeInTheDocument();
