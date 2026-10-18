@@ -92,8 +92,9 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 - Devuelve como máximo 10 elementos.
 - El endpoint no acepta `userId` del cliente. Sin una sesión válida responde `401`; los visitantes anónimos no tienen historial almacenado.
 
-### NotableHumanItem
+### BestUserItem
 
-- `username: string` (alias público).
-- `approvedIdeasCount: number`: número de ideas canónicas distintas del usuario con `verdict = promising`.
-- Nunca incluye títulos, texto, evaluaciones ni ID de esas ideas.
+- `GET /api/best-users` devuelve un array público de hasta diez cuentas activas, ordenado por aprobaciones descendentes y alias ascendente como desempate.
+- Cada elemento contiene solo `username: string` y `approvedIdeasCount: number`, el total de filas de ideas aprobadas almacenadas para esa cuenta. La repetición con la misma clave idempotente no crea otra fila.
+- No incluye títulos, resúmenes, evaluaciones, correo, identificadores de usuario ni texto original de las ideas.
+- La API comprueba que el alias cumple la lista permitida de caracteres y que el contador es un entero positivo seguro; ante datos inválidos falla con un error genérico en vez de publicarlos.
