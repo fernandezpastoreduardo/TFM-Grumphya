@@ -45,12 +45,25 @@ if you need more info about any feature of any section refer to ./agentic-guidel
      - UI must be a part of copy to encourage user to have the next great idea to be in that ranking.
 
 5. Contact section:
+   - The section hero uses the transparent `contact-envelope.png` Grumphya
+     illustration; the mascot retains its grumpy expression and established
+     identity.
    - Features:
      - A joke. It has typical contact page UI but when you try to fill out any field, a popup message appears and the form fades out. Popup copy mus follow the rest of app copy style "Acéptalo: ahora mismo a nadie le importa lo que tengas que decir."
      - En esta sección, las cuentas con un plan activo (Iluminado o Faltón) pueden usar el formulario; los detalles del servicio se definirán en la entrega a corto plazo.
 
 6. "Good Practices / Why this matters" section:
-   Used to explain the real utility of the tool beyond the general rude tone. The goal is to genuinely help people avoid embarking on non-viable projects due to how expensive AI is, the time and technical knowledge required, the issues around vibe-coding, and similar points. This is the only part of the app without the rude/sarcastic tone, present in the rest of the app's copy and sections. The visual style should soften here too: for example, character designs, they'll switch to having adorable huge eyes and no furrowed brows in this section. See ideas-and-designs/ayudar.png for character reference.
+   Used to explain the real utility of the tool beyond the general rude tone.
+   The goal is to help people avoid non-viable projects given the cost of AI,
+   the time and technical knowledge required, and the issues around
+   vibe-coding. This is the only part of the app whose copy avoids the
+   rude/sarcastic tone. Grumphya keeps the established
+   grumpy, skeptical face and recognizable proportions. A section-specific
+   pose or accessory may signal practical support without making the mascot
+   cheerful or changing its identity. The current hero uses the transparent
+   `good-practices-thumbs-up-slippers.png` asset. The older
+   `ideas-and-designs/ayudar.png` reference does not override the mascot
+   identity rules in `UI-aestethics.md`.
 
 7. "Pricing"
    An standar princing plan page. Keeping copy, UI styles.

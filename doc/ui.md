@@ -60,12 +60,14 @@ la lámina maestra está en
 - Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
   distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
   para Planes, `ultrachachi-reality-check.png` para su popup, y
-  `good-practices-problem-scout.png`, `notable-humans-grumphya.png`,
-  `roast-vent.png`/`roast-plan-callout.png`, `worst-ideas-wall.png` y
-  `login-credentials.png`/`login-privacy.png` para Buenas prácticas, Humanos
-  notables, Descárgate, Peores ideas y Login respectivamente. Se mantienen
-  transparentes y sin copy incrustado; la UI conserva el contenido legible en
-  HTML. Las escenas de error existentes siguen siendo sus propios assets.
+  `good-practices-thumbs-up-slippers.png`, `notable-humans-medal.png`,
+  `contact-envelope.png`, `roast-vent.png`/`roast-plan-callout.png`,
+  `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para los
+  heroes de Buenas prácticas, Humanos notables y Contacto, y las secciones
+  Descárgate, Peores ideas y Login. `notable-humans-grumphya.png` sigue en el
+  aviso de la sección Humanos notables. Se mantienen transparentes y sin copy
+  incrustado; la UI conserva el contenido legible en HTML. Las escenas de error
+  existentes siguen siendo sus propios assets.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
   `ideas-and-designs/revision-vectorial/revisados/` y las escenas completas
   `error-scene-404.png`, `error-scene-429.png` y `error-scene-500.png`. La
@@ -80,6 +82,8 @@ la lámina maestra está en
 - La versión de escritorio y la móvil conservan la misma identidad. En móvil,
   la composición se apila y mantiene separación entre grupos para que el
   textarea, las opciones, la acción y la mascota se lean como pasos distintos.
+  En la Home, el hero mantiene 20 px entre su copy y 40 px entre los bloques
+  principales, tanto en móvil como en escritorio.
 
 ## Navegación móvil y accesibilidad
 
@@ -120,8 +124,12 @@ Las rutas ya se cargan de forma diferida. No se midieron LCP, CLS ni INP, por lo
 que esta revisión no certifica Core Web Vitals. Para completarla, medir Home y
 Humanos notables con Lighthouse en escritorio y móvil, ambos temas y caché fría
 y caliente; revisar waterfall, bytes transferidos y cambios de layout. El PNG
-de Humanos notables pesa aproximadamente 796 KB y queda como candidato a
-optimización si las mediciones móviles confirman impacto.
+`notable-humans-grumphya.png` del aviso pesa aproximadamente 796 KB. Los tres
+nuevos heroes pesan 780.371 B (`good-practices-thumbs-up-slippers.png`), 780.570 B
+(`contact-envelope.png`) y 860.856 B (`notable-humans-medal.png`): 2.421.797 B
+en total (aproximadamente 2,42 MB / 2,31 MiB). Estos assets y el PNG del aviso
+quedan como candidatos a optimización solo si las mediciones móviles confirman
+impacto.
 
 ## Ranking público de ideas rechazadas
 
@@ -178,8 +186,9 @@ La sección `/descargate` obtiene `GET /api/roast-ranking` y presenta hasta diez
 cuentas activas con mensajes de roast contabilizados. Destaca el primer puesto
 como ganador y coloca los puestos 2–10 en una tabla. Solo muestra el alias y el
 contador acumulado; el endpoint no expone IDs, correos ni mensajes enviados.
-La interfaz valida el límite de diez y la forma de cada fila, y contempla
-carga, error recuperable y lista vacía.
+En escritorio, el ranking ocupa la columna derecha junto al chat; en pantallas
+estrechas queda debajo del chat. La interfaz valida el límite de diez y la
+forma de cada fila, y contempla carga, error recuperable y lista vacía.
 El endpoint tiene un límite dedicado de 30 solicitudes por minuto y dirección IP,
 además del límite general de la API; los contadores son locales al proceso.
 
