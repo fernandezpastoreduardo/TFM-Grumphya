@@ -65,5 +65,6 @@ Listado de las peores ideas del usuario logueado ordenado por veces que se han i
 
 - El contenedor `Roast` presenta la conversación siguiendo el formato de mensajería del prototipo y conecta el envío con la feature `submitRoast`.
 - Los intercambios de muestra solo aparecen si no consta ningún envío previo. La UI detecta actividad comparando el cupo disponible con su valor inicial y, en cuentas, consultando además el contador acumulado de roast, que persiste aunque se reinicie la cuota diaria. Los mensajes enviados se muestran durante la sesión actual, pero no existe historial de texto para reconstruirlos al volver.
+- El panel lateral «¿Te has quedado con ganas?» solo aparece a visitantes sin sesión o cuentas sin Faltón activo; las cuentas con Faltón activo no lo ven, aunque hayan agotado su cuota diaria.
 - `RoastInput` permite escribir y enviar el mensaje, muestra el estado de envío y los errores, evita el doble envío y comunica los intentos restantes devueltos o confirmados por el servidor.
 - `RoastInput` tiene etiqueta accesible, contador de caracteres, feedback anunciado por lectores de pantalla y contraste legible en los modos claro y oscuro.
