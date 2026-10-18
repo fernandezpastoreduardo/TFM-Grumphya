@@ -61,7 +61,7 @@ export function NotableHumans() {
       <aside className="human-callout">
         <img
           className="human-callout-mascot"
-          src="/assets/grumphya/notable-ideas-applause.png"
+          src="/assets/grumphya/notable-humans-grumphya.png"
           alt=""
           aria-hidden="true"
         />
