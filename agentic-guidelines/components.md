@@ -74,3 +74,9 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 - Componente local a `roast`, porque solo se utiliza en esa sección; recibe el estado del ranking y la acción de reintento desde su contenedor.
 - Presenta hasta diez usuarios activos con envíos contabilizados, ordenados como describe `getRoastRanking`. Presenta el primer usuario como ganador, fuera de la tabla. La tabla contiene los puestos 2–10 y, en cada fila, únicamente el nombre de usuario y la cantidad de mensajes de roast.
 - Contempla estados de carga, error recuperable y lista vacía, con nombres accesibles y feedback anunciado.
+
+### BestUsers
+
+- Componente presentacional local a `notable-humans`; recibe estado y callback de reintento del contenedor de la sección.
+- Conserva el formato del prototipo: lista numerada, inicial de avatar, alias, contador y primer puesto resaltado. Muestra hasta diez usuarios.
+- Expone estados accesibles de carga, error recuperable y lista vacía. El contenedor carga `getBestListBestUsers` y no incluye aliases ni aprobaciones de muestra.

@@ -106,9 +106,11 @@ La tabla `users` conserva `roast_messages_sent`, contador acumulado para cuentas
 
 `GET /api/roast-ranking` devuelve hasta diez cuentas activas con envíos de roast, ordenadas por `roast_messages_sent` descendente y por nombre de usuario ascendente en caso de empate. El resultado solo expone `username` y `roastMessagesSent`; no incluye IDs ni correos, aunque un alias elegido por la persona podría ser dato personal o de contacto. El endpoint tiene un límite dedicado de 30 solicitudes por minuto e IP además del general de 120; ambos contadores son locales al proceso y no se comparten entre réplicas. La interfaz presenta el primer puesto como ganador fuera de la tabla y muestra los puestos 2–10 en una tabla con el nombre y el número de mensajes. Si no hay participantes, devuelve una lista vacía. La política de privacidad debe explicar esta publicación y revisar el posible carácter identificativo de los alias antes de abrir el servicio a usuarios reales.
 
-## publicRankings
+## getBestListBestUsers
 
-«Humanos notables» muestra alias y número de **ideas distintas aprobadas** (`promising`), sin datos de esas ideas. «Worst Ideas» muestra solo título breve y cantidad de recepciones semanales de ideas rechazadas (`reject`), sin usuario ni texto original. El título público debe ser una síntesis genérica: se excluyen nombres propios, datos personales, citas literales y detalles singulares que puedan identificar al autor. Si no puede generarse un título seguro, esa idea no entra en el ranking.
+`GET /api/best-users` devuelve como máximo diez cuentas activas, ordenadas por cantidad de ideas aprobadas descendente y alias ascendente para desempatar. El componente `BestUsers` de «Humanos notables» destaca el primer puesto y conserva el formato de clasificación del prototipo. El DTO solo incluye alias y número de aprobaciones; no expone títulos, resúmenes ni evaluaciones de ideas. El endpoint tiene un límite dedicado de 30 solicitudes por minuto e IP, además del límite general; ambos contadores son locales al proceso y no se comparten entre réplicas. Antes de abrir el servicio a usuarios reales, la política de privacidad debe explicar esta publicación y se debe revisar si los alias elegidos pueden identificar o servir como contacto.
+
+`getIdeaListWorstAll` permanece como feature independiente: «Worst Ideas» muestra solo título breve seguro y cantidad de recepciones semanales de ideas rechazadas (`reject`), sin usuario ni texto original. Se excluyen nombres propios, datos personales, citas literales y detalles singulares que puedan identificar al autor. Si no puede generarse un título seguro, esa idea no entra en el ranking.
 
 ## evaluateIdea
 

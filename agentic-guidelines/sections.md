@@ -40,8 +40,8 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 4. Notable Humans section: a ranking/list of humans whose ideas have actually passed the AI's approval evaluation (without showing the ideas themselves). The goal is to spark a bit of rivalry and gamify the experience.
    - Path: /humanos-notables
    - Features:
-     - 10 usuarios con más ideas aprobadas; mostrar solo alias y número de aprobaciones. Nunca título, texto, resumen ni evaluación de sus ideas aprobadas.
-     - UI highlights in one in the ranking is from current user
+     - `getBestListBestUsers` entrega hasta diez cuentas activas ordenadas por cantidad de aprobaciones; mostrar solo alias y número de aprobaciones. Nunca título, texto, resumen ni evaluación de sus ideas aprobadas.
+     - El componente `BestUsers` sigue el formato del prototipo y resalta el primer puesto.
      - UI must be a part of copy to encourage user to have the next great idea to be in that ranking.
 
 5. Contact section:

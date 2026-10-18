@@ -1,19 +1,30 @@
-// PROTOTYPE: aliases and approval counts are visual fixtures, never real leaderboard data.
+import { useEffect, useState } from "react";
+import { BestUsers, type BestUsersState } from "./components/BestUsers";
+import { getBestListBestUsers } from "./services/get-best-list-best-users";
 import "./notable-humans.scss";
-const NOTABLE_HUMANS = [
-  ["laura_critica", "18"],
-  ["pablo_sin_pitch", "13"],
-  ["marta_beta", "9"],
-  ["dani_valida", "8"],
-  ["ines_pregunta", "7"],
-  ["alex_sin_humo", "6"],
-  ["rocio_mvp", "5"],
-  ["marcos_realista", "4"],
-  ["eva_observa", "3"],
-  ["toni_iteracion", "2"],
-] as const;
 
 export function NotableHumans() {
+  const [state, setState] = useState<BestUsersState>({ status: "loading" });
+  const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setState({ status: "loading" });
+    getBestListBestUsers(controller.signal)
+      .then((users) => {
+        if (users.length === 0) {
+          setState({ status: "empty" });
+          return;
+        }
+        setState({ status: "success", users });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ status: "error" });
+      });
+
+    return () => controller.abort();
+  }, [revision]);
+
   return (
     <div className="humans-layout">
       <section
@@ -22,7 +33,7 @@ export function NotableHumans() {
       >
         <div className="content-card-heading">
           <div>
-            <span className="eyebrow">Clasificación de muestra</span>
+            <span className="eyebrow">Clasificación actual</span>
             <h2 id="humans-rank-title">La gente que sí miró antes de saltar</h2>
           </div>
           <span
@@ -32,30 +43,13 @@ export function NotableHumans() {
             ✦
           </span>
         </div>
-        <p className="prototype-stamp">
-          <span aria-hidden="true">✳</span> Datos de ejemplo · vista de
-          demostración
-        </p>
-        <ol className="humans-ranking">
-          {NOTABLE_HUMANS.map(([alias, count], index) => (
-            <li key={alias} className={index === 0 ? "is-first" : undefined}>
-              <span className="human-rank">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="human-avatar" aria-hidden="true">
-                {alias.charAt(0).toUpperCase()}
-              </span>
-              <strong>@{alias}</strong>
-              <span className="approved-count">
-                {count}
-                <small> aprobadas</small>
-              </span>
-            </li>
-          ))}
-        </ol>
+        <BestUsers
+          state={state}
+          onRetry={() => setRevision((value) => value + 1)}
+        />
         <p className="privacy-footnote">
-          Tus buenas ideas, las aprobadas, son tuyas. Aquí solo compartimos
-          alias y número de aprobaciones.
+          Tus ideas aprobadas siguen siendo privadas. En esta clasificación solo
+          mostramos alias y número de aprobaciones.
         </p>
       </section>
       <aside className="human-callout">

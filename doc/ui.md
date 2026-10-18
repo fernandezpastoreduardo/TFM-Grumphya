@@ -183,6 +183,18 @@ carga, error recuperable y lista vacía.
 El endpoint tiene un límite dedicado de 30 solicitudes por minuto y dirección IP,
 además del límite general de la API; los contadores son locales al proceso.
 
+## Humanos notables
+
+La sección `/humanos-notables` mantiene la clasificación visual del prototipo:
+puesto, inicial del alias, nombre y cantidad de ideas aprobadas, con el primer
+puesto destacado. `BestUsers` presenta los datos que obtiene el contenedor
+`NotableHumans` desde `GET /api/best-users`; la API limita la lista a diez
+cuentas activas y solo devuelve alias y cantidad de aprobaciones. Incluye estados
+de carga, error con reintento y lista vacía; no muestra ideas aprobadas ni usa
+datos de demostración.
+El endpoint tiene un límite dedicado de 30 solicitudes por minuto y dirección IP,
+además del límite general de la API; los contadores son locales al proceso.
+
 ## Errores
 
 Las rutas desconocidas muestran el 404 con la criatura indicando una puerta
