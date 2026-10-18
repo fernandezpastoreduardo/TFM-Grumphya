@@ -9,6 +9,7 @@ const REGISTRATION_VERIFY_REQUEST_LIMIT = 10;
 const LOGIN_REQUEST_LIMIT = 5;
 const SESSION_LOGOUT_REQUEST_LIMIT = 10;
 const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
+const AVATAR_UPLOAD_REQUEST_LIMIT = 3;
 const WORST_IDEAS_READ_REQUEST_LIMIT = 30;
 const WORST_IDEAS_USER_READ_REQUEST_LIMIT = 30;
 const ROAST_RANKING_READ_REQUEST_LIMIT = 30;
@@ -75,7 +76,10 @@ export function createSecurityMiddleware(): RequestHandler {
         });
         return;
       }
-      if (!request.is("application/json")) {
+      if (
+        !request.is("application/json") &&
+        !(isAvatarUploadRequest(request) && request.is("multipart/form-data"))
+      ) {
         response
           .status(415)
           .json({ statusCode: 415, message: "Se requiere application/json." });
@@ -128,22 +132,25 @@ export function createSecurityMiddleware(): RequestHandler {
       request.method === "POST" && request.path.startsWith("/api/auth/");
     const isAccountPost =
       request.method === "POST" && request.path.startsWith("/api/account/");
+    const isAvatarUpload = isAvatarUploadRequest(request);
     const isAccountDelete =
       request.method === "DELETE" && request.path === "/api/account";
     const registrationScope = isAccountDelete
       ? "account-delete"
-      : isLoginPost
-        ? "session-login"
-        : isLogoutPost
-          ? "session-logout"
-          : isAuthPost
-            ? "session-refresh"
-            : request.path.includes("verify") ||
-                request.path.includes("confirm")
-              ? "registration-verification"
-              : request.path.includes("intents")
-                ? "registration-intent"
-                : "registration-create";
+      : isAvatarUpload
+        ? "account-avatar-upload"
+        : isLoginPost
+          ? "session-login"
+          : isLogoutPost
+            ? "session-logout"
+            : isAuthPost
+              ? "session-refresh"
+              : request.path.includes("verify") ||
+                  request.path.includes("confirm")
+                ? "registration-verification"
+                : request.path.includes("intents")
+                  ? "registration-intent"
+                  : "registration-create";
     const registrationLimit =
       registrationScope === "session-login"
         ? LOGIN_REQUEST_LIMIT
@@ -151,12 +158,14 @@ export function createSecurityMiddleware(): RequestHandler {
           ? SESSION_LOGOUT_REQUEST_LIMIT
           : registrationScope === "account-delete"
             ? ACCOUNT_DELETE_REQUEST_LIMIT
-            : registrationScope === "registration-intent"
-              ? REGISTRATION_INTENT_REQUEST_LIMIT
-              : registrationScope === "registration-verification" ||
-                  isRefreshPost
-                ? REGISTRATION_VERIFY_REQUEST_LIMIT
-                : REGISTRATION_REQUEST_LIMIT;
+            : registrationScope === "account-avatar-upload"
+              ? AVATAR_UPLOAD_REQUEST_LIMIT
+              : registrationScope === "registration-intent"
+                ? REGISTRATION_INTENT_REQUEST_LIMIT
+                : registrationScope === "registration-verification" ||
+                    isRefreshPost
+                  ? REGISTRATION_VERIFY_REQUEST_LIMIT
+                  : REGISTRATION_REQUEST_LIMIT;
     const limits: ReadonlyArray<readonly [string, number]> = isEvaluation
       ? [
           ["api", API_REQUEST_LIMIT],
@@ -220,4 +229,10 @@ export function createSecurityMiddleware(): RequestHandler {
 
     next();
   };
+}
+
+function isAvatarUploadRequest(
+  request: Parameters<RequestHandler>[0],
+): boolean {
+  return request.method === "POST" && request.path === "/api/account/avatar";
 }

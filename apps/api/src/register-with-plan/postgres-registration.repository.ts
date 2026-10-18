@@ -507,6 +507,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       email_verified_at: Date | null;
       user_created_at: Date;
       roast_messages_sent: string;
+      avatar_key: string | null;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -514,7 +515,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_ideas: number;
       remaining_roasts: number;
     }>(
-      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,
+      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
          u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
@@ -556,6 +557,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       email_verified_at: Date | null;
       user_created_at: Date;
       roast_messages_sent: string;
+      avatar_key: string | null;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -563,7 +565,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_ideas: number;
       remaining_roasts: number;
     }>(
-      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,
+      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
          u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
@@ -595,6 +597,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       email_verified_at: Date | null;
       user_created_at: Date;
       roast_messages_sent: string;
+      avatar_key: string | null;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -611,6 +614,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         emailVerified: first.email_verified_at !== null,
         createdAt: first.user_created_at.toISOString(),
         roastMessagesSent: parseRoastMessagesSent(first.roast_messages_sent),
+        avatarUrl: first.avatar_key ? `/api/avatars/${first.avatar_key}` : null,
       },
       plans: rows.map((row): AccountPlanStatus => ({
         plan: row.plan_code,

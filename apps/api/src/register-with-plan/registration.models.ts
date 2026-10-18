@@ -61,6 +61,7 @@ export type AccountProfile = {
     emailVerified: boolean;
     createdAt: string;
     roastMessagesSent: number;
+    avatarUrl?: string | null;
   };
   plans: AccountPlanStatus[];
 };

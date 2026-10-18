@@ -11,7 +11,7 @@ COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN chown -R node:node /workspace
+RUN mkdir -p /workspace/var/avatars && chown -R node:node /workspace
 
 USER node
 

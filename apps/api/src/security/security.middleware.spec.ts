@@ -209,6 +209,43 @@ describe("security middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it("allows only same-origin multipart avatar uploads", () => {
+    const middleware = createSecurityMiddleware();
+    const base = createRequest("/api/account/avatar", "POST");
+    const request = {
+      ...base,
+      is: (type: string) => type === "multipart/form-data",
+    } as unknown as Request;
+    const { response } = createResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(request, response, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(response.status).not.toHaveBeenCalled();
+  });
+
+  it("limits avatar uploads to three requests per minute per client", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const base = createRequest("/api/account/avatar", "POST");
+    const request = {
+      ...base,
+      is: (type: string) => type === "multipart/form-data",
+    } as unknown as Request;
+
+    for (let index = 0; index < 3; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response, headers } = createResponse();
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(3);
+  });
+
   it("does not count CORS preflight requests", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;
