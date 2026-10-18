@@ -38,4 +38,20 @@ describe("GetRoastRanking", () => {
       ServiceUnavailableException,
     );
   });
+
+  it("rejects ranking entries with an unsafe avatar URL", async () => {
+    const { service } = createService({
+      getRoastRanking: vi.fn().mockResolvedValue([
+        {
+          username: "GrumpyWinner",
+          roastMessagesSent: 30,
+          avatarUrl: "https://evil.example/avatar.png",
+        },
+      ]),
+    });
+
+    await expect(service.execute()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
 });

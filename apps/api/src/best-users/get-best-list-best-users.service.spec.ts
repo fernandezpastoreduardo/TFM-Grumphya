@@ -39,7 +39,12 @@ describe("GetBestListBestUsers", () => {
   it("rejects malformed aliases and unsafe approval counts", async () => {
     const invalidUsers = [
       [{ username: "person@example.com", approvedIdeasCount: 4 }],
-      [{ username: "valid_alias", approvedIdeasCount: Number.MAX_SAFE_INTEGER + 1 }],
+      [
+        {
+          username: "valid_alias",
+          approvedIdeasCount: Number.MAX_SAFE_INTEGER + 1,
+        },
+      ],
     ];
 
     for (const users of invalidUsers) {
@@ -74,6 +79,22 @@ describe("GetBestListBestUsers", () => {
   it("maps repository failures to a generic service error", async () => {
     const { service } = createService({
       getBestListBestUsers: vi.fn().mockRejectedValue(new Error("db failure")),
+    });
+
+    await expect(service.execute()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it("rejects public user rows containing an unsafe avatar URL", async () => {
+    const { service } = createService({
+      getBestListBestUsers: vi.fn().mockResolvedValue([
+        {
+          username: "public_alias",
+          approvedIdeasCount: 4,
+          avatarUrl: "https://evil.example/avatar.png",
+        },
+      ]),
     });
 
     await expect(service.execute()).rejects.toBeInstanceOf(

@@ -61,6 +61,9 @@ function renderRanking(ranking: RoastRankingItem[]) {
   return (
     <>
       <div className="roast-ranking-winner" aria-label={WINNER_LABEL}>
+        {winner.avatarUrl ? (
+          <img className="roast-ranking-avatar" src={winner.avatarUrl} alt="" />
+        ) : null}
         <span className="roast-ranking-winner-place">
           Puesto 1 · Faltón máximo
         </span>
@@ -82,7 +85,16 @@ function renderRanking(ranking: RoastRankingItem[]) {
           <tbody>
             {otherUsers.map((user, index) => (
               <tr key={user.username} aria-label={`Puesto ${index + 2}`}>
-                <th scope="row">{user.username}</th>
+                <th scope="row">
+                  {user.avatarUrl ? (
+                    <img
+                      className="roast-ranking-avatar-small"
+                      src={user.avatarUrl}
+                      alt=""
+                    />
+                  ) : null}
+                  {user.username}
+                </th>
                 <td>{user.roastMessagesSent}</td>
               </tr>
             ))}

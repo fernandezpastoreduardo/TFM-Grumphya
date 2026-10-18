@@ -7,8 +7,16 @@ describe("PostgresRoastRankingRepository", () => {
     const pool = {
       query: vi.fn().mockResolvedValue({
         rows: [
-          { username: "GrumpyWinner", roast_messages_sent: "30" },
-          { username: "TeaSpiller", roast_messages_sent: "21" },
+          {
+            username: "GrumpyWinner",
+            roast_messages_sent: "30",
+            avatar_key: "00000000-0000-4000-8000-000000000001.webp",
+          },
+          {
+            username: "TeaSpiller",
+            roast_messages_sent: "21",
+            avatar_key: null,
+          },
         ],
       }),
     } as unknown as Pool;
@@ -18,7 +26,11 @@ describe("PostgresRoastRankingRepository", () => {
     );
 
     await expect(repository.getRoastRanking()).resolves.toEqual([
-      { username: "GrumpyWinner", roastMessagesSent: 30 },
+      {
+        username: "GrumpyWinner",
+        roastMessagesSent: 30,
+        avatarUrl: "/api/avatars/00000000-0000-4000-8000-000000000001.webp",
+      },
       { username: "TeaSpiller", roastMessagesSent: 21 },
     ]);
 

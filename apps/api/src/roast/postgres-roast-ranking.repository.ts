@@ -5,12 +5,14 @@ import type {
   RoastRankingItem,
   RoastRankingRepository,
 } from "./roast-ranking.models";
+import { publicAvatarUrl } from "../infrastructure/avatar/public-avatar-url";
 
 const MAX_RANKING_SIZE = 10;
 
 type RoastRankingRow = {
   username: string;
   roast_messages_sent: number | string;
+  avatar_key: string | null;
 };
 
 export class PostgresRoastRankingRepository implements RoastRankingRepository {
@@ -29,7 +31,7 @@ export class PostgresRoastRankingRepository implements RoastRankingRepository {
   async getRoastRanking(): Promise<RoastRankingItem[]> {
     await this.ensureSchema();
     const result = await this.pool.query<RoastRankingRow>(
-      `SELECT username, roast_messages_sent
+      `SELECT username, roast_messages_sent, avatar_key
        FROM users
        WHERE status = 'active' AND roast_messages_sent > 0
        ORDER BY roast_messages_sent DESC, username ASC
@@ -39,6 +41,7 @@ export class PostgresRoastRankingRepository implements RoastRankingRepository {
     return result.rows.map((row) => ({
       username: row.username,
       roastMessagesSent: Number(row.roast_messages_sent),
+      ...(row.avatar_key ? { avatarUrl: publicAvatarUrl(row.avatar_key) } : {}),
     }));
   }
 

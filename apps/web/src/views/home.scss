@@ -186,8 +186,8 @@
   width: 140px;
   height: 190px;
   flex: 0 0 140px;
-  background: url("/assets/grumphya/mascot-neutral.svg")
-    center / contain no-repeat;
+  background: url("/assets/grumphya/mascot-neutral.svg") center / contain
+    no-repeat;
   filter: drop-shadow(2px 3px 0 #286b7730);
   transform: scaleX(-1) rotate(3deg);
 }
@@ -855,8 +855,8 @@
   right: -8px;
   left: -8px;
   height: clamp(138px, 15vw, 210px);
-  background: url("/assets/grumphya/stage-curtain.svg")
-    center top / min(100%, 1440px) auto no-repeat;
+  background: url("/assets/grumphya/stage-curtain.svg") center top /
+    min(100%, 1440px) auto no-repeat;
   filter: blur(1.2px);
   opacity: 0.76;
 }
@@ -867,8 +867,8 @@
   bottom: -26px;
   left: -10px;
   height: clamp(72px, 8vw, 112px);
-  background: url("/assets/grumphya/audience.svg")
-    center bottom / max(100%, 1160px) auto no-repeat;
+  background: url("/assets/grumphya/audience.svg") center bottom /
+    max(100%, 1160px) auto no-repeat;
   filter: blur(7px);
   opacity: 0.44;
 }
@@ -918,8 +918,8 @@
   flex: 0 0 auto;
   border: 0;
   border-radius: 0;
-  background: url("/assets/grumphya/mascot-isotype.svg")
-    center / contain no-repeat;
+  background: url("/assets/grumphya/mascot-isotype.svg") center / contain
+    no-repeat;
 }
 
 .home-nav-links {
@@ -1056,8 +1056,8 @@
 .home-stage-light {
   position: absolute;
   inset: 0;
-  background: url("/assets/grumphya/stage-spotlight.svg")
-    center / contain no-repeat;
+  background: url("/assets/grumphya/stage-spotlight.svg") center / contain
+    no-repeat;
 }
 
 .home-creature {
@@ -1066,8 +1066,8 @@
   bottom: 12px;
   width: min(56%, 195px);
   height: 77%;
-  background: url("/assets/grumphya/mascot-neutral.svg") center
-    bottom / contain no-repeat;
+  background: url("/assets/grumphya/mascot-neutral.svg") center bottom / contain
+    no-repeat;
   filter: drop-shadow(2px 3px 0 #17212324);
   transform: translateX(50%) scaleX(-1);
 }
@@ -2045,7 +2045,10 @@
 /* Keep both account actions visually consistent, including their typography. */
 .home-login-button,
 .home-register-button {
-  font: 900 0.79rem/1.15 "Nunito Sans", "Trebuchet MS", sans-serif;
+  font:
+    900 0.79rem/1.15 "Nunito Sans",
+    "Trebuchet MS",
+    sans-serif;
 }
 
 .theme-dark .home-nav-link.is-current {
@@ -2283,6 +2286,16 @@
   background: var(--color-pink);
   font: inherit;
   text-decoration: none;
+}
+
+.account-actions-home .account-avatar {
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-teal-dark);
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .account-actions-home button:disabled {

@@ -3,7 +3,9 @@ import {
   authenticatedFetch,
   clearAccessToken,
   SESSION_EXPIRED_EVENT,
+  USER_AVATAR_UPDATED_EVENT,
 } from "./session";
+import { isPublicAvatarUrl } from "../avatar/public-avatar-url";
 
 export type AccountAttempts = {
   ideas: number;
@@ -17,6 +19,7 @@ export function useSessionStatus() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [accountAttempts, setAccountAttempts] =
     useState<AccountAttempts | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
@@ -24,8 +27,16 @@ export function useSessionStatus() {
     const markSessionExpired = () => {
       setIsAuthenticated(false);
       setAccountAttempts(null);
+      setAvatarUrl(null);
+    };
+    const markAvatarUpdated = (event: Event) => {
+      const avatarUrl = (event as CustomEvent<unknown>).detail;
+      if (isPublicAvatarUrl(avatarUrl)) {
+        setAvatarUrl(avatarUrl);
+      }
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, markSessionExpired);
+    window.addEventListener(USER_AVATAR_UPDATED_EVENT, markAvatarUpdated);
     authenticatedFetch("/api/account/profile")
       .then(async (response) => {
         if (isMounted) setIsAuthenticated(response.ok);
@@ -33,16 +44,19 @@ export function useSessionStatus() {
         const profile: unknown = await response.json();
         const attempts = readActivePlanAttempts(profile);
         if (isMounted) setAccountAttempts(attempts);
+        if (isMounted) setAvatarUrl(readAvatarUrl(profile));
       })
       .catch(() => {
         if (isMounted) {
           setIsAuthenticated(false);
           setAccountAttempts(null);
+          setAvatarUrl(null);
         }
       });
     return () => {
       isMounted = false;
       window.removeEventListener(SESSION_EXPIRED_EVENT, markSessionExpired);
+      window.removeEventListener(USER_AVATAR_UPDATED_EVENT, markAvatarUpdated);
     };
   }, []);
 
@@ -62,12 +76,19 @@ export function useSessionStatus() {
       clearAccessToken();
       setIsAuthenticated(false);
       setAccountAttempts(null);
+      setAvatarUrl(null);
       setIsSigningOut(false);
       window.location.assign("/");
     }
   }
 
-  return { isAuthenticated, accountAttempts, isSigningOut, signOut };
+  return { isAuthenticated, accountAttempts, avatarUrl, isSigningOut, signOut };
+}
+
+function readAvatarUrl(value: unknown): string | null {
+  if (!isRecord(value) || !isRecord(value.user)) return null;
+  const avatarUrl = value.user.avatarUrl;
+  return isPublicAvatarUrl(avatarUrl) ? avatarUrl : null;
 }
 
 function readActivePlanAttempts(value: unknown): AccountAttempts | null {

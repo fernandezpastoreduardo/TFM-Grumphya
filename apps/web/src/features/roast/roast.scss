@@ -325,6 +325,24 @@
   text-align: center;
 }
 
+.roast-ranking-avatar {
+  width: 76px;
+  height: 76px;
+  border: 3px solid #172123;
+  border-radius: 22px 22px 22px 8px;
+  object-fit: cover;
+}
+
+.roast-ranking-avatar-small {
+  width: 30px;
+  height: 30px;
+  margin-right: 8px;
+  border: 1px solid var(--color-teal-dark);
+  border-radius: 9px;
+  vertical-align: middle;
+  object-fit: cover;
+}
+
 .roast-ranking-winner-place {
   font-size: 0.78rem;
   font-weight: 800;

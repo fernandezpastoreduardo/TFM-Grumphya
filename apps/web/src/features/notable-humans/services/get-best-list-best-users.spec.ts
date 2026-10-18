@@ -43,4 +43,29 @@ describe("getBestListBestUsers", () => {
     );
     await expect(getBestListBestUsers()).rejects.toThrow();
   });
+
+  it("accepts same-origin avatar URLs and rejects arbitrary image URLs", async () => {
+    const avatarUrl = "/api/avatars/00000000-0000-4000-8000-000000000001.webp";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(Response.json([{ ...USERS[0], avatarUrl }])),
+    );
+    await expect(getBestListBestUsers()).resolves.toEqual([
+      { ...USERS[0], avatarUrl },
+    ]);
+
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json([
+            { ...USERS[0], avatarUrl: "https://evil.example/avatar.png" },
+          ]),
+        ),
+    );
+    await expect(getBestListBestUsers()).rejects.toThrow(
+      "Best users response is invalid.",
+    );
+  });
 });
