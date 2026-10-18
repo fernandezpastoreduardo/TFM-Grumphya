@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Roast } from "./roast";
 
@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
     } | null,
     refresh: vi.fn(),
   },
+  getRoastRanking: vi.fn(
+    async () => [] as Array<{ username: string; roastMessagesSent: number }>,
+  ),
 }));
 
 vi.mock("../../infrastructure/auth/use-session-status", () => ({
@@ -34,9 +37,13 @@ vi.mock("../../infrastructure/auth/session", () => ({
   authenticatedFetch: vi.fn(),
   getAccessToken: vi.fn(async () => null),
 }));
+vi.mock("./services/get-roast-ranking", () => ({
+  getRoastRanking: mocks.getRoastRanking,
+}));
 
 describe("Roast", () => {
   beforeEach(() => {
+    mocks.getRoastRanking.mockResolvedValue([]);
     mocks.session.isAuthenticated = false;
     mocks.session.accountAttempts = null;
     mocks.usage.usage = {
@@ -77,7 +84,9 @@ describe("Roast", () => {
       screen.getByLabelText("0 de 11 envíos disponibles hoy"),
     ).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /tu insulto/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /enviar insulto/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /enviar insulto/i }),
+    ).toBeDisabled();
   });
 
   it("keeps three free roasts for an authenticated user with only Iluminado", () => {
@@ -120,5 +129,19 @@ describe("Roast", () => {
         /los intercambios iniciales son ejemplos\. tus mensajes reciben la respuesta configurada en el servidor/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("loads and displays the roast ranking", async () => {
+    mocks.getRoastRanking.mockResolvedValue([
+      { username: "GrumpyWinner", roastMessagesSent: 30 },
+      { username: "TeaSpiller", roastMessagesSent: 21 },
+    ]);
+
+    render(<Roast />);
+
+    await waitFor(() => {
+      expect(screen.getByText("GrumpyWinner")).toBeInTheDocument();
+    });
+    expect(screen.getByText("TeaSpiller")).toBeInTheDocument();
   });
 });
