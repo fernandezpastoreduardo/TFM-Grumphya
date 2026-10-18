@@ -67,7 +67,10 @@ function useUserHistory() {
 
 function UserHistoryList({ ideas }: { ideas: IdeaListItemWorstUser[] }) {
   return (
-    <ol className="idea-ranking" aria-label={USER_HISTORY_LABEL}>
+    <ol
+      className="idea-ranking idea-ranking-user"
+      aria-label={USER_HISTORY_LABEL}
+    >
       {ideas.map((idea) => (
         <li key={idea.safeTitle}>
           <span className="ranking-title">{idea.safeTitle}</span>
