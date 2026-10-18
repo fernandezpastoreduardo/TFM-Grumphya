@@ -43,6 +43,7 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       privacyPolicyAcknowledged: true,
     });
     expect(session.result.account.user.emailVerified).toBe(false);
+    expect(session.result.account.user.roastMessagesSent).toBe(0);
     expect(session.result.account.plans).toMatchObject([
       {
         plan: "FALTON",

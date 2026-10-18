@@ -106,6 +106,7 @@ describe("registration HTTP flow", () => {
           username: "PersonaLista",
           emailVerified: false,
           createdAt: expect.any(String),
+          roastMessagesSent: 0,
         },
       },
     });

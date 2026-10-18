@@ -10,6 +10,7 @@ export type AccountAttempts = {
   roasts: number;
   ideasPlanActive: boolean;
   roastsPlanActive: boolean;
+  roastMessagesSent: number;
 };
 
 export function useSessionStatus() {
@@ -85,7 +86,16 @@ function readActivePlanAttempts(value: unknown): AccountAttempts | null {
     roasts: getRemaining(activeRoastPlan, "roasts"),
     ideasPlanActive: activeIdeasPlan !== undefined,
     roastsPlanActive: activeRoastPlan !== undefined,
+    roastMessagesSent: readRoastMessagesSent(value),
   };
+}
+
+function readRoastMessagesSent(value: unknown): number {
+  if (!isRecord(value) || !isRecord(value.user)) return 0;
+  const count = value.user.roastMessagesSent;
+  return typeof count === "number" && Number.isSafeInteger(count) && count >= 0
+    ? count
+    : 0;
 }
 
 function getRemaining(value: unknown, scope: "ideas" | "roasts"): number {

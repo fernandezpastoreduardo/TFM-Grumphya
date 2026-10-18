@@ -60,6 +60,7 @@ export type AccountProfile = {
     username: string;
     emailVerified: boolean;
     createdAt: string;
+    roastMessagesSent: number;
   };
   plans: AccountPlanStatus[];
 };

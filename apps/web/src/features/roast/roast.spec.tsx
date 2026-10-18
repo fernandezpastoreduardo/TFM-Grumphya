@@ -1,6 +1,13 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Roast } from "./roast";
+
+const ROAST_INPUT_LABEL = /tu insulto/i;
+const SUBMIT_ROAST_LABEL = /enviar insulto/i;
+const FIRST_SAMPLE_ROAST = "Quiero una app que haga mi trabajo mientras duermo.";
+const SUBMITTED_ROAST = "Una app que cobra por mis ideas";
+const SERVER_ROAST_REPLY = "Respuesta del servidor.";
 
 const mocks = vi.hoisted(() => ({
   session: {
@@ -10,6 +17,7 @@ const mocks = vi.hoisted(() => ({
       roasts: number;
       ideasPlanActive: boolean;
       roastsPlanActive: boolean;
+      roastMessagesSent?: number;
     } | null,
   },
   usage: {
@@ -36,6 +44,10 @@ vi.mock("../../infrastructure/auth/session", () => ({
 }));
 
 describe("Roast", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     mocks.session.isAuthenticated = false;
     mocks.session.accountAttempts = null;
@@ -59,7 +71,7 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("8 de 11 envíos disponibles hoy"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /tu insulto/i })).toBeEnabled();
+    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
   });
 
   it("disables roast submission when the signed-in user's daily quota is empty", () => {
@@ -76,8 +88,8 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("0 de 11 envíos disponibles hoy"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /tu insulto/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /enviar insulto/i })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeDisabled();
+    expect(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL })).toBeDisabled();
   });
 
   it("keeps three free roasts for an authenticated user with only Iluminado", () => {
@@ -94,7 +106,7 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("3 de 3 envíos gratuitos restantes"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /tu insulto/i })).toBeEnabled();
+    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
   });
 
   it("keeps the independent lifetime quota for anonymous roast users", () => {
@@ -109,7 +121,28 @@ describe("Roast", () => {
     expect(
       screen.getByLabelText("1 de 3 envíos gratuitos restantes"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /tu insulto/i })).toBeEnabled();
+    expect(screen.getByRole("textbox", { name: ROAST_INPUT_LABEL })).toBeEnabled();
+    expect(
+      screen.queryByText(FIRST_SAMPLE_ROAST),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides demo exchanges for a Faltón user with roast history from the ranking counter", () => {
+    mocks.session.isAuthenticated = true;
+    mocks.session.accountAttempts = {
+      ideas: 0,
+      roasts: 11,
+      ideasPlanActive: false,
+      roastsPlanActive: true,
+      roastMessagesSent: 2,
+    };
+
+    render(<Roast />);
+
+    expect(
+      screen.queryByText(FIRST_SAMPLE_ROAST),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("11 de 11 envíos disponibles hoy")).toBeInTheDocument();
   });
 
   it("clarifies that only the opening exchanges are examples", () => {
@@ -120,5 +153,61 @@ describe("Roast", () => {
         /los intercambios iniciales son ejemplos\. tus mensajes reciben la respuesta configurada en el servidor/i,
       ),
     ).toBeInTheDocument();
+  });
+
+  it("hides demo exchanges when a Faltón user already used the anonymous quota", () => {
+    mocks.session.isAuthenticated = true;
+    mocks.session.accountAttempts = {
+      ideas: 0,
+      roasts: 11,
+      ideasPlanActive: false,
+      roastsPlanActive: true,
+      roastMessagesSent: 0,
+    };
+    mocks.usage.usage = {
+      ideas: { limit: 3, used: 0, remaining: 3 },
+      roasts: { limit: 3, used: 1, remaining: 2 },
+    };
+
+    render(<Roast />);
+
+    expect(
+      screen.queryByText(FIRST_SAMPLE_ROAST),
+    ).not.toBeInTheDocument();
+  });
+
+  it("replaces the demo with the user's submitted exchange for this session", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ reply: SERVER_ROAST_REPLY }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Roast />);
+
+    expect(
+      screen.getByText(FIRST_SAMPLE_ROAST),
+    ).toBeInTheDocument();
+
+    await user.type(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+      SUBMITTED_ROAST,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          FIRST_SAMPLE_ROAST,
+        ),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(SUBMITTED_ROAST),
+    ).toBeInTheDocument();
+    expect(screen.getByText(SERVER_ROAST_REPLY)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

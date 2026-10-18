@@ -21,6 +21,11 @@ const GOOD_IDEAS_LIMIT = 10;
 const REGISTRATION_INTENT_CLEANUP_BATCH = 500;
 const AUTH_SESSION_CLEANUP_BATCH = 500;
 
+function parseRoastMessagesSent(value: string): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
 export class PostgresRegistrationRepository implements RegistrationRepository {
   private readonly pool: Pool;
   constructor(pool?: Pool) {
@@ -501,6 +506,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       username: string;
       email_verified_at: Date | null;
       user_created_at: Date;
+      roast_messages_sent: string;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -508,7 +514,8 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_ideas: number;
       remaining_roasts: number;
     }>(
-      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,p.code AS plan_code,
+      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,
+         u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
          CASE WHEN active_subscription.id IS NULL THEN 0
@@ -548,6 +555,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       username: string;
       email_verified_at: Date | null;
       user_created_at: Date;
+      roast_messages_sent: string;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -555,7 +563,8 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_ideas: number;
       remaining_roasts: number;
     }>(
-      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,p.code AS plan_code,
+      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,
+         u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
          CASE WHEN active_subscription.id IS NULL THEN 0
@@ -585,6 +594,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       username: string;
       email_verified_at: Date | null;
       user_created_at: Date;
+      roast_messages_sent: string;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -600,6 +610,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         username: first.username,
         emailVerified: first.email_verified_at !== null,
         createdAt: first.user_created_at.toISOString(),
+        roastMessagesSent: parseRoastMessagesSent(first.roast_messages_sent),
       },
       plans: rows.map((row): AccountPlanStatus => ({
         plan: row.plan_code,

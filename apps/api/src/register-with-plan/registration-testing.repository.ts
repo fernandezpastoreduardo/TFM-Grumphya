@@ -332,6 +332,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
         username: user.username,
         emailVerified: false,
         createdAt: new Date().toISOString(),
+        roastMessagesSent: 0,
       },
       plans: (["ILUMINADO", "FALTON"] as const).map((plan) => {
         const active = this.subscriptions.some(

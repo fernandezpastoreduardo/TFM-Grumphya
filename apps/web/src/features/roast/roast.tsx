@@ -23,6 +23,7 @@ const SAMPLE_EXCHANGES = [
       "Qué bien. Cuando encuentres a alguien dispuesto a pagar uno, me avisas.",
   },
 ] as const;
+const FREE_ROAST_LIMIT = 3;
 export function Roast() {
   const [sentMessages, setSentMessages] = useState<
     Array<{ id: string; message: string; reply: string }>
@@ -42,7 +43,13 @@ export function Roast() {
     setAttemptsOverride(null);
   }, [availableAttempts]);
   const remainingAttempts = attemptsOverride ?? availableAttempts;
-  const quotaLimit = hasActiveRoastPlan ? 11 : 3;
+  const quotaLimit = hasActiveRoastPlan ? 11 : FREE_ROAST_LIMIT;
+  const hasPreviousRoast =
+    sentMessages.length > 0 ||
+    (remainingAttempts !== null && remainingAttempts < quotaLimit) ||
+    (usageState.usage?.roasts.remaining ?? FREE_ROAST_LIMIT) < FREE_ROAST_LIMIT ||
+    (session.accountAttempts?.roastMessagesSent ?? 0) > 0;
+  const showDemoExchanges = remainingAttempts === quotaLimit && !hasPreviousRoast;
   const quotaDescription = hasActiveRoastPlan
     ? "envíos disponibles hoy"
     : "envíos gratuitos restantes";
@@ -69,30 +76,41 @@ export function Roast() {
             {remainingAttempts ?? "…"} <small>/ {quotaLimit}</small>
           </span>
         </div>
-        <p className="prototype-stamp">
-          <span aria-hidden="true">✳</span> Conversaciones de ejemplo · vista de
-          demostración
-        </p>
+        {showDemoExchanges ? (
+          <p className="prototype-stamp">
+            <span aria-hidden="true">✳</span> Conversaciones de ejemplo · vista de
+            demostración
+          </p>
+        ) : null}
         <div className="roast-thread">
-          {SAMPLE_EXCHANGES.map((item) => (
-            <article className="roast-exchange" key={item.user}>
-              <p className="roast-user">
-                <span className="bubble-avatar" aria-hidden="true">
-                  TÚ
-                </span>
-                {item.user}
-              </p>
-              <p className="roast-reply">
-                <span
-                  className="bubble-avatar creature-avatar"
-                  aria-hidden="true"
-                >
-                  G
-                </span>
-                {item.grumphya}
-              </p>
-            </article>
-          ))}
+          {!showDemoExchanges &&
+          remainingAttempts !== null &&
+          sentMessages.length === 0 ? (
+            <p className="roast-attempt-feedback">
+              No hay mensajes anteriores guardados.
+            </p>
+          ) : null}
+          {showDemoExchanges
+            ? SAMPLE_EXCHANGES.map((item) => (
+                <article className="roast-exchange" key={item.user}>
+                  <p className="roast-user">
+                    <span className="bubble-avatar" aria-hidden="true">
+                      TÚ
+                    </span>
+                    {item.user}
+                  </p>
+                  <p className="roast-reply">
+                    <span
+                      className="bubble-avatar creature-avatar"
+                      aria-hidden="true"
+                    >
+                      G
+                    </span>
+                    {item.grumphya}
+                  </p>
+                </article>
+              ))
+            : null}
           {sentMessages.map((item) => (
             <article className="roast-exchange" key={item.id}>
               <p className="roast-user">
@@ -129,9 +147,9 @@ export function Roast() {
           onUsageRefresh={usageState.refresh}
         />
         <p className="prototype-stamp">
-          Los intercambios iniciales son ejemplos. Tus mensajes reciben la
-          respuesta configurada en el servidor, que también controla los usos
-          restantes.
+          {showDemoExchanges
+            ? "Los intercambios iniciales son ejemplos. Tus mensajes reciben la respuesta configurada en el servidor."
+            : "Los mensajes de roast no se guardan para futuras visitas. Los intercambios de esta sesión aparecen aquí."}
         </p>
       </section>
       <aside className="roast-aside">
