@@ -129,6 +129,39 @@ describe("security middleware", () => {
     expect(next).toHaveBeenCalledTimes(30);
   });
 
+  it("limits public best-users reads by client IP", () => {
+    const middleware = createSecurityMiddleware();
+    const request = createRequest("/api/best-users", "GET");
+    const next = vi.fn() as NextFunction;
+
+    for (let index = 0; index < 30; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response, headers } = createResponse();
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(30);
+  });
+
+  it("keeps the dedicated best-users limit when the route has a trailing slash", () => {
+    const middleware = createSecurityMiddleware();
+    const request = createRequest("/api/best-users/", "GET");
+    const next = vi.fn() as NextFunction;
+
+    for (let index = 0; index < 30; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response } = createResponse();
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(next).toHaveBeenCalledTimes(30);
+  });
+
   it("rejects registration requests without the configured origin", () => {
     const middleware = createSecurityMiddleware();
     const request = {

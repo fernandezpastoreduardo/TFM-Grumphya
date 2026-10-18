@@ -12,6 +12,7 @@ const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
 const WORST_IDEAS_READ_REQUEST_LIMIT = 30;
 const WORST_IDEAS_USER_READ_REQUEST_LIMIT = 30;
 const ROAST_RANKING_READ_REQUEST_LIMIT = 30;
+const BEST_USERS_READ_REQUEST_LIMIT = 30;
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
@@ -92,6 +93,7 @@ export function createSecurityMiddleware(): RequestHandler {
 
     const clientAddress =
       request.ip ?? request.socket.remoteAddress ?? "unknown";
+    const normalizedPath = request.path.replace(/\/+$/, "") || "/";
     if (
       request.path.startsWith("/api/registration") &&
       request.originalUrl?.includes("?")
@@ -109,10 +111,11 @@ export function createSecurityMiddleware(): RequestHandler {
     const isWorstIdeasRead =
       request.method === "GET" && request.path === "/api/worst-ideas";
     const isWorstIdeasUserRead =
-      request.method === "GET" &&
-      request.path === "/api/account/worst-ideas";
+      request.method === "GET" && request.path === "/api/account/worst-ideas";
     const isRoastRankingRead =
       request.method === "GET" && request.path === "/api/roast-ranking";
+    const isBestUsersRead =
+      request.method === "GET" && normalizedPath === "/api/best-users";
     const isRegistrationPost =
       request.method === "POST" && request.path.startsWith("/api/registration");
     const isRefreshPost =
@@ -164,22 +167,30 @@ export function createSecurityMiddleware(): RequestHandler {
             ["api", API_REQUEST_LIMIT],
             ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT],
           ]
-      : isWorstIdeasUserRead
-        ? [
-            ["api", API_REQUEST_LIMIT],
-            ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
-          ]
-      : isRoastRankingRead
-        ? [
-            ["api", API_REQUEST_LIMIT],
-            ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT],
-          ]
-      : isRegistrationPost || isAuthPost || isAccountPost || isAccountDelete
-        ? [
-            ["api", API_REQUEST_LIMIT],
-            [registrationScope, registrationLimit],
-          ]
-        : [["api", API_REQUEST_LIMIT]];
+        : isWorstIdeasUserRead
+          ? [
+              ["api", API_REQUEST_LIMIT],
+              ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
+            ]
+          : isRoastRankingRead
+            ? [
+                ["api", API_REQUEST_LIMIT],
+                ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT],
+              ]
+            : isBestUsersRead
+              ? [
+                  ["api", API_REQUEST_LIMIT],
+                  ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT],
+                ]
+              : isRegistrationPost ||
+                  isAuthPost ||
+                  isAccountPost ||
+                  isAccountDelete
+                ? [
+                    ["api", API_REQUEST_LIMIT],
+                    [registrationScope, registrationLimit],
+                  ]
+                : [["api", API_REQUEST_LIMIT]];
 
     for (const [scope, limit] of limits) {
       const key = `${clientAddress}:${scope}`;
