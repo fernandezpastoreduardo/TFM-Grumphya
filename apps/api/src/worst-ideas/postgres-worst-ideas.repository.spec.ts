@@ -205,6 +205,7 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(pool.queries[0]?.sql).toContain(
       "ORDER BY history.submission_count DESC, ideas.safe_title ASC",
     );
+    expect(pool.queries[0]?.sql).toContain("LIMIT 10");
     expect(pool.queries[0]?.sql).toContain("ideas.safe_title");
     expect(pool.queries[0]?.sql).toContain("history.submission_count");
     expect(pool.queries[0]?.sql).not.toContain("original_idea");
@@ -232,6 +233,7 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(pool.queries[0]?.sql).toMatch(
       /ORDER BY\s+weekly\.rejected_count DESC,\s+ideas\.safe_title ASC/,
     );
+    expect(pool.queries[0]?.sql).toContain("LIMIT 10");
     expect(pool.queries[0]?.sql).not.toContain("rubric_score ASC");
     expect(pool.queries[0]?.sql).not.toContain("idea_text");
     expect(pool.queries[0]?.sql).not.toContain("user_id");

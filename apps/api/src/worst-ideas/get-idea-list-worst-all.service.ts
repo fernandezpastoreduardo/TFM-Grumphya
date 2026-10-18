@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type { IdeaListItemWorstAll } from "./worst-ideas.models";
+import { MAX_WORST_IDEA_LIST_ITEMS } from "./worst-ideas.models";
 import type { WorstIdeasRepository } from "./worst-ideas.models";
 import { WORST_IDEAS_REPOSITORY } from "./worst-ideas.tokens";
 
@@ -24,7 +25,8 @@ export class GetIdeaListWorstAll {
 
   async execute(): Promise<IdeaListItemWorstAll[]> {
     try {
-      return await this.repository.getIdeaListWorstAll();
+      const ranking = await this.repository.getIdeaListWorstAll();
+      return ranking.slice(0, MAX_WORST_IDEA_LIST_ITEMS);
     } catch {
       this.logger.error("WORST_IDEAS_RANKING_UNAVAILABLE");
       throw new ServiceUnavailableException(RANKING_UNAVAILABLE);

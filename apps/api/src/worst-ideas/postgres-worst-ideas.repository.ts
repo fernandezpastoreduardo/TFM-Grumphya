@@ -1,5 +1,6 @@
 import { Pool, type PoolClient } from "pg";
 import { runMigrations } from "../infrastructure/database/run-migrations";
+import { MAX_WORST_IDEA_LIST_ITEMS } from "./worst-ideas.models";
 import type {
   IdeaListItemWorstAll,
   IdeaListItemWorstUser,
@@ -60,7 +61,8 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
        JOIN rejected_ideas AS ideas ON ideas.id = weekly.rejected_idea_id
        WHERE weekly.week_start = date_trunc('week', now() AT TIME ZONE '${MADRID_TIME_ZONE}')::date
        ORDER BY weekly.rejected_count DESC,
-                ideas.safe_title ASC`,
+                ideas.safe_title ASC
+       LIMIT ${MAX_WORST_IDEA_LIST_ITEMS}`,
     );
     return result.rows.map((row) => ({
       safeTitle: row.safe_title,
@@ -75,7 +77,8 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
        FROM user_rejected_ideas AS history
        JOIN rejected_ideas AS ideas ON ideas.id = history.rejected_idea_id
        WHERE history.user_id = $1
-       ORDER BY history.submission_count DESC, ideas.safe_title ASC`,
+       ORDER BY history.submission_count DESC, ideas.safe_title ASC
+       LIMIT ${MAX_WORST_IDEA_LIST_ITEMS}`,
       [userId],
     );
     return result.rows.map((row) => ({

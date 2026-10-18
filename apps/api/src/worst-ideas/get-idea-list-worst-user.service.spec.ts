@@ -25,6 +25,18 @@ describe("GetIdeaListWorstUser", () => {
     expect(repository.getIdeaListWorstUser).toHaveBeenCalledWith(USER_ID);
   });
 
+  it("returns no more than ten history items", async () => {
+    const items = Array.from({ length: 12 }, (_, index) => ({
+      safeTitle: `Idea ${index + 1}`,
+      count: 12 - index,
+    }));
+    const { service } = createService({
+      getIdeaListWorstUser: vi.fn().mockResolvedValue(items),
+    });
+
+    await expect(service.execute(USER_ID)).resolves.toEqual(items.slice(0, 10));
+  });
+
   it("does not query the repository for an invalid user identifier", async () => {
     const { repository, service } = createService();
 
