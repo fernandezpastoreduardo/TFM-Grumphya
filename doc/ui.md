@@ -60,7 +60,7 @@ la lámina maestra está en
 - Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
   distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
   para Planes, `ultrachachi-reality-check.png` para su popup, y
-  `good-practices-problem-scout.png`, `notable-ideas-applause.png`,
+  `good-practices-problem-scout.png`, `notable-humans-grumphya.png`,
   `roast-vent.png`/`roast-plan-callout.png`, `worst-ideas-wall.png` y
   `login-credentials.png`/`login-privacy.png` para Buenas prácticas, Humanos
   notables, Descárgate, Peores ideas y Login respectivamente. Se mantienen
@@ -93,6 +93,35 @@ la lámina maestra está en
 - Los SVG decorativos se ocultan a tecnologías de asistencia. Los controles
   tienen semántica nativa, nombre accesible, estado anunciado y foco visible.
   Los colores no son la única forma de comunicar selección o estado.
+
+## Revisión de temas, responsive y accesibilidad (octubre de 2026)
+
+La revisión comparó Home en claro y oscuro y Humanos notables en ambos temas en
+escritorio. Encontró el selector de tema de las secciones fuera de la fila
+principal y demasiado espacio entre el hero y el contenido. El header ahora
+reserva una columna para el selector en escritorio y lo coloca junto al menú
+móvil en tablet; el espacio entre hero y contenido usa un valor fluido y menor.
+La revisión estática de los breakpoints confirma que la navegación se sustituye
+por un menú móvil hasta 979 px y que los layouts de sección se apilan. No se
+pudo capturar una ventana móvil real en este entorno; queda pendiente la
+verificación visual con viewport de 390 × 844 px antes de dar por cerrada la
+revisión responsive.
+
+El menú móvil se comporta como diálogo modal: al abrir, enfoca el primer enlace;
+Tab y Mayús+Tab recorren sus opciones sin salir del menú; Escape lo cierra y
+devuelve el foco al disparador. El fondo de cierre no añade una parada de
+teclado. El contraste de los pares base inspeccionados osciló entre 5,14:1 y
+15,14:1. No se revisó cada combinación sobre ilustraciones, fondos con gradiente
+ni estados interactivos.
+
+La hoja de fuentes se descubre desde `index.html`, con `preconnect` a Google
+Fonts; el `@import` que retrasaba su descubrimiento se eliminó de `base.scss`.
+Las rutas ya se cargan de forma diferida. No se midieron LCP, CLS ni INP, por lo
+que esta revisión no certifica Core Web Vitals. Para completarla, medir Home y
+Humanos notables con Lighthouse en escritorio y móvil, ambos temas y caché fría
+y caliente; revisar waterfall, bytes transferidos y cambios de layout. El PNG
+de Humanos notables pesa aproximadamente 796 KB y queda como candidato a
+optimización si las mediciones móviles confirman impacto.
 
 ## Ranking público de ideas rechazadas
 

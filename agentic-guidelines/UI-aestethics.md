@@ -89,4 +89,25 @@ margin.
   espacio de contenido y los controles en un viewport pequeño.
 - Las ilustraciones no deben bloquear lectura, teclado ni controles.
 
+### Revisión de temas, responsive y rendimiento
+
+- Revisa cada flujo principal en claro y oscuro, tanto en escritorio como en
+  una ventana móvil real de 390 × 844 px. Comprueba también los breakpoints de
+  tablet y evita inferir el resultado visual móvil solo desde las media queries.
+- Verifica contraste de texto normal (4,5:1), texto grande (3:1) y controles en
+  sus superficies finales, incluidos estados hover, foco, selección, errores,
+  overlays y fondos con ilustración. Los colores base por sí solos no bastan.
+- El menú móvil debe ser operable con teclado: foco inicial en el panel, foco
+  contenido mientras está abierto, cierre con Escape y devolución del foco al
+  disparador. Respeta `prefers-reduced-motion` y conserva targets táctiles
+  cómodos.
+- Descubre tipografías desde el documento y prepara las conexiones necesarias
+  antes de solicitarlas. Carga recursos de forma diferida cuando una ruta no
+  los necesita; limita y optimiza las ilustraciones según sus dimensiones de
+  presentación, priorizando la carga móvil.
+- No declares Core Web Vitals correctos por inspección de código o tamaño de
+  bundle. Mide LCP, CLS e INP con herramientas de laboratorio y datos reales
+  cuando estén disponibles; registra viewport, ruta, tema, caché y condiciones
+  de red para que los resultados se puedan comparar.
+
 Las decisiones vigentes y su implementación están resumidas en [`doc/ui.md`](../doc/ui.md).
