@@ -231,7 +231,9 @@ describe("evaluation process HTTP endpoint", () => {
   it("checks and commits the authenticated Iluminado quota around successful evaluation", async () => {
     process.env.ACCESS_TOKEN_SECRET = ACCESS_TOKEN_SECRET;
     const planUsage = {
-      reserve: vi.fn().mockResolvedValue({ state: "reserved" as const }),
+      reserveIfPlanActive: vi
+        .fn()
+        .mockResolvedValue({ state: "reserved" as const }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     };
@@ -257,7 +259,7 @@ describe("evaluation process HTTP endpoint", () => {
       expect(response.status, JSON.stringify(body)).toBe(201);
       expect(body).toMatchObject({ status: "evaluated" });
       expect(JSON.stringify(body)).not.toContain(VALID_IDEA);
-      expect(planUsage.reserve).toHaveBeenCalledWith(
+      expect(planUsage.reserveIfPlanActive).toHaveBeenCalledWith(
         AUTHENTICATED_USER_ID,
         "ideas",
         expect.stringMatching(/^[a-f0-9]{64}$/u),

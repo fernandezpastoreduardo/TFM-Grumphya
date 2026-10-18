@@ -47,8 +47,12 @@ function getIdeaAttemptsRemaining(
   isAuthenticated: boolean | null,
   anonymousRemaining: number | undefined,
   accountRemaining: number | undefined,
+  hasActiveIdeaPlan: boolean | null,
 ): number | null | undefined {
-  if (isAuthenticated === true) return accountRemaining ?? null;
+  if (isAuthenticated === true) {
+    if (hasActiveIdeaPlan === null) return null;
+    return hasActiveIdeaPlan ? (accountRemaining ?? null) : anonymousRemaining;
+  }
   if (isAuthenticated === false) return anonymousRemaining ?? null;
   return null;
 }
@@ -99,6 +103,12 @@ export function Home() {
   const isEvaluationSubmittingRef = useRef(false);
   const anonymousUsage = useAnonymousUsage();
   const session = useSessionStatus();
+  const ideaQuotaKind =
+    session.isAuthenticated === true &&
+    (session.accountAttempts === null ||
+      session.accountAttempts.ideasPlanActive)
+      ? "account"
+      : "anonymous";
 
   useEffect(() => {
     const dialog = quotaDialogRef.current;
@@ -322,7 +332,7 @@ export function Home() {
           <GetUserIdea
             onSubmit={(request) => void handleEvaluation(request)}
             onQuotaExhausted={
-              session.isAuthenticated === false
+              ideaQuotaKind === "anonymous"
                 ? () => setIsQuotaDialogOpen(true)
                 : undefined
             }
@@ -331,10 +341,9 @@ export function Home() {
               session.isAuthenticated,
               anonymousUsage.usage?.ideas.remaining,
               session.accountAttempts?.ideas,
+              session.accountAttempts?.ideasPlanActive ?? null,
             )}
-            quotaKind={
-              session.isAuthenticated === true ? "account" : "anonymous"
-            }
+            quotaKind={ideaQuotaKind}
           />
           {anonymousUsage.error ? (
             <p className="home-result-error" role="alert">

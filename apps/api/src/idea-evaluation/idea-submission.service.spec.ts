@@ -6,6 +6,7 @@ import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import type { EvaluationProcessService } from "./evaluation-process.service";
 import { IdeaSubmissionService } from "./idea-submission.service";
 import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
+import type { AnonymousUsageService } from "../manage-user-unknow/anonymous-usage.service";
 
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const GRASSHOPPER_PARAPHRASE =
@@ -41,6 +42,7 @@ function createDependencies(
   searchResult: unknown = { kind: "no-match" },
   evaluationResult: unknown = EVALUATION_RESULT,
   planUsage?: PlanUsageService,
+  anonymousUsage?: AnonymousUsageService,
 ) {
   const search = {
     executeDetailed: vi.fn().mockResolvedValue({
@@ -60,8 +62,13 @@ function createDependencies(
   } as unknown as EvaluationProcessService;
   const goodIdeas = { saveGoodIdea: vi.fn().mockResolvedValue(true) };
   const planQuota = planUsage ?? {
-    reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+    reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
     commit: vi.fn().mockResolvedValue(undefined),
+    release: vi.fn().mockResolvedValue(undefined),
+  };
+  const anonymousQuota = anonymousUsage ?? {
+    reserve: vi.fn().mockResolvedValue({ state: "reserved", usage: {} }),
+    commit: vi.fn().mockResolvedValue({}),
     release: vi.fn().mockResolvedValue(undefined),
   };
   return {
@@ -69,7 +76,7 @@ function createDependencies(
       search,
       repository,
       evaluation,
-      undefined,
+      anonymousQuota as AnonymousUsageService,
       goodIdeas,
       planQuota as PlanUsageService,
     ),
@@ -78,10 +85,47 @@ function createDependencies(
     evaluation,
     goodIdeas,
     planUsage: planQuota,
+    anonymousUsage: anonymousQuota,
   };
 }
 
 describe("IdeaSubmissionService", () => {
+  it("uses the browser free quota for an authenticated user without Iluminado", async () => {
+    const planUsage = {
+      reserve: vi.fn(),
+      reserveIfPlanActive: vi.fn().mockResolvedValue(null),
+      commit: vi.fn(),
+      release: vi.fn(),
+    } as unknown as PlanUsageService & { reserveIfPlanActive: ReturnType<typeof vi.fn> };
+    const { service, planUsage: planQuota, anonymousUsage } = createDependencies(
+      { kind: "no-match" },
+      EVALUATION_RESULT,
+      planUsage,
+    );
+
+    await service.submit(
+      VALID_REQUEST,
+      IDEMPOTENCY_KEY,
+      "visitor-token",
+      AUTHENTICATED_USER_ID,
+    );
+
+    expect(planQuota.reserveIfPlanActive).toHaveBeenCalledWith(
+      AUTHENTICATED_USER_ID,
+      "ideas",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(anonymousUsage.reserve).toHaveBeenCalledWith(
+      "visitor-token",
+      "ideas",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(anonymousUsage.commit).toHaveBeenCalledOnce();
+    expect(planQuota.commit).not.toHaveBeenCalled();
+  });
+
   it("attributes a newly rejected idea to the authenticated user", async () => {
     const { service, repository } = createDependencies();
 
@@ -156,11 +200,11 @@ describe("IdeaSubmissionService", () => {
 
   it("consumes the authenticated Iluminado quota only after evaluation succeeds", async () => {
     const planUsage = {
-      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     } as unknown as PlanUsageService & {
-      reserve: ReturnType<typeof vi.fn>;
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
       commit: ReturnType<typeof vi.fn>;
       release: ReturnType<typeof vi.fn>;
     };
@@ -179,7 +223,7 @@ describe("IdeaSubmissionService", () => {
       ),
     ).resolves.toMatchObject({ status: "evaluated" });
 
-    expect(planUsage.reserve).toHaveBeenCalledWith(
+    expect(planUsage.reserveIfPlanActive).toHaveBeenCalledWith(
       "123e4567-e89b-42d3-a456-426614174000",
       "ideas",
       IDEMPOTENCY_HASH,
@@ -201,14 +245,14 @@ describe("IdeaSubmissionService", () => {
       result: PROMISING_EVALUATION_RESULT,
     };
     const planUsage = {
-      reserve: vi
+      reserveIfPlanActive: vi
         .fn()
         .mockResolvedValueOnce({ state: "reserved" })
         .mockResolvedValueOnce({ state: "cached", response: cachedResponse }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     } as unknown as PlanUsageService & {
-      reserve: ReturnType<typeof vi.fn>;
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
       commit: ReturnType<typeof vi.fn>;
       release: ReturnType<typeof vi.fn>;
     };
@@ -231,14 +275,14 @@ describe("IdeaSubmissionService", () => {
       ),
     ).resolves.toEqual(cachedResponse);
 
-    expect(planUsage.reserve).toHaveBeenNthCalledWith(
+    expect(planUsage.reserveIfPlanActive).toHaveBeenNthCalledWith(
       1,
       userId,
       "ideas",
       IDEMPOTENCY_HASH,
       REQUEST_HASH,
     );
-    expect(planUsage.reserve).toHaveBeenNthCalledWith(
+    expect(planUsage.reserveIfPlanActive).toHaveBeenNthCalledWith(
       2,
       userId,
       "ideas",
@@ -252,11 +296,11 @@ describe("IdeaSubmissionService", () => {
   it("releases the authenticated quota reservation after a transient evaluation failure", async () => {
     const transientFailure = new Error("evaluation unavailable");
     const planUsage = {
-      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     } as unknown as PlanUsageService & {
-      reserve: ReturnType<typeof vi.fn>;
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
       commit: ReturnType<typeof vi.fn>;
       release: ReturnType<typeof vi.fn>;
     };

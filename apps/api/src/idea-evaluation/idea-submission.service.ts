@@ -51,6 +51,9 @@ const USER_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 type EvaluationRequest = ReturnType<typeof normalizeAndValidateRequest>;
+type UsageReservation =
+  | { source: "account"; userId: string; result: PlanUsageReservation }
+  | { source: "anonymous"; result?: ReservationResult };
 
 export type IdeaSubmissionResponse =
   | {
@@ -198,8 +201,8 @@ export class IdeaSubmissionService {
       requestHash,
       authenticatedUserId,
     );
-    if (reservation?.state === "cached")
-      return readCachedSubmission(reservation.response);
+    if (reservation?.result?.state === "cached")
+      return readCachedSubmission(reservation.result.response);
 
     let continuationClaimed: boolean;
     try {
@@ -211,7 +214,7 @@ export class IdeaSubmissionService {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       this.logger.error("IDEA_CONTINUATION_CLAIM_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
@@ -220,7 +223,7 @@ export class IdeaSubmissionService {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       throw new ConflictException(INVALID_CONTINUATION_RESPONSE);
     }
@@ -242,14 +245,14 @@ export class IdeaSubmissionService {
         idempotencyHash,
         requestHash,
         response,
-        authenticatedUserId,
+        reservation,
       );
       return response;
     } catch (error) {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       throw error;
     }
@@ -284,13 +287,13 @@ export class IdeaSubmissionService {
       requestHash,
       authenticatedUserId,
     );
-    if (reservation?.state === "cached")
-      return readCachedSubmission(reservation.response);
+    if (reservation?.result?.state === "cached")
+      return readCachedSubmission(reservation.result.response);
     if (!this.search) {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
@@ -303,7 +306,7 @@ export class IdeaSubmissionService {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       this.logger.error("IDEA_SIMILARITY_CHECK_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
@@ -313,7 +316,7 @@ export class IdeaSubmissionService {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       try {
         const submissionCount = authenticatedUserId
@@ -389,34 +392,44 @@ export class IdeaSubmissionService {
         idempotencyHash,
         requestHash,
         response,
-        authenticatedUserId,
+        reservation,
       );
       return response;
     } catch (error) {
       await this.releaseUsage(
         anonymousVisitorToken,
         idempotencyHash,
-        authenticatedUserId,
+        reservation,
       );
       throw error;
     }
   }
 
-  private reserveUsage(
+  private async reserveUsage(
     token: unknown,
     keyHash: string,
     requestHash: string,
     userId: string | undefined,
-  ): Promise<ReservationResult | PlanUsageReservation | undefined> {
+  ): Promise<UsageReservation | undefined> {
     if (userId) {
       if (!this.planUsage)
         throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
-      return this.planUsage.reserve(userId, "ideas", keyHash, requestHash);
+      const accountReservation = await this.planUsage.reserveIfPlanActive(
+        userId,
+        "ideas",
+        keyHash,
+        requestHash,
+      );
+      if (accountReservation)
+        return { source: "account", userId, result: accountReservation };
     }
-    return (
-      this.anonymousUsage?.reserve(token, "ideas", keyHash, requestHash) ??
-      Promise.resolve(undefined)
+    const anonymousReservation = await this.anonymousUsage?.reserve(
+      token,
+      "ideas",
+      keyHash,
+      requestHash,
     );
+    return { source: "anonymous", result: anonymousReservation };
   }
 
   private commitUsage(
@@ -424,17 +437,17 @@ export class IdeaSubmissionService {
     keyHash: string,
     requestHash: string,
     response: IdeaSubmissionResponse,
-    userId: string | undefined,
+    reservation: UsageReservation | undefined,
   ) {
-    if (userId)
+    if (reservation?.source === "account")
       return this.planUsage!.commit(
-        userId,
+        reservation.userId,
         "ideas",
         keyHash,
         requestHash,
         response,
       );
-    return this.anonymousUsage?.commit(
+    if (reservation?.source === "anonymous") return this.anonymousUsage?.commit(
       token,
       "ideas",
       keyHash,
@@ -446,10 +459,12 @@ export class IdeaSubmissionService {
   private releaseUsage(
     token: unknown,
     keyHash: string,
-    userId: string | undefined,
+    reservation: UsageReservation | undefined,
   ) {
-    if (userId) return this.planUsage!.release(userId, "ideas", keyHash);
-    return this.anonymousUsage?.release(token, "ideas", keyHash);
+    if (reservation?.source === "account")
+      return this.planUsage!.release(reservation.userId, "ideas", keyHash);
+    if (reservation?.source === "anonymous")
+      return this.anonymousUsage?.release(token, "ideas", keyHash);
   }
 
   private async persistApprovedIdeaIfNeeded(

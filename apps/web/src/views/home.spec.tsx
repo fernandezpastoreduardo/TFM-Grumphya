@@ -253,6 +253,51 @@ describe("Home", () => {
     );
   });
 
+  it("keeps free idea attempts for a signed-in user with only Faltón", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) => {
+        if (url === "/api/auth/refresh") {
+          return Promise.resolve(
+            new Response(JSON.stringify({ accessToken: "session-access-token" }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+        if (url === "/api/account/profile") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              plans: [
+                {
+                  plan: "FALTON",
+                  status: "active",
+                  attemptsRemaining: { ideas: 0, roasts: 11 },
+                },
+              ],
+            }),
+          });
+        }
+        if (url === "/api/anonymous-usage") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              ideas: { limit: 3, used: 1, remaining: 2 },
+              roasts: { limit: 3, used: 0, remaining: 3 },
+            }),
+          });
+        }
+        return new Promise(() => undefined);
+      }),
+    );
+    render(<Home />);
+
+    expect(
+      await screen.findByText("Te quedan 2 de 3 evaluaciones gratuitas en este navegador."),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the editable hero copy separate from the idea input", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(
