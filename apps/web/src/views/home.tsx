@@ -10,6 +10,7 @@ import { SimilarIdeaNotice } from "../features/repeated-ideas/components/Similar
 import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../features/error-pages/error-pages";
 import { usePersistentTheme } from "../shared/hooks/use-persistent-theme";
+import { useMobileMenu } from "../shared/hooks/use-mobile-menu";
 import { useSessionStatus } from "../infrastructure/auth/use-session-status";
 import { AccountActions } from "../shared/components/account-actions";
 import {
@@ -97,7 +98,13 @@ export function Home() {
   const [evaluationError, setEvaluationError] = useState("");
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
   const { theme, toggleTheme } = usePersistentTheme();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const {
+    isOpen: isMobileMenuOpen,
+    toggle: toggleMobileMenu,
+    close: closeMobileMenu,
+    triggerRef: mobileMenuTriggerRef,
+    menuRef: mobileMenuRef,
+  } = useMobileMenu();
   const [isQuotaDialogOpen, setIsQuotaDialogOpen] = useState(false);
   const quotaDialogRef = useRef<HTMLDialogElement>(null);
   const isEvaluationSubmittingRef = useRef(false);
@@ -277,6 +284,7 @@ export function Home() {
             </button>
             <div className="home-mobile-menu">
               <button
+                ref={mobileMenuTriggerRef}
                 className="mobile-menu-trigger"
                 type="button"
                 aria-label={
@@ -284,7 +292,7 @@ export function Home() {
                 }
                 aria-expanded={isMobileMenuOpen}
                 aria-controls="home-sections-menu"
-                onClick={() => setIsMobileMenuOpen((open) => !open)}
+                onClick={toggleMobileMenu}
               >
                 <span className="menu-icon-open" aria-hidden="true">
                   <svg viewBox="0 0 24 24" focusable="false">
@@ -469,11 +477,16 @@ export function Home() {
               <button
                 className="mobile-menu-backdrop"
                 type="button"
-                aria-label="Cerrar menú"
-                onClick={() => setIsMobileMenuOpen(false)}
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={closeMobileMenu}
               />
               <div
+                ref={mobileMenuRef}
                 className={`home-mobile-menu mobile-menu-portal theme-${theme}`}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Menú de navegación"
               >
                 <nav id="home-sections-menu" aria-label="Secciones principales">
                   <a href="/" aria-current="page">

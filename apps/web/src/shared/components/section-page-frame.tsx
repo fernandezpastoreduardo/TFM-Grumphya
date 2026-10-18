@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import "./mobile-navigation.scss";
 import "./section-page-frame.scss";
 import "./shared-components.scss";
 import { AccountActions } from "./account-actions";
 import { usePersistentTheme } from "../hooks/use-persistent-theme";
+import { useMobileMenu } from "../hooks/use-mobile-menu";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 
 export type SectionPageMeta = {
@@ -36,6 +37,7 @@ function SectionHeader({
   onThemeToggle,
   isMenuOpen,
   onMenuToggle,
+  menuTriggerRef,
   isAuthenticated,
   isSigningOut,
   onSignOut,
@@ -44,6 +46,7 @@ function SectionHeader({
   onThemeToggle: () => void;
   isMenuOpen: boolean;
   onMenuToggle: () => void;
+  menuTriggerRef: Ref<HTMLButtonElement>;
   isAuthenticated: boolean | null;
   isSigningOut: boolean;
   onSignOut: () => void;
@@ -100,6 +103,7 @@ function SectionHeader({
       </button>
       <div className="site-mobile-menu">
         <button
+          ref={menuTriggerRef}
           className="mobile-menu-trigger"
           type="button"
           aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú de secciones"}
@@ -159,7 +163,13 @@ export function SectionPageFrame({
   showHero?: boolean;
 }) {
   const { theme, toggleTheme } = usePersistentTheme();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const {
+    isOpen: isMenuOpen,
+    toggle: toggleMenu,
+    close: closeMenu,
+    triggerRef: menuTriggerRef,
+    menuRef,
+  } = useMobileMenu();
   const session = useSessionStatus();
   return (
     <div className={`app-page theme-${theme}${isMenuOpen ? " menu-open" : ""}`}>
@@ -168,7 +178,8 @@ export function SectionPageFrame({
           theme={theme}
           onThemeToggle={toggleTheme}
           isMenuOpen={isMenuOpen}
-          onMenuToggle={() => setIsMenuOpen((open) => !open)}
+          onMenuToggle={toggleMenu}
+          menuTriggerRef={menuTriggerRef}
           isAuthenticated={session.isAuthenticated}
           isSigningOut={session.isSigningOut}
           onSignOut={() => void session.signOut()}
@@ -193,11 +204,16 @@ export function SectionPageFrame({
               <button
                 className="mobile-menu-backdrop"
                 type="button"
-                aria-label="Cerrar menú"
-                onClick={() => setIsMenuOpen(false)}
+                aria-hidden="true"
+                tabIndex={-1}
+                onClick={closeMenu}
               />
               <div
+                ref={menuRef}
                 className={`site-mobile-menu mobile-menu-portal theme-${theme}`}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Menú de navegación"
               >
                 <nav id="site-sections-menu" aria-label="Secciones principales">
                   <a

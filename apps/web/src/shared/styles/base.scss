@@ -1,20 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito+Sans:wght@400;500;600;700&display=swap");
-
 :root {
   font-family: "Nunito Sans", "Trebuchet MS", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color: #172123;
-  background: #b7f1c5;
-  font-weight: 600;
-  --color-mint: #b7f1c5;
-  --color-mint-deep: #8ee5aa;
-  --color-teal: #4b9da4;
-  --color-teal-dark: #286b77;
-  --color-blue: #48a8c7;
-  --color-pink: #ed7895;
-  --color-ink: #172123;
+  background: #d0f6e4;
+  font-weight: 500;
+  letter-spacing: 0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --color-mint: #d0f6e4;
+  --color-mint-deep: #a6e8cb;
+  --color-teal: #19b9c1;
+  --color-teal-dark: #087887;
+  --color-blue: #59b4cf;
+  --color-pink: #f18aa0;
+  --color-ink: #101b20;
   --color-paper: #fffefa;
+  --color-lilac: #e6dcf5;
+  --color-line: #216b70;
 }
 
 * {
@@ -61,45 +64,8 @@ input:focus-visible {
   font-weight: 800;
 }
 
-/* Grumphya visual system: use the same mint canvas, teal ink and expressive creature across routes. */
-:root {
-  --color-mint: #b9f0c7;
-  --color-mint-deep: #8bd9a7;
-  --color-teal: #63a9a8;
-  --color-teal-dark: #216b70;
-  --color-blue: #59b4cf;
-  --color-pink: #f18aa0;
-  --color-ink: #183234;
-  --color-paper: #fffdf5;
-  --color-lilac: #e6dcf5;
-  --color-line: #216b70;
-}
-
 body {
   background: var(--color-mint);
-}
-
-/* Aprobado: teatrillo de profundidad con controles siempre nítidos. */
-
-/* Refinamiento de la propuesta aprobada: escenario, foco y contenido a primera vista. */
-:root {
-  --color-mint: #d0f6e4;
-  --color-mint-deep: #a6e8cb;
-  --color-teal: #19b9c1;
-  --color-teal-dark: #087887;
-  --color-ink: #101b20;
-  --color-paper: #fffefa;
-  background: #d0f6e4;
-}
-
-/* Capas teatrales completas y adornos del hero, como en la lámina aprobada. */
-
-/* Afinado global de lectura, navegación y superficies de sección. */
-:root {
-  font-weight: 500;
-  letter-spacing: 0.006em;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 strong,
