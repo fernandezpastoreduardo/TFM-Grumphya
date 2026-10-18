@@ -1,5 +1,6 @@
 node_modules/
 dist/
+var/avatars/
 coverage/
 .DS_Store #Mandatory 4 me. This is from My NAS Sync Backup app
 

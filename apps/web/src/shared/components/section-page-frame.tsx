@@ -42,6 +42,7 @@ function SectionHeader({
   menuTriggerRef,
   isAuthenticated,
   isSigningOut,
+  avatarUrl,
   onSignOut,
 }: {
   theme: "light" | "dark";
@@ -51,6 +52,7 @@ function SectionHeader({
   menuTriggerRef: Ref<HTMLButtonElement>;
   isAuthenticated: boolean | null;
   isSigningOut: boolean;
+  avatarUrl: string | null;
   onSignOut: () => void;
 }) {
   return (
@@ -78,6 +80,7 @@ function SectionHeader({
       <AccountActions
         isAuthenticated={isAuthenticated}
         isSigningOut={isSigningOut}
+        avatarUrl={avatarUrl}
         onSignOut={onSignOut}
         variant="site"
       />
@@ -183,6 +186,7 @@ export function SectionPageFrame({
           onMenuToggle={toggleMenu}
           menuTriggerRef={menuTriggerRef}
           isAuthenticated={session.isAuthenticated}
+          avatarUrl={session.avatarUrl}
           isSigningOut={session.isSigningOut}
           onSignOut={() => void session.signOut()}
         />
@@ -241,6 +245,7 @@ export function SectionPageFrame({
                   ))}
                   <AccountActions
                     isAuthenticated={session.isAuthenticated}
+                    avatarUrl={session.avatarUrl}
                     isSigningOut={session.isSigningOut}
                     onSignOut={() => void session.signOut()}
                     variant="site"

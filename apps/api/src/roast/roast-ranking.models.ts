@@ -1,6 +1,7 @@
 export interface RoastRankingItem {
   username: string;
   roastMessagesSent: number;
+  avatarUrl?: string | null;
 }
 
 export interface RoastRankingRepository {

@@ -47,6 +47,27 @@ describe("getRoastRanking", () => {
     );
   });
 
+  it("accepts same-origin avatar URLs and rejects arbitrary image URLs", async () => {
+    const avatarUrl = "/api/avatars/00000000-0000-4000-8000-000000000001.webp";
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(Response.json([{ ...RANKING[0], avatarUrl }]));
+    await expect(getRoastRanking()).resolves.toEqual([
+      { ...RANKING[0], avatarUrl },
+    ]);
+
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json([
+          { ...RANKING[0], avatarUrl: "https://evil.example/avatar.png" },
+        ]),
+      );
+    await expect(getRoastRanking()).rejects.toThrow(
+      "Roast ranking response is invalid.",
+    );
+  });
+
   it("rejects unavailable endpoint responses", async () => {
     globalThis.fetch = vi
       .fn()

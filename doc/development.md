@@ -48,7 +48,13 @@ docker compose --env-file .env.docker down
 ```
 
 No uses `docker compose down -v`: `-v` elimina también el volumen y borra los
-datos persistidos. La configuración de puertos, healthchecks y montaje está en
+datos persistidos, incluidos los avatares. La API mantiene los WebP aprobados
+en el volumen separado `grumphya-avatar-data`, montado en
+`/workspace/var/avatars`; la migración de la base conserva la clave opaca que
+localiza cada archivo. `docker compose down` y `up --build --force-recreate`
+conservan ambos volúmenes. La operación de baja elimina el archivo de avatar
+asociado al usuario además de sus datos SQL. La configuración de puertos,
+healthchecks y montaje está en
 [`compose.yaml`](../compose.yaml); el build y los puertos expuestos están en
 [`Dockerfile`](../Dockerfile), y [`.dockerignore`](../.dockerignore) excluye
 archivos de entorno y artefactos locales del contexto de build.
@@ -71,6 +77,21 @@ contenedores como archivos y no se copian a la imagen gracias a
 cifrado en reposo; protégelos con permisos del sistema, mantenlos ignorados por
 Git y no muestres sus contenidos. `docker compose --env-file .env.docker config`
 debe mostrar las rutas de los secretos, no sus valores.
+
+La moderación de avatares también necesita el `OPENAI_API_KEY` existente en
+`.env`. El endpoint requiere Bearer y `Origin` exacto de `WEB_ORIGIN`; acepta
+una sola parte multipart de hasta 5 MiB, limita a tres subidas por minuto/IP en
+cada proceso, comprueba que el formato decodificado coincide con el MIME
+declarado (JPEG, PNG o WebP; rechaza SVG y archivos disfrazados), limita la
+entrada a 20 megapíxeles y la convierte en el servidor a WebP de 128 × 128 antes
+de enviarla a `omni-moderation-latest`. El proveedor externo recibe el avatar
+procesado, no el original. Si la clave no está configurada, el proveedor no
+responde o su respuesta no puede validarse, la subida se rechaza sin almacenar
+el archivo. La moderación automática no garantiza que una imagen sea apta ni
+detecta todo contenido; tampoco sustituye una revisión humana. La política de
+privacidad sigue provisional y debe completarse antes de abrir registros o
+avatares al público. No subas contenido conocido o sospechoso de abuso sexual
+infantil: esta moderación no está diseñada para detectarlo.
 
 ### Arranque mixto con Node y base en Docker
 
@@ -217,15 +238,15 @@ UI no etiqueta los defectos como «bloqueos».
 
 Valores locales por defecto:
 
-| Variable     | Valor local                | Uso                                                    |
-| ------------ | -------------------------- | ------------------------------------------------------ |
-| `API_PORT`   | `3000`                     | Puerto HTTP de NestJS                                  |
-| `WEB_ORIGIN` | `http://localhost:5173`    | Origen CORS permitido por API                          |
-| `PGHOST`     | `127.0.0.1`                | PostgreSQL local de Docker                             |
-| `PGPORT`     | `5433`                     | Puerto publicado al que conecta la API cuando corre en el host; en Compose se usa `db:5432` |
-| `GRUMPHYA_DB_HOST_PORT` | `5433`           | Puerto loopback publicado por Compose para PostgreSQL |
-| `PGDATABASE` | `grumphya_dev`             | Base aislada de desarrollo                             |
-| `PGUSER`     | `grumphya_dev`             | Rol local del contenedor                               |
-| `PGPASSWORD` | aleatoria en `.env.docker` | Solo desarrollo; archivo ignorado por Git              |
+| Variable                | Valor local                | Uso                                                                                         |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------------------------- |
+| `API_PORT`              | `3000`                     | Puerto HTTP de NestJS                                                                       |
+| `WEB_ORIGIN`            | `http://localhost:5173`    | Origen CORS permitido por API                                                               |
+| `PGHOST`                | `127.0.0.1`                | PostgreSQL local de Docker                                                                  |
+| `PGPORT`                | `5433`                     | Puerto publicado al que conecta la API cuando corre en el host; en Compose se usa `db:5432` |
+| `GRUMPHYA_DB_HOST_PORT` | `5433`                     | Puerto loopback publicado por Compose para PostgreSQL                                       |
+| `PGDATABASE`            | `grumphya_dev`             | Base aislada de desarrollo                                                                  |
+| `PGUSER`                | `grumphya_dev`             | Rol local del contenedor                                                                    |
+| `PGPASSWORD`            | aleatoria en `.env.docker` | Solo desarrollo; archivo ignorado por Git                                                   |
 
 Los valores los genera `pnpm db:setup` en `.env.docker`. Para compartir configuraciones, usa placeholders; no añadas secretos al repo.

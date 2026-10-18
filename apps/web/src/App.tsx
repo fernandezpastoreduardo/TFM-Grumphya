@@ -45,7 +45,7 @@ function AppRoute() {
     return <ErrorPages status={PREVIEW_ERROR_PATHS[path]} />;
   }
   if (path === "/") return <Home />;
-  if (path !== "/login" && path !== "/perfil") {
+  if (path !== "/login" && path !== "/perfil" && path !== "/crear-cuenta") {
     return <SectionPage path={path} />;
   }
   return <AuthenticatedRoute path={path} />;
@@ -72,7 +72,7 @@ function AuthenticatedRoute({ path }: { path: string }) {
 
   useEffect(() => {
     if (hasActiveSession === null) return;
-    if (path === "/login" && hasActiveSession) {
+    if ((path === "/login" || path === "/crear-cuenta") && hasActiveSession) {
       window.location.replace("/perfil");
     } else if (path === "/perfil" && !hasActiveSession) {
       window.location.replace("/login");
@@ -81,7 +81,7 @@ function AuthenticatedRoute({ path }: { path: string }) {
 
   if (
     hasActiveSession === null ||
-    (path === "/login" && hasActiveSession) ||
+    ((path === "/login" || path === "/crear-cuenta") && hasActiveSession) ||
     (path === "/perfil" && !hasActiveSession)
   ) {
     return (

@@ -1,6 +1,7 @@
 type AccountActionsProps = {
   isAuthenticated: boolean | null;
   isSigningOut: boolean;
+  avatarUrl?: string | null;
   onSignOut: () => void;
   variant: "home" | "site";
 };
@@ -16,6 +17,7 @@ const BUTTON_TEXT = {
 export function AccountActions({
   isAuthenticated,
   isSigningOut,
+  avatarUrl = null,
   onSignOut,
   variant,
 }: AccountActionsProps) {
@@ -23,6 +25,9 @@ export function AccountActions({
     return (
       <div className={`account-actions account-actions-${variant}`}>
         <a className={getAccountLinkClass(variant)} href="/perfil">
+          {avatarUrl ? (
+            <img className="account-avatar" src={avatarUrl} alt="" />
+          ) : null}
           {BUTTON_TEXT.ACCOUNT}
         </a>
         <button

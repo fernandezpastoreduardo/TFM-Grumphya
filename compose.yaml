@@ -24,7 +24,14 @@ services:
     image: grumphya-app:local
     restart: unless-stopped
     command:
-      ["sh", "/workspace/docker/api-entrypoint.sh", "pnpm", "--filter", "@grumphya/api", "start:dev"]
+      [
+        "sh",
+        "/workspace/docker/api-entrypoint.sh",
+        "pnpm",
+        "--filter",
+        "@grumphya/api",
+        "start:dev",
+      ]
     secrets:
       - grumphya_env
       - openai_settings
@@ -35,8 +42,11 @@ services:
       PGHOST: db
       PGPORT: 5432
       WEB_ORIGIN: http://127.0.0.1:5173
+      USER_AVATAR_DIRECTORY: /workspace/var/avatars
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      - grumphya-avatar-data:/workspace/var/avatars
     depends_on:
       db:
         condition: service_healthy
@@ -77,6 +87,7 @@ services:
 
 volumes:
   grumphya-postgres-data:
+  grumphya-avatar-data:
 
 secrets:
   grumphya_env:

@@ -256,6 +256,7 @@ export function Home() {
           <div className="home-nav-actions">
             <AccountActions
               isAuthenticated={session.isAuthenticated}
+              avatarUrl={session.avatarUrl}
               isSigningOut={session.isSigningOut}
               onSignOut={() => void session.signOut()}
               variant="home"
@@ -499,6 +500,7 @@ export function Home() {
                   ))}
                   <AccountActions
                     isAuthenticated={session.isAuthenticated}
+                    avatarUrl={session.avatarUrl}
                     isSigningOut={session.isSigningOut}
                     onSignOut={() => void session.signOut()}
                     variant="home"

@@ -9,6 +9,30 @@ const USERS = [
 ];
 
 describe("BestUsers", () => {
+  it("uses a public avatar when an account has one", () => {
+    render(
+      <BestUsers
+        state={{
+          status: "success",
+          users: [
+            {
+              username: "laura_critica",
+              approvedIdeasCount: 18,
+              avatarUrl:
+                "/api/avatars/00000000-0000-4000-8000-000000000001.webp",
+            },
+          ],
+        }}
+        onRetry={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("list").querySelector("img")).toHaveAttribute(
+      "src",
+      "/api/avatars/00000000-0000-4000-8000-000000000001.webp",
+    );
+  });
+
   it("follows the prototype ranking with the winner highlighted and ten places max", () => {
     render(
       <BestUsers

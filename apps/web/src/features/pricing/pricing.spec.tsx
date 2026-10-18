@@ -1,13 +1,31 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Pricing } from "./pricing";
+import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+
+vi.mock("../../infrastructure/auth/use-session-status", () => ({
+  useSessionStatus: vi.fn(),
+}));
 
 const LOCATION_DESCRIPTOR = Object.getOwnPropertyDescriptor(window, "location");
+const mockedUseSessionStatus = vi.mocked(useSessionStatus);
 
 afterEach(() => {
+  vi.unstubAllGlobals();
+  mockedUseSessionStatus.mockReset();
   if (LOCATION_DESCRIPTOR)
     Object.defineProperty(window, "location", LOCATION_DESCRIPTOR);
+});
+
+beforeEach(() => {
+  mockedUseSessionStatus.mockReturnValue({
+    isAuthenticated: false,
+    accountAttempts: null,
+    avatarUrl: null,
+    isSigningOut: false,
+    signOut: vi.fn(),
+  });
 });
 
 function jsonResponse(body: unknown, status = 201): Response {
@@ -55,4 +73,38 @@ describe("Pricing registration intent", () => {
       /no se ha podido seleccionar el plan/i,
     );
   });
+
+  it.each(["ILUMINADO", "FALTON"] as const)(
+    "sends a logged-in user choosing %s to their profile without creating a registration intent",
+    async (plan) => {
+      const user = userEvent.setup();
+      const assign = vi.fn();
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: { ...window.location, assign },
+      });
+      mockedUseSessionStatus.mockReturnValue({
+        isAuthenticated: true,
+        accountAttempts: null,
+        avatarUrl: null,
+        isSigningOut: false,
+        signOut: vi.fn(),
+      });
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      render(<Pricing />);
+
+      await user.click(
+        screen.getByRole("button", {
+          name: new RegExp(
+            `elegir ${plan === "FALTON" ? "faltón" : "iluminado"}`,
+            "i",
+          ),
+        }),
+      );
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/perfil"));
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 });

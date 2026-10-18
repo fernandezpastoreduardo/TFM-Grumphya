@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { authenticatedFetch } from "../../infrastructure/auth/session";
+import {
+  authenticatedFetch,
+  USER_AVATAR_UPDATED_EVENT,
+} from "../../infrastructure/auth/session";
+import { isPublicAvatarUrl } from "../../infrastructure/avatar/public-avatar-url";
 import { PaymentSimulationDialog } from "../register-with-plan/components/PaymentSimulationDialog";
 import { UserDelete } from "../user-delete/user-delete";
 import "./user-profile.scss";
@@ -19,6 +23,7 @@ type AccountProfile = {
     username: string;
     emailVerified: boolean;
     createdAt: string;
+    avatarUrl?: string | null;
   };
   plans: AccountPlan[];
 };
@@ -55,6 +60,8 @@ const SESSION_REQUIRED_ERROR =
   "Tu sesión no está activa. Entra en tu cuenta para consultar el perfil.";
 const PURCHASE_ERROR =
   "No se ha podido activar el plan. Comprueba la conexión e inténtalo de nuevo.";
+const AVATAR_UPLOAD_ERROR =
+  "No se ha podido actualizar el avatar. Comprueba la imagen e inténtalo de nuevo.";
 const PLAN_ALREADY_ACTIVE_ERROR =
   "Ese plan ya está activo; guárdate el café para más adelante.";
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
@@ -111,6 +118,9 @@ function isAccountProfile(value: unknown): value is AccountProfile {
     typeof value.user.emailVerified === "boolean" &&
     typeof value.user.createdAt === "string" &&
     Number.isFinite(Date.parse(value.user.createdAt)) &&
+    (value.user.avatarUrl === undefined ||
+      value.user.avatarUrl === null ||
+      isPublicAvatarUrl(value.user.avatarUrl)) &&
     plans.length === PLAN_CODES.length &&
     plans.every(isAccountPlan) &&
     PLAN_CODES.every((code) =>
@@ -151,6 +161,9 @@ export function UserProfile() {
   const [purchasingPlan, setPurchasingPlan] = useState<PlanCode | null>(null);
   const [paymentPlan, setPaymentPlan] = useState<PlanCode | null>(null);
   const [purchaseError, setPurchaseError] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const purchaseKeyRef = useRef<string | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -237,6 +250,48 @@ export function UserProfile() {
     void loadProfile();
   }
 
+  async function uploadAvatar(file: File | undefined) {
+    if (!file) return;
+    setAvatarError("");
+    setAvatarUploading(true);
+    const form = new FormData();
+    form.append("avatar", file);
+    try {
+      const response = await authenticatedFetch("/api/account/avatar", {
+        method: "POST",
+        body: form,
+      });
+      const body: unknown = await readJson(response);
+      if (
+        !response.ok ||
+        !isRecord(body) ||
+        typeof body.avatarUrl !== "string" ||
+        !isPublicAvatarUrl(body.avatarUrl)
+      ) {
+        setAvatarError(
+          isRecord(body) && typeof body.message === "string"
+            ? body.message
+            : AVATAR_UPLOAD_ERROR,
+        );
+        return;
+      }
+      const nextAvatarUrl = body.avatarUrl;
+      setProfile((current) =>
+        current
+          ? { ...current, user: { ...current.user, avatarUrl: nextAvatarUrl } }
+          : current,
+      );
+      window.dispatchEvent(
+        new CustomEvent(USER_AVATAR_UPDATED_EVENT, { detail: nextAvatarUrl }),
+      );
+    } catch {
+      setAvatarError(AVATAR_UPLOAD_ERROR);
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
+
   if (loading) {
     return (
       <p className="profile-loading" role="status" aria-live="polite">
@@ -286,9 +341,41 @@ export function UserProfile() {
             <span className="eyebrow">Tus datos</span>
             <h2 id="profile-account-title">{profile.user.username}</h2>
           </div>
-          <span className="profile-avatar" aria-hidden="true">
-            {profile.user.username.slice(0, 1).toUpperCase()}
-          </span>
+          {profile.user.avatarUrl ? (
+            <img
+              className="profile-avatar"
+              src={profile.user.avatarUrl}
+              alt={`Avatar de ${profile.user.username}`}
+            />
+          ) : (
+            <span className="profile-avatar" aria-hidden="true">
+              {profile.user.username.slice(0, 1).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="profile-avatar-control">
+          <label className="button-secondary" htmlFor="profile-avatar-file">
+            {avatarUploading ? "Revisando imagen…" : "Subir o cambiar avatar"}
+          </label>
+          <input
+            ref={avatarInputRef}
+            id="profile-avatar-file"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={avatarUploading}
+            onChange={(event) =>
+              void uploadAvatar(event.currentTarget.files?.[0])
+            }
+          />
+          <small>
+            JPG, PNG o WebP · máximo 5 MB · se ajusta a 128 × 128 px.
+          </small>
+          <small>
+            Se mostrará junto a tu nombre en los rankings públicos. OpenAI
+            realiza una revisión automática para filtrar imágenes no aptas para
+            todos los públicos.
+          </small>
+          {avatarError ? <p role="alert">{avatarError}</p> : null}
         </div>
         <dl className="profile-details">
           <div>

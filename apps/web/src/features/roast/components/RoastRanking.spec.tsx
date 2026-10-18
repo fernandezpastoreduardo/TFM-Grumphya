@@ -9,6 +9,37 @@ const RANKING = [
 ];
 
 describe("RoastRanking", () => {
+  it("shows avatars for the winner and ranked users when available", () => {
+    render(
+      <RoastRanking
+        state={{
+          status: "success",
+          ranking: [
+            {
+              username: "GrumpyWinner",
+              roastMessagesSent: 30,
+              avatarUrl:
+                "/api/avatars/00000000-0000-4000-8000-000000000001.webp",
+            },
+            {
+              username: "TeaSpiller",
+              roastMessagesSent: 21,
+              avatarUrl:
+                "/api/avatars/00000000-0000-4000-8000-000000000002.webp",
+            },
+          ],
+        }}
+        onRetry={vi.fn()}
+      />,
+    );
+
+    expect(
+      document.querySelectorAll(
+        ".roast-ranking-avatar, .roast-ranking-avatar-small",
+      ),
+    ).toHaveLength(2);
+  });
+
   it("shows the winner outside a table and only the remaining ranked users in it", () => {
     render(
       <RoastRanking

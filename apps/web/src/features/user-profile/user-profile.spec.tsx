@@ -14,6 +14,7 @@ const ACCOUNT_PROFILE = {
     username: "persona-lista",
     emailVerified: false,
     createdAt: "2026-10-16T12:00:00.000Z",
+    avatarUrl: null,
   },
   plans: [
     {
@@ -155,5 +156,34 @@ describe("UserProfile", () => {
     expect(
       screen.queryByRole("button", { name: "Pagar un café" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uploads a profile avatar and shows the moderated server image", async () => {
+    const user = userEvent.setup();
+    const avatarUrl = "/api/avatars/00000000-0000-4000-8000-000000000099.webp";
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      if (String(input) === "/api/account/avatar") {
+        expect(init?.method).toBe("POST");
+        expect(init?.body).toBeInstanceOf(FormData);
+        return jsonResponse({ avatarUrl });
+      }
+      return String(input) === "/api/account/good-ideas"
+        ? jsonResponse(GOOD_IDEAS)
+        : jsonResponse(ACCOUNT_PROFILE);
+    });
+    render(<UserProfile />);
+    await screen.findByRole("heading", { name: "persona-lista" });
+
+    const file = new File(["image-bytes"], "profile.png", {
+      type: "image/png",
+    });
+    await user.upload(screen.getByLabelText("Subir o cambiar avatar"), file);
+
+    expect(
+      await screen.findByRole("img", { name: "Avatar de persona-lista" }),
+    ).toHaveAttribute("src", avatarUrl);
+    expect(
+      screen.getByText(/openai realiza una revisión automática/i),
+    ).toBeInTheDocument();
   });
 });

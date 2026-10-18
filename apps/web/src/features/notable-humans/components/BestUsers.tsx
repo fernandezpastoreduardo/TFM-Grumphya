@@ -55,9 +55,13 @@ export function BestUsers({ state, onRetry }: BestUsersProps) {
           <span className="human-rank" aria-label={`Puesto ${index + 1}`}>
             {String(index + 1).padStart(2, "0")}
           </span>
-          <span className="human-avatar" aria-hidden="true">
-            {user.username.charAt(0).toUpperCase()}
-          </span>
+          {user.avatarUrl ? (
+            <img className="human-avatar" src={user.avatarUrl} alt="" />
+          ) : (
+            <span className="human-avatar" aria-hidden="true">
+              {user.username.charAt(0).toUpperCase()}
+            </span>
+          )}
           <strong>@{user.username}</strong>
           <span className="approved-count">
             {user.approvedIdeasCount}

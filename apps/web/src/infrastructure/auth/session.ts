@@ -4,6 +4,7 @@ const REFRESH_ENDPOINT = "/api/auth/refresh";
 const REFRESH_METHOD = "POST";
 const JSON_CONTENT_TYPE = "application/json";
 export const SESSION_EXPIRED_EVENT = "grumphya:session-expired";
+export const USER_AVATAR_UPDATED_EVENT = "grumphya:avatar-updated";
 let accessToken: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
 let refreshAttempted = false;
@@ -90,8 +91,7 @@ async function refreshAccessToken(): Promise<string | null> {
     });
     const body: unknown = await response.json();
     if (generation !== sessionGeneration) return accessToken;
-    if (!response.ok || !isAuthResponse(body))
-      return null;
+    if (!response.ok || !isAuthResponse(body)) return null;
     accessToken = body.accessToken;
     refreshAttempted = false;
     return body.accessToken;

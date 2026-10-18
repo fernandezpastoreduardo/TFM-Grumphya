@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import "./pricing.scss";
 
 export function Pricing() {
+  const session = useSessionStatus();
   const [showLesson, setShowLesson] = useState(false);
   const [selectingPlan, setSelectingPlan] = useState<
     "ILUMINADO" | "FALTON" | null
@@ -10,6 +12,11 @@ export function Pricing() {
 
   async function selectPlan(plan: "ILUMINADO" | "FALTON") {
     setSelectionError("");
+    if (session.isAuthenticated === true) {
+      window.location.assign("/perfil");
+      return;
+    }
+    if (session.isAuthenticated === null) return;
     setSelectingPlan(plan);
     try {
       const response = await fetch("/api/registration-intents", {
@@ -59,7 +66,9 @@ export function Pricing() {
           <button
             className="button-primary"
             type="button"
-            disabled={selectingPlan !== null}
+            disabled={
+              selectingPlan !== null || session.isAuthenticated === null
+            }
             onClick={() => void selectPlan("ILUMINADO")}
           >
             {selectingPlan === "ILUMINADO" ? "Preparando…" : "Elegir Iluminado"}{" "}
@@ -87,7 +96,9 @@ export function Pricing() {
           <button
             className="button-primary"
             type="button"
-            disabled={selectingPlan !== null}
+            disabled={
+              selectingPlan !== null || session.isAuthenticated === null
+            }
             onClick={() => void selectPlan("FALTON")}
           >
             {selectingPlan === "FALTON" ? "Preparando…" : "Elegir Faltón"}{" "}

@@ -1,6 +1,7 @@
 export interface BestUserItem {
   username: string;
   approvedIdeasCount: number;
+  avatarUrl?: string | null;
 }
 
 export interface BestUsersRepository {

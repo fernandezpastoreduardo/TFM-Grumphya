@@ -7,8 +7,16 @@ describe("PostgresBestUsersRepository", () => {
     const pool = {
       query: vi.fn().mockResolvedValue({
         rows: [
-          { username: "laura_critica", approved_ideas_count: "18" },
-          { username: "pablo_sin_pitch", approved_ideas_count: "13" },
+          {
+            username: "laura_critica",
+            approved_ideas_count: "18",
+            avatar_key: "00000000-0000-4000-8000-000000000001.webp",
+          },
+          {
+            username: "pablo_sin_pitch",
+            approved_ideas_count: "13",
+            avatar_key: null,
+          },
         ],
       }),
     } as unknown as Pool;
@@ -18,7 +26,11 @@ describe("PostgresBestUsersRepository", () => {
     );
 
     await expect(repository.getBestListBestUsers()).resolves.toEqual([
-      { username: "laura_critica", approvedIdeasCount: 18 },
+      {
+        username: "laura_critica",
+        approvedIdeasCount: 18,
+        avatarUrl: "/api/avatars/00000000-0000-4000-8000-000000000001.webp",
+      },
       { username: "pablo_sin_pitch", approvedIdeasCount: 13 },
     ]);
 

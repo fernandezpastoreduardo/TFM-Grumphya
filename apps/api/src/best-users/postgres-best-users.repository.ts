@@ -3,10 +3,12 @@ import { createPostgresPool } from "../infrastructure/database/postgres-pool";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import type { BestUserItem, BestUsersRepository } from "./best-users.models";
 import { MAX_BEST_USERS } from "./best-users.models";
+import { publicAvatarUrl } from "../infrastructure/avatar/public-avatar-url";
 
 interface BestUserRow {
   username: string;
   approved_ideas_count: number | string;
+  avatar_key: string | null;
 }
 
 export class PostgresBestUsersRepository implements BestUsersRepository {
@@ -25,7 +27,7 @@ export class PostgresBestUsersRepository implements BestUsersRepository {
   async getBestListBestUsers(): Promise<BestUserItem[]> {
     await this.ensureSchema();
     const result = await this.pool.query<BestUserRow>(
-      `SELECT users.username,
+      `SELECT users.username, users.avatar_key,
               COUNT(DISTINCT approved.id) AS approved_ideas_count
        FROM users
        JOIN approved_ideas AS approved ON approved.user_id = users.id
@@ -38,6 +40,7 @@ export class PostgresBestUsersRepository implements BestUsersRepository {
     return result.rows.map((row) => ({
       username: row.username,
       approvedIdeasCount: Number(row.approved_ideas_count),
+      ...(row.avatar_key ? { avatarUrl: publicAvatarUrl(row.avatar_key) } : {}),
     }));
   }
 

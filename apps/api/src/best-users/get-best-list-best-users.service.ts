@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import type { BestUserItem, BestUsersRepository } from "./best-users.models";
 import { BEST_USERS_REPOSITORY, MAX_BEST_USERS } from "./best-users.models";
+import { isPublicAvatarUrl } from "../infrastructure/avatar/public-avatar-url";
 
 const BEST_USERS_UNAVAILABLE = {
   code: "BEST_USERS_UNAVAILABLE",
@@ -23,7 +24,10 @@ function isPublicBestUser(value: unknown): value is BestUserItem {
     PUBLIC_USERNAME_PATTERN.test(item.username) &&
     typeof item.approvedIdeasCount === "number" &&
     Number.isSafeInteger(item.approvedIdeasCount) &&
-    item.approvedIdeasCount > 0
+    item.approvedIdeasCount > 0 &&
+    (item.avatarUrl === undefined ||
+      item.avatarUrl === null ||
+      isPublicAvatarUrl(item.avatarUrl))
   );
 }
 
@@ -45,6 +49,7 @@ export class GetBestListBestUsers {
       return users.slice(0, MAX_BEST_USERS).map((user) => ({
         username: user.username,
         approvedIdeasCount: user.approvedIdeasCount,
+        ...(user.avatarUrl ? { avatarUrl: user.avatarUrl } : {}),
       }));
     } catch {
       this.logger.error(BEST_USERS_UNAVAILABLE.code);
