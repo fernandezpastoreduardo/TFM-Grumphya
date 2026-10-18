@@ -76,4 +76,4 @@ Los nombres son convenciones por crear en el proveedor elegido; no son cuentas e
 - Migraciones hacia delante, copias con retención y prueba de restauración.
 - Logs sin contraseñas, cookies, tokens, texto de ideas ni datos personales; métricas de disponibilidad/latencia y alertas.
 - Health/readiness separados: liveness no depende de Postgres; readiness sí valida dependencias.
-- Revisión OWASP, WCAG AA, privacidad y política de retención antes de abrir acceso público.
+- Revisión OWASP, WCAG AA, privacidad y política de retención antes de abrir acceso público. Completar la política de privacidad con la publicación del alias y el contador de roast en el ranking, y revisar el posible carácter identificativo o de contacto de los alias elegidos.

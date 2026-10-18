@@ -33,6 +33,10 @@ import { AuthSecurityModule } from "./infrastructure/auth/auth-security.module";
 import { PlanUsageService } from "./register-with-plan/plan-usage.service";
 import { ROAST_REPLY_PORT } from "./roast/roast-reply.port";
 import { OpenAiRoastReplyPort } from "./roast/openai-roast-reply.port";
+import { GetRoastRanking } from "./roast/get-roast-ranking.service";
+import { GetRoastRankingController } from "./roast/get-roast-ranking.controller";
+import { ROAST_RANKING_REPOSITORY } from "./roast/roast-ranking.models";
+import { PostgresRoastRankingRepository } from "./roast/postgres-roast-ranking.repository";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createRoastReplyProvider(): OpenAiRoastReplyPort | undefined {
@@ -110,6 +114,7 @@ function createIdeaSubmissionService(
     AnonymousUsageController,
     GetIdeaListWorstAllController,
     GetIdeaListWorstUserController,
+    GetRoastRankingController,
   ],
   providers: [
     EvaluationProcessService,
@@ -136,6 +141,12 @@ function createIdeaSubmissionService(
     AnonymousUsageService,
     GetIdeaListWorstAll,
     GetIdeaListWorstUser,
+    GetRoastRanking,
+    {
+      provide: ROAST_RANKING_REPOSITORY,
+      useFactory: () =>
+        new PostgresRoastRankingRepository(createPostgresPool()),
+    },
     {
       provide: IDEA_SUBMISSION_SEARCH,
       useFactory: createIdeaSearch,

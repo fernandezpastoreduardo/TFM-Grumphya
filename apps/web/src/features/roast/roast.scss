@@ -181,8 +181,8 @@
 .aside-creature {
   height: 172px;
   margin: -8px auto 10px;
-  background: url("/assets/grumphya/roast-plan-callout.png")
-    center / contain no-repeat;
+  background: url("/assets/grumphya/roast-plan-callout.png") center / contain
+    no-repeat;
   filter: drop-shadow(4px 7px 0 #1a4e5030);
 }
 .roast-aside h2 {
@@ -273,6 +273,122 @@
 
 .roast-composer button {
   background: #0bb0b7;
+}
+
+.roast-ranking-card {
+  margin-top: 24px;
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 30%, white);
+  border-radius: 20px;
+  padding: clamp(16px, 3vw, 24px);
+  color: #183234;
+  background: color-mix(in srgb, var(--color-paper) 92%, #dff8ef);
+  box-shadow: 0 8px 22px #18565d12;
+}
+
+.roast-ranking-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.roast-ranking-heading h2 {
+  margin: 3px 0 0;
+  font:
+    700 clamp(1.25rem, 2.3vw, 1.8rem)/1.1 "Fredoka",
+    sans-serif;
+}
+
+.roast-ranking-badge {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #172123;
+  background: #f4cd5a;
+  font-size: 1.4rem;
+}
+
+.roast-ranking-winner {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  border: 2px solid #b48b24;
+  border-radius: 16px;
+  padding: 16px;
+  color: #172123;
+  background: #f4cd5a;
+  text-align: center;
+}
+
+.roast-ranking-winner-place {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.roast-ranking-winner-name {
+  font:
+    700 clamp(1.3rem, 3vw, 2rem)/1.1 "Fredoka",
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.roast-ranking-winner-count {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.roast-ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.roast-ranking-table caption {
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.roast-ranking-table th,
+.roast-ranking-table td {
+  border-bottom: 1px solid color-mix(in srgb, #2b7373 24%, transparent);
+  padding: 10px 8px;
+}
+
+.roast-ranking-table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.roast-ranking-table tbody th {
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.roast-ranking-table td {
+  width: 1%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.roast-ranking-message {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.theme-dark .roast-ranking-card {
+  color: #172123;
 }
 
 .theme-dark .roast-demo {

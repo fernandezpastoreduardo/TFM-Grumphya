@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import type { IdeaListItemWorstUser } from "./worst-ideas.models";
+import { MAX_WORST_IDEA_LIST_ITEMS } from "./worst-ideas.models";
 import type { WorstIdeasRepository } from "./worst-ideas.models";
 import { WORST_IDEAS_REPOSITORY } from "./worst-ideas.tokens";
 
@@ -28,7 +29,8 @@ export class GetIdeaListWorstUser {
     if (typeof userId !== "string" || !USER_ID_PATTERN.test(userId))
       throw new ServiceUnavailableException(USER_ID_REQUIRED);
     try {
-      return await this.repository.getIdeaListWorstUser(userId);
+      const history = await this.repository.getIdeaListWorstUser(userId);
+      return history.slice(0, MAX_WORST_IDEA_LIST_ITEMS);
     } catch {
       this.logger.error("WORST_IDEAS_USER_HISTORY_UNAVAILABLE");
       throw new ServiceUnavailableException(USER_ID_REQUIRED);

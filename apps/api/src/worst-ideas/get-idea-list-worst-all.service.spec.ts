@@ -26,6 +26,18 @@ describe("GetIdeaListWorstAll", () => {
     expect(repository.getIdeaListWorstAll).toHaveBeenCalledOnce();
   });
 
+  it("returns no more than ten ranking items", async () => {
+    const items = Array.from({ length: 12 }, (_, index) => ({
+      safeTitle: `Idea ${index + 1}`,
+      weeklyCount: 12 - index,
+    }));
+    const { service } = createService({
+      getIdeaListWorstAll: vi.fn().mockResolvedValue(items),
+    });
+
+    await expect(service.execute()).resolves.toEqual(items.slice(0, 10));
+  });
+
   it("returns a safe service error if the ranking cannot be read", async () => {
     const { service } = createService({
       getIdeaListWorstAll: vi.fn().mockRejectedValue(new Error("db failure")),

@@ -3,6 +3,11 @@ import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../error-pages/error-pages";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import { RoastInput } from "./components/RoastInput";
+import {
+  RoastRanking,
+  type RoastRankingState,
+} from "./components/RoastRanking";
+import { getRoastRanking } from "./services/get-roast-ranking";
 import "./roast.scss";
 
 // Only the opening exchanges are fixtures; submitted messages use the roast endpoint.
@@ -30,6 +35,10 @@ export function Roast() {
   >([]);
   const usageState = useAnonymousUsage();
   const session = useSessionStatus();
+  const [rankingState, setRankingState] = useState<RoastRankingState>({
+    status: "loading",
+  });
+  const [rankingRevision, setRankingRevision] = useState(0);
   const isAuthenticated = session.isAuthenticated === true;
   const hasActiveRoastPlan =
     isAuthenticated && session.accountAttempts?.roastsPlanActive === true;
@@ -47,6 +56,17 @@ export function Roast() {
   useEffect(() => {
     setAttemptsOverride(null);
   }, [availableAttempts]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setRankingState({ status: "loading" });
+    getRoastRanking(controller.signal)
+      .then((ranking) => setRankingState({ status: "success", ranking }))
+      .catch(() => {
+        if (!controller.signal.aborted) setRankingState({ status: "error" });
+      });
+
+    return () => controller.abort();
+  }, [rankingRevision]);
   const remainingAttempts = attemptsOverride ?? availableAttempts;
   const quotaLimit = hasActiveRoastPlan ? 11 : FREE_ROAST_LIMIT;
   const hasPreviousRoast =
@@ -148,6 +168,7 @@ export function Roast() {
             setAttemptsOverride((current) =>
               Math.max(0, (current ?? availableAttempts ?? 1) - 1),
             );
+            setRankingRevision((revision) => revision + 1);
           }}
           onUsageRefresh={usageState.refresh}
         />
@@ -156,6 +177,10 @@ export function Roast() {
             ? "Los intercambios iniciales son ejemplos. Tus mensajes reciben la respuesta configurada en el servidor."
             : "Los mensajes de roast no se guardan para futuras visitas. Los intercambios de esta sesión aparecen aquí."}
         </p>
+        <RoastRanking
+          state={rankingState}
+          onRetry={() => setRankingRevision((revision) => revision + 1)}
+        />
       </section>
       {shouldShowRoastPlanCallout ? (
         <aside className="roast-aside">
@@ -181,12 +206,10 @@ export function Roast() {
 
 function getRoastAttemptsRemaining(
   isAuthenticated: boolean | null,
-  accountAttempts:
-    | {
-        roasts: number;
-        roastsPlanActive: boolean;
-      }
-    | null,
+  accountAttempts: {
+    roasts: number;
+    roastsPlanActive: boolean;
+  } | null,
   freeAttempts: number | undefined,
 ): number | null {
   if (isAuthenticated === null) return null;

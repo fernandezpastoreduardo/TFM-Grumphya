@@ -25,6 +25,8 @@ export interface IdeaListItemWorstUser {
   count: number;
 }
 
+export const MAX_WORST_IDEA_LIST_ITEMS = 10;
+
 export type RejectedIdeaSubmissionType = "match" | "new_rejection";
 
 export interface WorstIdeasRepository {

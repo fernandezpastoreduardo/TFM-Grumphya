@@ -31,6 +31,9 @@ const mocks = vi.hoisted(() => ({
     } | null,
     refresh: vi.fn(),
   },
+  getRoastRanking: vi.fn(
+    async () => [] as Array<{ username: string; roastMessagesSent: number }>,
+  ),
 }));
 
 vi.mock("../../infrastructure/auth/use-session-status", () => ({
@@ -43,6 +46,9 @@ vi.mock("../../infrastructure/auth/session", () => ({
   authenticatedFetch: vi.fn(),
   getAccessToken: vi.fn(async () => null),
 }));
+vi.mock("./services/get-roast-ranking", () => ({
+  getRoastRanking: mocks.getRoastRanking,
+}));
 
 describe("Roast", () => {
   afterEach(() => {
@@ -50,6 +56,7 @@ describe("Roast", () => {
   });
 
   beforeEach(() => {
+    mocks.getRoastRanking.mockResolvedValue([]);
     mocks.session.isAuthenticated = false;
     mocks.session.accountAttempts = null;
     mocks.usage.usage = {
@@ -233,5 +240,19 @@ describe("Roast", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(SERVER_ROAST_REPLY)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("loads and displays the roast ranking", async () => {
+    mocks.getRoastRanking.mockResolvedValue([
+      { username: "GrumpyWinner", roastMessagesSent: 30 },
+      { username: "TeaSpiller", roastMessagesSent: 21 },
+    ]);
+
+    render(<Roast />);
+
+    await waitFor(() => {
+      expect(screen.getByText("GrumpyWinner")).toBeInTheDocument();
+    });
+    expect(screen.getByText("TeaSpiller")).toBeInTheDocument();
   });
 });
