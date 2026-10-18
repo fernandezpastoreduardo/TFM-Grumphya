@@ -34,7 +34,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 - Path: /descargate
 - Layout: nine cards that shows user insult and grumphy reply
-  Permite 3 envíos gratuitos de por vida por perfil anónimo y 11 al día a las cuentas con plan Faltón vigente. El backend exige sesión y suscripción vigente y reserva el intento transaccionalmente; confirma el consumo al entregar una respuesta válida y libera la reserva ante error. La respuesta de roast sigue siendo una demostración mientras no exista el proveedor real. Las peticiones autenticadas son idempotentes por clave/payload durante 24 horas lógicas desde la reserva original; el borrado físico es oportunista. Una reserva en curso devuelve `409` durante 30 minutos.
+  Permite 3 envíos gratuitos de por vida por perfil de navegador a visitantes y a cuentas autenticadas sin Faltón vigente. Faltón vigente concede 11 envíos diarios, sin consumir el cupo gratuito de roast. El backend reserva la cuota adecuada transaccionalmente y la confirma solo al entregar una respuesta válida; ante un error libera la reserva. La API genera la respuesta con OpenAI y valida su forma y contenido antes de devolverla. Las peticiones autenticadas son idempotentes por clave/payload durante 24 horas lógicas desde la reserva original; el borrado físico es oportunista. Una reserva en curso devuelve `409` durante 30 minutos.
 
 4. Notable Humans section: a ranking/list of humans whose ideas have actually passed the AI's approval evaluation (without showing the ideas themselves). The goal is to spark a bit of rivalry and gamify the experience.
    - Path: /humanos-notables

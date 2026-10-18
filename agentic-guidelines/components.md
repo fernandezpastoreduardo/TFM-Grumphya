@@ -60,3 +60,9 @@ Listado de las peores ideas del usuario logueado ordenado por veces que se han i
     Tu historial
     Tú también harás tus pinitos.
     Cuando plantes alguno, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.
+
+### RoastInput
+
+- El contenedor de roast presenta la conversación con mensajes de ambos lados, siguiendo el formato de mensajería del prototipo, y conecta el envío con la feature `submitRoast`.
+- `RoastInput` permite escribir y enviar el mensaje, muestra el estado de envío y los errores, evita el doble envío y comunica los intentos restantes devueltos o confirmados por el servidor.
+- El componente tiene etiqueta accesible, contador de caracteres, feedback anunciado por lectores de pantalla y contraste legible en los modos claro y oscuro.

@@ -2,7 +2,7 @@
 
 ## Alcance
 
-Cada perfil de navegador sin cuenta dispone de **3 evaluaciones de ideas y 3 envíos de roast de por vida**. Son contadores independientes, administrados por la API y PostgreSQL. Cerrar la pestaña o el navegador no reinicia el cupo. Las cuotas diarias de planes comerciales pertenecen a otra feature.
+Cada perfil de navegador dispone de **3 evaluaciones de ideas y 3 envíos de roast de por vida** en contadores independientes, administrados por la API y PostgreSQL. El cupo se aplica a visitantes sin cuenta y también a cuentas autenticadas cuando no tienen activo el plan correspondiente. Por ejemplo, una cuenta con Iluminado usa la cuota de Iluminado para ideas y conserva los intentos gratuitos de roast hasta contratar Faltón. Usar un plan no relacionado no consume ni elimina los intentos gratuitos del otro ámbito. Cerrar la pestaña o el navegador no reinicia el cupo.
 
 La identidad se transporta mediante una cookie opaca, aleatoria y persistente (`HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`). La API guarda el hash del token, nunca el valor de la cookie. La identidad y sus contadores no caducan automáticamente. El navegador puede eliminar la cookie o el usuario puede cambiar de dispositivo, con lo que se crea otro perfil: este mecanismo no ofrece identificación permanente de personas.
 
@@ -12,9 +12,9 @@ El perfil anónimo no genera historial. Las tablas no conservan el texto origina
 
 - Idea sin coincidencia: reservar antes de la búsqueda semántica para no gastar llamadas de IA si ya no queda cuota. Si hay coincidencia, se libera la reserva; una evaluación válida confirma un uso; error de proveedor o salida inválida libera la reserva.
 - Idea con coincidencia: la búsqueda y el aviso no consumen la cuota de evaluación. «Evaluar igualmente» reserva un uso antes de llamar al evaluador. Si se rechaza otra vez, el mismo envío lógico no suma una segunda unidad ni vuelve a incrementar Worst Ideas.
-- Roast: validar y reservar en servidor; confirmar cuando se obtiene respuesta válida. La ruta de roast actual usa una respuesta de demostración hasta que exista el proveedor real.
+- Roast: validar y reservar en servidor; confirmar cuando el proveedor OpenAI devuelve una respuesta válida que supera la validación de salida. La llamada tiene un timeout abortable de 10 segundos. Si vence, falla el proveedor o la validación, liberar la reserva.
 - Cada envío lógico usa una clave idempotente ligada por hash al payload. Una repetición de la misma clave y contenido recupera el resultado temporal; una clave con otro contenido se rechaza. Una transacción bloquea el contador para que solicitudes concurrentes no gasten el mismo último uso.
-- Cuando el cupo permanente se agota, la API devuelve `429` con un código estable, el ámbito y `remaining: 0`. No envía `Retry-After`: no existe un momento de reinicio.
+- Cuando el cupo gratuito permanente se agota, la API devuelve `429` con un código estable, el ámbito y `remaining: 0`. No envía `Retry-After`: no existe un momento de reinicio. Una cuenta sin el plan de ese ámbito usa este cupo; un plan activo aplica su cuota diaria y deja intacto el cupo gratuito.
 
 ## IP y abuso
 
@@ -28,7 +28,7 @@ No se aplica fingerprinting del navegador ni detección de automatización en es
 
 - `POST /api/anonymous-usage` exige `Origin` permitido y el cuerpo JSON vacío `{}`, crea la identidad si hace falta y responde los límites, usados y restantes para `ideas` y `roasts`; establece o renueva la cookie.
 - `POST /api/evaluation-process` obtiene la identidad de la cookie y delega reserva/confirmación a la feature de cuotas. Nunca acepta contadores, tipo de plan o identidad desde el body.
-- `POST /api/roast` recibe y valida el texto, impone la misma cuota y devuelve el resultado actual de demostración.
+- `POST /api/roast` recibe y valida el texto, usa la cuota diaria de Faltón si está activo y, en caso contrario, el cupo gratuito del perfil de navegador.
 - El frontend muestra valores de servidor y no habilita un fallback local si la API no está disponible. El mensaje de cupo agotado invita a consultar los planes; no sugiere que se recupere mañana.
 
 La nota de privacidad debe explicar la cookie persistente necesaria para recordar el cupo y el uso antiabuso de la IP. Un HMAC de IP sigue siendo una señal seudónima; limitar su retención no equivale a anonimización. Las respuestas idempotentes y señales expiradas se borran al procesar solicitudes posteriores; aún no existe tarea periódica de purga independiente del tráfico.

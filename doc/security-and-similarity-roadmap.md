@@ -34,7 +34,7 @@ Este documento separa lo que el código hace hoy de los cambios solicitados. Los
 
 ## Similitud de ideas: alcance funcional
 
-El caso de uso, adaptadores OpenAI, repositorio pgvector, orquestación y aviso UI están implementados. La operación necesita `OPENAI_API_KEY` para similitud y, para evaluar, `EVALUATION_PROVIDER=openai`; sin esa configuración no hay flujo funcional. Las cuotas anónimas 3/3 por perfil de navegador y la autenticación/autorización de cuentas están implementadas. Las cuotas diarias se aplican transaccionalmente en evaluación y roast; la respuesta de roast sigue siendo una demostración. Continúan pendientes la purga física y una revisión de privacidad para producción.
+El caso de uso, adaptadores OpenAI, repositorio pgvector, orquestación y aviso UI están implementados. La operación necesita `OPENAI_API_KEY` para similitud y roast y, para evaluar, `EVALUATION_PROVIDER=openai`; sin esa configuración no hay flujo funcional. Las cuotas gratuitas 3/3 por perfil de navegador, también disponibles para cuentas que carecen del plan del ámbito, y la autenticación/autorización de cuentas están implementadas. Las cuotas diarias se aplican transaccionalmente cuando está vigente el plan correspondiente; los errores de generación o validación liberan la reserva. El proveedor de roast tiene timeout abortable de 10 segundos para limitar solicitudes colgadas y liberar su reserva. Continúan pendientes la purga física y una revisión de privacidad para producción.
 
 Flujo objetivo:
 
