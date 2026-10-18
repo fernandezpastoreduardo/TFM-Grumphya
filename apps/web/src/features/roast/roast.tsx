@@ -72,9 +72,11 @@ export function Roast() {
   const hasPreviousRoast =
     sentMessages.length > 0 ||
     (remainingAttempts !== null && remainingAttempts < quotaLimit) ||
-    (usageState.usage?.roasts.remaining ?? FREE_ROAST_LIMIT) < FREE_ROAST_LIMIT ||
+    (usageState.usage?.roasts.remaining ?? FREE_ROAST_LIMIT) <
+      FREE_ROAST_LIMIT ||
     (session.accountAttempts?.roastMessagesSent ?? 0) > 0;
-  const showDemoExchanges = remainingAttempts === quotaLimit && !hasPreviousRoast;
+  const showDemoExchanges =
+    remainingAttempts === quotaLimit && !hasPreviousRoast;
   const quotaDescription = hasActiveRoastPlan
     ? "envíos disponibles hoy"
     : "envíos gratuitos restantes";
@@ -103,8 +105,8 @@ export function Roast() {
         </div>
         {showDemoExchanges ? (
           <p className="prototype-stamp">
-            <span aria-hidden="true">✳</span> Conversaciones de ejemplo · vista de
-            demostración
+            <span aria-hidden="true">✳</span> Conversaciones de ejemplo · vista
+            de demostración
           </p>
         ) : null}
         <div className="roast-thread">
@@ -177,29 +179,31 @@ export function Roast() {
             ? "Los intercambios iniciales son ejemplos. Tus mensajes reciben la respuesta configurada en el servidor."
             : "Los mensajes de roast no se guardan para futuras visitas. Los intercambios de esta sesión aparecen aquí."}
         </p>
+      </section>
+      <div className="roast-sidebar">
         <RoastRanking
           state={rankingState}
           onRetry={() => setRankingRevision((revision) => revision + 1)}
         />
-      </section>
-      {shouldShowRoastPlanCallout ? (
-        <aside className="roast-aside">
-          <div className="aside-creature" aria-hidden="true" />
-          <h2>¿Te has quedado con ganas?</h2>
-          <p>
-            El plan Faltón amplía tus envíos diarios. Once, sí. A alguien le hizo
-            gracia el número.
-          </p>
-          <a className="button-primary" href="/precios">
-            Ver el plan Faltón <span aria-hidden="true">↗</span>
-          </a>
-          <p className="privacy-footnote">
-            No uses esto para enviar datos personales. Una cookie recuerda tus
-            tres envíos gratuitos y una señal temporal derivada de la IP ayuda a
-            frenar abusos.
-          </p>
-        </aside>
-      ) : null}
+        {shouldShowRoastPlanCallout ? (
+          <aside className="roast-aside">
+            <div className="aside-creature" aria-hidden="true" />
+            <h2>¿Te has quedado con ganas?</h2>
+            <p>
+              El plan Faltón amplía tus envíos diarios. Once, sí. A alguien le
+              hizo gracia el número.
+            </p>
+            <a className="button-primary" href="/precios">
+              Ver el plan Faltón <span aria-hidden="true">↗</span>
+            </a>
+            <p className="privacy-footnote">
+              No uses esto para enviar datos personales. Una cookie recuerda tus
+              tres envíos gratuitos y una señal temporal derivada de la IP ayuda
+              a frenar abusos.
+            </p>
+          </aside>
+        ) : null}
+      </div>
     </div>
   );
 }

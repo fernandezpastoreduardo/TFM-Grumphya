@@ -20,7 +20,9 @@ export type SectionPageMeta = {
     | "good-practices"
     | "roast"
     | "worst-ideas"
-    | "login";
+    | "login"
+    | "notable-humans"
+    | "contact";
 };
 
 const SECTION_LINKS = [

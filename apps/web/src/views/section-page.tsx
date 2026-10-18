@@ -29,7 +29,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "Un aplauso para quien ha traído una idea con algo más que optimismo y una presentación bonita.",
     theme: "mint",
-    mascot: "judge",
+    mascot: "notable-humans",
   },
   "/buenas-practicas": {
     label: "Una pausa para pensar",
@@ -37,6 +37,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "Validar una necesidad antes de construir ayuda a cuidar el tiempo, el presupuesto y la energía del equipo.",
     theme: "calm",
+    mascot: "good-practices",
   },
   "/precios": {
     label: "Planes sencillos · contratación simulada",
@@ -52,6 +53,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "El formulario existe. Mi interés por recibirlo está en fase de evaluación.",
     theme: "rose",
+    mascot: "contact",
   },
   "/login": {
     label: "Tu cuenta",
