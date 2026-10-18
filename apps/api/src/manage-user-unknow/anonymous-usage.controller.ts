@@ -21,11 +21,10 @@ import { privateCookieOptions } from "../infrastructure/http/private-cookie-opti
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
 import { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import { ServiceUnavailableException } from "@nestjs/common";
+import { ROAST_REPLY_PORT, type RoastReplyPort } from "../roast/roast-reply.port";
 
 const VISITOR_COOKIE = "grumphya_anon";
 const COOKIE_MAX_AGE = 400 * 24 * 60 * 60 * 1000;
-const ROAST_REPLY =
-  "He recibido tu mensaje. Mi respuesta definitiva todavía está de vacaciones.";
 const ROAST_MAX_LENGTH = 400;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -36,6 +35,10 @@ const INVALID_ROAST_SUBMISSION = {
 const PLAN_USAGE_UNAVAILABLE = {
   code: "PLAN_USAGE_UNAVAILABLE",
   message: "No se ha podido comprobar el uso de tu plan ahora.",
+};
+const ROAST_REPLY_UNAVAILABLE = {
+  code: "ROAST_REPLY_UNAVAILABLE",
+  message: "No se ha podido preparar la respuesta ahora.",
 };
 
 type OptionalAuthenticatedRequest = Request & {
@@ -50,6 +53,9 @@ export class AnonymousUsageController {
     @Optional()
     @Inject(PlanUsageService)
     private readonly planUsage?: PlanUsageService,
+    @Optional()
+    @Inject(ROAST_REPLY_PORT)
+    private readonly roastReply?: RoastReplyPort,
   ) {}
 
   @Post("anonymous-usage")
@@ -106,57 +112,83 @@ export class AnonymousUsageController {
       .update(message)
       .digest("hex");
     const userId = request.user?.userId;
+    if (!this.roastReply)
+      throw new ServiceUnavailableException(ROAST_REPLY_UNAVAILABLE);
     if (userId) {
       if (!this.planUsage)
         throw new ServiceUnavailableException(PLAN_USAGE_UNAVAILABLE);
-      const reservation = await this.planUsage.reserve(
+      const planReservation = await this.planUsage.reserveIfPlanActive(
         userId,
         "roasts",
         keyHash,
         requestHash,
       );
-      if (reservation.state === "cached") return reservation.response;
-      try {
-        const result = { reply: ROAST_REPLY };
-        await this.planUsage.commit(
-          userId,
-          "roasts",
-          keyHash,
-          requestHash,
-          result,
-        );
-        return result;
-      } catch (error) {
-        await this.planUsage.release(userId, "roasts", keyHash);
-        throw error;
+      if (planReservation) {
+        if (planReservation.state === "cached") return planReservation.response;
+        try {
+          const result = { reply: await this.roastReply.reply(message) };
+          await this.planUsage.commit(
+            userId,
+            "roasts",
+            keyHash,
+            requestHash,
+            result,
+          );
+          return result;
+        } catch (error) {
+          await this.planUsage.release(userId, "roasts", keyHash);
+          if (isRoastProviderError(error))
+            throw new ServiceUnavailableException(ROAST_REPLY_UNAVAILABLE);
+          throw error;
+        }
       }
     }
+    const visitorToken = readCookie(request, VISITOR_COOKIE);
     const reservation = await this.usage.reserve(
-      readCookie(request, VISITOR_COOKIE),
+      visitorToken,
       "roasts",
       keyHash,
       requestHash,
     );
-    if (reservation.state === "cached") return reservation.response;
+    if (reservation.state === "cached") {
+      await this.recordHistoricalRoastIfEligible(userId, keyHash);
+      return reservation.response;
+    }
     try {
-      const result = { reply: ROAST_REPLY };
+      const result = { reply: await this.roastReply.reply(message) };
       await this.usage.commit(
-        readCookie(request, VISITOR_COOKIE),
+        visitorToken,
         "roasts",
         keyHash,
         requestHash,
         result,
       );
+      await this.recordHistoricalRoastIfEligible(userId, keyHash);
       return result;
     } catch (error) {
       await this.usage.release(
-        readCookie(request, VISITOR_COOKIE),
+        visitorToken,
         "roasts",
         keyHash,
       );
+      if (isRoastProviderError(error))
+        throw new ServiceUnavailableException(ROAST_REPLY_UNAVAILABLE);
       throw error;
     }
   }
+
+  private async recordHistoricalRoastIfEligible(
+    userId: string | undefined,
+    idempotencyHash: string,
+  ): Promise<void> {
+    if (userId) {
+      await this.planUsage?.recordHistoricalRoastMessage(userId, idempotencyHash);
+    }
+  }
+}
+
+function isRoastProviderError(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith("OpenAI ");
 }
 
 function parseRoastMessage(input: unknown): string {

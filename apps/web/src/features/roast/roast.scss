@@ -132,6 +132,44 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+.roast-composer input:focus-visible,
+.roast-composer button:focus-visible {
+  outline: 3px solid #bd315e;
+  outline-offset: 2px;
+}
+.roast-input-count {
+  align-self: end;
+  flex: 0 0 auto;
+  padding: 0 0 8px;
+  color: #526565;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.roast-attempt-feedback,
+.roast-input-error {
+  margin: 8px 4px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.roast-attempt-feedback {
+  color: #314b4b;
+}
+.roast-input-error {
+  color: #a51e3e;
+  font-weight: 800;
+}
+.theme-dark .roast-attempt-feedback {
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f5f6e9;
+  background: #203c3b;
+}
+.theme-dark .roast-input-error {
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #ffd9e3;
+  background: #641d34;
+}
 .roast-aside {
   position: relative;
   overflow: hidden;

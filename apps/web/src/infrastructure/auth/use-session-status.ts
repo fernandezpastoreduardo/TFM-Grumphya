@@ -5,7 +5,12 @@ import {
   SESSION_EXPIRED_EVENT,
 } from "./session";
 
-export type AccountAttempts = { ideas: number; roasts: number };
+export type AccountAttempts = {
+  ideas: number;
+  roasts: number;
+  ideasPlanActive: boolean;
+  roastsPlanActive: boolean;
+};
 
 export function useSessionStatus() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -78,6 +83,8 @@ function readActivePlanAttempts(value: unknown): AccountAttempts | null {
   return {
     ideas: getRemaining(activeIdeasPlan, "ideas"),
     roasts: getRemaining(activeRoastPlan, "roasts"),
+    ideasPlanActive: activeIdeasPlan !== undefined,
+    roastsPlanActive: activeRoastPlan !== undefined,
   };
 }
 

@@ -12,10 +12,12 @@ function setup() {
     reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
     commit: vi.fn().mockResolvedValue(undefined),
     release: vi.fn().mockResolvedValue(undefined),
+    recordHistoricalRoastMessage: vi.fn().mockResolvedValue(undefined),
   } satisfies PlanUsageRepository & {
     reserve: ReturnType<typeof vi.fn>;
     commit: ReturnType<typeof vi.fn>;
     release: ReturnType<typeof vi.fn>;
+    recordHistoricalRoastMessage: ReturnType<typeof vi.fn>;
   };
   return { service: new PlanUsageService(repository), repository };
 }
@@ -61,7 +63,25 @@ describe("PlanUsageService", () => {
     await expect(
       service.reserve(USER_ID, "ideas", "bad-hash", REQUEST_HASH),
     ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.recordHistoricalRoastMessage("not-a-uuid", IDEMPOTENCY_HASH),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.recordHistoricalRoastMessage(USER_ID, "bad-hash"),
+    ).rejects.toBeInstanceOf(ConflictException);
     expect(repository.reserve).not.toHaveBeenCalled();
+    expect(repository.recordHistoricalRoastMessage).not.toHaveBeenCalled();
+  });
+
+  it("records a historical Faltón roast through idempotent persistence", async () => {
+    const { service, repository } = setup();
+
+    await service.recordHistoricalRoastMessage(USER_ID, IDEMPOTENCY_HASH);
+
+    expect(repository.recordHistoricalRoastMessage).toHaveBeenCalledWith(
+      USER_ID,
+      IDEMPOTENCY_HASH,
+    );
   });
 
   it.each([
@@ -81,6 +101,36 @@ describe("PlanUsageService", () => {
             : "PLAN_QUOTA_EXHAUSTED",
       }),
       status,
+    });
+  });
+
+  it("returns no plan reservation when the account does not have this scope active", async () => {
+    const { service, repository } = setup();
+    repository.reserve.mockRejectedValue(new Error("ACTIVE_PLAN_REQUIRED"));
+
+    await expect(
+      service.reserveIfPlanActive(
+        USER_ID,
+        "roasts",
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("keeps quota and infrastructure errors instead of treating them as free usage", async () => {
+    const { service, repository } = setup();
+    repository.reserve.mockRejectedValue(new Error("PLAN_QUOTA_EXHAUSTED"));
+
+    await expect(
+      service.reserveIfPlanActive(
+        USER_ID,
+        "roasts",
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+      ),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: "PLAN_QUOTA_EXHAUSTED" }),
     });
   });
 });

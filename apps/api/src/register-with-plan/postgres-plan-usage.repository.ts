@@ -170,7 +170,20 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
         [userId, PLAN_FOR_SCOPE[scope], usageDate],
       );
       if (updated.rowCount !== 1) throw new Error("PLAN_QUOTA_EXHAUSTED");
+      if (scope === "roasts") {
+        await this.recordRoastMessageEvent(client, userId, idempotencyHash);
+      }
     });
+  }
+
+  async recordHistoricalRoastMessage(
+    userId: string,
+    idempotencyHash: string,
+  ): Promise<void> {
+    await this.ensureSchema();
+    await this.transaction((client) =>
+      this.recordRoastMessageEvent(client, userId, idempotencyHash),
+    );
   }
 
   async release(
@@ -207,6 +220,30 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
       throw error;
     } finally {
       client.release();
+    }
+  }
+
+  private async recordRoastMessageEvent(
+    client: PoolClient,
+    userId: string,
+    idempotencyHash: string,
+  ): Promise<void> {
+    const inserted = await client.query(
+      `INSERT INTO account_roast_message_events(user_id,idempotency_hash)
+       SELECT $1,$2 WHERE EXISTS (
+         SELECT 1 FROM subscriptions s
+         WHERE s.user_id=$1 AND s.plan_code='FALTON'
+           AND s.status IN ('active','expired','cancelled')
+           AND s.starts_at <= now()
+       ) ON CONFLICT(user_id,idempotency_hash) DO NOTHING
+       RETURNING user_id`,
+      [userId, idempotencyHash],
+    );
+    if (inserted.rowCount === 1) {
+      await client.query(
+        "UPDATE users SET roast_messages_sent=roast_messages_sent+1 WHERE id=$1",
+        [userId],
+      );
     }
   }
 }

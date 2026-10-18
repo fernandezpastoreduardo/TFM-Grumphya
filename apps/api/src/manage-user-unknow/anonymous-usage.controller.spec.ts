@@ -13,6 +13,7 @@ import { AnonymousUsageService as AnonymousUsageServiceToken } from "./anonymous
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
 import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
 import { issueAccessToken } from "../infrastructure/auth/access-token";
+import { ROAST_REPLY_PORT, type RoastReplyPort } from "../roast/roast-reply.port";
 
 const ROAST_MESSAGE = "Grumphya, hoy has venido especialmente inspirada.";
 const IDEMPOTENCY_KEY = "d54e74e8-4d23-46d4-9944-0b39bcda0914";
@@ -41,6 +42,10 @@ async function startAuthenticatedRoastHttpApplication(
     providers: [
       { provide: AnonymousUsageServiceToken, useValue: usage },
       { provide: PlanUsageServiceToken, useValue: planUsage },
+      {
+        provide: ROAST_REPLY_PORT,
+        useValue: { reply: vi.fn().mockResolvedValue(REPLY) },
+      },
       OptionalAccessTokenGuard,
       {
         provide: ACCESS_TOKEN_SESSION_LOOKUP,
@@ -65,7 +70,10 @@ afterEach(() => {
   else process.env.ACCESS_TOKEN_SECRET = PREVIOUS_ACCESS_TOKEN_SECRET;
 });
 
-function createController(planUsageMock?: PlanUsageService) {
+function createController(
+  planUsageMock?: PlanUsageService,
+  roastReply: RoastReplyPort = { reply: vi.fn().mockResolvedValue(REPLY) },
+) {
   const usage = {
     initialize: vi
       .fn()
@@ -80,7 +88,7 @@ function createController(planUsageMock?: PlanUsageService) {
     release: ReturnType<typeof vi.fn>;
   };
   return {
-    controller: new AnonymousUsageController(usage, planUsageMock),
+    controller: new AnonymousUsageController(usage, planUsageMock, roastReply),
     usage,
   };
 }
@@ -223,7 +231,7 @@ describe("AnonymousUsageController roast endpoint", () => {
     expect(usage.reserve).not.toHaveBeenCalled();
   });
 
-  it("releases a reservation when storing the demo response fails", async () => {
+  it("releases a reservation when storing the roast response fails", async () => {
     const { controller, usage } = createController();
     usage.commit.mockRejectedValue(new Error("database unavailable"));
     const request = {
@@ -240,13 +248,35 @@ describe("AnonymousUsageController roast endpoint", () => {
     );
   });
 
+  it("releases a reservation and returns a generic unavailable response when roast generation fails", async () => {
+    const roastReply = {
+      reply: vi.fn().mockRejectedValue(new Error("OpenAI roast request failed.")),
+    };
+    const { controller, usage } = createController(undefined, roastReply);
+    const request = {
+      headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: {
+        code: "ROAST_REPLY_UNAVAILABLE",
+        message: "No se ha podido preparar la respuesta ahora.",
+      },
+    });
+    expect(usage.commit).not.toHaveBeenCalled();
+    expect(usage.release).toHaveBeenCalledOnce();
+  });
+
   it("uses the Faltón plan quota for an authenticated roast and skips the guest counter", async () => {
     const planUsage = {
-      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     } as unknown as PlanUsageService & {
-      reserve: ReturnType<typeof vi.fn>;
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
       commit: ReturnType<typeof vi.fn>;
       release: ReturnType<typeof vi.fn>;
     };
@@ -260,7 +290,7 @@ describe("AnonymousUsageController roast endpoint", () => {
       controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
     ).resolves.toEqual({ reply: REPLY });
 
-    expect(planUsage.reserve).toHaveBeenCalledWith(
+    expect(planUsage.reserveIfPlanActive).toHaveBeenCalledWith(
       "123e4567-e89b-42d3-a456-426614174000",
       "roasts",
       expect.stringMatching(/^[a-f0-9]{64}$/u),
@@ -276,16 +306,99 @@ describe("AnonymousUsageController roast endpoint", () => {
     expect(usage.reserve).not.toHaveBeenCalled();
   });
 
+  it("uses the browser free roast quota when an authenticated user has no active Faltón plan", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn().mockResolvedValue(null),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+      recordHistoricalRoastMessage: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+      recordHistoricalRoastMessage: ReturnType<typeof vi.fn>;
+    };
+    const { controller, usage } = createController(planUsage);
+    const request = {
+      headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
+      user: { userId: AUTHENTICATED_USER_ID },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+
+    expect(usage.reserve).toHaveBeenCalledWith(
+      "a".repeat(43),
+      "roasts",
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(usage.commit).toHaveBeenCalledOnce();
+    expect(planUsage.commit).not.toHaveBeenCalled();
+    expect(planUsage.recordHistoricalRoastMessage).toHaveBeenCalledWith(
+      AUTHENTICATED_USER_ID,
+      IDEMPOTENCY_HASH,
+    );
+  });
+
+  it("does not record anonymous browser roasts in a user ranking", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn(),
+      recordHistoricalRoastMessage: vi.fn(),
+    } as unknown as PlanUsageService & {
+      recordHistoricalRoastMessage: ReturnType<typeof vi.fn>;
+    };
+    const { controller } = createController(planUsage);
+    const request = {
+      headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
+    } as never;
+
+    await controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY);
+
+    expect(planUsage.recordHistoricalRoastMessage).not.toHaveBeenCalled();
+  });
+
+  it("retries historical ranking persistence for a cached free roast", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn().mockResolvedValue(null),
+      recordHistoricalRoastMessage: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+      recordHistoricalRoastMessage: ReturnType<typeof vi.fn>;
+    };
+    const { controller, usage } = createController(planUsage);
+    usage.reserve.mockResolvedValue({
+      state: "cached",
+      response: { reply: REPLY },
+      usage: RESERVED.usage,
+    });
+    const request = {
+      headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
+      user: { userId: AUTHENTICATED_USER_ID },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+
+    expect(usage.commit).not.toHaveBeenCalled();
+    expect(planUsage.recordHistoricalRoastMessage).toHaveBeenCalledWith(
+      AUTHENTICATED_USER_ID,
+      IDEMPOTENCY_HASH,
+    );
+  });
+
   it("returns the cached authenticated roast response without a second commit", async () => {
     const planUsage = {
-      reserve: vi.fn().mockResolvedValue({
+      reserveIfPlanActive: vi.fn().mockResolvedValue({
         state: "cached",
         response: { reply: REPLY },
       }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     } as unknown as PlanUsageService & {
-      reserve: ReturnType<typeof vi.fn>;
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
       commit: ReturnType<typeof vi.fn>;
       release: ReturnType<typeof vi.fn>;
     };
@@ -312,13 +425,15 @@ describe("AnonymousUsageController roast endpoint", () => {
       release: vi.fn(),
     } as unknown as AnonymousUsageService;
     const planUsage = {
-      reserve: vi.fn().mockResolvedValue({ state: "reserved" }),
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
+      recordHistoricalRoastMessage: vi.fn().mockResolvedValue(undefined),
     } as unknown as PlanUsageService & {
-      reserve: ReturnType<typeof vi.fn>;
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
       commit: ReturnType<typeof vi.fn>;
       release: ReturnType<typeof vi.fn>;
+      recordHistoricalRoastMessage: ReturnType<typeof vi.fn>;
     };
     const application = await startAuthenticatedRoastHttpApplication(
       usage,
@@ -341,13 +456,14 @@ describe("AnonymousUsageController roast endpoint", () => {
 
       expect(response.status).toBe(201);
       expect(await response.json()).toEqual({ reply: REPLY });
-      expect(planUsage.reserve).toHaveBeenCalledWith(
+      expect(planUsage.reserveIfPlanActive).toHaveBeenCalledWith(
         AUTHENTICATED_USER_ID,
         "roasts",
         expect.stringMatching(/^[a-f0-9]{64}$/u),
         expect.stringMatching(/^[a-f0-9]{64}$/u),
       );
       expect(planUsage.commit).toHaveBeenCalledOnce();
+      expect(planUsage.recordHistoricalRoastMessage).not.toHaveBeenCalled();
       expect(usage.reserve).not.toHaveBeenCalled();
     } finally {
       await application.close();

@@ -31,8 +31,15 @@ import { GetIdeaListWorstUser } from "./worst-ideas/get-idea-list-worst-user.ser
 import { UserDeleteModule } from "./user-delete/user-delete.module";
 import { AuthSecurityModule } from "./infrastructure/auth/auth-security.module";
 import { PlanUsageService } from "./register-with-plan/plan-usage.service";
+import { ROAST_REPLY_PORT } from "./roast/roast-reply.port";
+import { OpenAiRoastReplyPort } from "./roast/openai-roast-reply.port";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
+function createRoastReplyProvider(): OpenAiRoastReplyPort | undefined {
+  const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
+  return apiKey ? new OpenAiRoastReplyPort({ apiKey }) : undefined;
+}
+
 function createTextEmbeddingProvider(): OpenAiTextEmbeddingPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
   return apiKey ? new OpenAiTextEmbeddingPort({ apiKey }) : undefined;
@@ -107,6 +114,7 @@ function createIdeaSubmissionService(
   providers: [
     EvaluationProcessService,
     { provide: EVALUATION_PORT, useFactory: createEvaluationProvider },
+    { provide: ROAST_REPLY_PORT, useFactory: createRoastReplyProvider },
     { provide: TEXT_EMBEDDING_PORT, useFactory: createTextEmbeddingProvider },
     {
       provide: OpenAiSemanticIdeaFingerprintPort,

@@ -117,6 +117,59 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
       [faltonUser],
     );
     expect(result.rows[0]?.roasts_used).toBe(1);
+    const faltonCount = await testPool.query<{ roast_messages_sent: string }>(
+      "SELECT roast_messages_sent::text FROM users WHERE id=$1",
+      [faltonUser],
+    );
+    expect(faltonCount.rows[0]?.roast_messages_sent).toBe("1");
+
+    const cachedRetry = await repository.reserve(
+      faltonUser,
+      "roasts",
+      HASHES[0]!,
+      REQUEST_HASH,
+    );
+    expect(cachedRetry).toEqual({
+      state: "cached",
+      response: { reply: "ok" },
+    });
+    const countAfterRetry = await testPool.query<{
+      roast_messages_sent: string;
+    }>("SELECT roast_messages_sent::text FROM users WHERE id=$1", [faltonUser]);
+    expect(countAfterRetry.rows[0]?.roast_messages_sent).toBe("1");
+
+    const nonFaltonCount = await testPool.query<{
+      roast_messages_sent: string;
+    }>("SELECT roast_messages_sent::text FROM users WHERE id=$1", [OWNER_ID]);
+    expect(nonFaltonCount.rows[0]?.roast_messages_sent).toBe("0");
+  });
+
+  it("counts accepted free roasts only for users with Faltón history and deduplicates retries", async () => {
+    const faltonUser = "123e4567-e89b-42d3-a456-426614174001";
+    await testPool.query(
+      `UPDATE subscriptions SET status='expired',expires_at=now()-interval '1 day'
+       WHERE user_id=$1 AND plan_code='FALTON'`,
+      [faltonUser],
+    );
+
+    await repository.recordHistoricalRoastMessage(faltonUser, HASHES[4]!);
+    await repository.recordHistoricalRoastMessage(faltonUser, HASHES[4]!);
+    await repository.recordHistoricalRoastMessage(OWNER_ID, HASHES[5]!);
+
+    const result = await testPool.query<{
+      id: string;
+      roast_messages_sent: string;
+    }>(
+      `SELECT id::text,roast_messages_sent::text FROM users
+       WHERE id = ANY($1::uuid[]) ORDER BY id`,
+      [
+        [OWNER_ID, faltonUser].sort(),
+      ],
+    );
+    expect(result.rows).toEqual([
+      { id: OWNER_ID, roast_messages_sent: "0" },
+      { id: faltonUser, roast_messages_sent: "2" },
+    ]);
   });
 });
 

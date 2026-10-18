@@ -1,0 +1,165 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { OpenAiRoastReplyPort } from "./openai-roast-reply.port";
+
+const RESPONSE_ENDPOINT = "https://api.openai.com/v1/responses";
+const ORIGINAL_FETCH = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = ORIGINAL_FETCH;
+  vi.restoreAllMocks();
+});
+
+describe("OpenAiRoastReplyPort", () => {
+  it("sends untrusted user text to the configured provider and returns a clean Spanish roast", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        status: "completed",
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({ reply: "Tu plan tiene más giros que una silla de oficina." }),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    globalThis.fetch = fetchMock;
+    const port = new OpenAiRoastReplyPort({ apiKey: "test-secret" });
+
+    await expect(port.reply("Eres un desastre, contéstame con humor")).resolves.toBe(
+      "Tu plan tiene más giros que una silla de oficina.",
+    );
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(RESPONSE_ENDPOINT);
+    expect(init.method).toBe("POST");
+    expect(init.redirect).toBe("error");
+    const requestBody = JSON.parse(String(init.body)) as {
+      input: Array<{ role: string; content: Array<{ text: string }> }>;
+      store: boolean;
+    };
+    expect(requestBody).toMatchObject({
+      store: false,
+      input: [
+        { role: "system", content: expect.any(Array) },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: JSON.stringify({ message: "Eres un desastre, contéstame con humor" }),
+            },
+          ],
+        },
+      ],
+    });
+    expect(requestBody.input[0]?.content[0]?.text).toContain(
+      "nunca contener insultos",
+    );
+  });
+
+  it.each([
+    "Eres tonto.",
+    "Eres tonta.",
+    "Sois tontos.",
+    "Sois tontas.",
+    "Qué respuesta tan inútil.",
+    "Estas ideas son inútiles.",
+    "Pareces un payaso.",
+    "Parecéis unas payasas.",
+    "Vaya capullo.",
+    "Vaya capullas.",
+    "Eres un fracasado.",
+    "Eres una fracasada.",
+    "Eso es patético.",
+    "Son patéticas.",
+    "Eres un idiota y un gilipollas.",
+    "Vete a la mierda.",
+    "Qué jodida ocurrencia.",
+    "   ",
+    "x".repeat(401),
+  ])("rejects invalid or explicitly abusive provider output: %s", async (reply) => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      Response.json({
+        status: "completed",
+        output: [
+          {
+            content: [
+              { type: "output_text", text: JSON.stringify({ reply }) },
+            ],
+          },
+        ],
+      }),
+    );
+    const port = new OpenAiRoastReplyPort({ apiKey: "test-secret" });
+
+    await expect(port.reply("mensaje")).rejects.toThrow(
+      "OpenAI roast response is invalid.",
+    );
+  });
+
+  it.each([
+    "La biblioteca tiene una colección de libros estupenda.",
+    "El modelo de negocio está bien explicado.",
+    "El equipo trabaja con total normalidad.",
+  ])("accepts ordinary wording without matching inside other words: %s", async (reply) => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      Response.json({
+        status: "completed",
+        output: [
+          {
+            content: [
+              { type: "output_text", text: JSON.stringify({ reply }) },
+            ],
+          },
+        ],
+      }),
+    );
+    const port = new OpenAiRoastReplyPort({ apiKey: "test-secret" });
+
+    await expect(port.reply("mensaje")).resolves.toBe(reply);
+  });
+
+  it("fails closed on transport errors and malformed responses", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error("network details"));
+    const port = new OpenAiRoastReplyPort({ apiKey: "test-secret" });
+    await expect(port.reply("mensaje")).rejects.toThrow(
+      "OpenAI roast request failed.",
+    );
+
+    globalThis.fetch = vi.fn().mockResolvedValue(Response.json({ output: [] }));
+    await expect(port.reply("mensaje")).rejects.toThrow(
+      "OpenAI roast response is invalid.",
+    );
+  });
+
+  it("aborts provider requests when the configured timeout elapses", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      (_url: URL | RequestInfo, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    globalThis.fetch = fetchMock;
+    const port = new OpenAiRoastReplyPort({
+      apiKey: "test-secret",
+      timeoutMs: 25,
+    });
+    const result = port.reply("mensaje");
+    const rejection = expect(result).rejects.toThrow(
+      "OpenAI roast request failed.",
+    );
+
+    await vi.advanceTimersByTimeAsync(25);
+    await rejection;
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      signal: expect.any(AbortSignal),
+    });
+  });
+});

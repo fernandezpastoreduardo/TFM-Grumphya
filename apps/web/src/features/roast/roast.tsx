@@ -1,14 +1,11 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../error-pages/error-pages";
-import {
-  authenticatedFetch,
-  getAccessToken,
-} from "../../infrastructure/auth/session";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import { RoastInput } from "./components/RoastInput";
 import "./roast.scss";
 
-// PROTOTYPE: sample exchanges and the reply below are fixtures until the roast service exists.
+// Only the opening exchanges are fixtures; submitted messages use the roast endpoint.
 const SAMPLE_EXCHANGES = [
   {
     user: "Quiero una app que haga mi trabajo mientras duermo.",
@@ -26,98 +23,29 @@ const SAMPLE_EXCHANGES = [
       "Qué bien. Cuando encuentres a alguien dispuesto a pagar uno, me avisas.",
   },
 ] as const;
-const ROAST_ENDPOINT = "/api/roast";
-const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo.";
-
 export function Roast() {
-  const [message, setMessage] = useState("");
   const [sentMessages, setSentMessages] = useState<
     Array<{ id: string; message: string; reply: string }>
   >([]);
-  const [isSending, setIsSending] = useState(false);
-  const [error, setError] = useState("");
-  const isSendingRef = useRef(false);
   const usageState = useAnonymousUsage();
   const session = useSessionStatus();
   const isAuthenticated = session.isAuthenticated === true;
-  const remainingAttempts =
-    session.isAuthenticated === null
-      ? null
-      : isAuthenticated
-        ? (session.accountAttempts?.roasts ?? null)
-        : (usageState.usage?.roasts.remaining ?? null);
-  const quotaLimit = isAuthenticated ? 11 : 3;
-  const quotaDescription = isAuthenticated
+  const hasActiveRoastPlan =
+    isAuthenticated && session.accountAttempts?.roastsPlanActive === true;
+  const availableAttempts = getRoastAttemptsRemaining(
+    session.isAuthenticated,
+    session.accountAttempts,
+    usageState.usage?.roasts.remaining,
+  );
+  const [attemptsOverride, setAttemptsOverride] = useState<number | null>(null);
+  useEffect(() => {
+    setAttemptsOverride(null);
+  }, [availableAttempts]);
+  const remainingAttempts = attemptsOverride ?? availableAttempts;
+  const quotaLimit = hasActiveRoastPlan ? 11 : 3;
+  const quotaDescription = hasActiveRoastPlan
     ? "envíos disponibles hoy"
     : "envíos gratuitos restantes";
-
-  async function submitRoast(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const value = message.trim();
-    if (
-      !value ||
-      (remainingAttempts === 0 && isAuthenticated) ||
-      isSendingRef.current
-    )
-      return;
-    isSendingRef.current = true;
-    setIsSending(true);
-    setError("");
-    try {
-      const accessToken = await getAccessToken();
-      const init: RequestInit = {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
-        },
-        body: JSON.stringify({ message: value }),
-      };
-      const response = accessToken
-        ? await authenticatedFetch(ROAST_ENDPOINT, init)
-        : await fetch(ROAST_ENDPOINT, init);
-      if (!response.ok) {
-        let errorMessage = ROAST_ERROR_MESSAGE;
-        try {
-          const payload: unknown = await response.json();
-          if (
-            typeof payload === "object" &&
-            payload !== null &&
-            "message" in payload &&
-            typeof payload.message === "string"
-          )
-            errorMessage = payload.message;
-        } catch {
-          errorMessage = ROAST_ERROR_MESSAGE;
-        }
-        throw new Error(errorMessage);
-      }
-      const payload: unknown = await response.json();
-      if (
-        typeof payload !== "object" ||
-        payload === null ||
-        !("reply" in payload) ||
-        typeof payload.reply !== "string"
-      )
-        throw new Error(ROAST_ERROR_MESSAGE);
-      setSentMessages((previous) => [
-        ...previous,
-        {
-          id: crypto.randomUUID(),
-          message: value,
-          reply: payload.reply as string,
-        },
-      ]);
-      setMessage("");
-      await usageState.refresh();
-    } catch (caught: unknown) {
-      setError(caught instanceof Error ? caught.message : ROAST_ERROR_MESSAGE);
-    } finally {
-      isSendingRef.current = false;
-      setIsSending(false);
-    }
-  }
 
   if (usageState.errorStatus === 429) {
     return <ErrorPages status="429" detail={usageState.error} />;
@@ -185,42 +113,25 @@ export function Roast() {
             </article>
           ))}
         </div>
-        <form
-          className="roast-composer"
-          onSubmit={(event) => void submitRoast(event)}
-        >
-          <label className="sr-only" htmlFor="roast-message">
-            Tu insulto para Grumphya
-          </label>
-          <input
-            id="roast-message"
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder="Venga, a ver si me haces sudar…"
-            maxLength={400}
-            disabled={
-              remainingAttempts === null ||
-              remainingAttempts === 0 ||
-              isSending
-            }
-          />
-          <button
-            type="submit"
-            aria-label="Enviar insulto"
-            disabled={
-              !message.trim() ||
-              remainingAttempts === null ||
-              remainingAttempts === 0 ||
-              isSending
-            }
-          >
-            ↑
-          </button>
-        </form>
-        {error ? <p role="alert">{error}</p> : null}
+        <RoastInput
+          remainingAttempts={remainingAttempts}
+          quotaLimit={quotaLimit}
+          quotaDescription={quotaDescription}
+          onSubmitted={(message, reply) => {
+            setSentMessages((previous) => [
+              ...previous,
+              { id: crypto.randomUUID(), message, reply },
+            ]);
+            setAttemptsOverride((current) =>
+              Math.max(0, (current ?? availableAttempts ?? 1) - 1),
+            );
+          }}
+          onUsageRefresh={usageState.refresh}
+        />
         <p className="prototype-stamp">
-          La respuesta es una demostración; los usos restantes los controla el
-          servidor.
+          Los intercambios iniciales son ejemplos. Tus mensajes reciben la
+          respuesta configurada en el servidor, que también controla los usos
+          restantes.
         </p>
       </section>
       <aside className="roast-aside">
@@ -241,4 +152,21 @@ export function Roast() {
       </aside>
     </div>
   );
+}
+
+function getRoastAttemptsRemaining(
+  isAuthenticated: boolean | null,
+  accountAttempts:
+    | {
+        roasts: number;
+        roastsPlanActive: boolean;
+      }
+    | null,
+  freeAttempts: number | undefined,
+): number | null {
+  if (isAuthenticated === null) return null;
+  if (isAuthenticated && accountAttempts === null) return null;
+  if (isAuthenticated && accountAttempts?.roastsPlanActive)
+    return accountAttempts.roasts;
+  return freeAttempts ?? null;
 }

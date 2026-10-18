@@ -77,6 +77,20 @@ export class PlanUsageService {
     }
   }
 
+  async reserveIfPlanActive(
+    userId: string,
+    scope: PlanUsageScope,
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<PlanUsageReservation | null> {
+    try {
+      return await this.reserve(userId, scope, idempotencyHash, requestHash);
+    } catch (error) {
+      if (isActivePlanRequired(error)) return null;
+      throw error;
+    }
+  }
+
   async commit(
     userId: string,
     scope: PlanUsageScope,
@@ -94,6 +108,20 @@ export class PlanUsageService {
       );
     } catch (error) {
       throw this.toHttpError(error, scope);
+    }
+  }
+
+  async recordHistoricalRoastMessage(
+    userId: string,
+    idempotencyHash: string,
+  ): Promise<void> {
+    if (!UUID_PATTERN.test(userId) || !HASH_PATTERN.test(idempotencyHash)) {
+      throw new ConflictException(INVALID_RESERVATION);
+    }
+    try {
+      await this.repository.recordHistoricalRoastMessage(userId, idempotencyHash);
+    } catch {
+      throw new ServiceUnavailableException(USAGE_UNAVAILABLE);
     }
   }
 
@@ -121,6 +149,19 @@ export class PlanUsageService {
     }
     return new ServiceUnavailableException(USAGE_UNAVAILABLE);
   }
+}
+
+function isActivePlanRequired(error: unknown): boolean {
+  if (!(error instanceof HttpException) || error.getStatus() !== 403) {
+    return false;
+  }
+  const response = error.getResponse();
+  return (
+    typeof response === "object" &&
+    response !== null &&
+    "code" in response &&
+    response.code === "ACTIVE_PLAN_REQUIRED"
+  );
 }
 
 function isScope(value: unknown): value is PlanUsageScope {
