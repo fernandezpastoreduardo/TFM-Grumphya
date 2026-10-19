@@ -94,3 +94,8 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 - Componente presentacional local a `submit-contact-message`; recibe asunto, mensaje, estados y callbacks desde `SubmitContactMessage`.
 - Etiqueta los campos, aplica límites visibles de longitud, muestra el contador del mensaje y anuncia estados de error o éxito.
 - El contenedor `SubmitContactMessage` lo usa en `/contacto` para sesiones autenticadas. Los visitantes sin sesión siguen viendo el formulario de demostración de `Contact`.
+
+### AdminDashboard
+
+- `AdminDashboard` es el contenedor del panel privado de Jappy, disponible solo en `/panel-control`. La ruta de panel y el item de navegación se muestran solo a admins en Home y en las páginas de sección; «Mi cuenta» conserva `/perfil` y muestra los datos personales, también para Jappy. El servidor vuelve a comprobar el rol para cada consulta.
+- Consulta las métricas y la bandeja de contacto mediante endpoints protegidos del servidor. Muestra ingresos simulados en EUR, coste de IA estimado en USD, errores de servidor 5xx agregados (sin contar 4xx esperables) y hasta 100 mensajes recientes; valida las respuestas antes de representarlas.
