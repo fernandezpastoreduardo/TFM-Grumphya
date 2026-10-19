@@ -45,13 +45,22 @@ aprovisionamiento individual y controlado antes de producción; véase
   contabilidad real.
 - Coste de IA: estimación en USD a partir de tokens reportados por llamadas
   completadas a proveedores instrumentados. La semana empieza el lunes en
-  `Europe/Madrid`. El histórico arranca con la migración `023`; no hay
-  reconstrucción de llamadas anteriores. El total incluye usos anónimos y de
-  Jappy. El numerador de los promedios suma llamadas asociadas a filas
-  existentes con rol `user` (incluidas las no activas); el denominador es la
-  cantidad actual de cuentas `user` activas. Se excluye a Jappy y los usos
-  anónimos. Los modelos sin tarifa registrada aparecen como usos sin precio.
-  No hay política de retención para estos eventos todavía.
+  `Europe/Madrid`. El histórico comienza con la migración `023`; no hay
+  reconstrucción de llamadas anteriores. El gráfico muestra las últimas ocho
+  semanas. El total y el gráfico incluyen a usuarios registrados, Jappy y
+  visitantes sin cuenta, con desglose por origen.
+  El promedio por cuenta incluye el gasto histórico atribuido a cuentas user y
+  admin y lo divide entre las cuentas de ambos roles que están activas ahora.
+  Por ello, el gasto previo de una cuenta eliminada permanece en el numerador,
+  pero esa cuenta ya no forma parte del denominador actual.
+  Los visitantes sin cuenta se incluyen en el gasto y se desglosan aparte, pero
+  no en el promedio por cuenta porque no hay una cuenta que permita definir un
+  denominador individual. La migración `024` guarda el tipo de actor en cada
+  evento para conservar la atribución tras borrar una cuenta. Los eventos
+  antiguos cuyo `user_id` ya era nulo se clasifican como anónimos porque no hay
+  datos para atribuirlos retrospectivamente. Los modelos sin tarifa registrada
+  aparecen como usos sin precio y no suman al importe estimado. No hay política
+  de retención para estos eventos todavía.
 - Errores: solo errores de servidor HTTP 5xx, agrupados por código seguro. Las
   respuestas 4xx esperables —por ejemplo 401, 403, 404 y 429— no se cuentan.
   No se guardan rutas, payloads, ideas, mensajes de contacto, credenciales ni

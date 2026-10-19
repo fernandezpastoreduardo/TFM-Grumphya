@@ -5,9 +5,13 @@ export type AdminDashboardSnapshot = {
   estimatedAiCost: {
     weeklyUsd: number;
     totalUsd: number;
-    weeklyAveragePerUserUsd: number;
-    totalAveragePerUserUsd: number;
-    registeredUserCount: number;
+    weeklyAveragePerAccountUsd: number;
+    totalAveragePerAccountUsd: number;
+    activeRegisteredAccountCount: number;
+    activeAdminAccountCount: number;
+    weeklyByActor: AiCostByActor;
+    totalByActor: AiCostByActor;
+    weeklyTrend: Array<AiCostTrendWeek>;
     unpricedUsageEvents: number;
   };
   errors: Array<{
@@ -15,6 +19,17 @@ export type AdminDashboardSnapshot = {
     weeklyCount: number;
     totalCount: number;
   }>;
+};
+
+export type AiCostByActor = {
+  registeredUsersUsd: number;
+  adminsUsd: number;
+  anonymousUsd: number;
+};
+
+export type AiCostTrendWeek = AiCostByActor & {
+  weekStart: string;
+  totalUsd: number;
 };
 
 export type AdminContactMessage = {

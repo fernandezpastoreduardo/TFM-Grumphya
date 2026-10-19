@@ -95,6 +95,84 @@
     600 clamp(1.5rem, 3vw, 2rem)/1 "Fredoka",
     sans-serif;
 }
+.admin-ai-costs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+}
+.admin-ai-costs > .admin-dashboard-section-heading,
+.admin-ai-cost-chart {
+  grid-column: 1 / -1;
+}
+.admin-cost-breakdown h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.admin-cost-breakdown dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.admin-cost-breakdown dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-teal-dark) 18%, transparent);
+}
+.admin-cost-breakdown dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.admin-ai-cost-chart {
+  min-width: 0;
+  margin: 8px 0 0;
+}
+.admin-ai-cost-chart figcaption {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.admin-ai-cost-chart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+.admin-ai-cost-chart svg text {
+  fill: currentColor;
+  font: 12px sans-serif;
+}
+.admin-chart-axis {
+  stroke: currentColor;
+  stroke-opacity: 0.3;
+}
+.admin-ai-cost-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.admin-ai-cost-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-ai-cost-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.admin-ai-cost-legend .registered {
+  background: #087f8c;
+}
+.admin-ai-cost-legend .admin {
+  background: #e89b22;
+}
+.admin-ai-cost-legend .anonymous {
+  background: #d94d7b;
+}
 .admin-dashboard-note {
   margin: 0;
   color: var(--color-ink-muted, #4b5860);
@@ -153,6 +231,12 @@
   line-height: 1.55;
 }
 @media (max-width: 560px) {
+  .admin-ai-costs {
+    grid-template-columns: 1fr;
+  }
+  .admin-ai-cost-chart svg text {
+    font-size: 10px;
+  }
   .admin-contact-heading {
     flex-direction: column;
   }

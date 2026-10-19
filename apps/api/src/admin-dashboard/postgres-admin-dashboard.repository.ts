@@ -22,8 +22,21 @@ type SnapshotRow = {
   total_ai_cost_usd: string;
   weekly_user_ai_cost_usd: string;
   total_user_ai_cost_usd: string;
+  weekly_admin_ai_cost_usd: string;
+  total_admin_ai_cost_usd: string;
+  weekly_anonymous_ai_cost_usd: string;
+  total_anonymous_ai_cost_usd: string;
   registered_user_count: string;
+  admin_user_count: string;
   unpriced_usage_events: string;
+};
+
+type CostTrendRow = {
+  week_start: string;
+  registered_users_usd: string;
+  admins_usd: string;
+  anonymous_usd: string;
+  total_usd: string;
 };
 
 @Injectable()
@@ -37,23 +50,29 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
 
   async getSnapshot(): Promise<AdminDashboardSnapshot> {
     await this.ensureSchema();
-    const [summary, errorRows] = await Promise.all([
+    const [summary, errorRows, trendRows] = await Promise.all([
       this.pool.query<SnapshotRow>(`
         WITH boundaries AS (
           SELECT date_trunc('week', now() AT TIME ZONE 'Europe/Madrid')
             AT TIME ZONE 'Europe/Madrid' AS week_start
-        ), user_count AS (
-          SELECT count(*)::bigint AS count FROM users WHERE role = 'user' AND status = 'active'
+        ), account_counts AS (
+          SELECT
+            count(*) FILTER (WHERE role = 'user')::bigint AS registered_count,
+            count(*) FILTER (WHERE role = 'admin')::bigint AS admin_count
+          FROM users WHERE status = 'active'
         ), costs AS (
           SELECT
             COALESCE(sum(estimated_cost_usd) FILTER (WHERE occurred_at >= boundaries.week_start), 0) AS weekly_ai_cost_usd,
             COALESCE(sum(estimated_cost_usd), 0) AS total_ai_cost_usd,
-            COALESCE(sum(estimated_cost_usd) FILTER (WHERE occurred_at >= boundaries.week_start AND user_account.role = 'user'), 0) AS weekly_user_ai_cost_usd,
-            COALESCE(sum(estimated_cost_usd) FILTER (WHERE user_account.role = 'user'), 0) AS total_user_ai_cost_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE occurred_at >= boundaries.week_start AND actor_type = 'registered_user'), 0) AS weekly_user_ai_cost_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE actor_type = 'registered_user'), 0) AS total_user_ai_cost_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE occurred_at >= boundaries.week_start AND actor_type = 'admin'), 0) AS weekly_admin_ai_cost_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE actor_type = 'admin'), 0) AS total_admin_ai_cost_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE occurred_at >= boundaries.week_start AND actor_type = 'anonymous'), 0) AS weekly_anonymous_ai_cost_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE actor_type = 'anonymous'), 0) AS total_anonymous_ai_cost_usd,
             count(*) FILTER (WHERE estimated_cost_usd IS NULL)::bigint AS unpriced_usage_events
           FROM admin_ai_usage_events usage
           CROSS JOIN boundaries
-          LEFT JOIN users user_account ON user_account.id = usage.user_id
         ), revenue AS (
           SELECT
             COALESCE(sum(amount_eur) FILTER (WHERE confirmed_at >= boundaries.week_start), 0) AS weekly_revenue_eur,
@@ -67,9 +86,14 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
           costs.total_ai_cost_usd::text,
           costs.weekly_user_ai_cost_usd::text,
           costs.total_user_ai_cost_usd::text,
-          user_count.count::text AS registered_user_count,
+          costs.weekly_admin_ai_cost_usd::text,
+          costs.total_admin_ai_cost_usd::text,
+          costs.weekly_anonymous_ai_cost_usd::text,
+          costs.total_anonymous_ai_cost_usd::text,
+          account_counts.registered_count::text AS registered_user_count,
+          account_counts.admin_count::text AS admin_user_count,
           costs.unpriced_usage_events::text
-        FROM revenue CROSS JOIN costs CROSS JOIN user_count
+        FROM revenue CROSS JOIN costs CROSS JOIN account_counts
       `),
       this.pool.query<{
         error_code: string;
@@ -88,12 +112,56 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         ORDER BY count(*) DESC, error_code ASC
         LIMIT 10
       `),
+      this.pool.query<CostTrendRow>(`
+        WITH bounds AS (
+          SELECT date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AS current_week
+        ), weeks AS (
+          SELECT week_start
+          FROM bounds
+          CROSS JOIN LATERAL generate_series(
+            bounds.current_week - interval '7 weeks',
+            bounds.current_week,
+            interval '1 week'
+          ) AS generated(week_start)
+        ), weekly_costs AS (
+          SELECT date_trunc('week', occurred_at AT TIME ZONE 'Europe/Madrid') AS week_start,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE actor_type = 'registered_user'), 0) AS registered_users_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE actor_type = 'admin'), 0) AS admins_usd,
+            COALESCE(sum(estimated_cost_usd) FILTER (WHERE actor_type = 'anonymous'), 0) AS anonymous_usd,
+            COALESCE(sum(estimated_cost_usd), 0) AS total_usd
+          FROM admin_ai_usage_events
+          WHERE occurred_at >= (
+            SELECT (current_week - interval '7 weeks') AT TIME ZONE 'Europe/Madrid' FROM bounds
+          )
+          GROUP BY 1
+        )
+        SELECT to_char(weeks.week_start, 'YYYY-MM-DD') AS week_start,
+          COALESCE(weekly_costs.registered_users_usd, 0)::text AS registered_users_usd,
+          COALESCE(weekly_costs.admins_usd, 0)::text AS admins_usd,
+          COALESCE(weekly_costs.anonymous_usd, 0)::text AS anonymous_usd,
+          COALESCE(weekly_costs.total_usd, 0)::text AS total_usd
+        FROM weeks LEFT JOIN weekly_costs USING (week_start)
+        ORDER BY weeks.week_start
+      `),
     ]);
     const row = summary.rows[0];
     if (!row) throw new Error("Admin dashboard summary unavailable.");
     const registeredUserCount = Number(row.registered_user_count);
+    const adminUserCount = Number(row.admin_user_count);
+    const accountCount = registeredUserCount + adminUserCount;
     const totalUserCostUsd = Number(row.total_user_ai_cost_usd);
     const weeklyUserCostUsd = Number(row.weekly_user_ai_cost_usd);
+    const totalAdminCostUsd = Number(row.total_admin_ai_cost_usd);
+    const weeklyAdminCostUsd = Number(row.weekly_admin_ai_cost_usd);
+    const toByActor = (
+      registeredUsersUsd: string,
+      adminsUsd: string,
+      anonymousUsd: string,
+    ) => ({
+      registeredUsersUsd: Number(registeredUsersUsd),
+      adminsUsd: Number(adminsUsd),
+      anonymousUsd: Number(anonymousUsd),
+    });
     return {
       revenue: {
         weeklyEur: Number(row.weekly_revenue_eur),
@@ -102,15 +170,33 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       estimatedAiCost: {
         weeklyUsd: Number(row.weekly_ai_cost_usd),
         totalUsd: Number(row.total_ai_cost_usd),
-        weeklyAveragePerUserUsd:
-          registeredUserCount === 0
+        weeklyAveragePerAccountUsd:
+          accountCount === 0
             ? 0
-            : weeklyUserCostUsd / registeredUserCount,
-        totalAveragePerUserUsd:
-          registeredUserCount === 0
+            : (weeklyUserCostUsd + weeklyAdminCostUsd) / accountCount,
+        totalAveragePerAccountUsd:
+          accountCount === 0
             ? 0
-            : totalUserCostUsd / registeredUserCount,
-        registeredUserCount,
+            : (totalUserCostUsd + totalAdminCostUsd) / accountCount,
+        activeRegisteredAccountCount: registeredUserCount,
+        activeAdminAccountCount: adminUserCount,
+        weeklyByActor: toByActor(
+          row.weekly_user_ai_cost_usd,
+          row.weekly_admin_ai_cost_usd,
+          row.weekly_anonymous_ai_cost_usd,
+        ),
+        totalByActor: toByActor(
+          row.total_user_ai_cost_usd,
+          row.total_admin_ai_cost_usd,
+          row.total_anonymous_ai_cost_usd,
+        ),
+        weeklyTrend: trendRows.rows.map((week) => ({
+          weekStart: week.week_start,
+          registeredUsersUsd: Number(week.registered_users_usd),
+          adminsUsd: Number(week.admins_usd),
+          anonymousUsd: Number(week.anonymous_usd),
+          totalUsd: Number(week.total_usd),
+        })),
         unpricedUsageEvents: Number(row.unpriced_usage_events),
       },
       errors: errorRows.rows.map((error) => ({
@@ -156,8 +242,16 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
     );
     await this.pool.query(
       `INSERT INTO admin_ai_usage_events
-        (user_id,operation,model,input_tokens,output_tokens,estimated_cost_usd)
-       VALUES($1,$2,$3,$4,$5,$6)`,
+        (user_id,actor_type,operation,model,input_tokens,output_tokens,estimated_cost_usd)
+       VALUES(
+         $1,
+         CASE
+           WHEN $1::uuid IS NULL THEN 'anonymous'
+           WHEN EXISTS (SELECT 1 FROM users WHERE id = $1::uuid AND role = 'admin') THEN 'admin'
+           ELSE 'registered_user'
+         END,
+         $2,$3,$4,$5,$6
+       )`,
       [
         record.userId ?? null,
         record.operation,
