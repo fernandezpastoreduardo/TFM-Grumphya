@@ -68,6 +68,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "Aquí tienes el estado de tu contratación simulada y tus datos. La cuenta ya está activa; el correo todavía está pendiente de verificación.",
     theme: "mint",
+    mascot: "profile",
   },
   "/panel-control": {
     title: "Panel de control",

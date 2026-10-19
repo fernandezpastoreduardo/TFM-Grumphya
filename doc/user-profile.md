@@ -1,5 +1,8 @@
 # Perfil de usuario
 
+La ruta `/perfil` muestra el hero de Grumphya con el asset transparente
+`profile-account-shield.png` (`527.469 B`).
+
 `GET /api/account/profile` exige un access JWT válido. `AccessTokenGuard`
 valida el bearer y establece `request.user.userId`; el endpoint no acepta el
 identificador del usuario desde el cuerpo ni la query. La respuesta contiene

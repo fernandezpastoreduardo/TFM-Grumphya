@@ -20,7 +20,7 @@ test("selects a plan, activates the simulated purchase and deletes the account f
   await page.getByLabel("Nombre de usuario").fill(USERNAME);
   await page.getByLabel("Contraseña").fill(PASSWORD);
   await page
-    .getByRole("button", { name: /dáme de alta y te pago un café/i })
+    .getByRole("button", { name: /dáme de alta un mes y te pago el café/i })
     .click();
   await expect(page.getByRole("alert")).toContainText(
     /debes confirmar que has leído/i,
@@ -30,7 +30,7 @@ test("selects a plan, activates the simulated purchase and deletes the account f
     .getByRole("checkbox", { name: /he leído la política de privacidad/i })
     .check();
   await page
-    .getByRole("button", { name: /dáme de alta y te pago un café/i })
+    .getByRole("button", { name: /dáme de alta un mes y te pago el café/i })
     .click();
   await expect(
     page.getByRole("heading", {
@@ -41,6 +41,15 @@ test("selects a plan, activates the simulated purchase and deletes the account f
   await expect(page).toHaveURL(/\/perfil$/, { timeout: 7_000 });
 
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
+  const profileMascot = page.locator(".section-hero-mascot.mascot-profile");
+  await expect(profileMascot).toBeVisible();
+  await expect
+    .poll(() =>
+      profileMascot.evaluate((element) =>
+        getComputedStyle(element).backgroundImage,
+      ),
+    )
+    .toContain("/assets/grumphya/profile-account-shield.png");
   await expect(page.getByText(EMAIL)).toBeVisible();
   await expect(page.getByRole("link", { name: "Mi cuenta" })).toBeVisible();
   await expect(
