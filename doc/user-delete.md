@@ -23,7 +23,12 @@ operación en una transacción. Borra explícitamente `simulated_purchases` y
 `subscriptions`, cuyas claves foráneas históricas no tienen borrado en cascada,
 y elimina después el registro de `users`. Las claves foráneas de `auth_sessions`,
 `pending_registrations`, `account_daily_plan_usage` y `approved_ideas` eliminan
-físicamente los datos dependientes al borrar el usuario. Las ideas rechazadas
+físicamente los datos dependientes al borrar el usuario. La tabla
+`contact_messages` también tiene `user_id REFERENCES users(id) ON DELETE CASCADE`,
+por lo que la baja elimina físicamente asunto y mensaje. Estos campos se guardan
+como texto claro en PostgreSQL, sin cifrado a nivel de aplicación; deben
+restringirse los permisos de base de datos y protegerse las copias según la
+configuración del entorno. Las ideas rechazadas
 son agregadas y anónimas, no contienen una relación de usuario que pueda
 eliminarse.
 

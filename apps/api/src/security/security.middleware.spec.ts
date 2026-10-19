@@ -212,6 +212,51 @@ describe("security middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it("protects contact message submissions with origin and JSON checks", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const foreignOriginRequest = {
+      ...createRequest("/api/contact-messages", "POST"),
+      get: () => "https://attacker.example",
+    } as unknown as Request;
+    const foreignResponse = createResponse();
+    middleware(foreignOriginRequest, foreignResponse.response, next);
+    expect(foreignResponse.response.status).toHaveBeenCalledWith(403);
+
+    const wrongContentTypeRequest = createRequest(
+      "/api/contact-messages",
+      "POST",
+    );
+    wrongContentTypeRequest.is = () => false;
+    const contentResponse = createResponse();
+    middleware(wrongContentTypeRequest, contentResponse.response, next);
+    expect(contentResponse.response.status).toHaveBeenCalledWith(415);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("limits contact message submissions to five per minute per client", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const base = createRequest("/api/contact-messages", "POST");
+    const request = {
+      ...base,
+      get: (name: string) =>
+        name.toLowerCase() === "origin" ? "http://127.0.0.1:5173" : undefined,
+      is: (type: string) => type === "application/json",
+    } as unknown as Request;
+
+    for (let index = 0; index < 5; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response, headers } = createResponse();
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(5);
+  });
+
   it("allows only same-origin multipart avatar uploads", () => {
     const middleware = createSecurityMiddleware();
     const base = createRequest("/api/account/avatar", "POST");

@@ -137,7 +137,9 @@ export function startSpeechToText({
     onError("unsupported");
     return null;
   }
-  const LocalRecognition = Recognition;
+  const recognitionConstructor = Recognition;
+  const checkLocalAvailability = Recognition.available;
+  const installLocalSpeech = Recognition.install;
 
   let recognition: SpeechRecognitionLike | null = null;
   let isStopped = false;
@@ -158,7 +160,7 @@ export function startSpeechToText({
   void prepareLocalRecognition()
     .then((isReady) => {
       if (isStopped || !isReady) return;
-      recognition = new LocalRecognition();
+      recognition = new recognitionConstructor();
       if (!("processLocally" in recognition)) {
         onError("unsupported");
         onEnd?.();
@@ -210,7 +212,7 @@ export function startSpeechToText({
   async function prepareLocalRecognition(): Promise<boolean> {
     let availability: unknown;
     try {
-      availability = await LocalRecognition.available?.(LOCAL_SPEECH_OPTIONS);
+      availability = await checkLocalAvailability(LOCAL_SPEECH_OPTIONS);
     } catch {
       if (isStopped) return false;
       onError("local-unavailable");
@@ -232,7 +234,7 @@ export function startSpeechToText({
 
     onPreparing?.();
     try {
-      const installed = await LocalRecognition.install?.(LOCAL_SPEECH_OPTIONS);
+      const installed = await installLocalSpeech(LOCAL_SPEECH_OPTIONS);
       if (isStopped) return false;
       if (installed) return true;
       onError("local-unavailable");

@@ -49,19 +49,20 @@ Listado de hasta diez de las peores ideas de todos los usuarios, ordenado por ca
 ### WorstIdeasUser
 
 Listado de hasta diez de las peores ideas del usuario logueado ordenado por veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado.
-+ Si el usuario no está logueado debe aparecer el contenido indicado en el prototipo:
 
-    Tu historial
-    Tú también tienes tus pinitos.
-    Cuando tengas cuenta, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.
+- Si el usuario no está logueado debe aparecer el contenido indicado en el prototipo:
 
-    Ver planes para crear una cuenta↗
+  Tu historial
+  Tú también tienes tus pinitos.
+  Cuando tengas cuenta, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.
 
-+ Si el usuario está logueado pero no tiene ideas rechazadas debe aparecer el siguiente contenido al estilo del prototipo:
+  Ver planes para crear una cuenta↗
 
-    Tu historial
-    Tú también harás tus pinitos.
-    Cuando plantes alguno, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.
+- Si el usuario está logueado pero no tiene ideas rechazadas debe aparecer el siguiente contenido al estilo del prototipo:
+
+  Tu historial
+  Tú también harás tus pinitos.
+  Cuando plantes alguno, aquí podrás revisar tus ideas rechazadas. Solo tú verás tu historial.
 
 ### Roast
 
@@ -82,3 +83,14 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 - Componente presentacional local a `notable-humans`; recibe estado y callback de reintento del contenedor de la sección.
 - Conserva el formato del prototipo: lista numerada, inicial de avatar, alias, contador y primer puesto resaltado. Muestra hasta diez usuarios.
 - Expone estados accesibles de carga, error recuperable y lista vacía. El contenedor carga `getBestListBestUsers` y no incluye aliases ni aprobaciones de muestra.
+
+### SubmitContactMessage
+
+- Contenedor local a la feature `submit-contact-message`; gestiona estado, envío y feedback del formulario autenticado en `/contacto`.
+- No envía correos: confirma que el mensaje quedó registrado en PostgreSQL y deja claro que aún no hay envío automático. La API no ofrece bandeja ni lectura; los mensajes persisten hasta borrado operativo o baja física de cuenta, y no tienen cifrado a nivel de aplicación. El copy debe evitar prometer que se borrarán al atenderse e indicar que no se incluyan contraseñas ni datos de pago.
+
+### ContactMessageForm
+
+- Componente presentacional local a `submit-contact-message`; recibe asunto, mensaje, estados y callbacks desde `SubmitContactMessage`.
+- Etiqueta los campos, aplica límites visibles de longitud, muestra el contador del mensaje y anuncia estados de error o éxito.
+- El contenedor `SubmitContactMessage` lo usa en `/contacto` para sesiones autenticadas. Los visitantes sin sesión siguen viendo el formulario de demostración de `Contact`.
