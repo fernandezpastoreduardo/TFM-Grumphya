@@ -75,6 +75,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "Ingresos simulados, costes estimados y señales operativas. Sin hacer como que esto ya es una multinacional.",
     theme: "calm",
+    mascot: "admin",
   },
   "/verificar-cuenta": {
     title: "Una última comprobación",

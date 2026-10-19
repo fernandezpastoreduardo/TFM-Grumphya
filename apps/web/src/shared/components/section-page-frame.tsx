@@ -23,6 +23,7 @@ export type SectionPageMeta = {
     | "notable-humans"
     | "contact"
     | "profile"
+    | "admin"
     | "register";
 };
 

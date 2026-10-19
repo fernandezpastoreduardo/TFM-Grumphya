@@ -186,7 +186,7 @@
   width: 140px;
   height: 190px;
   flex: 0 0 140px;
-  background: url("/assets/grumphya/home-idea-review.png") center / contain
+  background: url("/assets/grumphya/home-grumpy-judge.png") center / contain
     no-repeat;
   filter: drop-shadow(2px 3px 0 #286b7730);
   transform: scaleX(-1) rotate(3deg);
@@ -1056,7 +1056,12 @@
 .home-stage-light {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #fff1a4a8 0%, #fff1a460 68%, #fcd08930 100%);
+  background: linear-gradient(
+    180deg,
+    #fff1a4a8 0%,
+    #fff1a460 68%,
+    #fcd08930 100%
+  );
   clip-path: polygon(34% 0, 66% 0, 100% 100%, 0 100%);
 }
 
@@ -1066,8 +1071,8 @@
   bottom: 12px;
   width: min(56%, 195px);
   height: 77%;
-  background: url("/assets/grumphya/home-idea-review.png") center bottom / auto 100%
-    no-repeat;
+  background: url("/assets/grumphya/home-grumpy-judge.png") center bottom / auto
+    100% no-repeat;
   filter: drop-shadow(2px 3px 0 #17212324);
   transform: translateX(50%) scaleX(-1);
 }
@@ -1767,7 +1772,6 @@
     margin: -2px auto 0;
   }
 
-
   .home-creature {
     bottom: 5%;
     width: min(32%, 116px);
@@ -2305,24 +2309,33 @@
 }
 
 .home-hero-stage .home-creature {
-  width: min(64%, 260px);
-  height: 90%;
+  bottom: 0;
+  width: 92%;
+  height: 100%;
   background-position: center bottom;
   background-size: contain;
   animation: mascot-float 5.8s ease-in-out 700ms infinite;
 }
 
-.home-page :is(button, .home-nav-link, .home-login-button, .home-register-button) {
+.home-page
+  :is(button, .home-nav-link, .home-login-button, .home-register-button) {
   transition:
     transform 180ms ease,
     box-shadow 180ms ease;
 }
 
-.home-page :is(button, .home-nav-link, .home-login-button, .home-register-button):hover {
+.home-page
+  :is(button, .home-nav-link, .home-login-button, .home-register-button):hover {
   transform: translateY(-2px);
 }
 
-.home-page :is(button, .home-nav-link, .home-login-button, .home-register-button):active {
+.home-page
+  :is(
+    button,
+    .home-nav-link,
+    .home-login-button,
+    .home-register-button
+  ):active {
   transform: scale(0.98);
 }
 
@@ -2345,12 +2358,25 @@
     animation: none;
   }
 
-  .home-page :is(button, .home-nav-link, .home-login-button, .home-register-button) {
+  .home-page
+    :is(button, .home-nav-link, .home-login-button, .home-register-button) {
     transition: none;
   }
 
-  .home-page :is(button, .home-nav-link, .home-login-button, .home-register-button):hover,
-  .home-page :is(button, .home-nav-link, .home-login-button, .home-register-button):active {
+  .home-page
+    :is(
+      button,
+      .home-nav-link,
+      .home-login-button,
+      .home-register-button
+    ):hover,
+  .home-page
+    :is(
+      button,
+      .home-nav-link,
+      .home-login-button,
+      .home-register-button
+    ):active {
     transform: none;
   }
 }
