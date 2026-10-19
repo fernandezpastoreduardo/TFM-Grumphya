@@ -27,6 +27,7 @@ pnpm build
 - Comando runtime API: `pnpm --filter @grumphya/api start`.
 - Fija la imagen/runtime de Node en una versión LTS soportada y parcheada; no despliegues dependencias de desarrollo.
 - Configura proxy para reenviar `/api/*` al servicio y servir rutas SPA; solo expón HTTPS en Internet.
+- El host que sirve el HTML de la web debe enviar `Permissions-Policy: camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)` para permitir el dictado local desde el origen propio. El middleware de la API aplica esa cabecera a las respuestas de API, pero no configura las respuestas HTML del CDN/hosting estático. Verifica la cabecera en producción junto con la disponibilidad de reconocimiento local del navegador; la aplicación no debe habilitar reconocimiento remoto como alternativa.
 
 ## Estado actual de migraciones
 
