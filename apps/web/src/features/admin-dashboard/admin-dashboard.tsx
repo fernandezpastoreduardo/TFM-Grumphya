@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
 import "./admin-dashboard.scss";
 
@@ -48,6 +48,15 @@ const ADMIN_TABS = [
   { id: "security", label: "Pruebas de seguridad" },
 ] as const;
 type AdminTab = (typeof ADMIN_TABS)[number]["id"];
+
+function getNextTabIndex(currentIndex: number, key: string): number | null {
+  if (key === "ArrowRight") return (currentIndex + 1) % ADMIN_TABS.length;
+  if (key === "ArrowLeft")
+    return (currentIndex - 1 + ADMIN_TABS.length) % ADMIN_TABS.length;
+  if (key === "Home") return 0;
+  if (key === "End") return ADMIN_TABS.length - 1;
+  return null;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -100,6 +109,21 @@ function isContact(value: unknown): value is ContactMessage {
 export function AdminDashboard() {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
   const [activeTab, setActiveTab] = useState<AdminTab>("summary");
+  function handleTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) {
+    const nextIndex = getNextTabIndex(currentIndex, event.key);
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = ADMIN_TABS[nextIndex];
+    setActiveTab(nextTab.id);
+    const tabButtons =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+        '[role="tab"]',
+      );
+    tabButtons?.[nextIndex]?.focus();
+  }
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -171,13 +195,14 @@ export function AdminDashboard() {
         role="tablist"
         aria-label="Secciones del panel"
       >
-        {ADMIN_TABS.map((tab) => (
+        {ADMIN_TABS.map((tab, index) => (
           <button
             aria-controls={`admin-panel-${tab.id}`}
             aria-selected={activeTab === tab.id}
             id={`admin-tab-${tab.id}`}
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(event) => handleTabKeyDown(event, index)}
             role="tab"
             tabIndex={activeTab === tab.id ? 0 : -1}
             type="button"
@@ -376,8 +401,9 @@ function TelemetryTab({ data }: { data: DashboardData }) {
       <p className="admin-dashboard-note">
         Las trazas no incluyen ideas, mensajes, direcciones IP, tokens de sesión
         ni identificadores de traza persistentes. Los eventos detallados se
-        envían al registro del proceso; el panel presenta costes agregados
-        almacenados por operación.
+        envían al registro del proceso; el panel muestra costes totales
+        agregados y usos sin precio. El registro privado conserva consumo por
+        operación y modelo para calcular estas métricas.
       </p>
     </section>
   );
@@ -402,7 +428,8 @@ function SecurityTab() {
           Aislamiento entre cuentas y acceso al panel protegido por rol admin.
         </li>
         <li>
-          Pruebas de integración y E2E en una base de datos temporal aislada.
+          Pruebas PostgreSQL de integración con esquemas temporales; E2E con
+          repositorios en memoria y servicios locales aislados.
         </li>
       </ul>
       <p>

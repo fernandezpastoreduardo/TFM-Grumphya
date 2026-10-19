@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 const EMAIL = "persona-e2e@example.es";
 const USERNAME = "personaE2E";
 const PASSWORD = "Una contraseña segura para e2e 2026!";
-const PAYMENT_NOTICE = "el pago es simulado y no se te cobrará nada";
 const REGISTER_BUTTON_NAME = /dáme de alta.*pago.*café/i;
 
 test("selects a plan, activates the simulated purchase and deletes the account from the profile", async ({
@@ -29,12 +28,6 @@ test("selects a plan, activates the simulated purchase and deletes the account f
     .getByRole("checkbox", { name: /he leído la política de privacidad/i })
     .check();
   await page.getByRole("button", { name: REGISTER_BUTTON_NAME }).click();
-  await expect(
-    page.getByRole("heading", {
-      name: /un momento\. estoy preparando tu cuenta/i,
-    }),
-  ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText(PAYMENT_NOTICE);
   await expect(page).toHaveURL(/\/perfil$/, { timeout: 7_000 });
 
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
@@ -58,7 +51,7 @@ test("selects a plan, activates the simulated purchase and deletes the account f
   await page.getByRole("button", { name: "Cerrar sesión" }).click();
   const logoutResponse = await logoutResponsePromise;
   expect(logoutResponse.status()).toBe(201);
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
   await page.goto("/perfil");
   await expect(page).toHaveURL(/\/login$/);

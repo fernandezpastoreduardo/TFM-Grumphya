@@ -88,6 +88,23 @@ describe("AdminDashboard", () => {
     expect(screen.getByText(/Aislamiento entre cuentas/)).toBeInTheDocument();
   });
 
+  it("supports arrow-key navigation between tabs", async () => {
+    const user = userEvent.setup();
+    render(<AdminDashboard />);
+    const summaryTab = await screen.findByRole("tab", { name: "Resumen" });
+    summaryTab.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(
+      screen.getByRole("tab", { name: "Benchmark de IA" }),
+    ).toHaveAttribute("aria-selected", "true");
+    await user.keyboard("{End}");
+    expect(
+      screen.getByRole("tab", { name: "Pruebas de seguridad" }),
+    ).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
+    expect(screen.getByRole("tab", { name: "Telemetría de IA" })).toHaveFocus();
+  });
+
   it("shows a generic failure when an admin endpoint rejects the request", async () => {
     const { authenticatedFetch } =
       await import("../../infrastructure/auth/session");
