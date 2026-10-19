@@ -1,7 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SectionPage } from "./section-page";
-import { clearAccessToken, setAccessToken } from "../infrastructure/auth/session";
+import {
+  clearAccessToken,
+  setAccessToken,
+} from "../infrastructure/auth/session";
 
 describe("SectionPage", () => {
   beforeEach(() => localStorage.clear());

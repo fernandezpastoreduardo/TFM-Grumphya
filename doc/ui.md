@@ -18,6 +18,9 @@ la lámina maestra está en
   sección sin cambiar esa gramática.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
+- El favicon apunta directamente a `/assets/grumphya/mascot-isotype.svg`, el
+  mismo recurso SVG de Grumphya que ya sirve la navegación; no se mantiene una
+  copia de favicon con URL y caché separadas.
 - El texto del hero vive en HTML y sigue siendo editable. No forma parte de un
   asset gráfico.
 - Fredoka se usa en titulares y Nunito Sans en lectura y controles, con fuentes
@@ -67,10 +70,11 @@ la lámina maestra está en
   para Planes, `ultrachachi-reality-check.png` para su popup, y
   `good-practices-checklist.png`/`good-practices-validate-idea.png`,
   `notable-humans-hero.png`/`notable-humans-callout.png`,
-  `contact-hero-phone.png`/`contact-coffee-inbox.png`,
+  `contact-hero-phone.png`/`contact-message-tube.png`,
   `roast-vent.png`/`roast-plan-callout.png`,
   `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para
-  Descárgate, Peores ideas y Login. Las dos ilustraciones de cada una de las
+  Descárgate, Peores ideas y Login. El hero de Mi cuenta usa
+  `profile-account-shield.png`. Las dos ilustraciones de cada una de las
   secciones Buenas prácticas, Humanos notables y Contacto usan posturas y
   siluetas distintas. La mascota del hero de Planes se refleja horizontalmente
   para mirar hacia el contenido. El widget lateral de Contacto aporta su fondo
@@ -141,11 +145,13 @@ Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
 No se midieron LCP, CLS ni INP, por lo
 que esta revisión no certifica Core Web Vitals. Para completarla, medir Home,
-Humanos notables y alta con Lighthouse en escritorio y móvil, ambos temas y
-caché fría y caliente; revisar waterfall, bytes transferidos y cambios de
-layout. Las seis nuevas ilustraciones transparentes de Buenas prácticas,
-Humanos notables y Contacto se ajustaron a 900 px de lado máximo para su uso
-en interfaz y pesan 3.219.236 B en total (aproximadamente 3,22 MB). Los nuevos
+Humanos notables, Contacto y alta con Lighthouse en escritorio y móvil, ambos
+temas y caché fría y caliente; revisar waterfall, bytes transferidos y cambios de
+layout. Las siete ilustraciones transparentes de Buenas prácticas, Humanos
+notables, Contacto y Mi cuenta se ajustaron a 900 px de lado máximo para su uso
+en interfaz y pesan 3.584.291 B en total (aproximadamente 3,58 MB). El nuevo
+`contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
+527.469 B. Los nuevos
 assets de alta y Home son 922.763 B (`create-account-hero.png`), 887.500 B
 (`create-account-plan.png`) y 894.104 B (`home-idea-review.png`);
 `stage-curtain.png` pesa 681.772 B. Los assets se consideran candidatos a

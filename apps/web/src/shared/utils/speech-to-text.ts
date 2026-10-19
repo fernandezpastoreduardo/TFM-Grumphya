@@ -32,19 +32,12 @@ type SpeechRecognitionOptions = {
 };
 
 type SpeechRecognitionAvailability =
-  | "available"
-  | "downloadable"
-  | "downloading"
-  | "unavailable";
+  "available" | "downloadable" | "downloading" | "unavailable";
 
 type SpeechRecognitionConstructor = {
   new (): SpeechRecognitionLike;
-  available?: (
-    options: SpeechRecognitionOptions,
-  ) => Promise<unknown>;
-  install?: (
-    options: SpeechRecognitionOptions,
-  ) => Promise<boolean>;
+  available?: (options: SpeechRecognitionOptions) => Promise<unknown>;
+  install?: (options: SpeechRecognitionOptions) => Promise<boolean>;
 };
 type SpeechRecognitionWindow = Window & {
   SpeechRecognition?: SpeechRecognitionConstructor;

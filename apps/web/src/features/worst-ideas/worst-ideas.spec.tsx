@@ -17,10 +17,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("WorstIdeasAll", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(jsonResponse(RANKING)),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(RANKING)));
   });
 
   it("loads the public weekly ranking from the API", async () => {
@@ -28,10 +25,14 @@ describe("WorstIdeasAll", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent(/cargando/i);
     expect(
-      await screen.findByRole("heading", { name: "Ideas que necesitan sentarse" }),
+      await screen.findByRole("heading", {
+        name: "Ideas que necesitan sentarse",
+      }),
     ).toBeInTheDocument();
     expect(screen.getByText("Una suscripción a los lunes")).toBeInTheDocument();
-    expect(screen.getByText("Una app para ordenar calcetines")).toBeInTheDocument();
+    expect(
+      screen.getByText("Una app para ordenar calcetines"),
+    ).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(
       "/api/worst-ideas",
@@ -54,17 +55,21 @@ describe("WorstIdeasAll", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /no se ha podido cargar el ranking/i,
     );
-    await userEvent.click(screen.getByRole("button", { name: /volver a intentarlo/i }));
-    expect(await screen.findByText("Una suscripción a los lunes")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: /volver a intentarlo/i }),
+    );
+    expect(
+      await screen.findByText("Una suscripción a los lunes"),
+    ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("rejects malformed API data instead of displaying an incomplete ranking", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        jsonResponse([{ safeTitle: "", weeklyCount: -1 }]),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse([{ safeTitle: "", weeklyCount: -1 }])),
     );
     render(<WorstIdeasAll />);
 
@@ -94,7 +99,9 @@ describe("WorstIdeasAll", () => {
     expect(await screen.findByText(unsafeMarkup)).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.queryByText("private@example.test")).not.toBeInTheDocument();
-    expect(screen.queryByText("Texto original confidencial")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Texto original confidencial"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the same retryable error when the API responds with a failure status", async () => {
@@ -113,16 +120,22 @@ describe("WorstIdeasAll", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([])));
     render(<WorstIdeasAll />);
 
-    expect(await screen.findByText(/esta semana no hay ideas en el ranking/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/esta semana no hay ideas en el ranking/i),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
   it("keeps the personal history in its own aside", async () => {
     render(<WorstIdeas />);
 
-    expect(screen.getByRole("complementary", { name: "Tu historial" })).toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: "Tú también tienes tus pinitos." }),
+      screen.getByRole("complementary", { name: "Tu historial" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", {
+        name: "Tú también tienes tus pinitos.",
+      }),
     ).toBeInTheDocument();
   });
 });

@@ -103,8 +103,10 @@ const INTERNAL_RUBRIC_ALIASES: Record<string, string> = {
   PRIVACIDAD_ESTRUCTURAL: "la privacidad y el acceso a datos",
   PELIGRO_ESTRUCTURAL: "el riesgo de daño grave",
   ETICA_ESTRUCTURAL: "el engaño o la explotación",
-  CONTRADICCION_NUCLEO: "la contradicción o la falta de un mecanismo imprescindible",
-  HONESTIDAD_ESTRUCTURAL: "la confianza en afirmaciones que no se pueden verificar",
+  CONTRADICCION_NUCLEO:
+    "la contradicción o la falta de un mecanismo imprescindible",
+  HONESTIDAD_ESTRUCTURAL:
+    "la confianza en afirmaciones que no se pueden verificar",
   CONFLICTO_ESTRUCTURAL: "el conflicto sin una forma de resolverlo",
   UTILIDAD_ANULADA: "la función que no cumple su promesa",
   ECONOMIA_INCOMPATIBLE: "la incompatibilidad entre ingresos y costes",
@@ -287,7 +289,8 @@ function removeInternalRubricAliases(message: string): string {
       `\\b(?:el\\s+)?criterio\\s+(${INTERNAL_RUBRIC_ALIAS_SOURCE})\\b`,
       "giu",
     ),
-    (_match, alias: string) => INTERNAL_RUBRIC_ALIASES[alias.toUpperCase()] ?? alias,
+    (_match, alias: string) =>
+      INTERNAL_RUBRIC_ALIASES[alias.toUpperCase()] ?? alias,
   );
   return messageWithoutCriterionLabels.replace(
     INTERNAL_RUBRIC_ALIAS_PATTERN,

@@ -180,7 +180,10 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Panel de control" }),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Panel de control",
+      }),
     ).toBeVisible();
     expect(
       await screen.findByRole("heading", { name: "Hola, Jappy." }),

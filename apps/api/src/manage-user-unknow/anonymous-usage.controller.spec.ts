@@ -13,7 +13,10 @@ import { AnonymousUsageService as AnonymousUsageServiceToken } from "./anonymous
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
 import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
 import { issueAccessToken } from "../infrastructure/auth/access-token";
-import { ROAST_REPLY_PORT, type RoastReplyPort } from "../roast/roast-reply.port";
+import {
+  ROAST_REPLY_PORT,
+  type RoastReplyPort,
+} from "../roast/roast-reply.port";
 
 const ROAST_MESSAGE = "Grumphya, hoy has venido especialmente inspirada.";
 const IDEMPOTENCY_KEY = "d54e74e8-4d23-46d4-9944-0b39bcda0914";
@@ -250,7 +253,9 @@ describe("AnonymousUsageController roast endpoint", () => {
 
   it("releases a reservation and returns a generic unavailable response when roast generation fails", async () => {
     const roastReply = {
-      reply: vi.fn().mockRejectedValue(new Error("OpenAI roast request failed.")),
+      reply: vi
+        .fn()
+        .mockRejectedValue(new Error("OpenAI roast request failed.")),
     };
     const { controller, usage } = createController(undefined, roastReply);
     const request = {
@@ -354,7 +359,11 @@ describe("AnonymousUsageController roast endpoint", () => {
       headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
     } as never;
 
-    await controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY);
+    await controller.roast(
+      request,
+      { message: ROAST_MESSAGE },
+      IDEMPOTENCY_KEY,
+    );
 
     expect(planUsage.recordHistoricalRoastMessage).not.toHaveBeenCalled();
   });

@@ -118,13 +118,13 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
       } catch {
         throw new Error(OPENAI_RESPONSE_ERROR);
       }
-      const usage = readTokenUsage(body);
-      if (usage) {
+      const tokenUsage = readTokenUsage(body);
+      if (tokenUsage) {
         recordAiUsageSafely(this.usageRecorder, {
           operation: "roast",
           model: this.model,
           userId,
-          ...usage,
+          ...tokenUsage,
         });
       }
       const outputText = findOutputText(body);

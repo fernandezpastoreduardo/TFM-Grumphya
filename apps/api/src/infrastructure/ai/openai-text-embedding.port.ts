@@ -120,13 +120,13 @@ export class OpenAiTextEmbeddingPort {
       } catch {
         throw new Error(OPENAI_RESPONSE_ERROR);
       }
-      const usageRecord = readTokenUsage(responseBody);
-      if (usageRecord) {
+      const tokenUsage = readTokenUsage(responseBody);
+      if (tokenUsage) {
         recordAiUsageSafely(this.usageRecorder, {
           userId,
           operation: "idea_embedding",
           model: OPENAI_EMBEDDING_MODEL,
-          ...usageRecord,
+          ...tokenUsage,
         });
       }
       return {

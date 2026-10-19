@@ -119,7 +119,10 @@ export class PlanUsageService {
       throw new ConflictException(INVALID_RESERVATION);
     }
     try {
-      await this.repository.recordHistoricalRoastMessage(userId, idempotencyHash);
+      await this.repository.recordHistoricalRoastMessage(
+        userId,
+        idempotencyHash,
+      );
     } catch {
       throw new ServiceUnavailableException(USAGE_UNAVAILABLE);
     }

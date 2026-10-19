@@ -144,6 +144,7 @@ Para parar web/API: `Ctrl+C`. Para parar y retirar el contenedor sin borrar sus 
 ## Calidad y build
 
 ```sh
+pnpm format:check
 pnpm test
 pnpm typecheck
 pnpm lint

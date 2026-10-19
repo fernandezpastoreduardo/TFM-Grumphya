@@ -25,7 +25,8 @@ const ERROR_MESSAGES: Record<SpeechToTextError, string> = {
   failed:
     "El dictado local ha fallado. Tu audio no se envía a otro servicio; puedes escribir sin dramas.",
 };
-const PREPARING_STATUS = "Preparando el reconocimiento de voz local en español…";
+const PREPARING_STATUS =
+  "Preparando el reconocimiento de voz local en español…";
 const LISTENING_STATUS =
   "Escuchando en este dispositivo. Suelta la idea; luego podrás corregir la transcripción.";
 

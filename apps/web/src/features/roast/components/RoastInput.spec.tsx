@@ -47,7 +47,10 @@ describe("RoastInput", () => {
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: /tu insulto/i }), "  Qué tal  ");
+    await user.type(
+      screen.getByRole("textbox", { name: /tu insulto/i }),
+      "  Qué tal  ",
+    );
     await user.click(screen.getByRole("button", { name: "Enviar insulto" }));
 
     await waitFor(() => expect(mocks.fetch).toHaveBeenCalledOnce());
@@ -61,7 +64,9 @@ describe("RoastInput", () => {
     expect(JSON.parse(String(init.body))).toEqual({ message: "Qué tal" });
     expect(mocks.onSubmitted).toHaveBeenCalledWith("Qué tal", "Buen intento.");
     expect(mocks.onUsageRefresh).toHaveBeenCalledOnce();
-    expect(await screen.findByRole("status")).toHaveTextContent(/te quedan 1 de 3/i);
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /te quedan 1 de 3/i,
+    );
   });
 
   it("uses the authenticated request when a session token is available", async () => {
@@ -77,10 +82,15 @@ describe("RoastInput", () => {
       />,
     );
 
-    await user.type(screen.getByRole("textbox", { name: /tu insulto/i }), "Hola");
+    await user.type(
+      screen.getByRole("textbox", { name: /tu insulto/i }),
+      "Hola",
+    );
     await user.click(screen.getByRole("button", { name: "Enviar insulto" }));
 
-    await waitFor(() => expect(mocks.authenticatedFetch).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(mocks.authenticatedFetch).toHaveBeenCalledOnce(),
+    );
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
@@ -153,9 +163,13 @@ describe("RoastInput", () => {
       />,
     );
     const textbox = screen.getByRole("textbox", { name: /tu insulto/i });
-    expect(screen.getByRole("button", { name: "Enviar insulto" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Enviar insulto" }),
+    ).toBeDisabled();
     await user.type(textbox, "   ");
-    expect(screen.getByRole("button", { name: "Enviar insulto" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Enviar insulto" }),
+    ).toBeDisabled();
 
     rerender(
       <RoastInput

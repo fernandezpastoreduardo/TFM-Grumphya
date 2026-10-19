@@ -96,12 +96,14 @@ describe("IdeaSubmissionService", () => {
       reserveIfPlanActive: vi.fn().mockResolvedValue(null),
       commit: vi.fn(),
       release: vi.fn(),
-    } as unknown as PlanUsageService & { reserveIfPlanActive: ReturnType<typeof vi.fn> };
-    const { service, planUsage: planQuota, anonymousUsage } = createDependencies(
-      { kind: "no-match" },
-      EVALUATION_RESULT,
-      planUsage,
-    );
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+    };
+    const {
+      service,
+      planUsage: planQuota,
+      anonymousUsage,
+    } = createDependencies({ kind: "no-match" }, EVALUATION_RESULT, planUsage);
 
     await service.submit(
       VALID_REQUEST,

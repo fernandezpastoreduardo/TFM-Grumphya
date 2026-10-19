@@ -56,8 +56,9 @@ describe("AccountActions", () => {
       "href",
       "/login",
     );
-    expect(
-      screen.getByRole("link", { name: "Crear cuenta" }),
-    ).toHaveAttribute("href", "/precios");
+    expect(screen.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute(
+      "href",
+      "/precios",
+    );
   });
 });

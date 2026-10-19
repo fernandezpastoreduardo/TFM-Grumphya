@@ -292,8 +292,7 @@ export function RegisterWithPlan() {
               />
               <span>
                 He leído la{" "}
-                <a href="/politica-de-privacidad">política de privacidad</a>.
-                {" "}
+                <a href="/politica-de-privacidad">política de privacidad</a>.{" "}
                 <span className="registration-terms-link">
                   Consulta también los{" "}
                   <a href="/terminos-y-condiciones">términos y condiciones</a>.
@@ -328,7 +327,10 @@ export function RegisterWithPlan() {
           </p>
         </section>
         <aside className="auth-aside">
-          <div className="auth-creature auth-creature-register" aria-hidden="true" />
+          <div
+            className="auth-creature auth-creature-register"
+            aria-hidden="true"
+          />
           <h2>Un mes. Sin renovaciones automáticas.</h2>
           <p>
             Si quieres otro, vuelves a contratar. No tendrás que cancelar nada;

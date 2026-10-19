@@ -129,12 +129,8 @@ describe("UserProfile", () => {
     });
     render(<UserProfile />);
 
-    expect(
-      await screen.findByRole("heading", { name: "jappy" }),
-    ).toBeVisible();
-    expect(
-      screen.getByText("persona@example.es"),
-    ).toBeVisible();
+    expect(await screen.findByRole("heading", { name: "jappy" })).toBeVisible();
+    expect(screen.getByText("persona@example.es")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Tus planes" })).toBeVisible();
     expect(screen.queryByText("Hola, Jappy.")).not.toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalledWith("/api/admin/dashboard", undefined);

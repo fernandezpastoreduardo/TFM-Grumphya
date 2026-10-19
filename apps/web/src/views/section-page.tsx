@@ -68,6 +68,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "Aquí tienes el estado de tu contratación simulada y tus datos. La cuenta ya está activa; el correo todavía está pendiente de verificación.",
     theme: "mint",
+    mascot: "profile",
   },
   "/panel-control": {
     title: "Panel de control",
@@ -89,8 +90,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   },
   "/terminos-y-condiciones": {
     title: "Términos y condiciones",
-    intro:
-      "Cómo funciona Grumphya y qué ocurre con las ideas que compartes.",
+    intro: "Cómo funciona Grumphya y qué ocurre con las ideas que compartes.",
     theme: "calm",
   },
 };

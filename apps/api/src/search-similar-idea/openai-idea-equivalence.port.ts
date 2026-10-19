@@ -211,20 +211,19 @@ export class OpenAiIdeaEquivalencePort {
       } catch {
         throw new Error(RESPONSE_ERROR);
       }
-      const decisions = parseEquivalenceResponse(
-        responseBody,
-        safeTitles.length,
-      );
-      const usage = readTokenUsage(responseBody);
-      if (usage) {
+      const tokenUsage = readTokenUsage(responseBody);
+      if (tokenUsage) {
         recordAiUsageSafely(this.usageRecorder, {
           userId,
           operation: "idea_similarity",
           model: SEMANTIC_JUDGE_MODEL,
-          ...usage,
+          ...tokenUsage,
         });
       }
-      return { decisions, usage: readAiTokenUsage(responseBody) };
+      return {
+        decisions: parseEquivalenceResponse(responseBody, safeTitles.length),
+        usage: readAiTokenUsage(responseBody),
+      };
     } finally {
       clearTimeout(timeout);
     }
