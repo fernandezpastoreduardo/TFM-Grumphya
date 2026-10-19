@@ -16,6 +16,7 @@ type GetUserIdeaProps = {
   isSubmitting?: boolean;
   remainingAttempts?: number | null;
   quotaKind?: "anonymous" | "account";
+  unlimitedAttempts?: boolean;
   error?: string;
 };
 
@@ -61,6 +62,7 @@ export function GetUserIdea({
   isSubmitting = false,
   remainingAttempts,
   quotaKind = "anonymous",
+  unlimitedAttempts = false,
   error,
 }: GetUserIdeaProps) {
   const [ideaText, setIdeaText] = useState("");
@@ -169,7 +171,9 @@ export function GetUserIdea({
       </button>
       {remainingAttempts !== undefined ? (
         <p className="idea-privacy-note" aria-live="polite">
-          {getUsageMessage(remainingAttempts, quotaKind)}
+          {unlimitedAttempts
+            ? "Tienes evaluaciones ilimitadas. Hasta Jappy necesita una ventaja."
+            : getUsageMessage(remainingAttempts, quotaKind)}
         </p>
       ) : null}
     </form>
@@ -180,7 +184,8 @@ function getUsageMessage(
   remainingAttempts: number | null,
   quotaKind: "anonymous" | "account",
 ): string {
-  if (remainingAttempts === null) return "Comprobando tus intentos disponibles…";
+  if (remainingAttempts === null)
+    return "Comprobando tus intentos disponibles…";
   if (quotaKind === "account") {
     if (remainingAttempts === 0)
       return "Has agotado las 11 evaluaciones disponibles hoy en Iluminado.";

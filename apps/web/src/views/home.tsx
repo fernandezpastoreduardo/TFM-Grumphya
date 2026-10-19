@@ -37,6 +37,14 @@ const NAV_SECTIONS = [
   { path: "/precios", label: "Planes" },
   { path: "/contacto", label: "Contacto" },
 ] as const;
+const ADMIN_NAV_SECTION = {
+  path: "/panel-control",
+  label: "Panel de control",
+} as const;
+
+function getHomeNavSections(isAdmin: boolean) {
+  return isAdmin ? [...NAV_SECTIONS, ADMIN_NAV_SECTION] : NAV_SECTIONS;
+}
 type HeroRayPlacement =
   | "hero-rays-copy-start"
   | "hero-rays-copy-end"
@@ -110,6 +118,7 @@ export function Home() {
   const isEvaluationSubmittingRef = useRef(false);
   const anonymousUsage = useAnonymousUsage();
   const session = useSessionStatus();
+  const isAdmin = session.accountAttempts?.isAdmin === true;
   const ideaQuotaKind =
     session.isAuthenticated === true &&
     (session.accountAttempts === null ||
@@ -243,7 +252,7 @@ export function Home() {
             >
               Inicio
             </a>
-            {NAV_SECTIONS.map((section) => (
+            {getHomeNavSections(isAdmin).map((section) => (
               <a
                 className="home-nav-link"
                 key={section.path}
@@ -353,6 +362,7 @@ export function Home() {
               session.accountAttempts?.ideasPlanActive ?? null,
             )}
             quotaKind={ideaQuotaKind}
+            unlimitedAttempts={session.accountAttempts?.isAdmin === true}
           />
           {anonymousUsage.error ? (
             <p className="home-result-error" role="alert">
@@ -493,7 +503,7 @@ export function Home() {
                   <a href="/" aria-current="page">
                     Inicio
                   </a>
-                  {NAV_SECTIONS.map((section) => (
+                  {getHomeNavSections(isAdmin).map((section) => (
                     <a href={section.path} key={section.path}>
                       {section.label}
                     </a>

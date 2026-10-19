@@ -8,6 +8,24 @@ import {
 
 const LOCATION_DESCRIPTOR = Object.getOwnPropertyDescriptor(window, "location");
 
+function getAdminRouteResponse(path: string): unknown {
+  if (path.includes("/api/account/profile"))
+    return { user: { role: "admin" }, plans: [] };
+  if (path.includes("contact-messages")) return { messages: [] };
+  return {
+    revenue: { weeklyEur: 0, totalEur: 0 },
+    estimatedAiCost: {
+      weeklyUsd: 0,
+      totalUsd: 0,
+      weeklyAveragePerUserUsd: 0,
+      totalAveragePerUserUsd: 0,
+      registeredUserCount: 0,
+      unpricedUsageEvents: 0,
+    },
+    errors: [],
+  };
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   clearAccessToken();
@@ -58,7 +76,12 @@ describe("App", () => {
     setAccessToken("test-access-token");
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response(null, { status: 200 })),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ user: { role: "user" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
     );
 
     render(<App />);
@@ -67,6 +90,101 @@ describe("App", () => {
     expect(
       screen.queryByRole("heading", { name: /vamos a ponerle nombre/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("redirects an authenticated admin away from login to the control panel", async () => {
+    window.history.pushState({}, "", "/login");
+    const replace = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, replace },
+    });
+    setAccessToken("test-admin-access-token");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ user: { role: "admin" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    render(<App />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/panel-control"));
+  });
+
+  it("does not allow a regular account to open the admin control panel", async () => {
+    window.history.pushState({}, "", "/panel-control");
+    const replace = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, replace },
+    });
+    setAccessToken("test-user-access-token");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ user: { role: "user" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    render(<App />);
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/perfil"));
+  });
+
+  it.each(["/perfil", "/panel-control"] as const)(
+    "redirects signed-out visitors away from the protected %s route",
+    async (path) => {
+      window.history.pushState({}, "", path);
+      const replace = vi.fn();
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        value: { ...window.location, replace },
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response("{}", {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      );
+
+      render(<App />);
+
+      await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+    },
+  );
+
+  it("opens the protected control panel when the session belongs to an admin", async () => {
+    window.history.pushState({}, "", "/panel-control");
+    setAccessToken("test-admin-access-token");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const body = getAdminRouteResponse(String(input));
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Panel de control" }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: "Hola, Jappy." }),
+    ).toBeVisible();
   });
 
   it.each(["404", "429", "500"] as const)(

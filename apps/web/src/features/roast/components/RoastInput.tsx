@@ -24,8 +24,9 @@ export function RoastInput({
   onUsageRefresh,
 }: RoastInputProps) {
   const [message, setMessage] = useState("");
-  const [displayRemaining, setDisplayRemaining] =
-    useState<number | null>(remainingAttempts);
+  const [displayRemaining, setDisplayRemaining] = useState<number | null>(
+    remainingAttempts,
+  );
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
   const isSendingRef = useRef(false);
@@ -37,11 +38,7 @@ export function RoastInput({
   async function submitRoast(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = message.trim();
-    if (
-      !value ||
-      remainingAttempts === 0 ||
-      isSendingRef.current
-    ) {
+    if (!value || remainingAttempts === 0 || isSendingRef.current) {
       return;
     }
 
@@ -84,7 +81,10 @@ export function RoastInput({
 
   return (
     <>
-      <form className="roast-composer" onSubmit={(event) => void submitRoast(event)}>
+      <form
+        className="roast-composer"
+        onSubmit={(event) => void submitRoast(event)}
+      >
         <label className="sr-only" htmlFor="roast-message">
           Tu insulto para Grumphya
         </label>
@@ -109,12 +109,19 @@ export function RoastInput({
           {isSending ? "…" : "↑"}
         </button>
       </form>
-      <p id="roast-input-help" className="roast-attempt-feedback" role="status" aria-live="polite">
+      <p
+        id="roast-input-help"
+        className="roast-attempt-feedback"
+        role="status"
+        aria-live="polite"
+      >
         {isSending
           ? "Enviando tu mensaje…"
           : displayRemaining === null
             ? "Comprobando tus envíos restantes…"
-            : `Te quedan ${displayRemaining} de ${quotaLimit} ${quotaDescription}.`}
+            : Number.isFinite(quotaLimit)
+              ? `Te quedan ${displayRemaining} de ${quotaLimit} ${quotaDescription}.`
+              : "Tienes envíos ilimitados. Aprovecha, que no todo lo bueno dura para siempre."}
       </p>
       {error ? (
         <p id="roast-input-error" className="roast-input-error" role="alert">

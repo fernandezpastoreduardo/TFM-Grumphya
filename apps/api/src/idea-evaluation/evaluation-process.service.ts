@@ -127,6 +127,7 @@ async function evaluateWithTimeout(
   port: EvaluationPort,
   ideaText: string,
   tone: "soft" | "hard",
+  userId?: string,
 ): Promise<unknown> {
   const abortController = new AbortController();
   const timeoutMs = getEvaluationTimeoutMs();
@@ -143,6 +144,7 @@ async function evaluateWithTimeout(
       tone,
       policyVersion: POLICY_VERSION,
       signal: abortController.signal,
+      ...(userId ? { userId } : {}),
     }),
   );
 
@@ -163,7 +165,10 @@ export class EvaluationProcessService {
     private readonly evaluationPort?: EvaluationPort,
   ) {}
 
-  async evaluate(input: unknown): Promise<EvaluationProcessResponse> {
+  async evaluate(
+    input: unknown,
+    userId?: string,
+  ): Promise<EvaluationProcessResponse> {
     let request;
     try {
       request = normalizeAndValidateRequest(input);
@@ -181,6 +186,7 @@ export class EvaluationProcessService {
         this.evaluationPort,
         request.ideaText,
         request.tone,
+        userId,
       );
       const decision = validateModelDecision(rawDecision, request.ideaText);
       return toPublicResponse(decision, request.tone);

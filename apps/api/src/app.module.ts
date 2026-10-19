@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { AdminDashboardModule } from "./admin-dashboard/admin-dashboard.module";
+import { AdminAccountBootstrap } from "./admin-dashboard/admin-account-bootstrap";
 import { HealthController } from "./health.controller";
 import { EvaluationProcessController } from "./idea-evaluation/evaluation-process.controller";
 import { createEvaluationProvider } from "./idea-evaluation/evaluation-provider.factory";
@@ -43,16 +45,41 @@ import { BEST_USERS_REPOSITORY } from "./best-users/best-users.models";
 import { PostgresBestUsersRepository } from "./best-users/postgres-best-users.repository";
 import { UserAvatarModule } from "./user-avatar/user-avatar.module";
 import { SubmitContactMessageModule } from "./submit-contact-message/submit-contact-message.module";
+import {
+  ADMIN_DASHBOARD_REPOSITORY,
+  type AdminDashboardRepository,
+} from "./admin-dashboard/admin-dashboard.models";
+import type { AiUsageRecorder } from "./infrastructure/ai/ai-usage";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
-function createRoastReplyProvider(): OpenAiRoastReplyPort | undefined {
+function createRoastReplyProvider(
+  repository: AdminDashboardRepository,
+): OpenAiRoastReplyPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey ? new OpenAiRoastReplyPort({ apiKey }) : undefined;
+  return apiKey
+    ? new OpenAiRoastReplyPort({
+        apiKey,
+        usageRecorder: toUsageRecorder(repository),
+      })
+    : undefined;
 }
 
-function createTextEmbeddingProvider(): OpenAiTextEmbeddingPort | undefined {
+function createTextEmbeddingProvider(
+  repository: AdminDashboardRepository,
+): OpenAiTextEmbeddingPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey ? new OpenAiTextEmbeddingPort({ apiKey }) : undefined;
+  return apiKey
+    ? new OpenAiTextEmbeddingPort({
+        apiKey,
+        usageRecorder: toUsageRecorder(repository),
+      })
+    : undefined;
+}
+
+function toUsageRecorder(
+  repository: AdminDashboardRepository,
+): AiUsageRecorder {
+  return { record: (record) => repository.recordAiUsage(record) };
 }
 
 function createIdeaSearch(
@@ -82,16 +109,28 @@ function createIdeaSearch(
   );
 }
 
-function createIdeaEquivalenceProvider():
-  OpenAiIdeaEquivalencePort | undefined {
+function createIdeaEquivalenceProvider(
+  repository: AdminDashboardRepository,
+): OpenAiIdeaEquivalencePort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey ? new OpenAiIdeaEquivalencePort({ apiKey }) : undefined;
+  return apiKey
+    ? new OpenAiIdeaEquivalencePort({
+        apiKey,
+        usageRecorder: toUsageRecorder(repository),
+      })
+    : undefined;
 }
 
-function createSemanticIdeaFingerprintProvider():
-  OpenAiSemanticIdeaFingerprintPort | undefined {
+function createSemanticIdeaFingerprintProvider(
+  repository: AdminDashboardRepository,
+): OpenAiSemanticIdeaFingerprintPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey ? new OpenAiSemanticIdeaFingerprintPort({ apiKey }) : undefined;
+  return apiKey
+    ? new OpenAiSemanticIdeaFingerprintPort({
+        apiKey,
+        usageRecorder: toUsageRecorder(repository),
+      })
+    : undefined;
 }
 
 function createIdeaSubmissionService(
@@ -119,6 +158,7 @@ function createIdeaSubmissionService(
     UserDeleteModule,
     UserAvatarModule,
     SubmitContactMessageModule,
+    AdminDashboardModule,
   ],
   controllers: [
     HealthController,
@@ -131,16 +171,35 @@ function createIdeaSubmissionService(
   ],
   providers: [
     EvaluationProcessService,
-    { provide: EVALUATION_PORT, useFactory: createEvaluationProvider },
-    { provide: ROAST_REPLY_PORT, useFactory: createRoastReplyProvider },
-    { provide: TEXT_EMBEDDING_PORT, useFactory: createTextEmbeddingProvider },
+    {
+      provide: AdminAccountBootstrap,
+      useFactory: () => new AdminAccountBootstrap(createPostgresPool()),
+    },
+    {
+      provide: EVALUATION_PORT,
+      useFactory: (repository: AdminDashboardRepository) =>
+        createEvaluationProvider(toUsageRecorder(repository)),
+      inject: [ADMIN_DASHBOARD_REPOSITORY],
+    },
+    {
+      provide: ROAST_REPLY_PORT,
+      useFactory: createRoastReplyProvider,
+      inject: [ADMIN_DASHBOARD_REPOSITORY],
+    },
+    {
+      provide: TEXT_EMBEDDING_PORT,
+      useFactory: createTextEmbeddingProvider,
+      inject: [ADMIN_DASHBOARD_REPOSITORY],
+    },
     {
       provide: OpenAiSemanticIdeaFingerprintPort,
       useFactory: createSemanticIdeaFingerprintProvider,
+      inject: [ADMIN_DASHBOARD_REPOSITORY],
     },
     {
       provide: OpenAiIdeaEquivalencePort,
       useFactory: createIdeaEquivalenceProvider,
+      inject: [ADMIN_DASHBOARD_REPOSITORY],
     },
     {
       provide: WORST_IDEAS_REPOSITORY,

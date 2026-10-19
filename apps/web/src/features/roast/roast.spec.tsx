@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
       ideasPlanActive: boolean;
       roastsPlanActive: boolean;
       roastMessagesSent?: number;
+      isAdmin?: boolean;
     } | null,
   },
   usage: {
@@ -86,6 +87,21 @@ describe("Roast", () => {
     expect(
       screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows unlimited roast access for the admin account", () => {
+    mocks.session.isAuthenticated = true;
+    mocks.session.accountAttempts = {
+      ideas: Number.POSITIVE_INFINITY,
+      roasts: Number.POSITIVE_INFINITY,
+      ideasPlanActive: true,
+      roastsPlanActive: true,
+      isAdmin: true,
+    };
+    render(<Roast />);
+    expect(screen.getByLabelText("Envíos ilimitados")).toBeInTheDocument();
+    expect(screen.getByText(/tienes envíos ilimitados/i)).toBeInTheDocument();
+    expect(screen.queryByText(/de Infinity/i)).not.toBeInTheDocument();
   });
 
   it("waits for the signed-in account's plan before showing the callout", () => {

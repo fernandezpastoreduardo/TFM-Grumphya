@@ -1,4 +1,9 @@
 import type { RoastReplyPort } from "./roast-reply.port";
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "../infrastructure/ai/ai-usage";
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const OPENAI_MODEL = "gpt-5.4-mini";
@@ -23,20 +28,23 @@ export type OpenAiRoastReplyPortOptions = {
   apiKey: string;
   model?: string;
   timeoutMs?: number;
+  usageRecorder?: AiUsageRecorder;
 };
 
 export class OpenAiRoastReplyPort implements RoastReplyPort {
   private readonly apiKey: string;
   private readonly model: string;
   private readonly timeoutMs: number;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiRoastReplyPortOptions) {
     this.apiKey = options.apiKey;
     this.model = options.model ?? OPENAI_MODEL;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.usageRecorder = options.usageRecorder;
   }
 
-  async reply(message: string): Promise<string> {
+  async reply(message: string, userId?: string): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -86,6 +94,15 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
         body = await response.json();
       } catch {
         throw new Error(OPENAI_RESPONSE_ERROR);
+      }
+      const usage = readTokenUsage(body);
+      if (usage) {
+        recordAiUsageSafely(this.usageRecorder, {
+          operation: "roast",
+          model: this.model,
+          userId,
+          ...usage,
+        });
       }
       const outputText = findOutputText(body);
       if (!outputText) throw new Error(OPENAI_RESPONSE_ERROR);

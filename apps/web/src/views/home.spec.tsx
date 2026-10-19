@@ -1,8 +1,11 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearAccessToken } from "../infrastructure/auth/session";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  clearAccessToken,
+  setAccessToken,
+} from "../infrastructure/auth/session";
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
@@ -35,6 +38,46 @@ describe("Home", () => {
   beforeEach(() => {
     localStorage.clear();
     clearAccessToken();
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("shows the admin control panel in the home navigation", async () => {
+    setAccessToken("test-admin-token");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (input === "/api/account/profile") {
+          return new Response(
+            JSON.stringify({ user: { role: "admin" }, plans: [] }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (input === "/api/anonymous-usage") {
+          return new Response(JSON.stringify(ANONYMOUS_USAGE_RESPONSE), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (input === "/api/health") {
+          return new Response(
+            JSON.stringify({ status: "ok", database: "ok", pgvector: "0.8.7" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("{}", { status: 503 });
+      }),
+    );
+    render(<Home />);
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Secciones principales",
+    });
+    expect(
+      await within(navigation).findByRole("link", {
+        name: "Panel de control",
+      }),
+    ).toHaveAttribute("href", "/panel-control");
   });
 
   it("shows the 429 page when the API temporarily blocks browser profile creation", async () => {

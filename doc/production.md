@@ -65,10 +65,10 @@ En producción la API escucha en la interfaz privada del contenedor/servicio; no
 - `grumphya_runtime`: cuenta de base de datos no-superusuario, limitada al esquema y operaciones que requiere la app; sin permisos de crear roles/extensiones.
 - `grumphya_migrator`: identidad objetivo, separada para el pipeline de despliegue de migraciones. El comportamiento actual aún ejecuta migraciones desde la API con las credenciales runtime; separar esa operación es trabajo pendiente antes de producción.
 - Usuarios de la aplicación: creados por el flujo de registro con plan; credenciales de usuario final se almacenan como hash de contraseña, nunca en claro.
-- Administrador de aplicación: no se crea una cuenta predefinida ni un usuario/clave compartidos. Definir un proceso de bootstrap auditado antes de añadir funciones administrativas.
+- Administrador local: el bootstrap actual reserva el alias `jappy`, sincroniza su contraseña con `ADMIN_PASSWORD` y revoca sus sesiones previas en cada arranque de API no-test. Aunque se documente como credencial local, el código también ejecutaría este bootstrap en producción si no se cambia. Antes de desplegar, eliminar/sustituir el bootstrap por aprovisionamiento individual controlado, rotación gestionada y MFA. El servidor consulta el rol en PostgreSQL para cada ruta admin; no confiar en claims del cliente.
 - GitHub Actions/deploy: identidad OIDC o token de alcance mínimo, con expiración/rotación; nunca clave personal compartida.
 
-Los nombres son convenciones por crear en el proveedor elegido; no son cuentas existentes.
+Las identidades runtime y migrator son objetivos de configuración por crear en el proveedor elegido. Jappy se provisiona localmente, pero el bootstrap de código actual no está limitado a ese entorno y debe reemplazarse antes de producción.
 
 ## Operación mínima antes de publicar
 

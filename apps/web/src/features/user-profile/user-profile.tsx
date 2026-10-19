@@ -20,6 +20,7 @@ type AccountPlan = {
 };
 type AccountProfile = {
   user: {
+    role: "user" | "admin";
     email: string;
     username: string;
     emailVerified: boolean;
@@ -116,6 +117,7 @@ function isAccountProfile(value: unknown): value is AccountProfile {
   return (
     typeof value.user.email === "string" &&
     typeof value.user.username === "string" &&
+    (value.user.role === "user" || value.user.role === "admin") &&
     typeof value.user.emailVerified === "boolean" &&
     typeof value.user.createdAt === "string" &&
     Number.isFinite(Date.parse(value.user.createdAt)) &&

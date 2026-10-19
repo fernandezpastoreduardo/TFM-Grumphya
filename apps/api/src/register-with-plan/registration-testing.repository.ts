@@ -328,6 +328,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     if (!user) return null;
     return {
       user: {
+        role: "user",
         email: user.email,
         username: user.username,
         emailVerified: false,

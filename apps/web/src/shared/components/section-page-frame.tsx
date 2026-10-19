@@ -34,6 +34,14 @@ const SECTION_LINKS = [
   { path: "/precios", label: "Planes" },
   { path: "/contacto", label: "Contacto" },
 ] as const;
+const ADMIN_SECTION_LINK = {
+  path: "/panel-control",
+  label: "Panel de control",
+} as const;
+
+function getSectionLinks(isAdmin: boolean) {
+  return isAdmin ? [...SECTION_LINKS, ADMIN_SECTION_LINK] : SECTION_LINKS;
+}
 
 function SectionHeader({
   theme,
@@ -42,6 +50,7 @@ function SectionHeader({
   onMenuToggle,
   menuTriggerRef,
   isAuthenticated,
+  isAdmin,
   isSigningOut,
   avatarUrl,
   onSignOut,
@@ -52,6 +61,7 @@ function SectionHeader({
   onMenuToggle: () => void;
   menuTriggerRef: Ref<HTMLButtonElement>;
   isAuthenticated: boolean | null;
+  isAdmin: boolean;
   isSigningOut: boolean;
   avatarUrl: string | null;
   onSignOut: () => void;
@@ -66,7 +76,7 @@ function SectionHeader({
         <a href="/" className="site-nav-home">
           Inicio
         </a>
-        {SECTION_LINKS.map((item) => (
+        {getSectionLinks(isAdmin).map((item) => (
           <a
             href={item.path}
             key={item.path}
@@ -170,6 +180,7 @@ export function SectionPageFrame({
     menuRef,
   } = useMobileMenu();
   const session = useSessionStatus();
+  const isAdmin = session.accountAttempts?.isAdmin === true;
   return (
     <div className={`app-page theme-${theme}${isMenuOpen ? " menu-open" : ""}`}>
       <div className="app-frame">
@@ -180,6 +191,7 @@ export function SectionPageFrame({
           onMenuToggle={toggleMenu}
           menuTriggerRef={menuTriggerRef}
           isAuthenticated={session.isAuthenticated}
+          isAdmin={isAdmin}
           avatarUrl={session.avatarUrl}
           isSigningOut={session.isSigningOut}
           onSignOut={() => void session.signOut()}
@@ -224,7 +236,7 @@ export function SectionPageFrame({
                   >
                     Inicio
                   </a>
-                  {SECTION_LINKS.map((item) => (
+                  {getSectionLinks(isAdmin).map((item) => (
                     <a
                       href={item.path}
                       key={item.path}

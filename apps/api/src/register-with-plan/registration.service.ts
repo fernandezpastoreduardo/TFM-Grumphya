@@ -2,8 +2,6 @@ import {
   createHash,
   randomBytes,
   randomUUID,
-  scrypt as scryptCallback,
-  timingSafeEqual,
 } from "node:crypto";
 import { domainToASCII } from "node:url";
 import {
@@ -23,16 +21,11 @@ import {
   issueAccessToken,
 } from "../infrastructure/auth/access-token";
 import { hashAccessToken } from "../infrastructure/auth/access-token-session.lookup";
-
-const SCRYPT_OPTIONS = { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
-function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    scryptCallback(password, salt, 64, SCRYPT_OPTIONS, (error, key) => {
-      if (error) reject(error);
-      else resolve(key as Buffer);
-    });
-  });
-}
+import {
+  hashPassword,
+  verifyPassword,
+} from "../infrastructure/auth/password-hasher";
+export { verifyPassword } from "../infrastructure/auth/password-hasher";
 const INTENT_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const REMEMBERED_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -64,21 +57,6 @@ export function hashToken(token: string): string {
 
 function newToken(): string {
   return randomBytes(32).toString("hex");
-}
-
-export async function verifyPassword(
-  password: string,
-  storedHash: string,
-): Promise<boolean> {
-  const [algorithm, saltHex, expectedHex] = storedHash.split("$");
-  if (
-    algorithm !== "scrypt" ||
-    !/^[a-f0-9]{32}$/.test(saltHex ?? "") ||
-    !/^[a-f0-9]{128}$/.test(expectedHex ?? "")
-  )
-    return false;
-  const actual = await deriveKey(password, Buffer.from(saltHex, "hex"));
-  return timingSafeEqual(actual, Buffer.from(expectedHex, "hex"));
 }
 
 export class RegistrationService {
@@ -544,12 +522,6 @@ function hasControlCharacters(value: string): boolean {
       return true;
   }
   return false;
-}
-
-async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const derived = await deriveKey(password, salt);
-  return `scrypt$${salt.toString("hex")}$${derived.toString("hex")}`;
 }
 
 function loginUnavailable(): RegistrationError {

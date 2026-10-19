@@ -7,7 +7,7 @@ const INVALID_IDEA_MESSAGE = "Idea no válida para buscar coincidencias.";
 const INVALID_EMBEDDING_MESSAGE = "Embedding no válido.";
 
 export interface TextEmbeddingPort {
-  createEmbedding(ideaText: string): Promise<unknown>;
+  createEmbedding(ideaText: string, userId?: string): Promise<unknown>;
 }
 
 export interface RejectedIdeaSearchPort {
@@ -15,7 +15,7 @@ export interface RejectedIdeaSearchPort {
 }
 
 export interface SemanticIdeaFingerprintPort {
-  createFingerprint(ideaText: string): Promise<unknown>;
+  createFingerprint(ideaText: string, userId?: string): Promise<unknown>;
 }
 
 export interface IdeaEquivalencePort {
@@ -23,6 +23,7 @@ export interface IdeaEquivalencePort {
     ideaText: string,
     semanticFingerprint: string,
     safeTitles: readonly string[],
+    userId?: string,
   ): Promise<unknown>;
 }
 
@@ -143,14 +144,25 @@ async function findBestEquivalentIdea(
   ideaText: string,
   semanticFingerprint: string,
   equivalencePort: IdeaEquivalencePort,
+  userId?: string,
 ): Promise<SimilarIdeaSearchResult> {
   const validCandidates = parseRejectedCandidates(candidates);
   if (validCandidates.length === 0) return NO_MATCH;
-  const classifications = await equivalencePort.classifyIdeas(
-    ideaText,
-    semanticFingerprint,
-    validCandidates.map(({ semanticTitle }) => semanticTitle),
+  const candidateTitles = validCandidates.map(
+    ({ semanticTitle }) => semanticTitle,
   );
+  const classifications = userId
+    ? await equivalencePort.classifyIdeas(
+        ideaText,
+        semanticFingerprint,
+        candidateTitles,
+        userId,
+      )
+    : await equivalencePort.classifyIdeas(
+        ideaText,
+        semanticFingerprint,
+        candidateTitles,
+      );
   if (
     !Array.isArray(classifications) ||
     classifications.length !== validCandidates.length ||
@@ -196,14 +208,19 @@ export class SearchSimilarIdea {
 
   async executeDetailed(
     input: unknown,
+    userId?: string,
   ): Promise<DetailedSimilarIdeaSearchResult> {
     const ideaText = parseIdeaText(input);
+    const fingerprintRequest = userId
+      ? this.fingerprintPort.createFingerprint(ideaText, userId)
+      : this.fingerprintPort.createFingerprint(ideaText);
     const semanticFingerprint = parseSemanticFingerprint(
-      await this.fingerprintPort.createFingerprint(ideaText),
+      await fingerprintRequest,
     );
-    const embedding = parseEmbedding(
-      await this.embeddingPort.createEmbedding(semanticFingerprint),
-    );
+    const embeddingRequest = userId
+      ? this.embeddingPort.createEmbedding(semanticFingerprint, userId)
+      : this.embeddingPort.createEmbedding(semanticFingerprint);
+    const embedding = parseEmbedding(await embeddingRequest);
     const candidates = await this.searchPort.searchRejected(
       embedding,
       MAX_SEARCH_CANDIDATES,
@@ -214,6 +231,7 @@ export class SearchSimilarIdea {
         ideaText,
         semanticFingerprint,
         this.equivalencePort,
+        userId,
       ),
       embedding,
     };

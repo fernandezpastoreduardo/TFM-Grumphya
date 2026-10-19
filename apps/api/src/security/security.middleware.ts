@@ -15,6 +15,7 @@ const WORST_IDEAS_READ_REQUEST_LIMIT = 30;
 const WORST_IDEAS_USER_READ_REQUEST_LIMIT = 30;
 const ROAST_RANKING_READ_REQUEST_LIMIT = 30;
 const BEST_USERS_READ_REQUEST_LIMIT = 30;
+const ADMIN_READ_REQUEST_LIMIT = 30;
 const MAX_RATE_LIMIT_BUCKETS = 10_000;
 const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
@@ -50,7 +51,9 @@ export function createSecurityMiddleware(): RequestHandler {
       request.path === "/api/auth" ||
       request.path.startsWith("/api/auth/") ||
       request.path.startsWith("/api/registration") ||
-      request.path === "/api/contact-messages"
+      request.path === "/api/contact-messages" ||
+      request.path === "/api/admin/dashboard" ||
+      request.path === "/api/admin/contact-messages"
     ) {
       response.setHeader("Cache-Control", "no-store");
     }
@@ -123,6 +126,8 @@ export function createSecurityMiddleware(): RequestHandler {
       request.method === "GET" && request.path === "/api/roast-ranking";
     const isBestUsersRead =
       request.method === "GET" && normalizedPath === "/api/best-users";
+    const isAdminRead =
+      request.method === "GET" && request.path.startsWith("/api/admin/");
     const isRegistrationPost =
       request.method === "POST" && request.path.startsWith("/api/registration");
     const isRefreshPost =
@@ -175,41 +180,46 @@ export function createSecurityMiddleware(): RequestHandler {
                       isRefreshPost
                     ? REGISTRATION_VERIFY_REQUEST_LIMIT
                     : REGISTRATION_REQUEST_LIMIT;
-    const limits: ReadonlyArray<readonly [string, number]> = isEvaluation
+    const limits: ReadonlyArray<readonly [string, number]> = isAdminRead
       ? [
           ["api", API_REQUEST_LIMIT],
-          ["evaluation", EVALUATION_REQUEST_LIMIT],
+          ["admin-read", ADMIN_READ_REQUEST_LIMIT],
         ]
-      : isWorstIdeasRead
+      : isEvaluation
         ? [
             ["api", API_REQUEST_LIMIT],
-            ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT],
+            ["evaluation", EVALUATION_REQUEST_LIMIT],
           ]
-        : isWorstIdeasUserRead
+        : isWorstIdeasRead
           ? [
               ["api", API_REQUEST_LIMIT],
-              ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
+              ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT],
             ]
-          : isRoastRankingRead
+          : isWorstIdeasUserRead
             ? [
                 ["api", API_REQUEST_LIMIT],
-                ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT],
+                ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
               ]
-            : isBestUsersRead
+            : isRoastRankingRead
               ? [
                   ["api", API_REQUEST_LIMIT],
-                  ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT],
+                  ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT],
                 ]
-              : isRegistrationPost ||
-                  isAuthPost ||
-                  isAccountPost ||
-                  isAccountDelete ||
-                  isContactMessagePost
+              : isBestUsersRead
                 ? [
                     ["api", API_REQUEST_LIMIT],
-                    [registrationScope, registrationLimit],
+                    ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT],
                   ]
-                : [["api", API_REQUEST_LIMIT]];
+                : isRegistrationPost ||
+                    isAuthPost ||
+                    isAccountPost ||
+                    isAccountDelete ||
+                    isContactMessagePost
+                  ? [
+                      ["api", API_REQUEST_LIMIT],
+                      [registrationScope, registrationLimit],
+                    ]
+                  : [["api", API_REQUEST_LIMIT]];
 
     for (const [scope, limit] of limits) {
       const key = `${clientAddress}:${scope}`;

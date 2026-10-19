@@ -147,9 +147,9 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       const subscriptionId = subscription.rows[0]?.id;
       if (!subscriptionId) throw new Error("Selected plan unavailable.");
       await client.query(
-        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at)
-         VALUES($1,$2,$3,'confirmed',now())`,
-        [userId, subscriptionId, activationKey],
+        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at,amount_eur)
+         SELECT $1,$2,$3,'confirmed',now(),monthly_price_eur FROM plans WHERE code=$4`,
+        [userId, subscriptionId, activationKey, plan],
       );
       await client.query(
         `INSERT INTO account_daily_plan_usage(user_id,plan_code,usage_date,ideas_used,roasts_used)
@@ -322,9 +322,14 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         );
         await this.cleanupStaleAuthSessions(client);
         await client.query(
-          `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at)
-           VALUES($1,$2,$3,'confirmed',now())`,
-          [registration.user_id, subscription.rows[0]!.id, registration.id],
+          `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at,amount_eur)
+           SELECT $1,$2,$3,'confirmed',now(),monthly_price_eur FROM plans WHERE code=$4`,
+          [
+            registration.user_id,
+            subscription.rows[0]!.id,
+            registration.id,
+            registration.plan_code,
+          ],
         );
         await client.query("UPDATE users SET status='active' WHERE id=$1", [
           registration.user_id,
@@ -488,9 +493,9 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       const subscriptionId = subscription.rows[0]?.id;
       if (!subscriptionId) throw new Error("SUBSCRIPTION_PURCHASE_FAILED");
       await client.query(
-        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at)
-         VALUES($1,$2,$3,'confirmed',now())`,
-        [userId, subscriptionId, idempotencyKey],
+        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at,amount_eur)
+         SELECT $1,$2,$3,'confirmed',now(),monthly_price_eur FROM plans WHERE code=$4`,
+        [userId, subscriptionId, idempotencyKey, plan],
       );
       return this.readProfileForUser(client, userId);
     });
@@ -507,6 +512,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       email_verified_at: Date | null;
       user_created_at: Date;
       roast_messages_sent: string;
+      role: "user" | "admin";
       avatar_key: string | null;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
@@ -515,7 +521,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_ideas: number;
       remaining_roasts: number;
     }>(
-      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
+      `SELECT u.id AS user_id,u.email,u.username,u.role,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
          u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
@@ -557,6 +563,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       email_verified_at: Date | null;
       user_created_at: Date;
       roast_messages_sent: string;
+      role: "user" | "admin";
       avatar_key: string | null;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
@@ -565,7 +572,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_ideas: number;
       remaining_roasts: number;
     }>(
-      `SELECT u.id AS user_id,u.email,u.username,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
+      `SELECT u.id AS user_id,u.email,u.username,u.role,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
          u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
@@ -597,6 +604,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       email_verified_at: Date | null;
       user_created_at: Date;
       roast_messages_sent: string;
+      role: "user" | "admin";
       avatar_key: string | null;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
@@ -611,6 +619,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       user: {
         email: first.email,
         username: first.username,
+        role: first.role,
         emailVerified: first.email_verified_at !== null,
         createdAt: first.user_created_at.toISOString(),
         roastMessagesSent: parseRoastMessagesSent(first.roast_messages_sent),
