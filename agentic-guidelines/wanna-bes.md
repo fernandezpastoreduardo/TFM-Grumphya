@@ -53,3 +53,9 @@ Las filas heredadas de `pending_registrations` con enlaces de verificación cadu
 **Estado:** pendiente de definir e implementar una política de purga física garantizada.
 
 `account_plan_usage_requests.response_json` conserva durante un TTL lógico de 24 horas el cuerpo íntegro de las respuestas de evaluación o roast para responder reintentos sin volver a consumir. El cuerpo puede contener salida generada derivada de la solicitud. La tabla no guarda el payload fuente en campos propios, pero la expiración lógica no garantiza el borrado físico a las 24 horas: las filas se eliminan oportunistamente, hasta 500 por reserva posterior, y no existe un job periódico. Valorar una purga con plazo físico verificable y la minimización o cifrado en reposo del contenido cacheado.
+
+## Retención, privacidad y atención de mensajes de contacto
+
+**Estado:** pendiente.
+
+El formulario de Contacto autenticado guarda el asunto y el mensaje en PostgreSQL asociados a la cuenta. No hay endpoint de consulta ni bandeja de entrada; en el entorno local tampoco hay servidor o proveedor de correo, así que no se generan notificaciones y el acceso operativo requiere acceso restringido a la base de datos. Asunto y mensaje se guardan como texto claro, sin cifrado a nivel de aplicación; el cifrado en tránsito/en reposo depende de la configuración de cada entorno y aún debe verificarse para producción. Las filas no caducan ni se purgan automáticamente; la baja física del usuario sí las elimina por la relación `ON DELETE CASCADE`. Definir un plazo de retención y un proceso de purga verificable, responsables y plazos de respuesta; limitar y auditar el acceso del personal al contenido. Actualizar la política de privacidad para informar de los datos recogidos, finalidad, personas con acceso y conservación antes de abrir el servicio. Configurar un canal de correo saliente y un flujo de atención antes de presentar la respuesta como operativa.
