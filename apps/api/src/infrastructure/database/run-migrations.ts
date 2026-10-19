@@ -66,6 +66,7 @@ const MIGRATIONS = [
     file: "020_roast_message_events.sql",
   },
   { version: "021_user_avatar", file: "021_user_avatar.sql" },
+  { version: "022_contact_messages", file: "022_contact_messages.sql" },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

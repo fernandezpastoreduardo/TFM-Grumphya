@@ -42,6 +42,7 @@ import { GetBestListBestUsersController } from "./best-users/get-best-list-best-
 import { BEST_USERS_REPOSITORY } from "./best-users/best-users.models";
 import { PostgresBestUsersRepository } from "./best-users/postgres-best-users.repository";
 import { UserAvatarModule } from "./user-avatar/user-avatar.module";
+import { SubmitContactMessageModule } from "./submit-contact-message/submit-contact-message.module";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createRoastReplyProvider(): OpenAiRoastReplyPort | undefined {
@@ -117,6 +118,7 @@ function createIdeaSubmissionService(
     RegistrationModule,
     UserDeleteModule,
     UserAvatarModule,
+    SubmitContactMessageModule,
   ],
   controllers: [
     HealthController,

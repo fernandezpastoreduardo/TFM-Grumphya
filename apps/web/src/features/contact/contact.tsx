@@ -1,7 +1,22 @@
 import { useState } from "react";
+import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import { SubmitContactMessage } from "../submit-contact-message/submit-contact-message";
 import "./contact.scss";
 
 export function Contact() {
+  const session = useSessionStatus();
+  if (session.isAuthenticated === null) {
+    return (
+      <p className="route-loading" role="status" aria-live="polite">
+        Comprobando tu sesión…
+      </p>
+    );
+  }
+  if (session.isAuthenticated) return <SubmitContactMessage />;
+  return <AnonymousContactDemo />;
+}
+
+function AnonymousContactDemo() {
   const [dismissed, setDismissed] = useState(false);
   function dismissForm() {
     setDismissed(true);
