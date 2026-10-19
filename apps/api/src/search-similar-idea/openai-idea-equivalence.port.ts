@@ -1,5 +1,12 @@
+import {
+  readAiTokenUsage,
+  recordAiOperation,
+  type AiTokenUsage,
+} from "../infrastructure/observability/ai-operation.telemetry";
+
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const SEMANTIC_JUDGE_MODEL = "gpt-5.4-mini";
+const OPERATION_NAME = "idea_equivalence";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const REQUEST_ERROR = "OpenAI semantic comparison failed.";
 const RESPONSE_ERROR = "OpenAI semantic comparison response is invalid.";
@@ -79,6 +86,34 @@ export class OpenAiIdeaEquivalencePort {
     semanticFingerprint: string,
     safeTitles: readonly string[],
   ): Promise<unknown> {
+    const startedAt = performance.now();
+    let outcome: "success" | "error" = "error";
+    let usage: AiTokenUsage = {};
+    try {
+      const result = await this.performClassification(
+        ideaText,
+        semanticFingerprint,
+        safeTitles,
+      );
+      outcome = "success";
+      usage = result.usage;
+      return result.decisions;
+    } finally {
+      recordAiOperation(
+        OPERATION_NAME,
+        SEMANTIC_JUDGE_MODEL,
+        startedAt,
+        outcome,
+        usage,
+      );
+    }
+  }
+
+  private async performClassification(
+    ideaText: string,
+    semanticFingerprint: string,
+    safeTitles: readonly string[],
+  ): Promise<{ decisions: boolean[]; usage: AiTokenUsage }> {
     if (safeTitles.length === 0 || safeTitles.length > 20) {
       throw new Error(RESPONSE_ERROR);
     }
@@ -165,7 +200,10 @@ export class OpenAiIdeaEquivalencePort {
       } catch {
         throw new Error(RESPONSE_ERROR);
       }
-      return parseEquivalenceResponse(responseBody, safeTitles.length);
+      return {
+        decisions: parseEquivalenceResponse(responseBody, safeTitles.length),
+        usage: readAiTokenUsage(responseBody),
+      };
     } finally {
       clearTimeout(timeout);
     }

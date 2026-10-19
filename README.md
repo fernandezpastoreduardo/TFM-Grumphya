@@ -40,6 +40,8 @@ Consulta [`doc/README.md`](doc/README.md) para instalar requisitos, arrancar los
 - [`AGENTS.md`](AGENTS.md): principios de arquitectura y prácticas del proyecto.
 - [`agentic-guidelines/sections.md`](agentic-guidelines/sections.md): secciones, flujos y alcance de entregas.
 - [`agentic-guidelines/features.md`](agentic-guidelines/features.md): casos de uso y rúbrica de evaluación v1.
+- [`agentic-guidelines/ai-evaluation.md`](agentic-guidelines/ai-evaluation.md): evaluación comparativa del modelo, seguridad y privacidad de telemetría.
+- [`doc/ci-cd.md`](doc/ci-cd.md): pipeline de integración, pruebas aisladas y análisis de dependencias e imagen.
 - [`agentic-guidelines/Dtos.md`](agentic-guidelines/Dtos.md): contratos de datos.
 - [`agentic-guidelines/persistence.md`](agentic-guidelines/persistence.md): modelo de persistencia.
 - [`agentic-guidelines/components.md`](agentic-guidelines/components.md): responsabilidades de componentes.
