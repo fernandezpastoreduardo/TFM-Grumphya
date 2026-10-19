@@ -1,18 +1,33 @@
 import { useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
-import { setAccessToken } from "../../infrastructure/auth/session";
+import {
+  notifySessionChanged,
+  setAccessToken,
+} from "../../infrastructure/auth/session";
 
 const LOGIN_ENDPOINT = "/api/auth/login";
 const LOGIN_ERROR =
   "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.";
 
-function isLoginResponse(value: unknown): value is { accessToken: string } {
+type LoginRole = "user" | "admin";
+
+function isLoginResponse(
+  value: unknown,
+): value is { accessToken: string; account: { user: { role: LoginRole } } } {
   return (
     typeof value === "object" &&
     value !== null &&
     "accessToken" in value &&
     typeof value.accessToken === "string" &&
-    value.accessToken.length > 0
+    value.accessToken.length > 0 &&
+    "account" in value &&
+    typeof value.account === "object" &&
+    value.account !== null &&
+    "user" in value.account &&
+    typeof value.account.user === "object" &&
+    value.account.user !== null &&
+    "role" in value.account.user &&
+    (value.account.user.role === "user" || value.account.user.role === "admin")
   );
 }
 
@@ -43,7 +58,10 @@ export function AuthenticationPage() {
         return;
       }
       setAccessToken(body.accessToken);
-      window.location.assign("/perfil");
+      notifySessionChanged();
+      window.location.assign(
+        body.account.user.role === "admin" ? "/panel-control" : "/perfil",
+      );
     } catch {
       setNotice(LOGIN_ERROR);
     } finally {

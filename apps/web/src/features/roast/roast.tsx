@@ -42,6 +42,7 @@ export function Roast() {
   const isAuthenticated = session.isAuthenticated === true;
   const hasActiveRoastPlan =
     isAuthenticated && session.accountAttempts?.roastsPlanActive === true;
+  const isAdmin = session.accountAttempts?.isAdmin === true;
   const shouldShowRoastPlanCallout =
     session.isAuthenticated === false ||
     (session.isAuthenticated === true &&
@@ -68,7 +69,11 @@ export function Roast() {
     return () => controller.abort();
   }, [rankingRevision]);
   const remainingAttempts = attemptsOverride ?? availableAttempts;
-  const quotaLimit = hasActiveRoastPlan ? 11 : FREE_ROAST_LIMIT;
+  const quotaLimit = isAdmin
+    ? Number.POSITIVE_INFINITY
+    : hasActiveRoastPlan
+      ? 11
+      : FREE_ROAST_LIMIT;
   const hasPreviousRoast =
     sentMessages.length > 0 ||
     (remainingAttempts !== null && remainingAttempts < quotaLimit) ||
@@ -77,9 +82,11 @@ export function Roast() {
     (session.accountAttempts?.roastMessagesSent ?? 0) > 0;
   const showDemoExchanges =
     remainingAttempts === quotaLimit && !hasPreviousRoast;
-  const quotaDescription = hasActiveRoastPlan
-    ? "envíos disponibles hoy"
-    : "envíos gratuitos restantes";
+  const quotaDescription = isAdmin
+    ? "envíos ilimitados"
+    : hasActiveRoastPlan
+      ? "envíos disponibles hoy"
+      : "envíos gratuitos restantes";
 
   if (usageState.errorStatus === 429) {
     return <ErrorPages status="429" detail={usageState.error} />;
@@ -98,9 +105,14 @@ export function Roast() {
           </div>
           <span
             className="demo-counter"
-            aria-label={`${remainingAttempts ?? "comprobando"} de ${quotaLimit} ${quotaDescription}`}
+            aria-label={
+              isAdmin
+                ? "Envíos ilimitados"
+                : `${remainingAttempts ?? "comprobando"} de ${quotaLimit} ${quotaDescription}`
+            }
           >
-            {remainingAttempts ?? "…"} <small>/ {quotaLimit}</small>
+            {isAdmin ? "∞" : (remainingAttempts ?? "…")}{" "}
+            {!isAdmin ? <small>/ {quotaLimit}</small> : null}
           </span>
         </div>
         {showDemoExchanges ? (
@@ -213,11 +225,14 @@ function getRoastAttemptsRemaining(
   accountAttempts: {
     roasts: number;
     roastsPlanActive: boolean;
+    isAdmin?: boolean;
   } | null,
   freeAttempts: number | undefined,
 ): number | null {
   if (isAuthenticated === null) return null;
   if (isAuthenticated && accountAttempts === null) return null;
+  if (isAuthenticated && accountAttempts?.isAdmin)
+    return Number.POSITIVE_INFINITY;
   if (isAuthenticated && accountAttempts?.roastsPlanActive)
     return accountAttempts.roasts;
   return freeAttempts ?? null;
