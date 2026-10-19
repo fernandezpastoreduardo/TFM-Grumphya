@@ -95,7 +95,7 @@ describe("authenticated session client", () => {
     localStorage.removeItem(SESSION_STORAGE_KEY);
   });
 
-  it("synchronizes account changes through BroadcastChannel and closes its listener", () => {
+  it("ignores its own BroadcastChannel echo but accepts another tab's change", () => {
     MockBroadcastChannel.instances = [];
     vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
     const listener = vi.fn();
@@ -103,10 +103,23 @@ describe("authenticated session client", () => {
 
     notifySessionChanged();
 
+    const message = MockBroadcastChannel.instances[1]?.messages[0];
+    expect(message).toEqual({
+      type: "session-changed",
+      clientId: expect.any(String),
+    });
+    MockBroadcastChannel.instances[0]?.onmessage?.({
+      data: message,
+    } as MessageEvent<unknown>);
+    expect(listener).not.toHaveBeenCalled();
+    MockBroadcastChannel.instances[0]?.onmessage?.({
+      data: { type: "session-changed", clientId: "another-tab" },
+    } as MessageEvent<unknown>);
     expect(listener).toHaveBeenCalledOnce();
-    expect(MockBroadcastChannel.instances[1]?.messages).toEqual([
-      "session-changed",
-    ]);
+    MockBroadcastChannel.instances[0]?.onmessage?.({
+      data: { type: "session-changed", clientId: "" },
+    } as MessageEvent<unknown>);
+    expect(listener).toHaveBeenCalledOnce();
     expect(MockBroadcastChannel.instances[0]?.isClosed).toBe(false);
     unsubscribe();
     expect(MockBroadcastChannel.instances[0]?.isClosed).toBe(true);
@@ -212,8 +225,9 @@ describe("authenticated session client", () => {
       expect.objectContaining({ status: 200 }),
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(5);
-    expect(fetchMock.mock.calls.filter(([input]) => input === "/api/auth/refresh"))
-      .toHaveLength(1);
+    expect(
+      fetchMock.mock.calls.filter(([input]) => input === "/api/auth/refresh"),
+    ).toHaveLength(1);
     expect(authorizationFrom(fetchMock.mock.calls[3]?.[1])).toBe(
       `Bearer ${refreshedToken}`,
     );

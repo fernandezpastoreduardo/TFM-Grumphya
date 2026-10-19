@@ -5,6 +5,8 @@ const REFRESH_METHOD = "POST";
 const JSON_CONTENT_TYPE = "application/json";
 const SESSION_CHANNEL_NAME = "grumphya-auth-session";
 const SESSION_STORAGE_KEY = "grumphya-auth-session-change";
+const SESSION_CHANGE_MESSAGE_TYPE = "session-changed";
+const SESSION_CLIENT_ID = crypto.randomUUID();
 export const SESSION_EXPIRED_EVENT = "grumphya:session-expired";
 export const USER_AVATAR_UPDATED_EVENT = "grumphya:avatar-updated";
 let accessToken: string | null = null;
@@ -15,7 +17,10 @@ let sessionGeneration = 0;
 export function notifySessionChanged(): void {
   if (typeof BroadcastChannel !== "undefined") {
     const channel = new BroadcastChannel(SESSION_CHANNEL_NAME);
-    channel.postMessage("session-changed");
+    channel.postMessage({
+      type: SESSION_CHANGE_MESSAGE_TYPE,
+      clientId: SESSION_CLIENT_ID,
+    });
     channel.close();
     return;
   }
@@ -30,7 +35,7 @@ export function subscribeToSessionChanges(listener: () => void): () => void {
   if (typeof BroadcastChannel !== "undefined") {
     const channel = new BroadcastChannel(SESSION_CHANNEL_NAME);
     channel.onmessage = (event: MessageEvent<unknown>) => {
-      if (event.data === "session-changed") listener();
+      if (isSessionChangedMessage(event.data)) listener();
     };
     return () => channel.close();
   }
@@ -39,6 +44,21 @@ export function subscribeToSessionChanges(listener: () => void): () => void {
   };
   window.addEventListener("storage", onStorage);
   return () => window.removeEventListener("storage", onStorage);
+}
+
+function isSessionChangedMessage(
+  value: unknown,
+): value is { type: typeof SESSION_CHANGE_MESSAGE_TYPE; clientId: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    value.type === SESSION_CHANGE_MESSAGE_TYPE &&
+    "clientId" in value &&
+    typeof value.clientId === "string" &&
+    value.clientId.length > 0 &&
+    value.clientId !== SESSION_CLIENT_ID
+  );
 }
 
 export function setAccessToken(token: string): void {

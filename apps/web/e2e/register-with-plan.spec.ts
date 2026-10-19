@@ -28,13 +28,23 @@ test("selects a plan, activates the simulated purchase and deletes the account f
   await page
     .getByRole("checkbox", { name: /he leído la política de privacidad/i })
     .check();
-  await page.getByRole("button", { name: REGISTER_BUTTON_NAME }).click();
+  const registrationResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/registrations") &&
+      response.request().method() === "POST",
+  );
+  const submitClick = page
+    .getByRole("button", { name: REGISTER_BUTTON_NAME })
+    .click();
+  const registrationResponse = await registrationResponsePromise;
+  expect(registrationResponse.status()).toBe(201);
   await expect(
     page.getByRole("heading", {
       name: /un momento\. estoy preparando tu cuenta/i,
     }),
   ).toBeVisible();
   await expect(page.getByRole("status")).toContainText(PAYMENT_NOTICE);
+  await submitClick;
   await expect(page).toHaveURL(/\/perfil$/, { timeout: 7_000 });
 
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
@@ -42,8 +52,8 @@ test("selects a plan, activates the simulated purchase and deletes the account f
   await expect(profileMascot).toBeVisible();
   await expect
     .poll(() =>
-      profileMascot.evaluate((element) =>
-        getComputedStyle(element).backgroundImage,
+      profileMascot.evaluate(
+        (element) => getComputedStyle(element).backgroundImage,
       ),
     )
     .toContain("/assets/grumphya/profile-account-shield.png");
