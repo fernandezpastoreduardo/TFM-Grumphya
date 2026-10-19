@@ -78,6 +78,8 @@ jobs:
         run: pnpm audit --prod --audit-level high
       - name: Build local application image
         run: docker build --pull --target production --tag grumphya-ci:${{ github.sha }} .
+      - name: Test production image contract
+        run: node scripts/test-production-image.mjs grumphya-ci:${{ github.sha }}
       - name: Scan application image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
