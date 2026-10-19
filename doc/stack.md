@@ -5,7 +5,7 @@
 | Componente           | Uso                                | Versión verificada / política                    |
 | -------------------- | ---------------------------------- | ------------------------------------------------ |
 | macOS Apple Silicon  | Host local actual                  | macOS del equipo de desarrollo                   |
-| Node.js              | Runtime de frontend y API          | 24.20.0; proyecto declara `>=22 <25`             |
+| Node.js              | Runtime de frontend y API          | 24.21.0; proyecto declara `>=22 <25`             |
 | pnpm                 | Workspaces y dependencias          | 12.5.1; fijado en `packageManager`               |
 | Docker Desktop       | Motor local de contenedores        | 4.94.0 (241994)                                  |
 | Docker Engine        | Servidor de contenedores           | 29.8.2, linux/arm64                              |

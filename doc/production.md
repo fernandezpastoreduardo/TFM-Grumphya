@@ -36,12 +36,13 @@ La API ejecuta las migraciones pendientes de forma diferida cuando algunos
 repositorios se inicializan por primera vez; `PostgresPlanUsageRepository`, por
 ejemplo, llama a `runMigrations` desde `ensureSchema` al reservar o consultar
 uso de plan. En ese flujo se usan las credenciales de PostgreSQL del runtime.
-Las migraciones hasta `018_user_rejected_ideas.sql` forman parte del runner de
-la API. La `018` crea el historial privado de ideas rechazadas por usuario.
-Todavía no hay un paso de release separado que aplique las migraciones con la
-identidad `grumphya_migrator`. Antes de desplegar con tráfico real, definir y
-probar la estrategia de migración explícita, revisar los permisos necesarios y
-evitar que el primer request de usuario tenga que ejecutar DDL.
+Las migraciones hasta `024_admin_ai_usage_attribution.sql` forman parte del
+runner de la API. Esta última añade el tipo de actor a la atribución de costes
+de IA del panel admin. Todavía no hay un paso de release separado que aplique
+las migraciones con la identidad `grumphya_migrator`. Antes de desplegar con
+tráfico real, definir y probar la estrategia de migración explícita, revisar
+los permisos necesarios y evitar que el primer request de usuario tenga que
+ejecutar DDL.
 
 ## Variables requeridas para API
 
