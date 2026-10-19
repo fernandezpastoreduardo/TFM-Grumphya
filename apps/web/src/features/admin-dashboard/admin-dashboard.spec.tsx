@@ -12,9 +12,29 @@ const dashboard = {
   estimatedAiCost: {
     weeklyUsd: 0.25,
     totalUsd: 1.5,
-    weeklyAveragePerUserUsd: 0.25,
-    totalAveragePerUserUsd: 0.75,
-    registeredUserCount: 2,
+    weeklyAveragePerAccountUsd: 0.125,
+    totalAveragePerAccountUsd: 0.75,
+    activeRegisteredAccountCount: 2,
+    activeAdminAccountCount: 1,
+    weeklyByActor: {
+      registeredUsersUsd: 0.1,
+      adminsUsd: 0.05,
+      anonymousUsd: 0.1,
+    },
+    totalByActor: {
+      registeredUsersUsd: 0.8,
+      adminsUsd: 0.2,
+      anonymousUsd: 0.5,
+    },
+    weeklyTrend: [
+      {
+        weekStart: "2026-10-19",
+        registeredUsersUsd: 0.1,
+        adminsUsd: 0.05,
+        anonymousUsd: 0.1,
+        totalUsd: 0.25,
+      },
+    ],
     unpricedUsageEvents: 1,
   },
   errors: [{ code: "EVALUATOR_UNAVAILABLE", weeklyCount: 2, totalCount: 4 }],
@@ -49,7 +69,7 @@ describe("AdminDashboard", () => {
     );
   });
 
-  it("shows simulated revenue, estimated costs, common errors and contact messages", async () => {
+  it("shows revenue, costs including admin and anonymous use, a trend chart, errors and contacts", async () => {
     render(<AdminDashboard />);
     expect(
       await screen.findByRole("heading", { name: "Hola, Jappy." }),
@@ -58,7 +78,17 @@ describe("AdminDashboard", () => {
     expect(screen.getByText("Quería comentar una cosa.")).toBeInTheDocument();
     expect(screen.getByText("persona@example.es")).toBeInTheDocument();
     expect(
-      screen.getByText(/El promedio se calcula entre 2 cuentas/),
+      screen.getByText(/incluye a usuarios registrados y admins activos/),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Jappy · admin")).toHaveLength(3);
+    expect(screen.getAllByText("Visitantes sin cuenta")).toHaveLength(3);
+    expect(
+      screen.getByRole("img", {
+        name: /Gráfico de barras apiladas del coste semanal/,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Coste medio por cuenta · semana/),
     ).toBeInTheDocument();
   });
 
