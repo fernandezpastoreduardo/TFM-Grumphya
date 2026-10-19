@@ -27,6 +27,9 @@ especial. El registro público rechaza el alias reservado sin distinguir
 mayúsculas y minúsculas; el flujo de alta y el bootstrap comparten la misma
 constante para evitar que acepten nombres distintos. Si una cuenta normal
 existente ya posee el alias reservado, el arranque falla sin cambiar su rol.
+La contraseña de Jappy se guarda como hash bcrypt cost 12 con prehash SHA-256,
+igual que las contraseñas nuevas de las cuentas; nunca se guarda cifrada ni en
+texto claro.
 
 El bootstrap actual actualiza el hash y revoca las sesiones anteriores de
 Jappy en cada arranque, aunque la contraseña configurada no haya cambiado. Por
