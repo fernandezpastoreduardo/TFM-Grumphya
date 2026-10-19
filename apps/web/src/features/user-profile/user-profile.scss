@@ -72,14 +72,51 @@
   flex: 0 0 auto;
   place-items: center;
   border: 2px solid var(--color-teal-dark);
-  border-radius: 19px 19px 19px 6px;
+  border-radius: 50%;
   color: #101b20;
   background: #f5bb68;
   font:
     600 1.8rem/1 "Fredoka",
     sans-serif;
-  rotate: 4deg;
   object-fit: cover;
+}
+
+.profile-avatar-edit {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.profile-avatar-edit-button {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 2px solid var(--color-paper);
+  border-radius: 50%;
+  color: #fffefa;
+  background: var(--color-teal-dark);
+  cursor: pointer;
+  box-shadow: 0 2px 8px #102b3030;
+}
+
+.profile-avatar-edit-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.profile-avatar-edit-button:focus-visible,
+.avatar-editor-dialog button:focus-visible,
+.avatar-file-picker:focus-within {
+  outline: 3px solid #dfaa2c;
+  outline-offset: 3px;
 }
 
 .profile-avatar-control {
@@ -89,7 +126,79 @@
   margin-top: 16px;
 }
 
-.profile-avatar-control input {
+.profile-avatar-control small {
+  color: var(--color-ink);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.avatar-dialog-backdrop {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  overflow-y: auto;
+  place-items: center;
+  padding: 20px;
+  background: #071d20b8;
+  backdrop-filter: blur(5px);
+}
+
+.avatar-editor-dialog {
+  position: relative;
+  width: min(100%, 590px);
+  max-height: min(94vh, 860px);
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 30%, white);
+  border-radius: 24px;
+  padding: clamp(20px, 5vw, 34px);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: 0 24px 90px #06171980;
+}
+
+.avatar-editor-dialog h2 {
+  margin: 5px 40px 8px 0;
+  font:
+    600 clamp(1.6rem, 4vw, 2.1rem)/1.1 "Fredoka",
+    sans-serif;
+}
+
+.avatar-dialog-copy,
+.avatar-moderation-copy {
+  line-height: 1.5;
+}
+
+.avatar-dialog-copy {
+  margin: 0 0 17px;
+}
+
+.avatar-dialog-close {
+  position: absolute;
+  top: 17px;
+  right: 17px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 35%, white);
+  border-radius: 50%;
+  color: var(--color-ink);
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.avatar-file-picker {
+  position: relative;
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.avatar-file-picker input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -98,20 +207,140 @@
   white-space: nowrap;
 }
 
-.profile-avatar-control label {
-  cursor: pointer;
+.avatar-crop-workspace {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 19px 0;
 }
 
-.profile-avatar-control small {
-  color: var(--color-ink);
-  font-size: 0.78rem;
-  line-height: 1.45;
+.avatar-crop-window,
+.avatar-crop-preview {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  overflow: hidden;
+  place-items: center;
+  border: 3px solid var(--color-teal-dark);
+  border-radius: 50%;
+  color: #101b20;
+  background: #f5bb68;
+  font:
+    600 2rem/1 "Fredoka",
+    sans-serif;
 }
 
-.profile-avatar-control p {
-  margin: 0;
+.avatar-crop-window {
+  width: min(60vw, 240px);
+  aspect-ratio: 1;
+}
+
+.avatar-crop-window.is-editable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.avatar-crop-window.is-editable:active {
+  cursor: grabbing;
+}
+
+.avatar-crop-window img,
+.avatar-crop-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-crop-window .avatar-crop-source,
+.avatar-crop-preview img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  flex: none;
+}
+
+.avatar-preview-column {
+  display: grid;
+  max-width: 160px;
+  justify-items: center;
+  gap: 9px;
+  text-align: center;
+}
+
+.avatar-crop-preview {
+  width: 104px;
+  height: 104px;
+  font-size: 1.5rem;
+}
+
+.avatar-preview-column > span {
+  font-weight: 900;
+}
+
+.avatar-preview-column small {
+  color: color-mix(in srgb, var(--color-ink) 72%, var(--color-paper));
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.avatar-zoom-control {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(120px, 2fr) 50px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-weight: 800;
+}
+
+.avatar-zoom-control input {
+  width: 100%;
+  accent-color: var(--color-teal-dark);
+}
+
+.avatar-zoom-control output {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.avatar-moderation-copy {
+  margin: 17px 0;
+  border-left: 3px solid var(--color-teal-dark);
+  padding-left: 11px;
+  font-size: 0.82rem;
+}
+
+.avatar-dialog-error {
+  margin: 10px 0;
   color: #a11d3d;
   font-weight: 800;
+}
+
+.avatar-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.avatar-dialog-actions button:disabled,
+.avatar-dialog-close:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.theme-dark .avatar-editor-dialog {
+  border-color: #4db8b1;
+  background: #183b3b;
+}
+
+.theme-dark .avatar-preview-column small {
+  color: #d1e5df;
+}
+
+.theme-dark .avatar-moderation-copy {
+  color: #e1f1ec;
 }
 
 .profile-details {
@@ -358,6 +587,60 @@
 
   .profile-section-heading h2 {
     max-width: 24ch;
+  }
+}
+
+@media (max-width: 480px) {
+  .avatar-dialog-backdrop {
+    align-items: end;
+    padding: 8px;
+  }
+
+  .avatar-editor-dialog {
+    max-height: 95vh;
+    border-radius: 22px 22px 12px 12px;
+    padding: 22px 17px;
+  }
+
+  .avatar-crop-workspace {
+    gap: 13px;
+  }
+
+  .avatar-crop-window {
+    width: min(58vw, 210px);
+  }
+
+  .avatar-crop-preview {
+    width: 78px;
+    height: 78px;
+  }
+
+  .avatar-preview-column {
+    max-width: 100px;
+    font-size: 0.83rem;
+  }
+
+  .avatar-zoom-control {
+    grid-template-columns: 1fr 42px;
+    gap: 4px 10px;
+  }
+
+  .avatar-zoom-control input {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
+
+  .avatar-zoom-control output {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .avatar-dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .avatar-dialog-actions button {
+    width: 100%;
   }
 }
 

@@ -4,6 +4,7 @@ import {
   USER_AVATAR_UPDATED_EVENT,
 } from "../../infrastructure/auth/session";
 import { isPublicAvatarUrl } from "../../infrastructure/avatar/public-avatar-url";
+import { AvatarEditorDialog } from "./components/AvatarEditorDialog";
 import { PaymentSimulationDialog } from "../register-with-plan/components/PaymentSimulationDialog";
 import { UserDelete } from "../user-delete/user-delete";
 import "./user-profile.scss";
@@ -163,7 +164,7 @@ export function UserProfile() {
   const [purchaseError, setPurchaseError] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
-  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarEditorOpen, setAvatarEditorOpen] = useState(false);
   const purchaseKeyRef = useRef<string | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -250,8 +251,7 @@ export function UserProfile() {
     void loadProfile();
   }
 
-  async function uploadAvatar(file: File | undefined) {
-    if (!file) return;
+  async function uploadAvatar(file: File): Promise<boolean> {
     setAvatarError("");
     setAvatarUploading(true);
     const form = new FormData();
@@ -269,11 +269,13 @@ export function UserProfile() {
         !isPublicAvatarUrl(body.avatarUrl)
       ) {
         setAvatarError(
-          isRecord(body) && typeof body.message === "string"
+          response.status < 500 &&
+            isRecord(body) &&
+            typeof body.message === "string"
             ? body.message
             : AVATAR_UPLOAD_ERROR,
         );
-        return;
+        return false;
       }
       const nextAvatarUrl = body.avatarUrl;
       setProfile((current) =>
@@ -284,11 +286,12 @@ export function UserProfile() {
       window.dispatchEvent(
         new CustomEvent(USER_AVATAR_UPDATED_EVENT, { detail: nextAvatarUrl }),
       );
+      return true;
     } catch {
       setAvatarError(AVATAR_UPLOAD_ERROR);
+      return false;
     } finally {
       setAvatarUploading(false);
-      if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
 
@@ -341,41 +344,38 @@ export function UserProfile() {
             <span className="eyebrow">Tus datos</span>
             <h2 id="profile-account-title">{profile.user.username}</h2>
           </div>
-          {profile.user.avatarUrl ? (
-            <img
-              className="profile-avatar"
-              src={profile.user.avatarUrl}
-              alt={`Avatar de ${profile.user.username}`}
-            />
-          ) : (
-            <span className="profile-avatar" aria-hidden="true">
-              {profile.user.username.slice(0, 1).toUpperCase()}
-            </span>
-          )}
+          <div className="profile-avatar-edit">
+            {profile.user.avatarUrl ? (
+              <img
+                className="profile-avatar"
+                src={profile.user.avatarUrl}
+                alt={`Avatar de ${profile.user.username}`}
+              />
+            ) : (
+              <span className="profile-avatar" aria-hidden="true">
+                {profile.user.username.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <button
+              className="profile-avatar-edit-button"
+              type="button"
+              aria-label="Editar avatar"
+              onClick={() => {
+                setAvatarError("");
+                setAvatarEditorOpen(true);
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m14.7 6.3 3 3M4 20l4.2-.9L19 7.3a2.1 2.1 0 0 0-3-3L5.2 15.1 4 20Z" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="profile-avatar-control">
-          <label className="button-secondary" htmlFor="profile-avatar-file">
-            {avatarUploading ? "Revisando imagen…" : "Subir o cambiar avatar"}
-          </label>
-          <input
-            ref={avatarInputRef}
-            id="profile-avatar-file"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={avatarUploading}
-            onChange={(event) =>
-              void uploadAvatar(event.currentTarget.files?.[0])
-            }
-          />
           <small>
-            JPG, PNG o WebP · máximo 5 MB · se ajusta a 128 × 128 px.
+            Un retrato redondo que aparecerá junto a tu nombre en perfil y
+            rankings.
           </small>
-          <small>
-            Se mostrará junto a tu nombre en los rankings públicos. OpenAI
-            realiza una revisión automática para filtrar imágenes no aptas para
-            todos los públicos.
-          </small>
-          {avatarError ? <p role="alert">{avatarError}</p> : null}
         </div>
         <dl className="profile-details">
           <div>
@@ -526,6 +526,16 @@ export function UserProfile() {
         )}
       </section>
       <UserDelete />
+      {avatarEditorOpen ? (
+        <AvatarEditorDialog
+          avatarUrl={profile.user.avatarUrl}
+          username={profile.user.username}
+          uploading={avatarUploading}
+          uploadError={avatarError}
+          onClose={() => setAvatarEditorOpen(false)}
+          onUpload={uploadAvatar}
+        />
+      ) : null}
       <PaymentSimulationDialog
         open={paymentPlan !== null}
         heading={

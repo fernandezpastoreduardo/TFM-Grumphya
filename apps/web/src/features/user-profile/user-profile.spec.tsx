@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UserProfile } from "./user-profile";
@@ -53,6 +53,29 @@ function jsonResponse(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function prepareAvatarCrop() {
+  vi.stubGlobal("URL", {
+    createObjectURL: vi.fn(() => "blob:profile-avatar"),
+    revokeObjectURL: vi.fn(),
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    drawImage: vi.fn(),
+  } as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+    (callback) => callback(new Blob(["cropped"], { type: "image/jpeg" })),
+  );
+}
+
+function markCropImageReady() {
+  const image = document.querySelector<HTMLImageElement>(".avatar-crop-source");
+  if (!image) throw new Error("Avatar crop preview did not render.");
+  Object.defineProperties(image, {
+    naturalWidth: { configurable: true, value: 640 },
+    naturalHeight: { configurable: true, value: 320 },
+  });
+  fireEvent.load(image);
 }
 
 describe("UserProfile", () => {
@@ -159,6 +182,7 @@ describe("UserProfile", () => {
   });
 
   it("uploads a profile avatar and shows the moderated server image", async () => {
+    prepareAvatarCrop();
     const user = userEvent.setup();
     const avatarUrl = "/api/avatars/00000000-0000-4000-8000-000000000099.webp";
     vi.mocked(fetch).mockImplementation(async (input, init) => {
@@ -174,16 +198,69 @@ describe("UserProfile", () => {
     render(<UserProfile />);
     await screen.findByRole("heading", { name: "persona-lista" });
 
+    await user.click(screen.getByRole("button", { name: "Editar avatar" }));
+    expect(
+      screen.getByRole("dialog", { name: "Editar avatar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /la imagen se envía a openai para una revisión automática/i,
+      ),
+    ).toBeInTheDocument();
     const file = new File(["image-bytes"], "profile.png", {
       type: "image/png",
     });
-    await user.upload(screen.getByLabelText("Subir o cambiar avatar"), file);
+    await user.upload(screen.getByLabelText("Elegir imagen de avatar"), file);
+    markCropImageReady();
+    await user.click(screen.getByRole("button", { name: "Guardar avatar" }));
 
     expect(
       await screen.findByRole("img", { name: "Avatar de persona-lista" }),
     ).toHaveAttribute("src", avatarUrl);
+    const formData = vi
+      .mocked(fetch)
+      .mock.calls.find(
+        ([input]) => String(input) === "/api/account/avatar",
+      )?.[1]?.body;
+    expect(formData).toBeInstanceOf(FormData);
+    expect((formData as FormData).get("avatar")).toMatchObject({
+      name: "avatar-recortado.jpg",
+      type: "image/jpeg",
+    });
+  });
+
+  it("shows a friendly avatar error instead of exposing an internal server error", async () => {
+    prepareAvatarCrop();
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) =>
+      String(input) === "/api/account/avatar"
+        ? jsonResponse(
+            {
+              statusCode: 500,
+              message: "Internal server error",
+            },
+            500,
+          )
+        : String(input) === "/api/account/good-ideas"
+          ? jsonResponse(GOOD_IDEAS)
+          : jsonResponse(ACCOUNT_PROFILE),
+    );
+    render(<UserProfile />);
+    await screen.findByRole("heading", { name: "persona-lista" });
+
+    await user.click(screen.getByRole("button", { name: "Editar avatar" }));
+    await user.upload(
+      screen.getByLabelText("Elegir imagen de avatar"),
+      new File(["image-bytes"], "profile.png", { type: "image/png" }),
+    );
+    markCropImageReady();
+    await user.click(screen.getByRole("button", { name: "Guardar avatar" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /no se ha podido actualizar el avatar/i,
+    );
     expect(
-      screen.getByText(/openai realiza una revisión automática/i),
-    ).toBeInTheDocument();
+      screen.queryByText(/internal server error/i),
+    ).not.toBeInTheDocument();
   });
 });
