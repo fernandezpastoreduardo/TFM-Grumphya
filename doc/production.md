@@ -73,6 +73,7 @@ Los nombres son convenciones por crear en el proveedor elegido; no son cuentas e
 
 - Secretos distintos por entorno, rotación y auditoría de acceso.
 - TLS externo e interno, rate limits, cabeceras seguras y CORS limitado al dominio real.
+- **IP y rate limits del proxy:** hoy `main.ts` fija `app.set('trust proxy', false)` y no hay configuración por allowlist. El middleware usa `request.ip`, así que detrás de un reverse proxy esta será la IP del proxy, no la dirección del cliente. Habilitar confianza acotada requiere un cambio de código que identifique proxies/redes concretos; nunca confíes indiscriminadamente en `X-Forwarded-For`. Para varias réplicas, traslada los contadores a almacenamiento compartido o a un gateway; si no, cada proceso conserva su propio cupo. El límite de avatar (3/minuto/IP) comparte estas restricciones operativas.
 - Migraciones hacia delante, copias con retención y prueba de restauración.
 - Logs sin contraseñas, cookies, tokens, texto de ideas ni datos personales; métricas de disponibilidad/latencia y alertas.
 - Health/readiness separados: liveness no depende de Postgres; readiness sí valida dependencias.

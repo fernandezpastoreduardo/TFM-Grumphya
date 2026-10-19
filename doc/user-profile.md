@@ -34,20 +34,37 @@ muestra.
 
 ## Avatar de cuenta
 
-Una cuenta autenticada puede subir un avatar con `POST /api/account/avatar`
-(multipart con una sola parte de archivo, campo `avatar`). El endpoint exige
-Bearer válido y `Origin` exacto de `WEB_ORIGIN`; admite como máximo tres
-subidas por minuto y por IP en cada proceso. Solo se aceptan JPEG, PNG y WebP
-rasterizados de hasta 5 MiB; el formato decodificado debe coincidir con el
-MIME declarado, así que un SVG o formato disfrazado se rechaza. La API decodifica
-y vuelve a codificar la imagen en WebP de 128 × 128 píxeles,
-recorta al centro de atención, limita la entrada a 20 megapíxeles y elimina
-metadatos al recodificar. Los bytes originales no se conservan. La clave
-OpenAI existente se usa solo en el servidor para comprobar el WebP procesado
-con `omni-moderation-latest`; no se devuelve la imagen si la moderación la
-marca, si falta la clave o si el servicio devuelve una respuesta inválida/no
-disponible. El navegador muestra el resultado solo después de que el servidor
-lo haya guardado.
+El perfil muestra el avatar actual en formato circular y un botón de edición
+con icono. Ese botón abre un diálogo accesible para elegir o reemplazar la
+imagen, ajustar el encuadre y el zoom y revisar una previsualización circular
+antes de guardar. La persona puede arrastrar la imagen y ajustar el zoom entre
+1× y 3×, además de mover el encuadre horizontal y verticalmente. El recorte se
+prepara en el navegador mediante canvas como JPEG de 128 × 128 píxeles; el
+formato circular es una máscara de presentación, no un recorte redondo que
+elimine píxeles de la imagen almacenada. Los avatares se muestran en círculo
+en el perfil, el nav y las listas públicas.
+
+Al guardar, el navegador envía el recorte por `POST /api/account/avatar` como
+una única parte multipart llamada `avatar`. El endpoint exige Bearer válido y
+`Origin` exacto de `WEB_ORIGIN`; admite como máximo tres subidas por minuto y
+por IP en cada proceso. Solo se aceptan JPEG, PNG y WebP rasterizados de hasta
+5 MiB; el formato decodificado debe coincidir con el MIME declarado, así que
+un SVG o archivo disfrazado se rechaza. Sharp valida de nuevo los datos,
+limita la entrada a 20 megapíxeles y normaliza el resultado a WebP de 128 × 128,
+con orientación corregida y metadatos descartados. Los bytes originales y el
+recorte JPEG del navegador no se conservan. La clave OpenAI existente se usa
+solo en el servidor para comprobar el WebP final con `omni-moderation-latest`;
+no se persiste ni publica si la moderación lo marca, si falta la clave o si el
+servicio devuelve una respuesta inválida/no disponible. El navegador actualiza
+el avatar solo después de que el servidor haya terminado la moderación y el
+almacenamiento.
+
+La API responde con errores saneados: los archivos que superan el límite
+devuelven `413 AVATAR_TOO_LARGE`; las partes multipart o imágenes inválidas,
+`400`; y los fallos de moderación, almacenamiento o actualización de la cuenta,
+`503` sin detalles internos. No se registran datos de imagen ni claves de
+almacenamiento para diagnosticar esos fallos. No hay evidencia suficiente para
+atribuir retrospectivamente el error 500 observado al usar la versión anterior.
 
 La automatización es un filtro de riesgo, no una garantía de que la imagen sea
 apta ni una clasificación legal por edades. Puede equivocarse o no detectar
@@ -69,10 +86,10 @@ públicos; no expone correo ni ID interno. El avatar se puede identificar
 públicamente junto al alias del ranking. Si se elimina o sustituye un avatar,
 el anterior debe dejar de estar disponible.
 
-Antes de subirlo, el control del perfil informa que el avatar aparecerá en
-rankings públicos y que OpenAI hace una revisión automática. El aviso no
-sustituye a una política de privacidad completa ni a la información legal sobre
-el tratamiento por el proveedor.
+Antes de guardar, el diálogo informa que la imagen se envía a OpenAI para una
+revisión automática y que el avatar aprobado aparecerá junto al alias en áreas
+públicas. El aviso aclara el tratamiento, pero no sustituye a una política de
+privacidad completa ni a la información legal sobre el proveedor.
 
 La web usa `authenticatedFetch`, que obtiene el access token en memoria y lo
 renueva mediante el refresh token HttpOnly cuando es necesario. El refresh token

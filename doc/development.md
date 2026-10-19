@@ -79,19 +79,26 @@ Git y no muestres sus contenidos. `docker compose --env-file .env.docker config`
 debe mostrar las rutas de los secretos, no sus valores.
 
 La moderación de avatares también necesita el `OPENAI_API_KEY` existente en
-`.env`. El endpoint requiere Bearer y `Origin` exacto de `WEB_ORIGIN`; acepta
-una sola parte multipart de hasta 5 MiB, limita a tres subidas por minuto/IP en
-cada proceso, comprueba que el formato decodificado coincide con el MIME
-declarado (JPEG, PNG o WebP; rechaza SVG y archivos disfrazados), limita la
-entrada a 20 megapíxeles y la convierte en el servidor a WebP de 128 × 128 antes
-de enviarla a `omni-moderation-latest`. El proveedor externo recibe el avatar
-procesado, no el original. Si la clave no está configurada, el proveedor no
-responde o su respuesta no puede validarse, la subida se rechaza sin almacenar
-el archivo. La moderación automática no garantiza que una imagen sea apta ni
-detecta todo contenido; tampoco sustituye una revisión humana. La política de
-privacidad sigue provisional y debe completarse antes de abrir registros o
-avatares al público. No subas contenido conocido o sospechoso de abuso sexual
-infantil: esta moderación no está diseñada para detectarlo.
+`.env`. Desde el perfil, el editor presenta el avatar en un diálogo circular con
+selector de imagen, arrastre para encuadrar, controles de desplazamiento y zoom
+de 1× a 3×, y previsualización final. El navegador genera mediante canvas un
+recorte JPEG de 128 × 128; la máscara circular solo afecta a la presentación.
+Al guardar, el endpoint requiere Bearer y `Origin` exacto de `WEB_ORIGIN`,
+acepta una sola parte multipart llamada `avatar` de hasta 5 MiB y limita a tres
+subidas por minuto/IP en cada proceso. El backend comprueba de nuevo que el
+formato decodificado coincide con el MIME declarado (JPEG, PNG o WebP; rechaza
+SVG y archivos disfrazados), limita la entrada a 20 megapíxeles y normaliza la
+imagen a WebP de 128 × 128 con orientación corregida y metadatos descartados.
+`omni-moderation-latest` recibe ese WebP final, nunca los bytes originales ni el
+JPEG temporal del recorte. Si falta la clave, el proveedor no responde o su
+respuesta no puede validarse, no se almacena el avatar. Los errores de
+moderación, almacenamiento y actualización de cuenta se devuelven como `503`
+genérico; carga multipart inválida devuelve `400` y exceso de tamaño `413`, sin
+filtrar detalles internos. La moderación automática no garantiza que una imagen
+sea apta ni detecta todo contenido; tampoco sustituye una revisión humana. La
+política de privacidad sigue provisional y debe completarse antes de abrir
+registros o avatares al público. No subas contenido conocido o sospechoso de
+abuso sexual infantil: esta moderación no está diseñada para detectarlo.
 
 ### Arranque mixto con Node y base en Docker
 

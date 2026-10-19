@@ -8,6 +8,8 @@ Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un ro
 
 Los límites por minuto de la API guardan sus contadores en memoria por proceso. Hoy esto incluye el límite general de 120 solicitudes por IP/minuto, el límite de 10 para evaluación y envío de roast, y límites dedicados de 30 para lectura de Worst Ideas y de `GET /api/roast-ranking`. Al ejecutar varias réplicas, cada una aplica su propio contador; si el balanceador distribuye las peticiones, el límite efectivo puede multiplicarse. Al reiniciar un proceso, sus contadores se pierden.
 
+El límite de subida de avatar (3 solicitudes por minuto) también usa `request.ip` y memoria local por proceso. `main.ts` fija `trust proxy` en `false` y todavía no existe una configuración por allowlist; tras un reverse proxy, `request.ip` identifica al proxy, no al cliente. **Mejora pendiente:** implementar una allowlist configurable y acotada para proxies/redes de despliegue conocidos, con pruebas de que direcciones no confiables no pueden falsificar la IP mediante `X-Forwarded-For`. Nunca confiar en ese encabezado indiscriminadamente. Al usar varias réplicas, el límite de avatar y los demás límites deben pasar a un almacén compartido o gateway si se necesita una cuota coherente.
+
 El límite secundario de creación de perfiles anónimos —20 por IP en 24 horas— sí se persiste en PostgreSQL y no comparte esta limitación.
 
 **Mejora a valorar:** mover los contadores por minuto a un almacén compartido, como Redis, o a un gateway que aplique el límite antes de distribuir las solicitudes. Definir la estrategia al preparar el despliegue con varias réplicas y comprobar límites simultáneos y recuperación ante reinicios.
