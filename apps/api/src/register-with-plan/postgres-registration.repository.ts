@@ -182,6 +182,20 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     return result.rows[0] ?? null;
   }
 
+  async updatePasswordHash(
+    userId: string,
+    expectedHash: string,
+    passwordHash: string,
+  ): Promise<boolean> {
+    await this.ensureSchema();
+    const result = await this.pool.query(
+      `UPDATE users SET password_hash=$3
+       WHERE id=$1 AND password_hash=$2`,
+      [userId, expectedHash, passwordHash],
+    );
+    return result.rowCount === 1;
+  }
+
   async createSession(
     userId: string,
     accessTokenHash: string,

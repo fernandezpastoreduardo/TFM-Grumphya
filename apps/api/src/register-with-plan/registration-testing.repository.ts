@@ -168,6 +168,18 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
         }
       : null;
   }
+  async updatePasswordHash(
+    userId: string,
+    expectedHash: string,
+    passwordHash: string,
+  ): Promise<boolean> {
+    const user = this.users.find(
+      (item) => item.id === userId && item.passwordHash === expectedHash,
+    );
+    if (!user) return false;
+    user.passwordHash = passwordHash;
+    return true;
+  }
   async verify(
     verificationHash: string,
     verifiedTokenHash: string,

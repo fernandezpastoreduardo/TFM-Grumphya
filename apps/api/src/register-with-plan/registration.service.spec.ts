@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifyPassword as verifyPasswordHash } from "../infrastructure/auth/password-hasher";
 import { RegistrationService, verifyPassword } from "./registration.service";
 import { InMemoryRegistrationRepository } from "./registration-testing.repository";
 
@@ -9,6 +10,8 @@ const validRegistration = {
   privacyPolicyAcknowledged: true,
 };
 const JWT_TEST_SECRET = "registration-test-jwt-secret-with-32-bytes-min";
+const LEGACY_SCRYPT_HASH =
+  "scrypt$00112233445566778899aabbccddeeff$a93fa84b70923122587058ae0f2e8acb917268e2773ae0eaf2cdd764f829395899384239d564fa901a58a30f0ecc37799a4aa764298a348814a22787e22f0bf6";
 
 describe("register with plan", () => {
   beforeEach(() => {
@@ -343,6 +346,33 @@ describe("register with plan", () => {
       29 * 24 * 60 * 60 * 1000,
     );
     expect(repository.sessions.at(-1)?.rememberMe).toBe(true);
+  });
+
+  it("upgrades a legacy scrypt hash with an expected-hash conditional update", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = new RegistrationService(repository);
+    const intent = await service.createIntent("ILUMINADO");
+    await service.register(intent.token, validRegistration);
+    const user = repository.users[0];
+    if (!user) throw new Error("Test account was not created.");
+    user.passwordHash = LEGACY_SCRYPT_HASH;
+    const updatePasswordHash = vi.spyOn(repository, "updatePasswordHash");
+
+    await service.login({
+      identifier: validRegistration.email,
+      password: validRegistration.password,
+      rememberMe: false,
+    });
+
+    expect(updatePasswordHash).toHaveBeenCalledOnce();
+    const [updatedUserId, expectedHash, upgradedHash] =
+      updatePasswordHash.mock.calls[0] ?? [];
+    expect(updatedUserId).toBe(user.id);
+    expect(expectedHash).toBe(LEGACY_SCRYPT_HASH);
+    expect(upgradedHash).toMatch(/^bcrypt-sha256\$2b\$12\$/u);
+    await expect(
+      verifyPasswordHash(validRegistration.password, upgradedHash),
+    ).resolves.toBe(true);
   });
 
   it("uses one generic error for an unknown account and an incorrect password", async () => {
