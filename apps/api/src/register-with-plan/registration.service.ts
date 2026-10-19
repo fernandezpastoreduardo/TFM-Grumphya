@@ -1,8 +1,4 @@
-import {
-  createHash,
-  randomBytes,
-  randomUUID,
-} from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { domainToASCII } from "node:url";
 import {
   RegistrationError,
@@ -25,6 +21,7 @@ import {
   hashPassword,
   verifyPassword,
 } from "../infrastructure/auth/password-hasher";
+import { ADMIN_RESERVED_USERNAME } from "../infrastructure/auth/reserved-usernames";
 export { verifyPassword } from "../infrastructure/auth/password-hasher";
 const INTENT_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -456,7 +453,9 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
   }
   if (
     typeof username !== "string" ||
-    !USERNAME_PATTERN.test(username.trim().normalize("NFC"))
+    !USERNAME_PATTERN.test(username.trim().normalize("NFC")) ||
+    username.trim().normalize("NFC").toLocaleLowerCase("es-ES") ===
+      ADMIN_RESERVED_USERNAME
   ) {
     throw new RegistrationError(
       400,

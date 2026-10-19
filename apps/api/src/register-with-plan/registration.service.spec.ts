@@ -113,6 +113,20 @@ describe("register with plan", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  it("reserves the admin username regardless of letter casing", async () => {
+    const service = new RegistrationService(
+      new InMemoryRegistrationRepository(),
+    );
+    const intent = await service.createIntent("ILUMINADO");
+
+    await expect(
+      service.register(intent.token, {
+        ...validRegistration,
+        username: "Jappy",
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_USERNAME" });
+  });
+
   it("requires a long password with uppercase, lowercase, number and special character", async () => {
     const service = new RegistrationService(
       new InMemoryRegistrationRepository(),
