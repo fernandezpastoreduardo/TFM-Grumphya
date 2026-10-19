@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import { SubmitContactMessage } from "../submit-contact-message/submit-contact-message";
 import "./contact.scss";
 
@@ -7,9 +11,23 @@ export function Contact() {
   const session = useSessionStatus();
   if (session.isAuthenticated === null) {
     return (
-      <p className="route-loading" role="status" aria-live="polite">
-        Comprobando tu sesión…
-      </p>
+      <LoadingSkeleton
+        label="Comprobando tu sesión"
+        className="contact-skeleton"
+      >
+        <section className="content-card contact-card contact-skeleton-form">
+          <SkeletonBlock className="skeleton-contact-title" />
+          <SkeletonBlock className="skeleton-contact-heading" />
+          <SkeletonBlock className="skeleton-contact-input" />
+          <SkeletonBlock className="skeleton-contact-input" />
+          <SkeletonBlock className="skeleton-contact-message" />
+          <SkeletonBlock className="skeleton-contact-button" />
+        </section>
+        <aside className="contact-side contact-skeleton-aside">
+          <SkeletonBlock className="skeleton-contact-creature" />
+          <SkeletonBlock className="skeleton-contact-copy" />
+        </aside>
+      </LoadingSkeleton>
     );
   }
   if (session.isAuthenticated) return <SubmitContactMessage />;

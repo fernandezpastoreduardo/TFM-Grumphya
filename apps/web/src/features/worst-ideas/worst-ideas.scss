@@ -12,6 +12,70 @@
   padding: 0;
   list-style: none;
 }
+
+.idea-ranking-skeleton .loading-skeleton-content {
+  gap: 7px;
+}
+
+.idea-ranking-skeleton-row,
+.user-history-skeleton-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 74px;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  border: 1.5px solid #a8cfbf;
+  border-radius: 16px;
+  padding: 10px 13px;
+  background: var(--color-paper);
+}
+
+.skeleton-ranking-position {
+  width: 24px;
+  height: 22px;
+}
+
+.skeleton-ranking-title {
+  width: min(100%, 72%);
+  height: 21px;
+}
+
+.skeleton-ranking-count {
+  width: 58px;
+  height: 30px;
+  justify-self: end;
+}
+
+.user-history-skeleton .loading-skeleton-content {
+  gap: 12px;
+}
+
+.skeleton-history-heading {
+  width: 76%;
+  height: 34px;
+}
+
+.skeleton-history-copy {
+  width: 92%;
+  height: 22px;
+  margin-bottom: 8px;
+}
+
+.user-history-skeleton-row {
+  grid-template-columns: minmax(0, 1fr) 54px;
+  min-height: 56px;
+}
+
+.skeleton-history-title {
+  width: 82%;
+  height: 20px;
+}
+
+.skeleton-history-count {
+  width: 34px;
+  height: 26px;
+  justify-self: end;
+}
 .ranking-message {
   display: grid;
   justify-items: start;

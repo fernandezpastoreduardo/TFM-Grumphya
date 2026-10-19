@@ -1,5 +1,10 @@
 # Panel de administración
 
+El hero de `/panel-control` usa el PNG transparente
+`admin-dashboard-audit.png` (900 × 900 px, 787.615 B; aprox. 769 KiB):
+Grumphya examina gráficas con una lupa para representar la revisión de métricas
+y datos operativos.
+
 ## Acceso y rutas
 
 `/panel-control` presenta el panel de Jappy. El enlace aparece en Home y en la

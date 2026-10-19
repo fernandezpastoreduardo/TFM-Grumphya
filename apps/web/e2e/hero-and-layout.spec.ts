@@ -22,6 +22,12 @@ const HERO_ASSETS = [
     mascotClass: "mascot-plans",
     asset: "/assets/grumphya/plans-coffee.png",
   },
+  {
+    path: "/panel-control",
+    mascotClass: "mascot-admin",
+    asset: "/assets/grumphya/admin-dashboard-audit.png",
+    role: "admin",
+  },
 ] as const;
 
 async function assetHasTransparentPixels(page: Page, assetPath: string) {
@@ -93,10 +99,23 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
       };
     });
   expect(homeHero.backgroundImage).toContain(
-    "/assets/grumphya/home-idea-review.png",
+    "/assets/grumphya/home-grumpy-judge.png",
   );
   expect(homeHero.backgroundSize).toBe("contain");
   expect(homeHero.backgroundPosition).toBe("50% 100%");
+  const homeStage = page.locator(".home-hero-stage");
+  const homeMascotBox = await page
+    .locator(".home-hero-stage .home-creature")
+    .boundingBox();
+  const homeStageBox = await homeStage.boundingBox();
+  expect(homeMascotBox).not.toBeNull();
+  expect(homeStageBox).not.toBeNull();
+  expect(homeMascotBox!.width / homeStageBox!.width).toBeGreaterThan(0.8);
+  const homeAssetPath = "/assets/grumphya/home-grumpy-judge.png";
+  const homeAssetResponse = await page.request.get(homeAssetPath);
+  expect(homeAssetResponse.ok()).toBe(true);
+  expect(homeAssetResponse.headers()["content-type"]).toContain("image/png");
+  expect(await assetHasTransparentPixels(page, homeAssetPath)).toBe(true);
 });
 
 test("uses Grumphya's navigation logo as the site favicon", async ({
@@ -156,6 +175,44 @@ test("uses the section hero assets with transparent pixels", async ({
   page,
 }) => {
   for (const hero of HERO_ASSETS) {
+    if ("role" in hero && hero.role === "admin") {
+      await page.route("**/api/auth/refresh", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ accessToken: "e2e-admin-token" }),
+        }),
+      );
+      await page.route("**/api/account/profile", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ user: { role: "admin" }, plans: [] }),
+        }),
+      );
+      await page.route("**/api/admin/dashboard", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            metrics: {
+              totalUsers: 0,
+              activePlans: 0,
+              evaluationsToday: 0,
+              roastsToday: 0,
+            },
+            errors: [],
+          }),
+        }),
+      );
+      await page.route("**/api/admin/contact-messages", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ messages: [] }),
+        }),
+      );
+    }
     await page.goto(hero.path);
     const mascot = page.locator(`.section-hero-mascot.${hero.mascotClass}`);
     await expect(mascot).toBeVisible();
@@ -163,6 +220,9 @@ test("uses the section hero assets with transparent pixels", async ({
       (element) => getComputedStyle(element).backgroundImage,
     );
     expect(backgroundImage).toContain(hero.asset);
+    const assetResponse = await page.request.get(hero.asset);
+    expect(assetResponse.ok()).toBe(true);
+    expect(assetResponse.headers()["content-type"]).toContain("image/png");
 
     const assetIsTransparent = await assetHasTransparentPixels(
       page,

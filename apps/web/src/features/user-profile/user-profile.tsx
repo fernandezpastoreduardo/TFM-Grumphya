@@ -7,6 +7,10 @@ import { isPublicAvatarUrl } from "../../infrastructure/avatar/public-avatar-url
 import { AvatarEditorDialog } from "./components/AvatarEditorDialog";
 import { PaymentSimulationDialog } from "../register-with-plan/components/PaymentSimulationDialog";
 import { UserDelete } from "../user-delete/user-delete";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import "./user-profile.scss";
 
 type PlanCode = "ILUMINADO" | "FALTON";
@@ -299,10 +303,32 @@ export function UserProfile() {
 
   if (loading) {
     return (
-      <p className="profile-loading" role="status" aria-live="polite">
-        Consultando tu cuenta. Hasta una IA gruñona tiene que comprobar los
-        datos.
-      </p>
+      <LoadingSkeleton
+        label="Consultando tu cuenta"
+        className="profile-loading-skeleton"
+      >
+        <div className="profile-account-card profile-account-skeleton">
+          <div className="profile-account-heading">
+            <div className="profile-skeleton-identity">
+              <SkeletonBlock className="skeleton-profile-eyebrow" />
+              <SkeletonBlock className="skeleton-profile-title" />
+            </div>
+            <SkeletonBlock className="skeleton-profile-avatar" />
+          </div>
+          <SkeletonBlock className="skeleton-profile-detail" />
+          <SkeletonBlock className="skeleton-profile-detail short" />
+          <div className="profile-skeleton-plans">
+            <SkeletonBlock className="skeleton-profile-plan" />
+            <SkeletonBlock className="skeleton-profile-plan" />
+          </div>
+        </div>
+        <div className="profile-ideas-card profile-ideas-skeleton">
+          <SkeletonBlock className="skeleton-profile-title" />
+          {Array.from({ length: 3 }, (_, index) => (
+            <SkeletonBlock className="skeleton-profile-idea" key={index} />
+          ))}
+        </div>
+      </LoadingSkeleton>
     );
   }
 

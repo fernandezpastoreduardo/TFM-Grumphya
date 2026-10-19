@@ -3,6 +3,7 @@ import {
   authenticatedFetch,
   getAccessToken,
 } from "../../../infrastructure/auth/session";
+import { SkeletonBlock } from "../../../shared/components/loading-skeleton";
 
 const ROAST_ENDPOINT = "/api/roast";
 const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo.";
@@ -114,14 +115,21 @@ export function RoastInput({
         className="roast-attempt-feedback"
         role="status"
         aria-live="polite"
+        aria-label={
+          displayRemaining === null && !isSending
+            ? "Comprobando tus envíos restantes"
+            : undefined
+        }
       >
-        {isSending
-          ? "Enviando tu mensaje…"
-          : displayRemaining === null
-            ? "Comprobando tus envíos restantes…"
-            : Number.isFinite(quotaLimit)
-              ? `Te quedan ${displayRemaining} de ${quotaLimit} ${quotaDescription}.`
-              : "Tienes envíos ilimitados. Aprovecha, que no todo lo bueno dura para siempre."}
+        {isSending ? (
+          "Enviando tu mensaje…"
+        ) : displayRemaining === null ? (
+          <SkeletonBlock className="skeleton-roast-quota" />
+        ) : Number.isFinite(quotaLimit) ? (
+          `Te quedan ${displayRemaining} de ${quotaLimit} ${quotaDescription}.`
+        ) : (
+          "Tienes envíos ilimitados. Aprovecha, que no todo lo bueno dura para siempre."
+        )}
       </p>
       {error ? (
         <p id="roast-input-error" className="roast-input-error" role="alert">

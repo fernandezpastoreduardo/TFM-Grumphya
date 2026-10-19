@@ -4,6 +4,57 @@
   align-items: start;
   gap: 18px;
 }
+.contact-skeleton .loading-skeleton-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.8fr);
+  align-items: start;
+  gap: 18px;
+}
+.contact-skeleton-form {
+  display: grid;
+  justify-items: start;
+  gap: 15px;
+}
+.skeleton-contact-title {
+  width: 145px;
+  height: 14px;
+}
+.skeleton-contact-heading {
+  width: min(95%, 420px);
+  height: 34px;
+  margin-bottom: 8px;
+}
+.skeleton-contact-input,
+.skeleton-contact-message {
+  width: 100%;
+  height: 52px;
+  border-radius: 13px;
+}
+.skeleton-contact-message {
+  height: 112px;
+}
+.skeleton-contact-button {
+  width: 180px;
+  height: 48px;
+}
+.contact-skeleton-aside {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  border: 2px solid #d5e7e2;
+  border-radius: 24px;
+  padding: 20px;
+  background: #fff;
+}
+.skeleton-contact-creature {
+  width: min(100%, 290px);
+  height: 270px;
+  border-radius: 24px;
+}
+.skeleton-contact-copy {
+  width: min(100%, 220px);
+  height: 48px;
+}
 .contact-card h2 {
   margin: 5px 0 0;
   font:
@@ -69,8 +120,8 @@
 .contact-creature {
   width: min(100%, 290px);
   height: 270px;
-  background: url("/assets/grumphya/contact-message-tube.png") center
-    bottom / contain no-repeat;
+  background: url("/assets/grumphya/contact-message-tube.png") center bottom /
+    contain no-repeat;
 }
 .contact-side p {
   max-width: 240px;
@@ -99,6 +150,12 @@
   grid-column: 1 / -1;
 }
 @media (max-width: 979px) {
+  .contact-skeleton .loading-skeleton-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .contact-skeleton-aside {
+    display: none;
+  }
   .contact-layout {
     grid-template-columns: minmax(0, 1fr);
   }

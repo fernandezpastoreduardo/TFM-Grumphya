@@ -4,6 +4,10 @@ import {
   SectionPageFrame,
   type SectionPageMeta,
 } from "../shared/components/section-page-frame";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../shared/components/loading-skeleton";
 import { ErrorPages } from "../features/error-pages/error-pages";
 
 const PAGE_META: Record<string, SectionPageMeta> = {
@@ -75,6 +79,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     intro:
       "Ingresos simulados, costes estimados y señales operativas. Sin hacer como que esto ya es una multinacional.",
     theme: "calm",
+    mascot: "admin",
   },
   "/verificar-cuenta": {
     title: "Una última comprobación",
@@ -172,9 +177,18 @@ function SectionContent({ path }: { path: string }) {
   return (
     <Suspense
       fallback={
-        <p className="route-loading" role="status" aria-live="polite">
-          Preparando esta sección…
-        </p>
+        <LoadingSkeleton
+          label="Preparando esta sección"
+          className="section-content-skeleton"
+        >
+          <SkeletonBlock className="skeleton-section-eyebrow" />
+          <SkeletonBlock className="skeleton-section-heading" />
+          <SkeletonBlock className="skeleton-section-copy" />
+          <div className="skeleton-section-panels">
+            <SkeletonBlock className="skeleton-section-panel main" />
+            <SkeletonBlock className="skeleton-section-panel side" />
+          </div>
+        </LoadingSkeleton>
       }
     >
       <Content />

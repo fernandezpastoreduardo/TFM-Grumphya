@@ -81,8 +81,13 @@ la lámina maestra está en
   blanco desde CSS; la ilustración mantiene su transparencia. Todas estas
   ilustraciones conservan el fondo transparente y no incluyen copy incrustado;
   la UI mantiene el contenido legible en HTML. Las escenas de error existentes
-  siguen siendo sus propios assets. Home usa
-  `home-idea-review.png`; el hero de alta y su panel de plan usan
+  siguen siendo sus propios assets. Home usa `home-grumpy-judge.png`: Grumphya
+  aparece sentada como jueza con un mazo y sin bombilla tachada. Este asset
+  reemplaza `home-idea-review.png`; el vestuario judicial es una excepción
+  específica autorizada para esta escena y no modifica la regla general de
+  identidad. El hero de `/panel-control` usa `admin-dashboard-audit.png`, con
+  Grumphya examinando gráficas mediante una lupa. El hero de alta y su panel de
+  plan usan
   `create-account-hero.png` y `create-account-plan.png` respectivamente.
   La mascota del hero de Home se encuadra con `contain` y posición inferior
   para que no quede cortada.
@@ -145,17 +150,19 @@ Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
 No se midieron LCP, CLS ni INP, por lo
 que esta revisión no certifica Core Web Vitals. Para completarla, medir Home,
-Humanos notables, Contacto y alta con Lighthouse en escritorio y móvil, ambos
-temas y caché fría y caliente; revisar waterfall, bytes transferidos y cambios de
-layout. Las siete ilustraciones transparentes de Buenas prácticas, Humanos
+Humanos notables, Contacto, alta y `/panel-control` con Lighthouse en escritorio
+y móvil, ambos temas y caché fría y caliente; revisar waterfall, bytes
+transferidos y cambios de layout. Las siete ilustraciones transparentes de Buenas prácticas, Humanos
 notables, Contacto y Mi cuenta se ajustaron a 900 px de lado máximo para su uso
 en interfaz y pesan 3.584.291 B en total (aproximadamente 3,58 MB). El nuevo
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
-527.469 B. Los nuevos
-assets de alta y Home son 922.763 B (`create-account-hero.png`), 887.500 B
-(`create-account-plan.png`) y 894.104 B (`home-idea-review.png`);
-`stage-curtain.png` pesa 681.772 B. Los assets se consideran candidatos a
-optimización solo si las mediciones móviles confirman impacto.
+527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
+887.500 B (`create-account-plan.png`); `stage-curtain.png` pesa 681.772 B.
+Los nuevos `home-grumpy-judge.png` y `admin-dashboard-audit.png` son PNG
+transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
+(aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /
+1,61 MiB). Ambos respetan el límite de 900 px. Se incluirán en las mediciones
+Lighthouse pendientes para cuantificar su efecto en la carga móvil.
 
 ## Ranking público de ideas rechazadas
 

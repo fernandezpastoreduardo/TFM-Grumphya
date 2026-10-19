@@ -246,6 +246,10 @@
   background-image: url("/assets/grumphya/login-credentials.png");
   transform: none;
 }
+.section-hero-mascot.mascot-admin {
+  background-image: url("/assets/grumphya/admin-dashboard-audit.png");
+  transform: none;
+}
 .section-content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.8fr);
@@ -327,7 +331,7 @@
   .section-hero p {
     font-size: 0.84rem;
   }
-.section-hero-mascot {
+  .section-hero-mascot {
     width: 125px;
     height: 166px;
     margin-right: -23px;
@@ -1164,7 +1168,6 @@
     height: 190px;
     margin-bottom: -4px;
   }
-
 }
 
 .site-mobile-menu nav[hidden] {
