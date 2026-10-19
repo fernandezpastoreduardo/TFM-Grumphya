@@ -1,3 +1,9 @@
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "../infrastructure/ai/ai-usage";
+
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const SEMANTIC_JUDGE_MODEL = "gpt-5.4-mini";
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -7,6 +13,7 @@ const RESPONSE_ERROR = "OpenAI semantic comparison response is invalid.";
 export type OpenAiIdeaEquivalencePortOptions = {
   apiKey: string;
   timeoutMs?: number;
+  usageRecorder?: AiUsageRecorder;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -68,16 +75,19 @@ function parseEquivalenceResponse(
 export class OpenAiIdeaEquivalencePort {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiIdeaEquivalencePortOptions) {
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.usageRecorder = options.usageRecorder;
   }
 
   async classifyIdeas(
     ideaText: string,
     semanticFingerprint: string,
     safeTitles: readonly string[],
+    userId?: string,
   ): Promise<unknown> {
     if (safeTitles.length === 0 || safeTitles.length > 20) {
       throw new Error(RESPONSE_ERROR);
@@ -164,6 +174,15 @@ export class OpenAiIdeaEquivalencePort {
         responseBody = await response.json();
       } catch {
         throw new Error(RESPONSE_ERROR);
+      }
+      const usage = readTokenUsage(responseBody);
+      if (usage) {
+        recordAiUsageSafely(this.usageRecorder, {
+          userId,
+          operation: "idea_similarity",
+          model: SEMANTIC_JUDGE_MODEL,
+          ...usage,
+        });
       }
       return parseEquivalenceResponse(responseBody, safeTitles.length);
     } finally {

@@ -1,3 +1,9 @@
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "./ai-usage";
+
 const OPENAI_EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings";
 const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;
@@ -8,6 +14,7 @@ const OPENAI_RESPONSE_ERROR = "OpenAI embedding response is invalid.";
 export type OpenAiTextEmbeddingPortOptions = {
   apiKey: string;
   timeoutMs?: number;
+  usageRecorder?: AiUsageRecorder;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,13 +50,15 @@ function parseEmbeddingResponse(value: unknown): number[] {
 export class OpenAiTextEmbeddingPort {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiTextEmbeddingPortOptions) {
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.usageRecorder = options.usageRecorder;
   }
 
-  async createEmbedding(ideaText: string): Promise<unknown> {
+  async createEmbedding(ideaText: string, userId?: string): Promise<unknown> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -81,6 +90,15 @@ export class OpenAiTextEmbeddingPort {
         responseBody = await response.json();
       } catch {
         throw new Error(OPENAI_RESPONSE_ERROR);
+      }
+      const usage = readTokenUsage(responseBody);
+      if (usage) {
+        recordAiUsageSafely(this.usageRecorder, {
+          userId,
+          operation: "idea_embedding",
+          model: OPENAI_EMBEDDING_MODEL,
+          ...usage,
+        });
       }
       return parseEmbeddingResponse(responseBody);
     } finally {

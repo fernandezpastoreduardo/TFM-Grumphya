@@ -30,6 +30,7 @@ const API_PROBE = `
     password: process.env.PGPASSWORD,
     provider: process.env.EVALUATION_PROVIDER,
     openAiKey: process.env.OPENAI_API_KEY,
+    adminPasswordLoaded: process.env.ADMIN_PASSWORD === "admin-secret",
     host: process.env.PGHOST,
     apiHost: process.env.API_HOST,
     forwardedArguments: process.argv.slice(1),
@@ -95,7 +96,7 @@ describe("Docker service entrypoints", () => {
     writeSecret(
       secretsDirectory,
       OPENAI_KEY_FILE,
-      "OPENAI_API_KEY=api-secret\nPGUSER=must-not-replace-database-user\n",
+      "OPENAI_API_KEY=api-secret\nADMIN_PASSWORD=admin-secret\nPGUSER=must-not-replace-database-user\n",
     );
 
     const output = execFileSync(
@@ -114,6 +115,7 @@ describe("Docker service entrypoints", () => {
       password: string;
       provider: string;
       openAiKey: string;
+      adminPasswordLoaded: boolean;
       host: string;
       apiHost: string;
       forwardedArguments: string[];
@@ -129,6 +131,7 @@ describe("Docker service entrypoints", () => {
       password: "database-secret",
       provider: "openai",
       openAiKey: "api-secret",
+      adminPasswordLoaded: true,
       host: "db",
       apiHost: "0.0.0.0",
       forwardedArguments: ["app-argument"],

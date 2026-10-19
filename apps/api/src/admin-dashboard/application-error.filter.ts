@@ -1,0 +1,56 @@
+import {
+  ArgumentsHost,
+  Catch,
+  HttpException,
+  Inject,
+  Logger,
+} from "@nestjs/common";
+import { BaseExceptionFilter, HttpAdapterHost } from "@nestjs/core";
+import {
+  ADMIN_DASHBOARD_REPOSITORY,
+  type AdminDashboardRepository,
+} from "./admin-dashboard.models";
+
+const SAFE_ERROR_CODE_PATTERN = /^[A-Z0-9_]{1,100}$/u;
+const FIRST_PERSISTED_ERROR_STATUS = 500;
+
+@Catch()
+export class ApplicationErrorFilter extends BaseExceptionFilter {
+  private readonly logger = new Logger(ApplicationErrorFilter.name);
+
+  constructor(
+    adapterHost: HttpAdapterHost,
+    @Inject(ADMIN_DASHBOARD_REPOSITORY)
+    private readonly repository: AdminDashboardRepository,
+  ) {
+    super(adapterHost.httpAdapter);
+  }
+
+  override catch(exception: unknown, host: ArgumentsHost): void {
+    const statusCode =
+      exception instanceof HttpException ? exception.getStatus() : 500;
+    if (statusCode >= FIRST_PERSISTED_ERROR_STATUS) {
+      const errorCode = readErrorCode(exception, statusCode);
+      void this.repository
+        .recordApplicationError(errorCode, statusCode)
+        .catch(() => this.logger.error("APPLICATION_ERROR_PERSISTENCE_FAILED"));
+    }
+    super.catch(exception, host);
+  }
+}
+
+function readErrorCode(exception: unknown, statusCode: number): string {
+  if (exception instanceof HttpException) {
+    const response = exception.getResponse();
+    if (
+      typeof response === "object" &&
+      response !== null &&
+      "code" in response &&
+      typeof response.code === "string" &&
+      SAFE_ERROR_CODE_PATTERN.test(response.code)
+    ) {
+      return response.code;
+    }
+  }
+  return `HTTP_${statusCode}`;
+}

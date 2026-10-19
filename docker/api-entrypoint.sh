@@ -28,7 +28,7 @@ load_api_settings "$SECRETS_DIR/grumphya_env" \
   GRUMPHYA_DB_PASSWORD PGPASSWORD
 load_api_settings "$SECRETS_DIR/openai_settings" \
   EVALUATION_PROVIDER OPENAI_MODEL OPENAI_REASONING_EFFORT EVALUATION_TIMEOUT_MS
-load_api_settings "$SECRETS_DIR/openai_key" OPENAI_API_KEY
+load_api_settings "$SECRETS_DIR/openai_key" OPENAI_API_KEY ADMIN_PASSWORD
 
 export API_HOST=0.0.0.0
 export API_PORT=3000

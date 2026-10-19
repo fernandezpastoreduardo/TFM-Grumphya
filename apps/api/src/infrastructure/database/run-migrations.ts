@@ -67,6 +67,7 @@ const MIGRATIONS = [
   },
   { version: "021_user_avatar", file: "021_user_avatar.sql" },
   { version: "022_contact_messages", file: "022_contact_messages.sql" },
+  { version: "023_admin_dashboard", file: "023_admin_dashboard.sql" },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

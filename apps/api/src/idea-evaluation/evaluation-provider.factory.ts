@@ -4,6 +4,7 @@ import {
   type OpenAiReasoningEffort,
 } from "./openai-evaluation.port";
 import type { EvaluationPort } from "./evaluation-port";
+import type { AiUsageRecorder } from "../infrastructure/ai/ai-usage";
 
 const EVALUATION_PROVIDER_ENV = "EVALUATION_PROVIDER";
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
@@ -27,7 +28,9 @@ function getReasoningEffort(): OpenAiReasoningEffort {
   throw new Error("OPENAI_REASONING_EFFORT is not supported.");
 }
 
-export function createEvaluationProvider(): EvaluationPort | undefined {
+export function createEvaluationProvider(
+  usageRecorder?: AiUsageRecorder,
+): EvaluationPort | undefined {
   const selectedProvider = process.env[EVALUATION_PROVIDER_ENV];
   if (!selectedProvider) return undefined;
   if (selectedProvider !== SUPPORTED_PROVIDER) {
@@ -44,5 +47,6 @@ export function createEvaluationProvider(): EvaluationPort | undefined {
     apiKey,
     model: configuredModel || DEFAULT_OPENAI_MODEL,
     reasoningEffort: getReasoningEffort(),
+    usageRecorder,
   });
 }
