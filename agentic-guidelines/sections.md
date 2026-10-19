@@ -46,9 +46,9 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 5. Contact section:
    - The section hero uses the transparent `contact-hero-phone.png` Grumphya
-     illustration. The right callout uses `contact-coffee-inbox.png` over a
-     white UI surface. Both keep the established grumpy mascot identity and
-     use different poses.
+     illustration. The right callout uses `contact-message-tube.png` over a
+     white UI surface, with a side-on message-sending pose distinct from the
+     hero. Both keep the established grumpy mascot identity.
    - Features:
      - Visitors without a session see the demonstration form: interacting with it fades it out and opens the joke popup. It does not send or store a message.
      - Authenticated users see the `SubmitContactMessage` form in the same view. It stores a validated subject and message in PostgreSQL, linked to the session owner, and confirms that the message was recorded. It is available to any authenticated account, regardless of plan status.
