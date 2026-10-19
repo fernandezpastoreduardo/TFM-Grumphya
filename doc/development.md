@@ -168,18 +168,23 @@ presentación: no consumen cuota ni simulan respuestas de la API. Consulta
 ## Dictado de ideas
 
 `transcriptUserIdea` ofrece dictado temporal en español (`es-ES`) mediante la
-Web Speech API del navegador. Pulsa «Dictar idea» para solicitar el permiso del
-navegador; la transcripción se añade al campo y queda editable antes de enviar.
-Si el navegador no soporta la API, se deniega el permiso o no se detecta voz,
-se muestra un mensaje y la escritura manual sigue disponible. Al desmontar el
-control se detiene la sesión activa.
+Web Speech API cuando el navegador admite reconocimiento en el dispositivo.
+La integración requiere `processLocally = true`, comprueba que el paquete local
+de español esté disponible y lo instala en el dispositivo si hace falta. No
+inicia reconocimiento remoto como alternativa. Pulsa «Dictar idea» para
+solicitar el permiso del navegador; la transcripción se añade al campo y queda
+editable antes de enviar. Si el navegador no expone la API local, no dispone del
+paquete de español o deniega el permiso, se muestra un mensaje y la escritura
+manual sigue disponible. Al desmontar el control se detiene la sesión activa.
 
-El frontend no recibe ni persiste el audio. La implementación del navegador
-puede transferir voz a su propio servicio de reconocimiento; por eso la UI lo
-indica y esta integración no debe describirse como procesamiento local. El
-texto transcrito no se envía ni guarda por este flujo. El adaptador reusable
-está en `apps/web/src/shared/utils/speech-to-text.ts`; la interfaz propia de
-esta feature está en `apps/web/src/features/transcript-user-idea/`.
+El audio no se envía al servidor de Grumphya ni a un servicio remoto de
+transcripción. La descarga inicial del paquete de idioma la gestiona el
+navegador. Esta API es experimental y no está disponible en todos los
+navegadores; la función permanece desactivada donde no se puede garantizar el
+procesamiento local. El texto transcrito no se envía ni guarda por este flujo.
+El adaptador reusable está en
+`apps/web/src/shared/utils/speech-to-text.ts`; la interfaz propia de esta
+feature está en `apps/web/src/features/transcript-user-idea/`.
 
 La conversión voz-a-texto se comparte entre features porque también está
 prevista para el envío de roast; su botón y manejo de estado permanecen locales

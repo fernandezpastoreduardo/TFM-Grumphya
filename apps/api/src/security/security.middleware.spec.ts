@@ -46,6 +46,9 @@ describe("security middleware", () => {
     expect(headers.get("Referrer-Policy")).toBe(
       "strict-origin-when-cross-origin",
     );
+    expect(headers.get("Permissions-Policy")).toBe(
+      "camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)",
+    );
   });
 
   it("disables HTTP caching for private account responses", () => {

@@ -26,7 +26,7 @@ function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   response.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()",
+    "camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)",
   );
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   if (process.env.NODE_ENV === "production") {

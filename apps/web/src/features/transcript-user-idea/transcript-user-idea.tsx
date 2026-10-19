@@ -16,16 +16,22 @@ const DICTATE_LABEL = {
 } as const;
 const ERROR_MESSAGES: Record<SpeechToTextError, string> = {
   unsupported:
-    "Este navegador no trae dictado por voz. Puedes escribirla, qué remedio.",
+    "Este navegador no permite comprobar que el dictado se procese en el dispositivo. Puedes escribirla, qué remedio.",
+  "local-unavailable":
+    "El paquete de voz local en español no está disponible. No enviaremos el audio a otro servicio; puedes escribir la idea.",
   "permission-denied":
     "No hay permiso al micrófono. Puedes escribirla; no hace falta negociar con el navegador.",
   "no-speech": "No he oído nada. Prueba otra vez o escribe la idea.",
   failed:
-    "El dictado ha fallado. Tu texto sigue aquí; puedes escribir sin dramas.",
+    "El dictado local ha fallado. Tu audio no se envía a otro servicio; puedes escribir sin dramas.",
 };
+const PREPARING_STATUS = "Preparando el reconocimiento de voz local en español…";
+const LISTENING_STATUS =
+  "Escuchando en este dispositivo. Suelta la idea; luego podrás corregir la transcripción.";
 
 export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
   const [isListening, setIsListening] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [error, setError] = useState("");
   const sessionRef = useRef<SpeechToTextSession | null>(null);
 
@@ -39,6 +45,7 @@ export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
   function handleError(reason: SpeechToTextError) {
     sessionRef.current = null;
     setIsListening(false);
+    setIsPreparing(false);
     setError(ERROR_MESSAGES[reason]);
   }
 
@@ -48,16 +55,21 @@ export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
       sessionRef.current?.stop();
       sessionRef.current = null;
       setIsListening(false);
+      setIsPreparing(false);
       return;
     }
 
     setIsListening(true);
+    setIsPreparing(true);
     sessionRef.current = startSpeechToText({
       onTranscript,
       onError: handleError,
+      onPreparing: () => setIsPreparing(true),
+      onStart: () => setIsPreparing(false),
       onEnd: () => {
         sessionRef.current = null;
         setIsListening(false);
+        setIsPreparing(false);
       },
     });
     if (!sessionRef.current) setIsListening(false);
@@ -87,7 +99,7 @@ export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
       </button>
       {isListening ? (
         <span className="idea-dictation-status" role="status">
-          Escuchando. Suelta la idea; luego podrás corregir la transcripción.
+          {isPreparing ? PREPARING_STATUS : LISTENING_STATUS}
         </span>
       ) : null}
       {error ? (

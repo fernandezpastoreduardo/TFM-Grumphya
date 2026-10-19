@@ -16,8 +16,9 @@ describe("TranscriptUserIdea", () => {
     const onTranscript = vi.fn();
     const stop = vi.fn();
     vi.spyOn(speechToText, "startSpeechToText").mockImplementation(
-      ({ onTranscript: receiveTranscript }) => {
+      ({ onTranscript: receiveTranscript, onStart }) => {
         receiveTranscript(TRANSCRIBED_TEXT);
+        onStart?.();
         return { stop };
       },
     );
