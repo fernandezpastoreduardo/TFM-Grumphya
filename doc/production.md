@@ -16,9 +16,10 @@ La primera entrega no requiere Redis, Kubernetes, almacenamiento de archivos ni 
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm test
-pnpm typecheck
+pnpm format:check
 pnpm lint
+pnpm typecheck
+pnpm test
 pnpm build
 ```
 
