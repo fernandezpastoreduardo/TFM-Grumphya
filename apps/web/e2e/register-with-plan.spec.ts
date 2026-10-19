@@ -33,18 +33,21 @@ test("selects a plan, activates the simulated purchase and deletes the account f
       response.url().endsWith("/api/registrations") &&
       response.request().method() === "POST",
   );
-  const submitClick = page
-    .getByRole("button", { name: REGISTER_BUTTON_NAME })
-    .click();
-  const registrationResponse = await registrationResponsePromise;
-  expect(registrationResponse.status()).toBe(201);
-  await expect(
+  const accountPreparationHeadingPromise = expect(
     page.getByRole("heading", {
       name: /un momento\. estoy preparando tu cuenta/i,
     }),
   ).toBeVisible();
+  const submitClick = page
+    .getByRole("button", { name: REGISTER_BUTTON_NAME })
+    .click();
+  const [registrationResponse] = await Promise.all([
+    registrationResponsePromise,
+    accountPreparationHeadingPromise,
+    submitClick,
+  ]);
+  expect(registrationResponse.status()).toBe(201);
   await expect(page.getByRole("status")).toContainText(PAYMENT_NOTICE);
-  await submitClick;
   await expect(page).toHaveURL(/\/perfil$/, { timeout: 7_000 });
 
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();

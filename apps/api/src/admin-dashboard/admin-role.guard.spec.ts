@@ -30,4 +30,29 @@ describe("AdminRoleGuard", () => {
       status: 403,
     });
   });
+
+  it("does not authorize an inactive account even when it has the admin role", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const guard = new AdminRoleGuard({ query } as never);
+
+    await expect(
+      guard.canActivate(createContext("inactive-admin-id")),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("status='active'"),
+      ["inactive-admin-id"],
+    );
+  });
+
+  it("rejects a request without an authenticated user before querying roles", async () => {
+    const query = vi.fn();
+    const guard = new AdminRoleGuard({ query } as never);
+
+    await expect(
+      guard.canActivate({
+        switchToHttp: () => ({ getRequest: () => ({}) }),
+      } as never),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(query).not.toHaveBeenCalled();
+  });
 });

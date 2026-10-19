@@ -1,13 +1,13 @@
 import {
-  readTokenUsage,
-  recordAiUsageSafely,
-  type AiUsageRecorder,
-} from "./ai-usage";
-import {
   readAiTokenUsage,
   recordAiOperation,
   type AiTokenUsage,
 } from "../observability/ai-operation.telemetry";
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "./ai-usage";
 
 const OPENAI_EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings";
 const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";

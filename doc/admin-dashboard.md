@@ -28,8 +28,13 @@ backend reserva el alias `jappy` y sincroniza su contraseña desde
 `ADMIN_PASSWORD`. La variable se lee solo en el servidor y se elimina del
 entorno del proceso; el valor nunca se publica en la UI ni se registra. Debe
 tener entre 12 y 128 caracteres, con mayúscula, minúscula, número y carácter
-especial. Si el alias ya pertenece a una cuenta normal, el arranque falla sin
-cambiar su rol.
+especial. El registro público rechaza el alias reservado sin distinguir
+mayúsculas y minúsculas; el flujo de alta y el bootstrap comparten la misma
+constante para evitar que acepten nombres distintos. Si una cuenta normal
+existente ya posee el alias reservado, el arranque falla sin cambiar su rol.
+La contraseña de Jappy se guarda como hash bcrypt cost 12 con prehash SHA-256,
+igual que las contraseñas nuevas de las cuentas; nunca se guarda cifrada ni en
+texto claro.
 
 El bootstrap actual actualiza el hash y revoca las sesiones anteriores de
 Jappy en cada arranque, aunque la contraseña configurada no haya cambiado. Por
@@ -66,6 +71,35 @@ aprovisionamiento individual y controlado antes de producción; véase
   No se guardan rutas, payloads, ideas, mensajes de contacto, credenciales ni
   identificadores. La retención y purga de esta tabla siguen pendientes en
   [`wanna-bes.md`](../agentic-guidelines/wanna-bes.md).
+
+## Pestañas de análisis
+
+El panel `/panel-control` organiza el resumen y los mensajes de contacto en la
+pestaña **Resumen**, y añade tres vistas informativas de operación:
+
+- **Benchmark de evaluaciones y prompts** describe el corpus versionado de seis
+  casos sintéticos y cómo comparar acuerdo con las etiquetas y consistencia de
+  estado/motivo entre prompts y modelos. El panel ofrece el comando de ayuda;
+  las ejecuciones se lanzan desde un entorno de desarrollo con credenciales y
+  no se guardan ni se muestran como una ejecución reciente.
+- **Telemetría de operaciones de IA** muestra coste agregado y eventos sin
+  tarifa. Los eventos estructurados de stdout incluyen operación, modelo,
+  resultado, latencia, identificador aleatorio por llamada, tokens disponibles
+  y coste estimado; no incluyen ideas, mensajes, cuenta, IP ni identificadores
+  de sesión. La tabla administrativa de consumo sí conserva tokens y coste por
+  operación/modelo y puede asociar una cuenta para calcular promedios. La UI
+  presenta cifras agregadas y no expone ese identificador.
+- **Pruebas de seguridad** resume las pruebas de inyección de instrucciones,
+  cuotas, permisos y aislamiento entre cuentas. Las pruebas de integración que
+  requieren PostgreSQL crean esquemas aleatorios en la base temporal de CI; las
+  pruebas E2E usan una instancia aislada de API/web con repositorios en memoria,
+  no esa base PostgreSQL. CI también ejecuta auditoría de dependencias y análisis
+  de vulnerabilidades de la imagen. El detalle está en [`ci-cd.md`](ci-cd.md) y
+  [`ai-evaluation-and-observability.md`](ai-evaluation-and-observability.md).
+
+Las pestañas son información de operación y documentación. No lanzan
+benchmarks, escaneos ni pruebas desde el navegador.
+
 - Contacto: hasta 100 mensajes recientes, con alias, correo, asunto, contenido
   y fecha. El contenido no se escribe en logs. No existe respuesta dentro de la
   aplicación ni retención/purga automática; la baja física del usuario elimina

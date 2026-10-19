@@ -9,7 +9,6 @@ import {
   recordAiOperation,
   type AiTokenUsage,
 } from "../infrastructure/observability/ai-operation.telemetry";
-
 import {
   readTokenUsage,
   recordAiUsageSafely,
@@ -55,8 +54,8 @@ export type OpenAiEvaluationPortOptions = {
   apiKey: string;
   model?: string;
   reasoningEffort?: OpenAiReasoningEffort;
-  usageRecorder?: AiUsageRecorder;
   instructions?: string;
+  usageRecorder?: AiUsageRecorder;
 };
 
 const OPERATION_NAME = "idea_evaluation";
@@ -233,15 +232,15 @@ export class OpenAiEvaluationPort implements EvaluationPort {
   private readonly apiKey: string;
   private readonly model: string;
   private readonly reasoningEffort: OpenAiReasoningEffort;
-  private readonly usageRecorder?: AiUsageRecorder;
   private readonly instructions: string;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiEvaluationPortOptions) {
     this.apiKey = options.apiKey;
     this.model = options.model ?? DEFAULT_OPENAI_MODEL;
     this.reasoningEffort = options.reasoningEffort ?? DEFAULT_REASONING_EFFORT;
-    this.usageRecorder = options.usageRecorder;
     this.instructions = options.instructions ?? EVALUATION_INSTRUCTIONS;
+    this.usageRecorder = options.usageRecorder;
   }
 
   async evaluate(input: EvaluationPortInput): Promise<unknown> {
