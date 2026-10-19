@@ -69,10 +69,6 @@ describe("GetUserIdea", () => {
     expect(
       screen.getByText(/te quedan 4 de 11 evaluaciones disponibles hoy/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/el servidor comprueba los intentos de tu plan/i),
-    ).toBeInTheDocument();
-
     await user.type(
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       VALID_IDEA,

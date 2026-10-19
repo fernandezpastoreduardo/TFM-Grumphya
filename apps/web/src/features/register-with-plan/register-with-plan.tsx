@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
+import "./register-with-plan.scss";
 import { PaymentSimulationDialog } from "./components/PaymentSimulationDialog";
 import { setAccessToken } from "../../infrastructure/auth/session";
 
@@ -212,52 +213,63 @@ export function RegisterWithPlan() {
         >
           <span className="eyebrow">Plan seleccionado: {PLAN_NAMES[plan]}</span>
           <h2 id="registration-title">Vamos a ponerle nombre a la cuenta</h2>
-          <form onSubmit={submitRegistration} noValidate aria-busy={submitting}>
-            <label htmlFor="registration-email">Correo electrónico</label>
-            <input
-              id="registration-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              aria-invalid={errorField === "email"}
-              aria-describedby={
-                errorField === "email" ? "registration-error" : undefined
-              }
-            />
-            <label htmlFor="registration-username">Nombre de usuario</label>
-            <input
-              id="registration-username"
-              name="username"
-              autoComplete="username"
-              required
-              minLength={3}
-              maxLength={30}
-              aria-invalid={errorField === "username"}
-              aria-describedby={
-                errorField === "username" ? "registration-error" : undefined
-              }
-            />
-            <label htmlFor="registration-password">Contraseña</label>
-            <p id="registration-password-help">
-              Mínimo 12 caracteres, con mayúscula, minúscula, número y carácter
-              especial.
-            </p>
-            <input
-              id="registration-password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-              aria-describedby={
-                errorField === "password"
-                  ? "registration-error registration-password-help"
-                  : "registration-password-help"
-              }
-              aria-invalid={errorField === "password"}
-            />
+          <form
+            className="registration-form"
+            onSubmit={submitRegistration}
+            noValidate
+            aria-busy={submitting}
+          >
+            <div className="registration-field">
+              <label htmlFor="registration-email">Correo electrónico</label>
+              <input
+                id="registration-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                aria-invalid={errorField === "email"}
+                aria-describedby={
+                  errorField === "email" ? "registration-error" : undefined
+                }
+              />
+            </div>
+            <div className="registration-field">
+              <label htmlFor="registration-username">Nombre de usuario</label>
+              <input
+                id="registration-username"
+                name="username"
+                autoComplete="username"
+                required
+                minLength={3}
+                maxLength={30}
+                aria-invalid={errorField === "username"}
+                aria-describedby={
+                  errorField === "username" ? "registration-error" : undefined
+                }
+              />
+            </div>
+            <div className="registration-field">
+              <label htmlFor="registration-password">Contraseña</label>
+              <input
+                id="registration-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={12}
+                maxLength={128}
+                aria-describedby={
+                  errorField === "password"
+                    ? "registration-error registration-password-help"
+                    : "registration-password-help"
+                }
+                aria-invalid={errorField === "password"}
+              />
+              <p id="registration-password-help">
+                Mínimo 12 caracteres, con mayúscula, minúscula, número y
+                carácter especial.
+              </p>
+            </div>
             <label
               className="registration-privacy"
               htmlFor="privacy-policy-acknowledged"
@@ -277,6 +289,11 @@ export function RegisterWithPlan() {
               <span>
                 He leído la{" "}
                 <a href="/politica-de-privacidad">política de privacidad</a>.
+                {" "}
+                <span className="registration-terms-link">
+                  Consulta también los{" "}
+                  <a href="/terminos-y-condiciones">términos y condiciones</a>.
+                </span>
               </span>
             </label>
             {error ? (
@@ -297,7 +314,7 @@ export function RegisterWithPlan() {
                 ? "Dándote de alta…"
                 : submitted
                   ? "Alta enviada"
-                  : "Dáme de alta y te pago un café"}{" "}
+                  : "Dáme de alta un mes y te pago el café"}{" "}
               <span aria-hidden="true">↗</span>
             </button>
           </form>
@@ -305,18 +322,13 @@ export function RegisterWithPlan() {
             El plan se activa en el servidor. El pago se simula y no se procesa
             dinero real. La verificación del correo queda pendiente.
           </p>
-          <p className="auth-privacy">
-            Dura un mes y no se renueva automáticamente. Si quieres otro,
-            vuelves a contratar; no tendrás que cancelar nada. Aquí no ponemos
-            trampas de calendario.
-          </p>
         </section>
         <aside className="auth-aside">
-          <div className="auth-creature" aria-hidden="true" />
-          <h2>Tus ideas aprobadas son tuyas.</h2>
+          <div className="auth-creature auth-creature-register" aria-hidden="true" />
+          <h2>Un mes. Sin renovaciones automáticas.</h2>
           <p>
-            El servidor valida el plan elegido y activa la cuenta junto con la
-            suscripción simulada.
+            Si quieres otro, vuelves a contratar. No tendrás que cancelar nada;
+            aquí no ponemos trampas de calendario.
           </p>
         </aside>
       </div>

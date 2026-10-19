@@ -9,7 +9,6 @@ import { useMobileMenu } from "../hooks/use-mobile-menu";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 
 export type SectionPageMeta = {
-  label: string;
   title: string;
   intro: string;
   theme: "rose" | "blue" | "mint" | "calm";
@@ -22,7 +21,8 @@ export type SectionPageMeta = {
     | "worst-ideas"
     | "login"
     | "notable-humans"
-    | "contact";
+    | "contact"
+    | "register";
 };
 
 const SECTION_LINKS = [
@@ -137,10 +137,6 @@ function SectionHero({ page }: { page: SectionPageMeta }) {
   return (
     <section className={`section-hero section-hero-${page.theme}`}>
       <div className="section-hero-copy">
-        <span className="section-kicker">
-          <span className="kicker-dot" />
-          {page.label}
-        </span>
         <h1>
           <span className="section-hero-title-mark">{page.title}</span>
         </h1>

@@ -186,7 +186,7 @@
   width: 140px;
   height: 190px;
   flex: 0 0 140px;
-  background: url("/assets/grumphya/mascot-neutral.svg") center / contain
+  background: url("/assets/grumphya/home-idea-review.png") center / contain
     no-repeat;
   filter: drop-shadow(2px 3px 0 #286b7730);
   transform: scaleX(-1) rotate(3deg);
@@ -855,7 +855,7 @@
   right: -8px;
   left: -8px;
   height: clamp(138px, 15vw, 210px);
-  background: url("/assets/grumphya/stage-curtain.svg") center top /
+  background: url("/assets/grumphya/stage-curtain.png") center top /
     min(100%, 1440px) auto no-repeat;
   filter: blur(1.2px);
   opacity: 0.76;
@@ -1056,8 +1056,8 @@
 .home-stage-light {
   position: absolute;
   inset: 0;
-  background: url("/assets/grumphya/stage-spotlight.svg") center / contain
-    no-repeat;
+  background: linear-gradient(180deg, #fff1a4a8 0%, #fff1a460 68%, #fcd08930 100%);
+  clip-path: polygon(34% 0, 66% 0, 100% 100%, 0 100%);
 }
 
 .home-creature {
@@ -1066,7 +1066,7 @@
   bottom: 12px;
   width: min(56%, 195px);
   height: 77%;
-  background: url("/assets/grumphya/mascot-neutral.svg") center bottom / contain
+  background: url("/assets/grumphya/home-idea-review.png") center bottom / auto 100%
     no-repeat;
   filter: drop-shadow(2px 3px 0 #17212324);
   transform: translateX(50%) scaleX(-1);
@@ -1293,9 +1293,6 @@
     grid-row: 2;
     justify-self: end;
     margin-top: -5px;
-  }
-  .home-stage-light {
-    background-position: center 38%;
   }
   .home-creature {
     width: 144px;
@@ -1601,7 +1598,6 @@
 
 .home-stage-light {
   inset: 0;
-  background-position: center;
 }
 
 .home-creature {
@@ -1771,9 +1767,6 @@
     margin: -2px auto 0;
   }
 
-  .home-stage-light {
-    background-position: center 44%;
-  }
 
   .home-creature {
     bottom: 5%;

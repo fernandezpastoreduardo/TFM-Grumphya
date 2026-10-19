@@ -172,13 +172,6 @@ export function GetUserIdea({
           {getUsageMessage(remainingAttempts, quotaKind)}
         </p>
       ) : null}
-      <p className="idea-privacy-note">
-        El texto se procesa para evaluar la idea. Si se rechaza, conservamos un
-        título genérico y una representación matemática para detectar envíos
-        parecidos; no guardamos el texto original. {getQuotaPrivacyCopy(quotaKind)}
-        El dictado usa el servicio de voz de tu navegador: revisa la
-        transcripción antes de enviar.
-      </p>
     </form>
   );
 }
@@ -196,10 +189,4 @@ function getUsageMessage(
   if (remainingAttempts === 0)
     return "Has agotado tus tres evaluaciones gratuitas en este navegador. Consulta los planes para continuar.";
   return `Te quedan ${remainingAttempts} de 3 evaluaciones gratuitas en este navegador.`;
-}
-
-function getQuotaPrivacyCopy(quotaKind: "anonymous" | "account"): string {
-  if (quotaKind === "account")
-    return "El servidor comprueba los intentos de tu plan y los reinicia cada día. ";
-  return "Una cookie recuerda tus tres usos gratuitos y una señal temporal derivada de la IP ayuda a frenar la creación repetida de perfiles. ";
 }
