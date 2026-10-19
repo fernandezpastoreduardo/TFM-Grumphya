@@ -220,18 +220,18 @@
 }
 .section-hero-mascot.mascot-plans {
   background-image: url("/assets/grumphya/plans-coffee.png");
-  transform: none;
+  transform: scaleX(-1);
 }
 .section-hero-mascot.mascot-good-practices {
-  background-image: url("/assets/grumphya/good-practices-thumbs-up-slippers.png");
+  background-image: url("/assets/grumphya/good-practices-checklist.png");
   transform: none;
 }
 .section-hero-mascot.mascot-notable-humans {
-  background-image: url("/assets/grumphya/notable-humans-medal.png");
+  background-image: url("/assets/grumphya/notable-humans-hero.png");
   transform: none;
 }
 .section-hero-mascot.mascot-contact {
-  background-image: url("/assets/grumphya/contact-envelope.png");
+  background-image: url("/assets/grumphya/contact-hero-phone.png");
   transform: none;
 }
 .section-hero-mascot.mascot-roast {
@@ -245,15 +245,6 @@
 .section-hero-mascot.mascot-login {
   background-image: url("/assets/grumphya/login-credentials.png");
   transform: none;
-}
-.hero-scribble {
-  position: absolute;
-  right: 24%;
-  bottom: 23px;
-  rotate: -8deg;
-  font:
-    700 1rem "Fredoka",
-    sans-serif;
 }
 .section-content-grid {
   display: grid;
@@ -341,9 +332,6 @@
     height: 166px;
     margin-right: -23px;
     margin-bottom: -25px;
-  }
-  .hero-scribble {
-    display: none;
   }
   .section-content-grid {
     gap: 12px;
@@ -1128,11 +1116,6 @@
   filter: drop-shadow(2px 4px 0 #1a4e5026);
 }
 
-.hero-scribble {
-  right: 23%;
-  bottom: 20px;
-}
-
 @media (max-width: 979px) {
   .app-page {
     --header-start: var(--header-start-mobile);
@@ -1182,10 +1165,6 @@
     margin-bottom: -4px;
   }
 
-  .hero-scribble {
-    right: 22%;
-    bottom: 10px;
-  }
 }
 
 .site-mobile-menu nav[hidden] {
@@ -1581,5 +1560,92 @@
 @media (max-width: 640px) {
   .section-main {
     gap: 18px;
+  }
+}
+
+@keyframes section-copy-enter {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes section-mascot-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -7px;
+  }
+}
+
+@keyframes section-scroll-rise {
+  from {
+    opacity: 0.25;
+    translate: 0 28px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.section-hero-copy {
+  animation: section-copy-enter 650ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.section-hero-mascot {
+  animation: section-mascot-float 5.8s ease-in-out 500ms infinite;
+}
+
+.section-main :is(button, a) {
+  transition:
+    translate 180ms ease,
+    scale 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.section-main :is(button, a):hover {
+  translate: 0 -2px;
+}
+
+.section-main :is(button, a):active {
+  scale: 0.98;
+}
+
+@supports (animation-timeline: view()) {
+  .section-content-grid > *,
+  .section-main > .contact-layout,
+  .section-main > .humans-layout,
+  .section-main > .practices-page {
+    animation: section-scroll-rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 28%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-hero-copy,
+  .section-hero-mascot,
+  .section-main > .contact-layout,
+  .section-main > .humans-layout,
+  .section-main > .practices-page,
+  .section-content-grid > * {
+    animation: none;
+  }
+
+  .section-main :is(button, a) {
+    transition: none;
+  }
+
+  .section-main :is(button, a):hover,
+  .section-main :is(button, a):active {
+    translate: none;
+    scale: none;
   }
 }

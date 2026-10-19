@@ -147,9 +147,6 @@ function SectionHero({ page }: { page: SectionPageMeta }) {
         role="img"
         aria-label="Grumphya, la criatura que examina las ideas"
       />
-      <span className="hero-scribble" aria-hidden="true">
-        ¿en serio?
-      </span>
     </section>
   );
 }

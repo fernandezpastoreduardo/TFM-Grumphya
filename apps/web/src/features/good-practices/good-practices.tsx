@@ -54,7 +54,7 @@ export function GoodPractices() {
       <aside className="calm-note">
         <img
           className="calm-mascot"
-          src="/assets/grumphya/good-practices-problem-scout.png"
+          src="/assets/grumphya/good-practices-validate-idea.png"
           alt=""
           aria-hidden="true"
         />

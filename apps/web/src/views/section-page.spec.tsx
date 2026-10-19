@@ -16,7 +16,7 @@ describe("SectionPage", () => {
   });
 
   it("loads the selected feature without rendering other section content", async () => {
-    render(<SectionPage path="/precios" />);
+    const { container } = render(<SectionPage path="/precios" />);
 
     expect(
       await screen.findByRole("heading", { level: 2, name: "Iluminado" }),
@@ -24,6 +24,7 @@ describe("SectionPage", () => {
     expect(
       screen.queryByText(/quiero una app que haga mi trabajo mientras duermo/i),
     ).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/¿en serio\?/i);
   });
 
   it("routes the terms page and presents the idea processing notice there", async () => {

@@ -47,11 +47,29 @@
   font-size: 0.8rem;
 }
 .contact-side {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  overflow: hidden;
+  border: 2px solid #d5e7e2;
+  border-radius: 24px;
+  padding: 20px;
+  color: #172123;
+  background: #fff;
+  box-shadow: 0 8px 24px #102e2b14;
   text-align: center;
+  transition:
+    translate 220ms ease,
+    box-shadow 220ms ease;
+}
+.contact-side:hover {
+  translate: 0 -4px;
+  box-shadow: 0 14px 30px #102e2b24;
 }
 .contact-creature {
-  height: 260px;
-  background: url("/assets/grumphya/mascot-neutral.svg") center
+  width: min(100%, 290px);
+  height: 270px;
+  background: url("/assets/grumphya/contact-coffee-inbox.png") center
     bottom / contain no-repeat;
 }
 .contact-side p {
@@ -68,6 +86,11 @@
 
 .theme-dark .contact-plan-note {
   color: #334b4b;
+}
+.theme-dark .contact-side {
+  border-color: #d5e7e2;
+  color: #172123;
+  background: #fff;
 }
 .contact-layout {
   grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.85fr);
@@ -92,5 +115,12 @@
 @media (prefers-reduced-motion: reduce) {
   .contact-card form {
     transition: none;
+  }
+  .contact-side {
+    transition: none;
+  }
+
+  .contact-side:hover {
+    translate: none;
   }
 }

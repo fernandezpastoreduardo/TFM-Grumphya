@@ -169,7 +169,9 @@ describe("startSpeechToText", () => {
 
     startSpeechToText({ onTranscript: vi.fn(), onError, onEnd });
 
-    await waitFor(() => expect(onError).toHaveBeenCalledWith("local-unavailable"));
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith("local-unavailable"),
+    );
     expect(recognizer.start).not.toHaveBeenCalled();
     expect(onEnd).toHaveBeenCalledOnce();
   });
