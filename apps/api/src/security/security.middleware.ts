@@ -20,6 +20,7 @@ const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
 
 type RateLimitBucket = { count: number; resetAt: number };
+type SecurityMiddlewareOptions = { sessionRefreshRequestLimit?: number };
 
 function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -38,7 +39,14 @@ function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
   }
 }
 
-export function createSecurityMiddleware(): RequestHandler {
+export function createSecurityMiddleware(
+  options: SecurityMiddlewareOptions = {},
+): RequestHandler {
+  const sessionRefreshRequestLimit =
+    Number.isSafeInteger(options.sessionRefreshRequestLimit) &&
+    Number(options.sessionRefreshRequestLimit) > 0
+      ? Number(options.sessionRefreshRequestLimit)
+      : REGISTRATION_VERIFY_REQUEST_LIMIT;
   const buckets = new Map<string, RateLimitBucket>();
   let requestCount = 0;
 
@@ -171,10 +179,12 @@ export function createSecurityMiddleware(): RequestHandler {
                 ? CONTACT_MESSAGE_REQUEST_LIMIT
                 : registrationScope === "registration-intent"
                   ? REGISTRATION_INTENT_REQUEST_LIMIT
-                  : registrationScope === "registration-verification" ||
-                      isRefreshPost
-                    ? REGISTRATION_VERIFY_REQUEST_LIMIT
-                    : REGISTRATION_REQUEST_LIMIT;
+                  : registrationScope === "session-refresh"
+                    ? sessionRefreshRequestLimit
+                    : registrationScope === "registration-verification" ||
+                        isRefreshPost
+                      ? REGISTRATION_VERIFY_REQUEST_LIMIT
+                      : REGISTRATION_REQUEST_LIMIT;
     const limits: ReadonlyArray<readonly [string, number]> = isEvaluation
       ? [
           ["api", API_REQUEST_LIMIT],

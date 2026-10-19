@@ -70,7 +70,9 @@ async function startEvaluationTestServer(): Promise<void> {
   );
   application.setGlobalPrefix("api");
   application.useBodyParser("json", { limit: BODY_LIMIT });
-  application.use(createSecurityMiddleware());
+  application.use(
+    createSecurityMiddleware({ sessionRefreshRequestLimit: 100 }),
+  );
   application.use("/api/health", (_request: Request, response: Response) => {
     response
       .status(200)
