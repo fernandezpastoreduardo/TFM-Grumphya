@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { validateModelDecision } from "../src/idea-evaluation/evaluation-decision";
+import { readBenchmarkPromptFile } from "../src/idea-evaluation/benchmark-prompt-file";
 import {
   EVALUATION_INSTRUCTIONS,
   OpenAiEvaluationPort,
@@ -80,14 +81,11 @@ async function loadPrompts(files: string[]): Promise<PromptVariant[]> {
         throw new Error(USAGE_MESSAGE);
       }
       const name = entry.slice(0, separator).trim();
-      const filePath = resolve(
-        __dirname,
-        "../../../",
+      const instructions = await readBenchmarkPromptFile(
+        resolve(__dirname, "../../../"),
         entry.slice(separator + 1).trim(),
       );
-      const instructions = (await readFile(filePath, "utf8")).trim();
-      if (!name || !instructions)
-        throw new Error("La variante de prompt no es válida.");
+      if (!name) throw new Error("La variante de prompt no es válida.");
       return { name, instructions };
     }),
   );
