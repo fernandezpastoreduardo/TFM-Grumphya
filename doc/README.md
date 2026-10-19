@@ -15,6 +15,8 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts de por vida por perfil de nav
 - [Desarrollo local](development.md)
 - [Límites de uso anónimo](anonymous-usage.md)
 - [Producción](production.md)
+- [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md)
+- [CI/CD y seguridad de la imagen](ci-cd.md)
 - [Usuarios, credenciales y secretos](credentials.md)
 - [Perfil, contratación de plan y avatar](user-profile.md)
 - [Baja física de cuenta](user-delete.md)

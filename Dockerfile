@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24.20.0-bookworm-slim
 
 ENV COREPACK_HOME=/usr/local/share/corepack
 RUN corepack enable && corepack prepare pnpm@12.5.1 --activate
