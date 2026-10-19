@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const DESKTOP_VIEWPORT = { width: 1200, height: 1000 };
 const HERO_ASSETS = [
@@ -23,6 +23,30 @@ const HERO_ASSETS = [
     asset: "/assets/grumphya/plans-coffee.png",
   },
 ] as const;
+
+async function assetHasTransparentPixels(page: Page, assetPath: string) {
+  return page.evaluate(async (path) => {
+    const image = new Image();
+    image.src = path;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return false;
+    context.drawImage(image, 0, 0);
+    const pixels = context.getImageData(
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    ).data;
+    for (let alphaIndex = 3; alphaIndex < pixels.length; alphaIndex += 4) {
+      if (pixels[alphaIndex] < 255) return true;
+    }
+    return false;
+  }, assetPath);
+}
 
 test("keeps the Home hero and workspace spacing at desktop width", async ({
   page,
@@ -80,6 +104,26 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   expect(homeHero.backgroundPosition).toBe("50% 100%");
 });
 
+test("uses Grumphya's navigation logo as the site favicon", async ({ page }) => {
+  await page.goto("/precios");
+  const favicon = page.locator('link[rel="icon"]');
+  await expect(favicon).toHaveAttribute(
+    "href",
+    "/assets/grumphya/mascot-isotype.svg",
+  );
+  const navigationLogo = await page
+    .locator(".brand-mark")
+    .evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(navigationLogo).toContain(
+    "/assets/grumphya/mascot-isotype.svg",
+  );
+  const response = await page.request.get(
+    "/assets/grumphya/mascot-isotype.svg",
+  );
+  expect(response.ok()).toBe(true);
+  expect(await response.text()).toContain("Grumphya, cara del logotipo");
+});
+
 test("places the roast ranking beside the chat on desktop and below it on mobile", async ({
   page,
 }) => {
@@ -125,33 +169,22 @@ test("uses the section hero assets with transparent pixels", async ({
     );
     expect(backgroundImage).toContain(hero.asset);
 
-    const assetIsTransparent = await page.evaluate(async (assetPath) => {
-      const image = new Image();
-      image.src = assetPath;
-      await image.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext("2d");
-      if (!context) return false;
-      context.drawImage(image, 0, 0);
-      const pixels = context.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      ).data;
-      for (let alphaIndex = 3; alphaIndex < pixels.length; alphaIndex += 4) {
-        if (pixels[alphaIndex] < 255) return true;
-      }
-      return false;
-    }, hero.asset);
+    const assetIsTransparent = await assetHasTransparentPixels(page, hero.asset);
 
     expect(
       assetIsTransparent,
       `${hero.asset} should have transparent pixels`,
     ).toBe(true);
   }
+});
+
+test("serves the profile hero as a transparent PNG", async ({ page }) => {
+  await page.goto("/login");
+  const profileAsset = "/assets/grumphya/profile-account-shield.png";
+  const response = await page.request.get(profileAsset);
+  expect(response.ok()).toBe(true);
+  expect(response.headers()["content-type"]).toContain("image/png");
+  expect(await assetHasTransparentPixels(page, profileAsset)).toBe(true);
 });
 
 test("removes the hero scribble and mirrors the plans mascot", async ({
@@ -198,8 +231,20 @@ test("keeps the contact illustration card white and uses the updated art", async
   expect(contactStyle.backgroundColor).toBe("rgb(255, 255, 255)");
   expect(contactStyle.transitionProperty).toContain("translate");
   expect(contactStyle.illustration).toContain(
-    "/assets/grumphya/contact-coffee-inbox.png",
+    "/assets/grumphya/contact-message-tube.png",
   );
+  const contactIllustrationIsTransparent = await assetHasTransparentPixels(
+    page,
+    "/assets/grumphya/contact-message-tube.png",
+  );
+  expect(contactIllustrationIsTransparent).toBe(true);
+
+  await page.evaluate(() => localStorage.setItem("grumphya-theme", "light"));
+  await page.reload();
+  const lightCardBackground = await contactCard.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  expect(lightCardBackground).toBe("rgb(255, 255, 255)");
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await contactCard.hover();
