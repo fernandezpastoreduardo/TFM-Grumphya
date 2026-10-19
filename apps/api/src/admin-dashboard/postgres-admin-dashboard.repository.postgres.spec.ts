@@ -43,7 +43,6 @@ describe.skipIf(!DATABASE_URL)("admin dashboard AI cost attribution", () => {
       ALTER TABLE admin_ai_usage_events
         DROP CONSTRAINT admin_ai_usage_events_actor_type_check,
         DROP COLUMN actor_type;
-      DROP INDEX admin_ai_usage_events_actor_occurred_at_idx;
       DELETE FROM schema_migrations
         WHERE version = '024_admin_ai_usage_attribution';
     `);
