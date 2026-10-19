@@ -26,6 +26,26 @@ describe("SectionPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("routes the terms page and presents the idea processing notice there", async () => {
+    render(<SectionPage path="/terminos-y-condiciones" />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Términos y condiciones",
+      }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Tratamiento de las ideas y los dictados",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/no guardamos el texto original/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows the 404 page for an unknown path", () => {
     render(<SectionPage path="/no-existe" />);
 

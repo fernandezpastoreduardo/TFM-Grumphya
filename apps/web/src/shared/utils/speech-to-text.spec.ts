@@ -1,3 +1,4 @@
+import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { startSpeechToText } from "./speech-to-text";
 
@@ -6,6 +7,7 @@ const TRANSCRIPT_TEXT = "Una aplicación para compartir libros";
 function installSpeechRecognitionMock() {
   const recognizer = {
     lang: "",
+    processLocally: false,
     interimResults: true,
     continuous: true,
     onresult: null as ((event: unknown) => void) | null,
@@ -16,6 +18,10 @@ function installSpeechRecognitionMock() {
   };
   const constructor = vi.fn(function SpeechRecognitionMock() {
     return recognizer;
+  });
+  Object.assign(constructor, {
+    available: vi.fn().mockResolvedValue("available"),
+    install: vi.fn().mockResolvedValue(true),
   });
   Object.defineProperty(window, "SpeechRecognition", {
     configurable: true,
@@ -30,15 +36,16 @@ afterEach(() => {
 });
 
 describe("startSpeechToText", () => {
-  it("starts Spanish recognition and returns final speech as text", () => {
+  it("starts local Spanish recognition and returns final speech as text", async () => {
     const { recognizer, constructor } = installSpeechRecognitionMock();
     const onTranscript = vi.fn();
     const onError = vi.fn();
 
     const session = startSpeechToText({ onTranscript, onError });
 
-    expect(constructor).toHaveBeenCalledOnce();
+    await waitFor(() => expect(constructor).toHaveBeenCalledOnce());
     expect(recognizer.lang).toBe("es-ES");
+    expect(recognizer.processLocally).toBe(true);
     expect(recognizer.interimResults).toBe(false);
     expect(recognizer.continuous).toBe(false);
     expect(recognizer.start).toHaveBeenCalledOnce();
@@ -62,10 +69,11 @@ describe("startSpeechToText", () => {
     expect(onTranscript).not.toHaveBeenCalled();
   });
 
-  it("ignores malformed browser events and does not deliver a result twice", () => {
+  it("ignores malformed browser events and does not deliver a result twice", async () => {
     const { recognizer } = installSpeechRecognitionMock();
     const onTranscript = vi.fn();
     startSpeechToText({ onTranscript, onError: vi.fn() });
+    await waitFor(() => expect(recognizer.start).toHaveBeenCalledOnce());
 
     recognizer.onresult?.({ results: "not a result list" });
     recognizer.onresult?.({
@@ -81,7 +89,7 @@ describe("startSpeechToText", () => {
     expect(onTranscript).toHaveBeenCalledWith(TRANSCRIPT_TEXT);
   });
 
-  it("signals when the browser ends recognition naturally", () => {
+  it("signals when the browser ends recognition naturally", async () => {
     const { recognizer } = installSpeechRecognitionMock();
     const onEnd = vi.fn();
     startSpeechToText({
@@ -89,17 +97,19 @@ describe("startSpeechToText", () => {
       onError: vi.fn(),
       onEnd,
     });
+    await waitFor(() => expect(recognizer.start).toHaveBeenCalledOnce());
 
     recognizer.onend?.();
 
     expect(onEnd).toHaveBeenCalledOnce();
   });
 
-  it("classifies microphone permission errors without exposing raw browser errors", () => {
+  it("classifies microphone permission errors without exposing raw browser errors", async () => {
     const { recognizer } = installSpeechRecognitionMock();
     const onError = vi.fn();
 
     startSpeechToText({ onTranscript: vi.fn(), onError });
+    await waitFor(() => expect(recognizer.start).toHaveBeenCalledOnce());
     recognizer.onerror?.({ error: "not-allowed", message: "private detail" });
 
     expect(onError).toHaveBeenCalledWith("permission-denied");
@@ -108,15 +118,68 @@ describe("startSpeechToText", () => {
     );
   });
 
-  it("stops an active recognition session", () => {
+  it("stops an active recognition session", async () => {
     const { recognizer } = installSpeechRecognitionMock();
     const session = startSpeechToText({
       onTranscript: vi.fn(),
       onError: vi.fn(),
     });
+    await waitFor(() => expect(recognizer.start).toHaveBeenCalledOnce());
 
     session?.stop();
 
     expect(recognizer.stop).toHaveBeenCalledOnce();
+  });
+
+  it("installs a missing local Spanish speech pack before recognition", async () => {
+    const { recognizer, constructor } = installSpeechRecognitionMock();
+    const recognitionApi = constructor as unknown as {
+      available: ReturnType<typeof vi.fn>;
+      install: ReturnType<typeof vi.fn>;
+    };
+    recognitionApi.available.mockResolvedValue("downloadable");
+    const onPreparing = vi.fn();
+
+    startSpeechToText({
+      onTranscript: vi.fn(),
+      onError: vi.fn(),
+      onPreparing,
+    });
+
+    await waitFor(() => expect(recognizer.start).toHaveBeenCalledOnce());
+    expect(onPreparing).toHaveBeenCalledOnce();
+    expect(recognitionApi.install).toHaveBeenCalledWith({
+      langs: ["es-ES"],
+      processLocally: true,
+      quality: "dictation",
+    });
+    expect(recognizer.processLocally).toBe(true);
+  });
+
+  it("does not fall back to remote recognition when local Spanish is unavailable", async () => {
+    const { recognizer, constructor } = installSpeechRecognitionMock();
+    const recognitionApi = constructor as unknown as {
+      available: ReturnType<typeof vi.fn>;
+    };
+    recognitionApi.available.mockResolvedValue("unavailable");
+    const onError = vi.fn();
+
+    startSpeechToText({ onTranscript: vi.fn(), onError });
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith("local-unavailable"),
+    );
+    expect(recognizer.start).not.toHaveBeenCalled();
+  });
+
+  it("does not start recognition when the browser lacks the local-only setting", async () => {
+    const { recognizer } = installSpeechRecognitionMock();
+    Reflect.deleteProperty(recognizer, "processLocally");
+    const onError = vi.fn();
+
+    startSpeechToText({ onTranscript: vi.fn(), onError });
+
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("unsupported"));
+    expect(recognizer.start).not.toHaveBeenCalled();
   });
 });

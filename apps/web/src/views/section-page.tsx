@@ -8,7 +8,6 @@ import { ErrorPages } from "../features/error-pages/error-pages";
 
 const PAGE_META: Record<string, SectionPageMeta> = {
   "/lo-peor-de-lo-peor": {
-    label: "Ranking semanal · ideas rechazadas",
     title: "El muro de la vergüenza",
     intro:
       "Una pequeña clasificación de ocurrencias que se han ganado una pausa y una conversación seria.",
@@ -16,7 +15,6 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "worst-ideas",
   },
   "/descargate": {
-    label: "Tres envíos gratis por navegador",
     title: "Descárgate a gusto",
     intro:
       "Suelta el insulto. Yo pongo la cara de haber leído cosas peores. Probablemente.",
@@ -24,7 +22,6 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "roast",
   },
   "/humanos-notables": {
-    label: "Clasificación de ideas aprobadas",
     title: "Humanos notables",
     intro:
       "Un aplauso para quien ha traído una idea con algo más que optimismo y una presentación bonita.",
@@ -32,7 +29,6 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "notable-humans",
   },
   "/buenas-practicas": {
-    label: "Una pausa para pensar",
     title: "Primero el problema. Luego el código.",
     intro:
       "Validar una necesidad antes de construir ayuda a cuidar el tiempo, el presupuesto y la energía del equipo.",
@@ -40,7 +36,6 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "good-practices",
   },
   "/precios": {
-    label: "Planes sencillos · contratación simulada",
     title: "Once usos. Sí, once.",
     intro:
       "Elige qué quieres poner a prueba. La compra todavía es una simulación: aquí no se mueve dinero.",
@@ -48,7 +43,6 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "plans",
   },
   "/contacto": {
-    label: "Contacto",
     title: "¿Necesitas decirlo en voz alta?",
     intro:
       "El formulario existe. Mi interés por recibirlo está en fase de evaluación.",
@@ -56,7 +50,6 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "contact",
   },
   "/login": {
-    label: "Tu cuenta",
     title: "Ah, has vuelto.",
     intro:
       "Entra para consultar tu historial y el estado real de tu plan. La nostalgia es opcional.",
@@ -64,31 +57,34 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     mascot: "login",
   },
   "/crear-cuenta": {
-    label: "Crear cuenta · plan seleccionado en el servidor",
     title: "Una cuenta. Un plan. Sin letra pequeña de película.",
     intro:
       "La contratación de esta versión es simulada. No introduzcas datos bancarios porque no hacen falta.",
     theme: "blue",
+    mascot: "register",
   },
   "/perfil": {
-    label: "Tu cuenta",
     title: "Tu cuenta. Tus planes. Tus intentos.",
     intro:
       "Aquí tienes el estado de tu contratación simulada y tus datos. La cuenta ya está activa; el correo todavía está pendiente de verificación.",
     theme: "mint",
   },
   "/verificar-cuenta": {
-    label: "Verificación de correo",
     title: "Una última comprobación",
     intro:
       "Validamos el enlace. Después decidirás si confirmas la contratación simulada.",
     theme: "mint",
   },
   "/politica-de-privacidad": {
-    label: "Información provisional",
     title: "Política de privacidad",
     intro:
       "La información de privacidad se completará antes de abrir el registro al público.",
+    theme: "calm",
+  },
+  "/terminos-y-condiciones": {
+    title: "Términos y condiciones",
+    intro:
+      "Cómo funciona Grumphya y qué ocurre con las ideas que compartes.",
     theme: "calm",
   },
 };
@@ -146,6 +142,11 @@ const SECTION_CONTENT_BY_PATH: Record<
     import("../features/register-with-plan/privacy-policy").then((module) => ({
       default: module.PrivacyPolicy,
     })),
+  ),
+  "/terminos-y-condiciones": lazy(() =>
+    import("../features/register-with-plan/terms-and-conditions").then(
+      (module) => ({ default: module.TermsAndConditions }),
+    ),
   ),
 };
 

@@ -101,12 +101,13 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 9. Create account
    - Features
      - Crear cuenta solo al seleccionar Iluminado o Faltón; el nivel gratuito anónimo no requiere registro.
-     - Solicitar email, alias, contraseña y una casilla desmarcada «He leído la política de privacidad» con enlace a `/politica-de-privacidad`. El servidor registra la versión y hora de la política presentada; marcarla no es un consentimiento genérico para cualquier tratamiento.
+     - Solicitar email, alias, contraseña y una casilla desmarcada «He leído la política de privacidad» enlazada a `/politica-de-privacidad`. La casilla obligatoria envía `privacyPolicyAcknowledged`; el servidor registra la versión y hora de la política presentada. Un texto auxiliar permite consultar `/terminos-y-condiciones` por separado y no añade otra aceptación. Marcar la casilla no es un consentimiento genérico para cualquier tratamiento.
      - Validar sintaxis de email y alias. Para conflictos de email y alias existentes, mostrar respuesta deliberadamente genérica e idéntica; no confirmar qué dato existe. Los detalles de validación y límites están en `features.md` y `Dtos.md`.
      - Flujo implementado: elegir plan mediante POST → URL limpia `/crear-cuenta` → alta directa y activación simulada en una transacción → emitir sesión → mostrar popup de pago simulado cinco segundos → navegar al perfil. No se procesa dinero ni se piden datos bancarios.
      - La cuenta y el plan quedan activos al completar el alta; el correo permanece sin verificar hasta implementar la verificación de nuevas altas. Esta deuda está en `wanna-bes.md`. El login y la sesión con access JWT ya están implementados; la autenticación de dos factores sigue pendiente.
      - Los reintentos son idempotentes y no duplican cuenta, compra o activaciones. Los permisos y las fechas de vigencia se calculan en servidor y la UI muestra el perfil dinámico.
      - Si no hay intención de alta, está caducada o fue consumida, ofrecer volver a precios y elegir plan.
+     - El CTA ofrece el plan por un mes. El panel lateral aclara que no hay renovación automática y que, si se desea otro mes, se vuelve a contratar. Tras el alta se muestra el modal de pago simulado durante cinco segundos y se navega al perfil.
 
 10. Política de privacidad
 
@@ -114,6 +115,11 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 - Vista provisional con título y estilos del sitio, claramente identificada como contenido pendiente de completar. No debe presentarse como una política legal completa ni habilitar altas públicas hasta que se publique la información requerida.
 - La función de avatar envía la imagen procesada a OpenAI para moderación y publica la imagen aprobada en el perfil, el nav y rankings. La política debe identificar finalidad, proveedor, conservación, base jurídica y derechos antes de habilitar el servicio a usuarios reales.
 - El enlace desde el formulario de alta debe ser visible, descriptivo, accesible por teclado y abrir la ruta interna.
+
+11. Términos y condiciones
+
+- Path: `/terminos-y-condiciones`
+- Presenta el resumen sobre tratamiento de ideas y dictados que antes aparecía en Home. No sustituye la política de privacidad completa, que permanece provisional.
 
 ## Delivery boundary
 

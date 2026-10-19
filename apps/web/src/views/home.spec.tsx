@@ -93,6 +93,21 @@ describe("Home", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the long idea-processing notice out of the Home form", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+    const { container } = render(<Home />);
+
+    const ideaForm = container.querySelector(".idea-form");
+    expect(ideaForm).not.toBeNull();
+    if (!ideaForm) throw new Error("Idea form is missing from Home.");
+    expect(ideaForm).not.toHaveTextContent(
+      /el texto se procesa para evaluar la idea/i,
+    );
+    expect(ideaForm).not.toHaveTextContent(
+      /una cookie recuerda tus tres usos gratuitos/i,
+    );
+  });
+
   it("switches between light and dark themes using an accessible control", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(

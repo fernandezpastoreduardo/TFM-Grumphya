@@ -1,0 +1,39 @@
+.auth-card form.registration-form {
+  gap: 20px;
+}
+
+.registration-field {
+  display: grid;
+  gap: 6px;
+}
+
+.registration-field label {
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.registration-field input {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid #78aaa0;
+  border-radius: 13px;
+  padding: 11px 13px;
+  color: #183234;
+  background: #fff;
+}
+
+.registration-password-help {
+  margin: 0;
+  color: #405c5b;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.auth-creature-register {
+  background-image: url("/assets/grumphya/create-account-plan.png");
+}
+
+.section-hero-mascot.mascot-register {
+  background-image: url("/assets/grumphya/create-account-hero.png");
+  transform: none;
+}

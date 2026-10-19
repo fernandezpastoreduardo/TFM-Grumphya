@@ -7,7 +7,13 @@ const API_PROXY_TARGET =
 export default defineConfig({
   plugins: [react()],
   build: { cssCodeSplit: true },
-  server: { proxy: { "/api": API_PROXY_TARGET } },
+  server: {
+    headers: {
+      "Permissions-Policy":
+        "microphone=(self), on-device-speech-recognition=(self)",
+    },
+    proxy: { "/api": API_PROXY_TARGET },
+  },
   test: {
     environment: "jsdom",
     setupFiles: "./src/test-setup.ts",

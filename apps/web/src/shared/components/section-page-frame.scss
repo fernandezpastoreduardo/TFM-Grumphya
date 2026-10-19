@@ -189,31 +189,9 @@
   z-index: 1;
   max-width: 660px;
 }
-.section-kicker {
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-.section-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 7px 11px;
-  background: #ffffff67;
-}
-.kicker-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #a32d4e;
-  box-shadow: 0 0 0 3px #a32d4e25;
-}
 .section-hero h1 {
   max-width: 710px;
-  margin: 16px 0 12px;
+  margin: 0 0 12px;
   font:
     700 clamp(2.8rem, 6vw, 5.8rem)/0.88 "Fredoka",
     sans-serif;
@@ -352,19 +330,13 @@
     padding: 19px 16px;
   }
   .section-hero h1 {
-    margin: 12px 0 8px;
+    margin: 0 0 8px;
     font-size: clamp(2.25rem, 10vw, 3.6rem);
   }
   .section-hero p {
     font-size: 0.84rem;
   }
-  .section-kicker {
-    gap: 6px;
-    padding: 6px 8px;
-    font-size: 0.59rem;
-    letter-spacing: 0.04em;
-  }
-  .section-hero-mascot {
+.section-hero-mascot {
     width: 125px;
     height: 166px;
     margin-right: -23px;
@@ -409,7 +381,7 @@
   right: -8px;
   left: -8px;
   height: clamp(138px, 15vw, 210px);
-  background: url("/assets/grumphya/stage-curtain.svg") center top /
+  background: url("/assets/grumphya/stage-curtain.png") center top /
     min(100%, 1440px) auto no-repeat;
   filter: blur(1.2px);
   opacity: 0.76;
@@ -994,11 +966,6 @@
   letter-spacing: -0.025em;
 }
 
-.section-kicker {
-  font-weight: 700;
-  letter-spacing: 0.012em;
-}
-
 .app-page.menu-open .site-header {
   z-index: 13;
 }
@@ -1153,13 +1120,6 @@
   font-size: clamp(1rem, 1.3vw, 1.12rem);
   font-weight: 600;
   line-height: 1.5;
-}
-
-.section-kicker {
-  border: 1px solid #216b70;
-  border-radius: 999px;
-  padding: 7px 12px;
-  background: #fffefa;
 }
 
 .section-hero-mascot {
@@ -1457,13 +1417,6 @@
   line-height: 1.5;
 }
 
-.section-kicker {
-  border: 1px solid #216b70;
-  border-radius: 999px;
-  padding: 7px 12px;
-  background: #fffefa;
-}
-
 .section-hero-mascot {
   height: clamp(250px, 28vw, 340px);
   margin-bottom: -10px;
@@ -1586,11 +1539,6 @@
     color: #fffefa;
     background: var(--color-pink);
   }
-}
-
-.theme-dark .section-kicker {
-  color: #172123;
-  background: #fffefa;
 }
 
 .app-page.theme-dark::after {

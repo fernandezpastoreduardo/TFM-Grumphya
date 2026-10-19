@@ -16,11 +16,14 @@ la lámina maestra está en
   transparente, copy breve con jerarquía clara, mascota con presencia y
   controles interactivos en primer plano. Los acentos pueden variar por
   sección sin cambiar esa gramática.
+- Los heroes de sección presentan titular, introducción y mascota; no llevan
+  una etiqueta o kicker independiente sobre el título.
 - El texto del hero vive en HTML y sigue siendo editable. No forma parte de un
   asset gráfico.
 - Fredoka se usa en titulares y Nunito Sans en lectura y controles, con fuentes
-  de sistema como alternativa. Los pesos altos deben mantener buena separación
-  entre caracteres.
+  variables locales en `apps/web/public/assets/fonts/`, con fuentes de sistema
+  como alternativa. Sus licencias OFL se conservan junto a los archivos. Los
+  pesos altos deben mantener buena separación entre caracteres.
 
 ## Escenario y assets
 
@@ -31,8 +34,10 @@ la lámina maestra está en
   interactivos y el texto permanecen nítidos y utilizables.
 - Los assets SVG revisados se guardan en
   `ideas-and-designs/revision-vectorial/revisados/`. Se colocan según la lámina
-  maestra; no se autotracean ni se reinterpretan. Las capas de profundidad,
-  desenfoques y adornos se resuelven con CSS.
+  maestra; no se autotracean ni se reinterpretan. El público conserva su SVG;
+  el telón usa el PNG transparente `stage-curtain.png`, y el haz de luz de Home
+  se dibuja con CSS. Las capas de profundidad, desenfoques y adornos se
+  resuelven con CSS.
 - Los rayos y formas de color rodean hero y acciones como paréntesis visuales,
   conservan aire respecto a los controles y no se solapan con ellos.
 
@@ -67,7 +72,12 @@ la lámina maestra está en
   Descárgate, Peores ideas y Login. `notable-humans-grumphya.png` sigue en el
   aviso de la sección Humanos notables. Se mantienen transparentes y sin copy
   incrustado; la UI conserva el contenido legible en HTML. Las escenas de error
-  existentes siguen siendo sus propios assets.
+  existentes siguen siendo sus propios assets. Home usa
+  `home-idea-review.png`; el hero de alta y su panel de plan usan
+  `create-account-hero.png` y `create-account-plan.png` respectivamente.
+  El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
+  se consulta en `/terminos-y-condiciones`, separado de la política de
+  privacidad provisional.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
   `ideas-and-designs/revision-vectorial/revisados/` y las escenas completas
   `error-scene-404.png`, `error-scene-429.png` y `error-scene-500.png`. La
@@ -118,18 +128,20 @@ teclado. El contraste de los pares base inspeccionados osciló entre 5,14:1 y
 15,14:1. No se revisó cada combinación sobre ilustraciones, fondos con gradiente
 ni estados interactivos.
 
-La hoja de fuentes se descubre desde `index.html`, con `preconnect` a Google
-Fonts; el `@import` que retrasaba su descubrimiento se eliminó de `base.scss`.
-Las rutas ya se cargan de forma diferida. No se midieron LCP, CLS ni INP, por lo
-que esta revisión no certifica Core Web Vitals. Para completarla, medir Home y
-Humanos notables con Lighthouse en escritorio y móvil, ambos temas y caché fría
-y caliente; revisar waterfall, bytes transferidos y cambios de layout. El PNG
-`notable-humans-grumphya.png` del aviso pesa aproximadamente 796 KB. Los tres
-nuevos heroes pesan 780.371 B (`good-practices-thumbs-up-slippers.png`), 780.570 B
-(`contact-envelope.png`) y 860.856 B (`notable-humans-medal.png`): 2.421.797 B
-en total (aproximadamente 2,42 MB / 2,31 MiB). Estos assets y el PNG del aviso
-quedan como candidatos a optimización solo si las mediciones móviles confirman
-impacto.
+Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
+la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
+No se midieron LCP, CLS ni INP, por lo
+que esta revisión no certifica Core Web Vitals. Para completarla, medir Home,
+Humanos notables y alta con Lighthouse en escritorio y móvil, ambos temas y
+caché fría y caliente; revisar waterfall, bytes transferidos y cambios de
+layout. El PNG `notable-humans-grumphya.png` del aviso pesa aproximadamente
+796 KB. Los heroes Buenas prácticas, Contacto y Humanos notables pesan
+780.371 B, 780.570 B y 860.856 B, respectivamente (2.421.797 B en total;
+aproximadamente 2,42 MB / 2,31 MiB). Los nuevos assets de alta y Home son
+922.763 B (`create-account-hero.png`), 887.500 B (`create-account-plan.png`) y
+894.104 B (`home-idea-review.png`); `stage-curtain.png` pesa 681.772 B. Los
+assets se consideran candidatos a optimización solo si las mediciones móviles
+confirman impacto.
 
 ## Ranking público de ideas rechazadas
 

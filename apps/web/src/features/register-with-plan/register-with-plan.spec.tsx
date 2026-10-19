@@ -14,6 +14,10 @@ const REGISTRATION_RESPONSE = {
 const VALID_EMAIL = "persona@example.es";
 const VALID_USERNAME = "persona-lista";
 const VALID_PASSWORD = "Una contraseña suficientemente segura 48!";
+const REGISTER_SUBMIT_BUTTON_NAME = /dáme de alta un mes y te pago el café/i;
+const PASSWORD_REQUIREMENTS =
+  "Mínimo 12 caracteres, con mayúscula, minúscula, número y carácter especial.";
+const TERMS_PATH = "/terminos-y-condiciones";
 const DUPLICATE_RESPONSE = {
   message:
     "No se ha podido confirmar el alta. Para evitar un envío duplicado, vuelve a cargar la página antes de intentarlo otra vez.",
@@ -64,7 +68,7 @@ describe("RegisterWithPlan", () => {
     );
     await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
     await user.click(
-      screen.getByRole("button", { name: /dáme de alta y te pago un café/i }),
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -99,7 +103,7 @@ describe("RegisterWithPlan", () => {
     );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
-      screen.getByRole("button", { name: /dáme de alta y te pago un café/i }),
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -115,6 +119,9 @@ describe("RegisterWithPlan", () => {
     expect(
       await screen.findByRole("link", { name: /política de privacidad/i }),
     ).toHaveAttribute("href", "/politica-de-privacidad");
+    expect(
+      screen.getByRole("link", { name: /términos y condiciones/i }),
+    ).toHaveAttribute("href", TERMS_PATH);
     await user.type(
       await screen.findByLabelText(/correo electrónico/i),
       VALID_EMAIL,
@@ -125,7 +132,7 @@ describe("RegisterWithPlan", () => {
     );
     await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
     await user.click(
-      screen.getByRole("button", { name: /dáme de alta y te pago un café/i }),
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -140,6 +147,41 @@ describe("RegisterWithPlan", () => {
       "registration-error",
     );
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the current registration copy and orders password guidance after the field", async () => {
+    render(<RegisterWithPlan />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Vamos a ponerle nombre a la cuenta",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Un mes. Sin renovaciones automáticas.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no tendrás que cancelar nada/i),
+    ).toBeInTheDocument();
+
+    const password = screen.getByLabelText(/contraseña/i);
+    const help = screen.getByText(PASSWORD_REQUIREMENTS);
+    const passwordField = password.closest(".registration-field");
+    expect(password).toHaveAttribute(
+      "aria-describedby",
+      "registration-password-help",
+    );
+    expect(passwordField).not.toBeNull();
+    if (!passwordField) throw new Error("Password field wrapper is missing.");
+    const fieldElements = Array.from(passwordField.children);
+    expect(fieldElements.indexOf(password)).toBeLessThan(
+      fieldElements.indexOf(help),
+    );
   });
 
   it("posts the registration and opens the simulated payment dialog", async () => {
@@ -170,7 +212,7 @@ describe("RegisterWithPlan", () => {
     await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
-      screen.getByRole("button", { name: /dáme de alta y te pago un café/i }),
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
     expect(
@@ -207,7 +249,7 @@ describe("RegisterWithPlan", () => {
     await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     const submitButton = screen.getByRole("button", {
-      name: /dáme de alta y te pago un café/i,
+      name: REGISTER_SUBMIT_BUTTON_NAME,
     });
     await user.click(submitButton);
     expect(
@@ -248,7 +290,7 @@ describe("RegisterWithPlan", () => {
     await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
-      screen.getByRole("button", { name: /dáme de alta y te pago un café/i }),
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -280,7 +322,7 @@ describe("RegisterWithPlan", () => {
     await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
-      screen.getByRole("button", { name: /dáme de alta y te pago un café/i }),
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
