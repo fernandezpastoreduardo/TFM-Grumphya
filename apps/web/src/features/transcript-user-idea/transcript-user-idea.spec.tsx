@@ -50,6 +50,48 @@ describe("TranscriptUserIdea", () => {
     ).toBeEnabled();
   });
 
+  it("distinguishes local speech preparation from active listening", async () => {
+    const user = userEvent.setup();
+    let beginListening: (() => void) | undefined;
+    vi.spyOn(speechToText, "startSpeechToText").mockImplementation(
+      ({ onStart }) => {
+        beginListening = onStart;
+        return { stop: vi.fn() };
+      },
+    );
+    render(<TranscriptUserIdea onTranscript={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /preparando el reconocimiento de voz local en español/i,
+    );
+    act(() => beginListening?.());
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /escuchando en este dispositivo/i,
+    );
+  });
+
+  it("explains when local speech recognition is unavailable and leaves typing available", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(speechToText, "startSpeechToText").mockImplementation(
+      ({ onError }) => {
+        onError("local-unavailable");
+        return null;
+      },
+    );
+    render(<TranscriptUserIdea onTranscript={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /paquete de voz local en español no está disponible/i,
+    );
+    expect(
+      screen.getByRole("button", { name: MICROPHONE_BUTTON }),
+    ).toBeEnabled();
+  });
+
   it("returns to idle when the browser finishes listening", async () => {
     const user = userEvent.setup();
     let finishListening: (() => void) | undefined;

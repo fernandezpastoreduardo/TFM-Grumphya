@@ -156,6 +156,76 @@ describe("startSpeechToText", () => {
     expect(recognizer.processLocally).toBe(true);
   });
 
+  it("reports local speech as unavailable when installing the speech pack fails", async () => {
+    const { recognizer, constructor } = installSpeechRecognitionMock();
+    const recognitionApi = constructor as unknown as {
+      available: ReturnType<typeof vi.fn>;
+      install: ReturnType<typeof vi.fn>;
+    };
+    recognitionApi.available.mockResolvedValue("downloadable");
+    recognitionApi.install.mockResolvedValue(false);
+    const onError = vi.fn();
+    const onEnd = vi.fn();
+
+    startSpeechToText({ onTranscript: vi.fn(), onError, onEnd });
+
+    await waitFor(() => expect(onError).toHaveBeenCalledWith("local-unavailable"));
+    expect(recognizer.start).not.toHaveBeenCalled();
+    expect(onEnd).toHaveBeenCalledOnce();
+  });
+
+  it("does not start recognition if the user stops while the local speech pack is installing", async () => {
+    const { recognizer, constructor } = installSpeechRecognitionMock();
+    const recognitionApi = constructor as unknown as {
+      available: ReturnType<typeof vi.fn>;
+      install: ReturnType<typeof vi.fn>;
+    };
+    recognitionApi.available.mockResolvedValue("downloadable");
+    let finishInstall: ((installed: boolean) => void) | undefined;
+    recognitionApi.install.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishInstall = resolve;
+        }),
+    );
+    const onError = vi.fn();
+    const onPreparing = vi.fn();
+    const session = startSpeechToText({
+      onTranscript: vi.fn(),
+      onError,
+      onPreparing,
+    });
+
+    await waitFor(() => expect(onPreparing).toHaveBeenCalledOnce());
+    session?.stop();
+    finishInstall?.(true);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(recognizer.start).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed local-availability check without starting recognition", async () => {
+    const { recognizer, constructor } = installSpeechRecognitionMock();
+    const recognitionApi = constructor as unknown as {
+      available: ReturnType<typeof vi.fn>;
+      install: ReturnType<typeof vi.fn>;
+    };
+    recognitionApi.available.mockRejectedValue(new Error("private detail"));
+    const onError = vi.fn();
+
+    startSpeechToText({ onTranscript: vi.fn(), onError });
+
+    await waitFor(() =>
+      expect(onError).toHaveBeenCalledWith("local-unavailable"),
+    );
+    expect(onError).not.toHaveBeenCalledWith(
+      expect.stringContaining("private"),
+    );
+    expect(recognitionApi.install).not.toHaveBeenCalled();
+    expect(recognizer.start).not.toHaveBeenCalled();
+  });
+
   it("does not fall back to remote recognition when local Spanish is unavailable", async () => {
     const { recognizer, constructor } = installSpeechRecognitionMock();
     const recognitionApi = constructor as unknown as {
