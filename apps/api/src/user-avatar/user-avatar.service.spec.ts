@@ -73,6 +73,22 @@ describe("UserAvatarService", () => {
     expect(repository.replaceAvatar).not.toHaveBeenCalled();
   });
 
+  it("returns a generic moderation 503 and never stores an unverified image when moderation fails", async () => {
+    const { service, moderator, storage, repository } = createService();
+    vi.mocked(moderator.isSuitableForAllAges).mockRejectedValueOnce(
+      new Error("provider response included private diagnostic details"),
+    );
+
+    await expect(service.update(USER_ID, VALID_FILE)).rejects.toMatchObject({
+      status: 503,
+      code: "AVATAR_MODERATION_UNAVAILABLE",
+      message:
+        "No se ha podido comprobar la imagen ahora. Inténtalo de nuevo más tarde.",
+    });
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(repository.replaceAvatar).not.toHaveBeenCalled();
+  });
+
   it("rejects unknown file shapes and unsupported media types", async () => {
     const { service, moderator } = createService();
 
@@ -97,20 +113,56 @@ describe("UserAvatarService", () => {
     expect(storage.save).not.toHaveBeenCalled();
   });
 
-  it("removes a newly saved image if the account cannot be updated", async () => {
-    const { service, repository, storage } = createService();
-    vi.mocked(repository.replaceAvatar).mockRejectedValueOnce(
-      new Error("account unavailable"),
+  it("returns a sanitized 503 when avatar storage cannot save the image", async () => {
+    const { service, storage, repository } = createService();
+    vi.mocked(storage.save).mockRejectedValueOnce(
+      new Error("filesystem path /secret not writable"),
     );
 
-    await expect(service.update(USER_ID, VALID_FILE)).rejects.toThrow(
-      "account unavailable",
+    await expect(service.update(USER_ID, VALID_FILE)).rejects.toMatchObject({
+      status: 503,
+      code: "AVATAR_STORAGE_UNAVAILABLE",
+      message:
+        "No se ha podido guardar el avatar ahora. Inténtalo de nuevo más tarde.",
+    });
+    expect(repository.replaceAvatar).not.toHaveBeenCalled();
+  });
+
+  it("cleans up the saved image and returns a sanitized 503 if account persistence fails", async () => {
+    const { service, repository, storage } = createService();
+    vi.mocked(repository.replaceAvatar).mockRejectedValueOnce(
+      new Error("database connection at db.internal:5432 failed"),
     );
+
+    await expect(service.update(USER_ID, VALID_FILE)).rejects.toMatchObject({
+      status: 503,
+      code: "AVATAR_ACCOUNT_UPDATE_UNAVAILABLE",
+      message:
+        "No se ha podido actualizar tu cuenta ahora. Inténtalo de nuevo más tarde.",
+    });
 
     expect(storage.save).toHaveBeenCalledOnce();
     expect(storage.remove).toHaveBeenCalledWith(
       expect.stringMatching(/^[0-9a-f-]{36}\.webp$/i),
     );
+  });
+
+  it("keeps the sanitized database error when cleanup of the saved image also fails", async () => {
+    const { service, repository, storage } = createService();
+    vi.mocked(repository.replaceAvatar).mockRejectedValueOnce(
+      new Error("database connection failed"),
+    );
+    vi.mocked(storage.remove).mockRejectedValueOnce(
+      new Error("filesystem volume not writable"),
+    );
+
+    await expect(service.update(USER_ID, VALID_FILE)).rejects.toMatchObject({
+      status: 503,
+      code: "AVATAR_ACCOUNT_UPDATE_UNAVAILABLE",
+      message:
+        "No se ha podido actualizar tu cuenta ahora. Inténtalo de nuevo más tarde.",
+    });
+    expect(storage.remove).toHaveBeenCalledOnce();
   });
 
   it("does not return storage data for a path-like key", async () => {

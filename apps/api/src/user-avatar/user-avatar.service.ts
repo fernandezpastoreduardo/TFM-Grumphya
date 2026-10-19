@@ -30,6 +30,21 @@ const UNSUITABLE_AVATAR = new UserAvatarError(
   "AVATAR_NOT_ALLOWED",
   "Esa imagen no puede usarse como avatar. Prueba con otra apta para todos los públicos.",
 );
+const AVATAR_STORAGE_UNAVAILABLE = new UserAvatarError(
+  503,
+  "AVATAR_STORAGE_UNAVAILABLE",
+  "No se ha podido guardar el avatar ahora. Inténtalo de nuevo más tarde.",
+);
+const AVATAR_ACCOUNT_UPDATE_UNAVAILABLE = new UserAvatarError(
+  503,
+  "AVATAR_ACCOUNT_UPDATE_UNAVAILABLE",
+  "No se ha podido actualizar tu cuenta ahora. Inténtalo de nuevo más tarde.",
+);
+const AVATAR_MODERATION_UNAVAILABLE = new UserAvatarError(
+  503,
+  "AVATAR_MODERATION_UNAVAILABLE",
+  "No se ha podido comprobar la imagen ahora. Inténtalo de nuevo más tarde.",
+);
 
 @Injectable()
 export class UserAvatarService {
@@ -60,18 +75,35 @@ export class UserAvatarService {
     } catch {
       throw INVALID_AVATAR;
     }
-    if (!(await this.moderator.isSuitableForAllAges(image))) {
+    let isSuitable: boolean;
+    try {
+      isSuitable = await this.moderator.isSuitableForAllAges(image);
+    } catch {
+      this.logger.error("User avatar moderation request failed.");
+      throw AVATAR_MODERATION_UNAVAILABLE;
+    }
+    if (!isSuitable) {
       throw UNSUITABLE_AVATAR;
     }
 
     const avatarKey = `${randomUUID()}.webp`;
-    await this.storage.save(avatarKey, image);
+    try {
+      await this.storage.save(avatarKey, image);
+    } catch {
+      this.logger.error("User avatar storage write failed.");
+      throw AVATAR_STORAGE_UNAVAILABLE;
+    }
     let previousKey: string | null;
     try {
       previousKey = await this.repository.replaceAvatar(userId, avatarKey);
-    } catch (error) {
-      await this.storage.remove(avatarKey);
-      throw error;
+    } catch {
+      try {
+        await this.storage.remove(avatarKey);
+      } catch {
+        this.logger.warn("Unlinked user avatar cleanup failed.");
+      }
+      this.logger.error("User avatar account update failed.");
+      throw AVATAR_ACCOUNT_UPDATE_UNAVAILABLE;
     }
     if (previousKey) {
       try {
