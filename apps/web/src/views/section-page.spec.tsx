@@ -1,9 +1,42 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SectionPage } from "./section-page";
+import { clearAccessToken, setAccessToken } from "../infrastructure/auth/session";
 
 describe("SectionPage", () => {
   beforeEach(() => localStorage.clear());
+
+  afterEach(() => {
+    clearAccessToken();
+    vi.unstubAllGlobals();
+  });
+
+  it("adds the control panel to the section menu for an admin", async () => {
+    setAccessToken("test-admin-token");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (input === "/api/account/profile") {
+          return new Response(
+            JSON.stringify({ user: { role: "admin" }, plans: [] }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("{}", { status: 503 });
+      }),
+    );
+
+    render(<SectionPage path="/precios" />);
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Navegación principal",
+    });
+    expect(
+      await within(navigation).findByRole("link", {
+        name: "Panel de control",
+      }),
+    ).toHaveAttribute("href", "/panel-control");
+  });
 
   it("restores the selected theme after opening another section", () => {
     localStorage.setItem("grumphya-theme", "dark");

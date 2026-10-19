@@ -3,10 +3,37 @@ import {
   authenticatedFetch,
   clearAccessToken,
   getAccessToken,
+  notifySessionChanged,
   setAccessToken,
+  subscribeToSessionChanges,
 } from "./session";
 
 const ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.signature";
+const SESSION_STORAGE_KEY = "grumphya-auth-session-change";
+
+class MockBroadcastChannel {
+  static instances: MockBroadcastChannel[] = [];
+  onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+  isClosed = false;
+  readonly messages: unknown[] = [];
+
+  constructor(readonly name: string) {
+    MockBroadcastChannel.instances.push(this);
+  }
+
+  postMessage(data: unknown): void {
+    this.messages.push(data);
+    for (const channel of MockBroadcastChannel.instances) {
+      if (channel !== this && !channel.isClosed && channel.name === this.name) {
+        channel.onmessage?.({ data } as MessageEvent<unknown>);
+      }
+    }
+  }
+
+  close(): void {
+    this.isClosed = true;
+  }
+}
 
 describe("authenticated session client", () => {
   afterEach(() => {
@@ -45,6 +72,44 @@ describe("authenticated session client", () => {
     await expect(getAccessToken()).resolves.toBeNull();
 
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("broadcasts account changes across tabs without persisting credentials", () => {
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const listener = vi.fn();
+    const unsubscribe = subscribeToSessionChanges(listener);
+
+    notifySessionChanged();
+    const eventValue = localStorage.getItem(SESSION_STORAGE_KEY);
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: SESSION_STORAGE_KEY,
+        newValue: eventValue,
+      }),
+    );
+
+    expect(listener).toHaveBeenCalledOnce();
+    expect(eventValue).toBeTruthy();
+    expect(localStorage.getItem("accessToken")).toBeNull();
+    unsubscribe();
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  });
+
+  it("synchronizes account changes through BroadcastChannel and closes its listener", () => {
+    MockBroadcastChannel.instances = [];
+    vi.stubGlobal("BroadcastChannel", MockBroadcastChannel);
+    const listener = vi.fn();
+    const unsubscribe = subscribeToSessionChanges(listener);
+
+    notifySessionChanged();
+
+    expect(listener).toHaveBeenCalledOnce();
+    expect(MockBroadcastChannel.instances[1]?.messages).toEqual([
+      "session-changed",
+    ]);
+    expect(MockBroadcastChannel.instances[0]?.isClosed).toBe(false);
+    unsubscribe();
+    expect(MockBroadcastChannel.instances[0]?.isClosed).toBe(true);
   });
 
   it("shares a pending refresh across simultaneous protected requests", async () => {

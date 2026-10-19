@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
 import "./register-with-plan.scss";
 import { PaymentSimulationDialog } from "./components/PaymentSimulationDialog";
-import { setAccessToken } from "../../infrastructure/auth/session";
+import {
+  notifySessionChanged,
+  setAccessToken,
+} from "../../infrastructure/auth/session";
 
 type Plan = "ILUMINADO" | "FALTON";
 type PlanResponse = { plan: Plan };
@@ -155,6 +158,7 @@ export function RegisterWithPlan() {
       const body: unknown = await readJson(response);
       if (response.ok && isRegistrationResponse(body) && body.plan === plan) {
         setAccessToken(body.accessToken);
+        notifySessionChanged();
         setProcessingPayment(true);
         return;
       }

@@ -52,32 +52,41 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
            AND request.plan_code=expired.plan_code
            AND request.idempotency_hash=expired.idempotency_hash`,
       );
-      const active = await client.query<{ usage_limit: number }>(
-        `SELECT p.${LIMIT_FOR_SCOPE[scope]} AS usage_limit
-         FROM subscriptions s JOIN plans p ON p.code=s.plan_code
-         WHERE s.user_id=$1 AND s.plan_code=$2 AND s.status='active'
-           AND s.starts_at <= now() AND s.expires_at > now()
-         ORDER BY s.starts_at DESC LIMIT 1 FOR SHARE OF s`,
+      const active = await client.query<{ usage_limit: number; role: string }>(
+        `SELECT u.role,COALESCE(p.${LIMIT_FOR_SCOPE[scope]},0) AS usage_limit
+         FROM users u
+         LEFT JOIN LATERAL (
+           SELECT s.plan_code FROM subscriptions s
+           WHERE s.user_id=u.id AND s.plan_code=$2 AND s.status='active'
+             AND s.starts_at <= now() AND s.expires_at > now()
+           ORDER BY s.starts_at DESC LIMIT 1
+         ) active_plan ON true
+         LEFT JOIN plans p ON p.code=active_plan.plan_code
+         WHERE u.id=$1 AND u.status='active' FOR SHARE OF u`,
         [userId, PLAN_FOR_SCOPE[scope]],
       );
       const limit = Number(active.rows[0]?.usage_limit ?? 0);
-      if (limit < 1) throw new Error("ACTIVE_PLAN_REQUIRED");
+      const isAdmin = active.rows[0]?.role === "admin";
+      if (!isAdmin && limit < 1) throw new Error("ACTIVE_PLAN_REQUIRED");
 
       const date = await client.query<{ usage_date: string }>(
         "SELECT (now() AT TIME ZONE 'Europe/Madrid')::date::text AS usage_date",
       );
       const usageDate = date.rows[0]?.usage_date;
       if (!usageDate) throw new Error("PLAN_USAGE_DATE_UNAVAILABLE");
-      await client.query(
-        `INSERT INTO account_daily_plan_usage(user_id,plan_code,usage_date,ideas_used,roasts_used)
+      if (!isAdmin)
+        await client.query(
+          `INSERT INTO account_daily_plan_usage(user_id,plan_code,usage_date,ideas_used,roasts_used)
          VALUES($1,$2,$3,0,0) ON CONFLICT(user_id,plan_code,usage_date) DO NOTHING`,
-        [userId, PLAN_FOR_SCOPE[scope], usageDate],
-      );
-      const usage = await client.query<{ used: number }>(
-        `SELECT ${COUNTER_FOR_SCOPE[scope]} AS used FROM account_daily_plan_usage
+          [userId, PLAN_FOR_SCOPE[scope], usageDate],
+        );
+      const usage = isAdmin
+        ? { rows: [{ used: 0 }] }
+        : await client.query<{ used: number }>(
+            `SELECT ${COUNTER_FOR_SCOPE[scope]} AS used FROM account_daily_plan_usage
          WHERE user_id=$1 AND plan_code=$2 AND usage_date=$3 FOR UPDATE`,
-        [userId, PLAN_FOR_SCOPE[scope], usageDate],
-      );
+            [userId, PLAN_FOR_SCOPE[scope], usageDate],
+          );
       const used = Number(usage.rows[0]?.used ?? 0);
 
       const reservations = await client.query<RequestRow>(
@@ -110,7 +119,10 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
            AND idempotency_hash <> $4`,
         [userId, PLAN_FOR_SCOPE[scope], usageDate, idempotencyHash],
       );
-      if (used + Number(otherReservations.rows[0]?.count ?? 0) >= limit)
+      if (
+        !isAdmin &&
+        used + Number(otherReservations.rows[0]?.count ?? 0) >= limit
+      )
         throw new Error("PLAN_QUOTA_EXHAUSTED");
 
       await client.query(
@@ -140,14 +152,22 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
   ): Promise<void> {
     await this.ensureSchema();
     await this.transaction(async (client) => {
-      const active = await client.query(
-        `SELECT s.id FROM subscriptions s
-         WHERE s.user_id=$1 AND s.plan_code=$2 AND s.status='active'
-           AND s.starts_at <= now() AND s.expires_at > now()
-         ORDER BY s.starts_at DESC LIMIT 1 FOR SHARE OF s`,
+      const active = await client.query<{
+        role: string;
+        has_active_plan: boolean;
+      }>(
+        `SELECT u.role,EXISTS (
+           SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan_code=$2
+             AND s.status='active' AND s.starts_at <= now() AND s.expires_at > now()
+         ) AS has_active_plan FROM users u WHERE u.id=$1 AND u.status='active' FOR SHARE OF u`,
         [userId, PLAN_FOR_SCOPE[scope]],
       );
-      if (!active.rowCount) throw new Error("ACTIVE_PLAN_REQUIRED");
+      const isAdmin = active.rows[0]?.role === "admin";
+      if (
+        !active.rowCount ||
+        (!isAdmin && active.rows[0]?.has_active_plan !== true)
+      )
+        throw new Error("ACTIVE_PLAN_REQUIRED");
       const request = await client.query<{ usage_date: string }>(
         `UPDATE account_plan_usage_requests SET state='committed',response_json=$5
          WHERE user_id=$1 AND plan_code=$2 AND idempotency_hash=$3 AND request_hash=$4
@@ -163,6 +183,7 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
       );
       const usageDate = request.rows[0]?.usage_date;
       if (!usageDate) throw new Error("PLAN_USAGE_RESERVATION_UNAVAILABLE");
+      if (isAdmin) return;
       const updated = await client.query(
         `UPDATE account_daily_plan_usage SET ${COUNTER_FOR_SCOPE[scope]}=${COUNTER_FOR_SCOPE[scope]}+1,updated_at=now()
          WHERE user_id=$1 AND plan_code=$2 AND usage_date=$3
@@ -231,6 +252,8 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
     const inserted = await client.query(
       `INSERT INTO account_roast_message_events(user_id,idempotency_hash)
        SELECT $1,$2 WHERE EXISTS (
+         SELECT 1 FROM users WHERE id=$1 AND role='user'
+       ) AND EXISTS (
          SELECT 1 FROM subscriptions s
          WHERE s.user_id=$1 AND s.plan_code='FALTON'
            AND s.status IN ('active','expired','cancelled')

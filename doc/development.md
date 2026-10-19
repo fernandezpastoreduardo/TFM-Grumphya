@@ -23,9 +23,10 @@ pnpm db:setup
 
 Para revisión local con base de datos persistente, prepara primero los archivos
 de entorno locales con `pnpm db:setup` y asegúrate de que existan `.env.openai`
-y `.env` (pueden no contener credenciales si no vas a usar funciones de IA).
-Compose requiere esos archivos; no copies sus valores a documentación o Git. Después
-arranca o renueva los tres servicios:
+y `.env`. Configura una contraseña fuerte `ADMIN_PASSWORD` en `.env` para el
+bootstrap local de Jappy; `OPENAI_API_KEY` solo hace falta para las funciones
+de IA. Compose requiere esos archivos; no copies sus valores a documentación o
+Git. Después arranca o renueva los tres servicios:
 
 ```sh
 docker compose --env-file .env.docker up -d --build --force-recreate --wait
@@ -68,8 +69,10 @@ necesita cada servicio. El contenedor de API recibe el secreto de DB como
 NestJS. Además, aplica una allowlist distinta a cada archivo: `.env.docker`
 solo puede definir credenciales de PostgreSQL, JWT y HMAC; `.env.openai` solo
 configuración de proveedor, modelo, razonamiento y timeout; `.env` solo
-`OPENAI_API_KEY`. Así, un
-archivo de proveedor no puede sobrescribir secretos de DB o autenticación.
+`OPENAI_API_KEY` y `ADMIN_PASSWORD`. Así, un archivo de proveedor no puede
+sobrescribir secretos de DB o autenticación. El bootstrap admin se ejecuta en
+cualquier entorno no-test y revoca las sesiones anteriores de Jappy cada vez
+que arranca la API; no uses esta provisión en producción.
 
 Compose usa secretos respaldados por archivos locales: se montan en los
 contenedores como archivos y no se copian a la imagen gracias a

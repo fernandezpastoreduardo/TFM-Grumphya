@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   authenticatedFetch,
   clearAccessToken,
+  notifySessionChanged,
   SESSION_EXPIRED_EVENT,
   USER_AVATAR_UPDATED_EVENT,
 } from "./session";
@@ -13,6 +14,7 @@ export type AccountAttempts = {
   ideasPlanActive: boolean;
   roastsPlanActive: boolean;
   roastMessagesSent: number;
+  isAdmin: boolean;
 };
 
 export function useSessionStatus() {
@@ -74,6 +76,7 @@ export function useSessionStatus() {
       // Clear the local token even if the request cannot reach the server.
     } finally {
       clearAccessToken();
+      notifySessionChanged();
       setIsAuthenticated(false);
       setAccountAttempts(null);
       setAvatarUrl(null);
@@ -93,6 +96,7 @@ function readAvatarUrl(value: unknown): string | null {
 
 function readActivePlanAttempts(value: unknown): AccountAttempts | null {
   if (!isRecord(value) || !Array.isArray(value.plans)) return null;
+  const isAdmin = isRecord(value.user) && value.user.role === "admin";
   const activePlans = value.plans.filter(
     (plan) => isRecord(plan) && plan.status === "active",
   );
@@ -103,11 +107,16 @@ function readActivePlanAttempts(value: unknown): AccountAttempts | null {
     (plan) => isRecord(plan) && plan.plan === "FALTON",
   );
   return {
-    ideas: getRemaining(activeIdeasPlan, "ideas"),
-    roasts: getRemaining(activeRoastPlan, "roasts"),
-    ideasPlanActive: activeIdeasPlan !== undefined,
-    roastsPlanActive: activeRoastPlan !== undefined,
+    ideas: isAdmin
+      ? Number.POSITIVE_INFINITY
+      : getRemaining(activeIdeasPlan, "ideas"),
+    roasts: isAdmin
+      ? Number.POSITIVE_INFINITY
+      : getRemaining(activeRoastPlan, "roasts"),
+    ideasPlanActive: isAdmin || activeIdeasPlan !== undefined,
+    roastsPlanActive: isAdmin || activeRoastPlan !== undefined,
     roastMessagesSent: readRoastMessagesSent(value),
+    isAdmin,
   };
 }
 

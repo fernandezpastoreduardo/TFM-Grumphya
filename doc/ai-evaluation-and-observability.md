@@ -28,6 +28,16 @@ El informe agregado omite ideas, explicaciones, títulos y salidas del modelo. E
 
 Cada llamada a OpenAI en evaluación, embeddings, equivalencia semántica y roast emite una línea JSON `ai_operation` a stdout. Incluye nombre de operación, modelo, resultado, duración, identificador aleatorio por llamada, tokens de entrada/salida disponibles y coste estimado. No incluye texto, cuenta, cookie, IP, token de sesión ni clave API; el identificador no permite correlacionar llamadas de una sesión.
 
+El panel admin presenta estos controles en pestañas. **Benchmark de IA**
+describe el corpus sintético y cómo ejecutar la comparación; no presenta
+resultados históricos porque el runner no los persiste. **Telemetría de IA**
+muestra costes agregados y usos sin precio. **Pruebas de seguridad** resume el
+alcance de la suite automatizada y de los análisis ejecutados por CI. Ninguna
+pestaña ejecuta modelos o pruebas desde el navegador. Para calcular promedios
+por cuenta, el registro privado de consumos almacena tokens y costes asociados
+a `userId`; estos identificadores no aparecen en los eventos stdout ni en la
+interfaz.
+
 Configura tarifas USD por millón de tokens que correspondan a la tarifa del proveedor para cada modelo activo. Los nombres de variables se forman así:
 
 - `AI_IDEA_EVALUATION_INPUT_USD_PER_MILLION_TOKENS` y `AI_IDEA_EVALUATION_OUTPUT_USD_PER_MILLION_TOKENS`

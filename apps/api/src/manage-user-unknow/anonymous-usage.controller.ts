@@ -21,7 +21,10 @@ import { privateCookieOptions } from "../infrastructure/http/private-cookie-opti
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
 import { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import { ServiceUnavailableException } from "@nestjs/common";
-import { ROAST_REPLY_PORT, type RoastReplyPort } from "../roast/roast-reply.port";
+import {
+  ROAST_REPLY_PORT,
+  type RoastReplyPort,
+} from "../roast/roast-reply.port";
 
 const VISITOR_COOKIE = "grumphya_anon";
 const COOKIE_MAX_AGE = 400 * 24 * 60 * 60 * 1000;
@@ -126,7 +129,9 @@ export class AnonymousUsageController {
       if (planReservation) {
         if (planReservation.state === "cached") return planReservation.response;
         try {
-          const result = { reply: await this.roastReply.reply(message) };
+          const result = {
+            reply: await this.roastReply.reply(message, userId),
+          };
           await this.planUsage.commit(
             userId,
             "roasts",
@@ -155,7 +160,7 @@ export class AnonymousUsageController {
       return reservation.response;
     }
     try {
-      const result = { reply: await this.roastReply.reply(message) };
+      const result = { reply: await this.roastReply.reply(message, userId) };
       await this.usage.commit(
         visitorToken,
         "roasts",
@@ -166,11 +171,7 @@ export class AnonymousUsageController {
       await this.recordHistoricalRoastIfEligible(userId, keyHash);
       return result;
     } catch (error) {
-      await this.usage.release(
-        visitorToken,
-        "roasts",
-        keyHash,
-      );
+      await this.usage.release(visitorToken, "roasts", keyHash);
       if (isRoastProviderError(error))
         throw new ServiceUnavailableException(ROAST_REPLY_UNAVAILABLE);
       throw error;
@@ -182,7 +183,10 @@ export class AnonymousUsageController {
     idempotencyHash: string,
   ): Promise<void> {
     if (userId) {
-      await this.planUsage?.recordHistoricalRoastMessage(userId, idempotencyHash);
+      await this.planUsage?.recordHistoricalRoastMessage(
+        userId,
+        idempotencyHash,
+      );
     }
   }
 }

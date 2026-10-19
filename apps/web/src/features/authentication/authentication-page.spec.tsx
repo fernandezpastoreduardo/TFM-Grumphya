@@ -11,6 +11,14 @@ const LOGIN_ENDPOINT = "/api/auth/login";
 const IDENTIFIER = "persona-lista";
 const PASSWORD = "Una contraseña suficientemente segura 48!";
 const ACCESS_TOKEN = "jwt-access-token-from-test";
+const USER_LOGIN_RESPONSE = {
+  accessToken: ACCESS_TOKEN,
+  account: { user: { role: "user" } },
+};
+const ADMIN_LOGIN_RESPONSE = {
+  accessToken: ACCESS_TOKEN,
+  account: { user: { role: "admin" } },
+};
 const GENERIC_LOGIN_ERROR =
   "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.";
 const LOCATION_DESCRIPTOR = Object.getOwnPropertyDescriptor(window, "location");
@@ -36,7 +44,7 @@ describe("AuthenticationPage", () => {
       Object.defineProperty(window, "location", LOCATION_DESCRIPTOR);
   });
 
-  it("submits credentials and remember-me, keeps the token in memory and opens the profile", async () => {
+  it("submits credentials and opens the profile for regular users", async () => {
     const user = userEvent.setup();
     const assign = vi.fn();
     Object.defineProperty(window, "location", {
@@ -45,7 +53,7 @@ describe("AuthenticationPage", () => {
     });
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(jsonResponse({ accessToken: ACCESS_TOKEN })),
+      vi.fn().mockResolvedValue(jsonResponse(USER_LOGIN_RESPONSE)),
     );
     render(<AuthenticationPage />);
 
@@ -73,6 +81,26 @@ describe("AuthenticationPage", () => {
     expect(assign).toHaveBeenCalledWith("/perfil");
     expect(window.localStorage.length).toBe(0);
     expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("opens the admin control panel after an admin signs in", async () => {
+    const user = userEvent.setup();
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, assign },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse(ADMIN_LOGIN_RESPONSE)),
+    );
+    render(<AuthenticationPage />);
+
+    await user.type(screen.getByLabelText(/usuario o correo/i), "jappy");
+    await user.type(screen.getByLabelText("Contraseña"), PASSWORD);
+    await user.click(screen.getByRole("button", { name: /^entrar/i }));
+
+    expect(assign).toHaveBeenCalledWith("/panel-control");
   });
 
   it("shows a generic error and does not store a token when login is rejected", async () => {

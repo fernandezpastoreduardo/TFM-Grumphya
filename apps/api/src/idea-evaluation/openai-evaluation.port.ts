@@ -9,6 +9,11 @@ import {
   recordAiOperation,
   type AiTokenUsage,
 } from "../infrastructure/observability/ai-operation.telemetry";
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "../infrastructure/ai/ai-usage";
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
@@ -50,6 +55,7 @@ export type OpenAiEvaluationPortOptions = {
   model?: string;
   reasoningEffort?: OpenAiReasoningEffort;
   instructions?: string;
+  usageRecorder?: AiUsageRecorder;
 };
 
 const OPERATION_NAME = "idea_evaluation";
@@ -227,12 +233,14 @@ export class OpenAiEvaluationPort implements EvaluationPort {
   private readonly model: string;
   private readonly reasoningEffort: OpenAiReasoningEffort;
   private readonly instructions: string;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiEvaluationPortOptions) {
     this.apiKey = options.apiKey;
     this.model = options.model ?? DEFAULT_OPENAI_MODEL;
     this.reasoningEffort = options.reasoningEffort ?? DEFAULT_REASONING_EFFORT;
     this.instructions = options.instructions ?? EVALUATION_INSTRUCTIONS;
+    this.usageRecorder = options.usageRecorder;
   }
 
   async evaluate(input: EvaluationPortInput): Promise<unknown> {
@@ -315,6 +323,16 @@ export class OpenAiEvaluationPort implements EvaluationPort {
       responseBody = await response.json();
     } catch {
       throw new OpenAiEvaluationFailure("OPENAI_RESPONSE_INVALID");
+    }
+
+    const usage = readTokenUsage(responseBody);
+    if (usage) {
+      recordAiUsageSafely(this.usageRecorder, {
+        userId: input.userId,
+        operation: "idea_evaluation",
+        model: this.model,
+        ...usage,
+      });
     }
 
     const incompleteFailure = getIncompleteFailure(responseBody);

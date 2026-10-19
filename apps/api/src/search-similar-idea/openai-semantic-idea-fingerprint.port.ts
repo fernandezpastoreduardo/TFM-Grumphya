@@ -1,3 +1,9 @@
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "../infrastructure/ai/ai-usage";
+
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const FINGERPRINT_MODEL = "gpt-5.4-mini";
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -7,6 +13,7 @@ const RESPONSE_ERROR = "OpenAI idea normalization response is invalid.";
 export type OpenAiSemanticIdeaFingerprintPortOptions = {
   apiKey: string;
   timeoutMs?: number;
+  usageRecorder?: AiUsageRecorder;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -55,13 +62,15 @@ function parseFingerprint(value: unknown): string {
 export class OpenAiSemanticIdeaFingerprintPort {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiSemanticIdeaFingerprintPortOptions) {
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.usageRecorder = options.usageRecorder;
   }
 
-  async createFingerprint(ideaText: string): Promise<unknown> {
+  async createFingerprint(ideaText: string, userId?: string): Promise<unknown> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -121,6 +130,15 @@ export class OpenAiSemanticIdeaFingerprintPort {
         responseBody = await response.json();
       } catch {
         throw new Error(RESPONSE_ERROR);
+      }
+      const usage = readTokenUsage(responseBody);
+      if (usage) {
+        recordAiUsageSafely(this.usageRecorder, {
+          userId,
+          operation: "idea_fingerprint",
+          model: FINGERPRINT_MODEL,
+          ...usage,
+        });
       }
       return parseFingerprint(responseBody);
     } finally {

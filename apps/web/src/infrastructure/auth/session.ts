@@ -3,12 +3,43 @@ type AuthResponse = { accessToken: string };
 const REFRESH_ENDPOINT = "/api/auth/refresh";
 const REFRESH_METHOD = "POST";
 const JSON_CONTENT_TYPE = "application/json";
+const SESSION_CHANNEL_NAME = "grumphya-auth-session";
+const SESSION_STORAGE_KEY = "grumphya-auth-session-change";
 export const SESSION_EXPIRED_EVENT = "grumphya:session-expired";
 export const USER_AVATAR_UPDATED_EVENT = "grumphya:avatar-updated";
 let accessToken: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
 let refreshAttempted = false;
 let sessionGeneration = 0;
+
+export function notifySessionChanged(): void {
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(SESSION_CHANNEL_NAME);
+    channel.postMessage("session-changed");
+    channel.close();
+    return;
+  }
+  try {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, crypto.randomUUID());
+  } catch {
+    // Authentication stays safe per request even if cross-tab sync is unavailable.
+  }
+}
+
+export function subscribeToSessionChanges(listener: () => void): () => void {
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel(SESSION_CHANNEL_NAME);
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+      if (event.data === "session-changed") listener();
+    };
+    return () => channel.close();
+  }
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === SESSION_STORAGE_KEY && event.newValue) listener();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
+}
 
 export function setAccessToken(token: string): void {
   sessionGeneration += 1;

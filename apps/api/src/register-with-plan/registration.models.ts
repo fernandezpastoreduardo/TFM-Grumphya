@@ -56,6 +56,7 @@ export type AccountPlanStatus = {
 };
 export type AccountProfile = {
   user: {
+    role: "user" | "admin";
     email: string;
     username: string;
     emailVerified: boolean;

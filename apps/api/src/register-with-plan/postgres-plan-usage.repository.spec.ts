@@ -162,14 +162,56 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
     }>(
       `SELECT id::text,roast_messages_sent::text FROM users
        WHERE id = ANY($1::uuid[]) ORDER BY id`,
-      [
-        [OWNER_ID, faltonUser].sort(),
-      ],
+      [[OWNER_ID, faltonUser].sort()],
     );
     expect(result.rows).toEqual([
       { id: OWNER_ID, roast_messages_sent: "0" },
       { id: faltonUser, roast_messages_sent: "2" },
     ]);
+  });
+
+  it("allows admin idea and roast usage without plans or daily counters", async () => {
+    const adminId = "123e4567-e89b-42d3-a456-426614174099";
+    await testPool.query(
+      `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
+         privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status,role)
+       VALUES($1,$2,$2,'jappy','jappy','test-hash','test-v1',now(),now(),'active','admin')`,
+      [adminId, `${adminId}@example.es`],
+    );
+    const ideaHash = "a".repeat(64);
+    const roastHash = "b".repeat(64);
+
+    await expect(
+      repository.reserve(adminId, "ideas", ideaHash, REQUEST_HASH),
+    ).resolves.toEqual({ state: "reserved" });
+    await expect(
+      repository.reserve(adminId, "roasts", roastHash, REQUEST_HASH),
+    ).resolves.toEqual({ state: "reserved" });
+    await repository.commit(adminId, "ideas", ideaHash, REQUEST_HASH, {
+      status: "ok",
+    });
+    await repository.commit(adminId, "roasts", roastHash, REQUEST_HASH, {
+      reply: "ok",
+    });
+
+    const state = await testPool.query<{
+      role: string;
+      ideas_used: number;
+      roasts_used: number;
+      roast_messages_sent: string;
+    }>(
+      `SELECT u.role,COALESCE(usage.ideas_used,0)::int AS ideas_used,
+         COALESCE(usage.roasts_used,0)::int AS roasts_used,u.roast_messages_sent::text
+       FROM users u LEFT JOIN account_daily_plan_usage usage ON usage.user_id=u.id
+       WHERE u.id=$1`,
+      [adminId],
+    );
+    expect(state.rows[0]).toEqual({
+      role: "admin",
+      ideas_used: 0,
+      roasts_used: 0,
+      roast_messages_sent: "0",
+    });
   });
 });
 

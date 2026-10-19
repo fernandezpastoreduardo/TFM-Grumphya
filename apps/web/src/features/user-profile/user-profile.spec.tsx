@@ -10,6 +10,7 @@ vi.mock("../../infrastructure/auth/session", () => ({
 
 const ACCOUNT_PROFILE = {
   user: {
+    role: "user",
     email: "persona@example.es",
     username: "persona-lista",
     emailVerified: false,
@@ -112,6 +113,35 @@ describe("UserProfile", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText("2 ideas")).toBeInTheDocument();
+  });
+
+  it("shows Jappy's own account profile without replacing it with the admin dashboard", async () => {
+    const adminProfile = {
+      ...ACCOUNT_PROFILE,
+      user: { ...ACCOUNT_PROFILE.user, role: "admin", username: "jappy" },
+    };
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/account/profile")
+        return jsonResponse(adminProfile);
+      if (String(input) === "/api/account/good-ideas")
+        return jsonResponse(GOOD_IDEAS);
+      throw new Error(`Unexpected request: ${String(input)}`);
+    });
+    render(<UserProfile />);
+
+    expect(
+      await screen.findByRole("heading", { name: "jappy" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("persona@example.es"),
+    ).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Tus planes" })).toBeVisible();
+    expect(screen.queryByText("Hola, Jappy.")).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith("/api/admin/dashboard", undefined);
+    expect(fetch).not.toHaveBeenCalledWith(
+      "/api/admin/contact-messages",
+      undefined,
+    );
   });
 
   it("shows an empty state instead of a sample table when there are no approved ideas", async () => {

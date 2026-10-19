@@ -5,6 +5,7 @@ export type EvaluationPortInput = {
   tone: "soft" | "hard";
   policyVersion: string;
   signal: AbortSignal;
+  userId?: string;
 };
 
 export interface EvaluationPort {

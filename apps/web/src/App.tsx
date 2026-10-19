@@ -4,9 +4,13 @@ import {
   ErrorPagesBoundary,
   type ErrorPageStatus,
 } from "./features/error-pages/error-pages";
-import { authenticatedFetch } from "./infrastructure/auth/session";
+import {
+  authenticatedFetch,
+  clearAccessToken,
+  subscribeToSessionChanges,
+} from "./infrastructure/auth/session";
 
-let activeSessionCheck: Promise<boolean> | null = null;
+let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 
 const Home = lazy(() =>
   import("./views/home").then((module) => ({ default: module.Home })),
@@ -23,7 +27,18 @@ const PREVIEW_ERROR_PATHS: Record<string, ErrorPageStatus> = {
   "/__preview/errors/500": "500",
 };
 
+type AuthenticatedRole = "user" | "admin";
+
 export function App() {
+  useEffect(
+    () =>
+      subscribeToSessionChanges(() => {
+        clearAccessToken();
+        window.location.reload();
+      }),
+    [],
+  );
+
   return (
     <ErrorPagesBoundary>
       <Suspense
@@ -45,45 +60,43 @@ function AppRoute() {
     return <ErrorPages status={PREVIEW_ERROR_PATHS[path]} />;
   }
   if (path === "/") return <Home />;
-  if (path !== "/login" && path !== "/perfil" && path !== "/crear-cuenta") {
+  if (
+    path !== "/login" &&
+    path !== "/perfil" &&
+    path !== "/crear-cuenta" &&
+    path !== "/panel-control"
+  ) {
     return <SectionPage path={path} />;
   }
   return <AuthenticatedRoute path={path} />;
 }
 
 function AuthenticatedRoute({ path }: { path: string }) {
-  const [hasActiveSession, setHasActiveSession] = useState<boolean | null>(
-    null,
-  );
+  const [activeRole, setActiveRole] = useState<
+    AuthenticatedRole | null | undefined
+  >(undefined);
 
   useEffect(() => {
     let isMounted = true;
-    getActiveSessionStatus()
-      .then((isActive) => {
-        if (isMounted) setHasActiveSession(isActive);
+    getActiveSessionRole()
+      .then((role) => {
+        if (isMounted) setActiveRole(role);
       })
       .catch(() => {
-        if (isMounted) setHasActiveSession(false);
+        if (isMounted) setActiveRole(null);
       });
     return () => {
       isMounted = false;
     };
   }, []);
 
-  useEffect(() => {
-    if (hasActiveSession === null) return;
-    if ((path === "/login" || path === "/crear-cuenta") && hasActiveSession) {
-      window.location.replace("/perfil");
-    } else if (path === "/perfil" && !hasActiveSession) {
-      window.location.replace("/login");
-    }
-  }, [hasActiveSession, path]);
+  const redirectPath = getAuthenticatedRouteRedirect(path, activeRole);
 
-  if (
-    hasActiveSession === null ||
-    ((path === "/login" || path === "/crear-cuenta") && hasActiveSession) ||
-    (path === "/perfil" && !hasActiveSession)
-  ) {
+  useEffect(() => {
+    if (redirectPath) window.location.replace(redirectPath);
+  }, [redirectPath]);
+
+  if (activeRole === undefined || redirectPath !== null) {
     return (
       <p className="route-loading" role="status" aria-live="polite">
         Comprobando tu sesión…
@@ -94,11 +107,43 @@ function AuthenticatedRoute({ path }: { path: string }) {
   return <SectionPage path={path} />;
 }
 
-function getActiveSessionStatus(): Promise<boolean> {
+function getAuthenticatedRouteRedirect(
+  path: string,
+  role: AuthenticatedRole | null | undefined,
+): string | null {
+  if (role === undefined) return null;
+  if (path === "/login" || path === "/crear-cuenta") {
+    if (role === "admin") return "/panel-control";
+    if (role === "user") return "/perfil";
+  }
+  if (path === "/perfil" && role === null) return "/login";
+  if (path === "/panel-control") {
+    if (role === null) return "/login";
+    if (role === "user") return "/perfil";
+  }
+  return null;
+}
+
+function getActiveSessionRole(): Promise<AuthenticatedRole | null> {
   if (!activeSessionCheck) {
     activeSessionCheck = authenticatedFetch("/api/account/profile")
-      .then((response) => response.ok)
-      .catch(() => false)
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const profile: unknown = await response.json();
+        if (
+          typeof profile !== "object" ||
+          profile === null ||
+          !("user" in profile) ||
+          typeof profile.user !== "object" ||
+          profile.user === null ||
+          !("role" in profile.user) ||
+          (profile.user.role !== "user" && profile.user.role !== "admin")
+        ) {
+          return null;
+        }
+        return profile.user.role;
+      })
+      .catch(() => null)
       .finally(() => {
         activeSessionCheck = null;
       });

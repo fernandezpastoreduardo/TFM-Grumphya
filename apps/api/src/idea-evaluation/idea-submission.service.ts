@@ -229,9 +229,10 @@ export class IdeaSubmissionService {
     }
 
     try {
-      const result = await this.evaluation.evaluate(
-        this.toEvaluationRequest(request),
-      );
+      const evaluationRequest = this.toEvaluationRequest(request);
+      const result = authenticatedUserId
+        ? await this.evaluation.evaluate(evaluationRequest, authenticatedUserId)
+        : await this.evaluation.evaluate(evaluationRequest);
       await this.persistApprovedIdeaIfNeeded(
         authenticatedUserId,
         idempotencyHash,
@@ -299,9 +300,10 @@ export class IdeaSubmissionService {
     }
     let detailedSearch;
     try {
-      detailedSearch = await this.search.executeDetailed({
-        ideaText: request.ideaText,
-      });
+      const searchInput = { ideaText: request.ideaText };
+      detailedSearch = authenticatedUserId
+        ? await this.search.executeDetailed(searchInput, authenticatedUserId)
+        : await this.search.executeDetailed(searchInput);
     } catch {
       await this.releaseUsage(
         anonymousVisitorToken,
@@ -343,9 +345,10 @@ export class IdeaSubmissionService {
     }
 
     try {
-      const result = await this.evaluation.evaluate(
-        this.toEvaluationRequest(request),
-      );
+      const evaluationRequest = this.toEvaluationRequest(request);
+      const result = authenticatedUserId
+        ? await this.evaluation.evaluate(evaluationRequest, authenticatedUserId)
+        : await this.evaluation.evaluate(evaluationRequest);
       if (result.status === "RECHAZADA") {
         if (!result.safeTitle || result.score === null) {
           this.logger.error("IDEA_REJECTION_TITLE_UNAVAILABLE");
@@ -447,13 +450,14 @@ export class IdeaSubmissionService {
         requestHash,
         response,
       );
-    if (reservation?.source === "anonymous") return this.anonymousUsage?.commit(
-      token,
-      "ideas",
-      keyHash,
-      requestHash,
-      response,
-    );
+    if (reservation?.source === "anonymous")
+      return this.anonymousUsage?.commit(
+        token,
+        "ideas",
+        keyHash,
+        requestHash,
+        response,
+      );
   }
 
   private releaseUsage(

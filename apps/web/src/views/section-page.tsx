@@ -69,6 +69,12 @@ const PAGE_META: Record<string, SectionPageMeta> = {
       "Aquí tienes el estado de tu contratación simulada y tus datos. La cuenta ya está activa; el correo todavía está pendiente de verificación.",
     theme: "mint",
   },
+  "/panel-control": {
+    title: "Panel de control",
+    intro:
+      "Ingresos simulados, costes estimados y señales operativas. Sin hacer como que esto ya es una multinacional.",
+    theme: "calm",
+  },
   "/verificar-cuenta": {
     title: "Una última comprobación",
     intro:
@@ -131,6 +137,11 @@ const SECTION_CONTENT_BY_PATH: Record<
   "/perfil": lazy(() =>
     import("../features/user-profile/user-profile").then((module) => ({
       default: module.UserProfile,
+    })),
+  ),
+  "/panel-control": lazy(() =>
+    import("../features/admin-dashboard/admin-dashboard").then((module) => ({
+      default: module.AdminDashboard,
     })),
   ),
   "/verificar-cuenta": lazy(() =>

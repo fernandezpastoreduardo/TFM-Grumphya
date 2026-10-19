@@ -3,6 +3,11 @@ import {
   recordAiOperation,
   type AiTokenUsage,
 } from "../infrastructure/observability/ai-operation.telemetry";
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "../infrastructure/ai/ai-usage";
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const SEMANTIC_JUDGE_MODEL = "gpt-5.4-mini";
@@ -14,6 +19,7 @@ const RESPONSE_ERROR = "OpenAI semantic comparison response is invalid.";
 export type OpenAiIdeaEquivalencePortOptions = {
   apiKey: string;
   timeoutMs?: number;
+  usageRecorder?: AiUsageRecorder;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -75,16 +81,19 @@ function parseEquivalenceResponse(
 export class OpenAiIdeaEquivalencePort {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly usageRecorder?: AiUsageRecorder;
 
   constructor(options: OpenAiIdeaEquivalencePortOptions) {
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.usageRecorder = options.usageRecorder;
   }
 
   async classifyIdeas(
     ideaText: string,
     semanticFingerprint: string,
     safeTitles: readonly string[],
+    userId?: string,
   ): Promise<unknown> {
     const startedAt = performance.now();
     let outcome: "success" | "error" = "error";
@@ -94,6 +103,7 @@ export class OpenAiIdeaEquivalencePort {
         ideaText,
         semanticFingerprint,
         safeTitles,
+        userId,
       );
       outcome = "success";
       usage = result.usage;
@@ -113,6 +123,7 @@ export class OpenAiIdeaEquivalencePort {
     ideaText: string,
     semanticFingerprint: string,
     safeTitles: readonly string[],
+    userId?: string,
   ): Promise<{ decisions: boolean[]; usage: AiTokenUsage }> {
     if (safeTitles.length === 0 || safeTitles.length > 20) {
       throw new Error(RESPONSE_ERROR);
@@ -200,10 +211,20 @@ export class OpenAiIdeaEquivalencePort {
       } catch {
         throw new Error(RESPONSE_ERROR);
       }
-      return {
-        decisions: parseEquivalenceResponse(responseBody, safeTitles.length),
-        usage: readAiTokenUsage(responseBody),
-      };
+      const decisions = parseEquivalenceResponse(
+        responseBody,
+        safeTitles.length,
+      );
+      const usage = readTokenUsage(responseBody);
+      if (usage) {
+        recordAiUsageSafely(this.usageRecorder, {
+          userId,
+          operation: "idea_similarity",
+          model: SEMANTIC_JUDGE_MODEL,
+          ...usage,
+        });
+      }
+      return { decisions, usage: readAiTokenUsage(responseBody) };
     } finally {
       clearTimeout(timeout);
     }
