@@ -93,7 +93,8 @@ describe.skipIf(!DATABASE_URL)("admin dashboard AI cost attribution", () => {
       anonymousUsd: 0.75,
     });
     expect(estimatedAiCost.weeklyUsd).toBeCloseTo(2.25);
-    expect(estimatedAiCost.weeklyAveragePerAccountUsd).toBeCloseTo(0.75);
+    // Admin spend remains attributed after deletion; the average uses the one active account.
+    expect(estimatedAiCost.weeklyAveragePerAccountUsd).toBeCloseTo(1.5);
     expect(estimatedAiCost.totalAveragePerAccountUsd).toBeCloseTo(3);
     expect(estimatedAiCost.activeRegisteredAccountCount).toBe(1);
     expect(estimatedAiCost.activeAdminAccountCount).toBe(0);
@@ -128,8 +129,8 @@ async function createUser(pool: Pool, username: string, role: string) {
   const result = await pool.query<{ id: string }>(
     `INSERT INTO users (
        email, email_normalized, username, username_normalized, password_hash,
-       privacy_policy_version, privacy_policy_acknowledged_at, role
-     ) VALUES ($1, $1, $2, $2, 'test-hash', 'test-v1', now(), $3)
+       privacy_policy_version, privacy_policy_acknowledged_at, role, status
+     ) VALUES ($1, $1, $2, $2, 'test-hash', 'test-v1', now(), $3, 'active')
      RETURNING id`,
     [email, username, role],
   );
