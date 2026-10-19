@@ -12,10 +12,16 @@ const HASH_HEX_PATTERN = /^[a-f0-9]{128}$/u;
 
 function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    scryptCallback(password, salt, SCRYPT_KEY_BYTES, SCRYPT_OPTIONS, (error, key) => {
-      if (error) reject(error);
-      else resolve(key as Buffer);
-    });
+    scryptCallback(
+      password,
+      salt,
+      SCRYPT_KEY_BYTES,
+      SCRYPT_OPTIONS,
+      (error, key) => {
+        if (error) reject(error);
+        else resolve(key as Buffer);
+      },
+    );
   });
 }
 

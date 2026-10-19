@@ -1,8 +1,4 @@
-import {
-  createHash,
-  randomBytes,
-  randomUUID,
-} from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { domainToASCII } from "node:url";
 import {
   RegistrationError,

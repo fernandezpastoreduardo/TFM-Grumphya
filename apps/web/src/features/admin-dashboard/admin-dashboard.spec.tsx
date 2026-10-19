@@ -65,7 +65,7 @@ describe("AdminDashboard", () => {
     const { authenticatedFetch } =
       await import("../../infrastructure/auth/session");
     vi.mocked(authenticatedFetch).mockResolvedValue(
-      new Response("{\"message\":\"private server detail\"}", {
+      new Response('{"message":"private server detail"}', {
         status: 503,
         headers: { "Content-Type": "application/json" },
       }),

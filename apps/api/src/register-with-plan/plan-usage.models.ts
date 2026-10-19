@@ -17,7 +17,10 @@ export interface PlanUsageRepository {
     requestHash: string,
     response: unknown,
   ): Promise<void>;
-  recordHistoricalRoastMessage(userId: string, idempotencyHash: string): Promise<void>;
+  recordHistoricalRoastMessage(
+    userId: string,
+    idempotencyHash: string,
+  ): Promise<void>;
   release(
     userId: string,
     scope: PlanUsageScope,

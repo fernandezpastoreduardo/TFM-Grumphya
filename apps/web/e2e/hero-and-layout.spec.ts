@@ -35,12 +35,7 @@ async function assetHasTransparentPixels(page: Page, assetPath: string) {
     const context = canvas.getContext("2d");
     if (!context) return false;
     context.drawImage(image, 0, 0);
-    const pixels = context.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    ).data;
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
     for (let alphaIndex = 3; alphaIndex < pixels.length; alphaIndex += 4) {
       if (pixels[alphaIndex] < 255) return true;
     }
@@ -104,7 +99,9 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   expect(homeHero.backgroundPosition).toBe("50% 100%");
 });
 
-test("uses Grumphya's navigation logo as the site favicon", async ({ page }) => {
+test("uses Grumphya's navigation logo as the site favicon", async ({
+  page,
+}) => {
   await page.goto("/precios");
   const favicon = page.locator('link[rel="icon"]');
   await expect(favicon).toHaveAttribute(
@@ -114,9 +111,7 @@ test("uses Grumphya's navigation logo as the site favicon", async ({ page }) => 
   const navigationLogo = await page
     .locator(".brand-mark")
     .evaluate((element) => getComputedStyle(element).backgroundImage);
-  expect(navigationLogo).toContain(
-    "/assets/grumphya/mascot-isotype.svg",
-  );
+  expect(navigationLogo).toContain("/assets/grumphya/mascot-isotype.svg");
   const response = await page.request.get(
     "/assets/grumphya/mascot-isotype.svg",
   );
@@ -169,7 +164,10 @@ test("uses the section hero assets with transparent pixels", async ({
     );
     expect(backgroundImage).toContain(hero.asset);
 
-    const assetIsTransparent = await assetHasTransparentPixels(page, hero.asset);
+    const assetIsTransparent = await assetHasTransparentPixels(
+      page,
+      hero.asset,
+    );
 
     expect(
       assetIsTransparent,

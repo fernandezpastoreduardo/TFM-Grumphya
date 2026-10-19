@@ -7,13 +7,11 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("NotableHumans", () => {
   it("loads the ranking from the API and retains the prototype callout", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        Response.json([{ username: "laura_critica", approvedIdeasCount: 18 }], {
-          status: 200,
-        }),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json([{ username: "laura_critica", approvedIdeasCount: 18 }], {
+        status: 200,
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     render(<NotableHumans />);
@@ -44,7 +42,9 @@ describe("NotableHumans", () => {
   it("lets the user retry a failed request and renders the returned ranking", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(Response.json({ message: "unavailable" }, { status: 503 }))
+      .mockResolvedValueOnce(
+        Response.json({ message: "unavailable" }, { status: 503 }),
+      )
       .mockResolvedValueOnce(
         Response.json([{ username: "laura_critica", approvedIdeasCount: 18 }]),
       );
@@ -54,7 +54,9 @@ describe("NotableHumans", () => {
     render(<NotableHumans />);
 
     await screen.findByRole("alert");
-    await user.click(screen.getByRole("button", { name: "Volver a intentarlo" }));
+    await user.click(
+      screen.getByRole("button", { name: "Volver a intentarlo" }),
+    );
 
     expect(await screen.findByText("@laura_critica")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);

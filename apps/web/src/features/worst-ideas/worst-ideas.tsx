@@ -5,7 +5,8 @@ import "./worst-ideas.scss";
 const WORST_IDEAS_ENDPOINT = "/api/worst-ideas";
 const LOADING_MESSAGE = "Cargando el ranking semanal…";
 const ERROR_MESSAGE = "No se ha podido cargar el ranking. Prueba de nuevo.";
-const EMPTY_MESSAGE = "Esta semana no hay ideas en el ranking. Qué semana tan sospechosamente sensata.";
+const EMPTY_MESSAGE =
+  "Esta semana no hay ideas en el ranking. Qué semana tan sospechosamente sensata.";
 
 interface IdeaListItemWorstAll {
   safeTitle: string;
@@ -29,7 +30,9 @@ function isIdeaListItem(value: unknown): value is IdeaListItemWorstAll {
   );
 }
 
-async function loadWorstIdeas(signal: AbortSignal): Promise<IdeaListItemWorstAll[]> {
+async function loadWorstIdeas(
+  signal: AbortSignal,
+): Promise<IdeaListItemWorstAll[]> {
   const response = await fetch(WORST_IDEAS_ENDPOINT, {
     signal,
     credentials: "omit",
@@ -79,7 +82,10 @@ function RankingHeading() {
 
 function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
   return (
-    <ol className="idea-ranking" aria-label="Ranking semanal de ideas rechazadas">
+    <ol
+      className="idea-ranking"
+      aria-label="Ranking semanal de ideas rechazadas"
+    >
       {ideas.map((idea, index) => (
         <li key={`${idea.safeTitle}-${index}`}>
           <span className="ranking-position" aria-label={`Puesto ${index + 1}`}>
@@ -88,7 +94,9 @@ function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
           <span className="ranking-title">{idea.safeTitle}</span>
           <span className="ranking-count">
             <strong>{idea.weeklyCount}</strong>
-            <small>{idea.weeklyCount === 1 ? "recepción" : "recepciones"}</small>
+            <small>
+              {idea.weeklyCount === 1 ? "recepción" : "recepciones"}
+            </small>
           </span>
         </li>
       ))}
@@ -98,7 +106,11 @@ function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
 
 function RankingContent({ state, retry }: ReturnType<typeof useWorstIdeasAll>) {
   if (state.status === "loading") {
-    return <p className="ranking-message" role="status">{LOADING_MESSAGE}</p>;
+    return (
+      <p className="ranking-message" role="status">
+        {LOADING_MESSAGE}
+      </p>
+    );
   }
 
   if (state.status === "error") {
@@ -113,7 +125,11 @@ function RankingContent({ state, retry }: ReturnType<typeof useWorstIdeasAll>) {
   }
 
   if (state.ideas.length === 0) {
-    return <p className="ranking-message" role="status">{EMPTY_MESSAGE}</p>;
+    return (
+      <p className="ranking-message" role="status">
+        {EMPTY_MESSAGE}
+      </p>
+    );
   }
 
   return <RankingList ideas={state.ideas} />;
@@ -123,7 +139,10 @@ export function WorstIdeasAll() {
   const ranking = useWorstIdeasAll();
 
   return (
-    <section className="content-card ranking-card" aria-labelledby="weekly-title">
+    <section
+      className="content-card ranking-card"
+      aria-labelledby="weekly-title"
+    >
       <RankingHeading />
       <RankingContent {...ranking} />
       <p className="privacy-footnote">

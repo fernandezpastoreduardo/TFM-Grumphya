@@ -13,7 +13,9 @@ import { GetIdeaListWorstUserController } from "./get-idea-list-worst-user.contr
 import { GetIdeaListWorstUser } from "./get-idea-list-worst-user.service";
 
 const USER_ID = "d25dc4df-0000-4000-8000-000000000001";
-const ITEMS = [{ safeTitle: "Una app para vender hielo en invierno", count: 3 }];
+const ITEMS = [
+  { safeTitle: "Una app para vender hielo en invierno", count: 3 },
+];
 const service = { execute: vi.fn().mockResolvedValue(ITEMS) };
 const ACCESS_SECRET = "worst-ideas-user-http-test-secret-at-least-32-bytes";
 let activeTokenHash: string | null = null;

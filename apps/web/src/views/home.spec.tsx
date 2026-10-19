@@ -137,7 +137,10 @@ describe("Home", () => {
   });
 
   it("keeps the long idea-processing notice out of the Home form", async () => {
-    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
     const { container } = render(<Home />);
 
     const ideaForm = container.querySelector(".idea-form");
@@ -317,10 +320,13 @@ describe("Home", () => {
       vi.fn((url: unknown) => {
         if (url === "/api/auth/refresh") {
           return Promise.resolve(
-            new Response(JSON.stringify({ accessToken: "session-access-token" }), {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            }),
+            new Response(
+              JSON.stringify({ accessToken: "session-access-token" }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
           );
         }
         if (url === "/api/account/profile") {
@@ -352,7 +358,9 @@ describe("Home", () => {
     render(<Home />);
 
     expect(
-      await screen.findByText("Te quedan 2 de 3 evaluaciones gratuitas en este navegador."),
+      await screen.findByText(
+        "Te quedan 2 de 3 evaluaciones gratuitas en este navegador.",
+      ),
     ).toBeInTheDocument();
   });
 

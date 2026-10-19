@@ -90,8 +90,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   },
   "/terminos-y-condiciones": {
     title: "Términos y condiciones",
-    intro:
-      "Cómo funciona Grumphya y qué ocurre con las ideas que compartes.",
+    intro: "Cómo funciona Grumphya y qué ocurre con las ideas que compartes.",
     theme: "calm",
   },
 };
