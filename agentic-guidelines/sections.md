@@ -45,9 +45,10 @@ if you need more info about any feature of any section refer to ./agentic-guidel
      - UI must be a part of copy to encourage user to have the next great idea to be in that ranking.
 
 5. Contact section:
-   - The section hero uses the transparent `contact-envelope.png` Grumphya
-     illustration; the mascot retains its grumpy expression and established
-     identity.
+   - The section hero uses the transparent `contact-hero-phone.png` Grumphya
+     illustration. The right callout uses `contact-coffee-inbox.png` over a
+     white UI surface. Both keep the established grumpy mascot identity and
+     use different poses.
    - Features:
      - A joke. It has typical contact page UI but when you try to fill out any field, a popup message appears and the form fades out. Popup copy mus follow the rest of app copy style "Acéptalo: ahora mismo a nadie le importa lo que tengas que decir."
      - En esta sección, las cuentas con un plan activo (Iluminado o Faltón) pueden usar el formulario; los detalles del servicio se definirán en la entrega a corto plazo.
@@ -60,8 +61,10 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    rude/sarcastic tone. Grumphya keeps the established
    grumpy, skeptical face and recognizable proportions. A section-specific
    pose or accessory may signal practical support without making the mascot
-   cheerful or changing its identity. The current hero uses the transparent
-   `good-practices-thumbs-up-slippers.png` asset. The older
+   cheerful or changing its identity. The hero uses the transparent
+   `good-practices-checklist.png` asset and the note uses
+   `good-practices-validate-idea.png` in a distinct crouched inspection pose.
+   The older
    `ideas-and-designs/ayudar.png` reference does not override the mascot
    identity rules in `UI-aestethics.md`.
 

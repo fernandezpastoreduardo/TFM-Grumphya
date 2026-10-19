@@ -17,7 +17,7 @@ la lámina maestra está en
   controles interactivos en primer plano. Los acentos pueden variar por
   sección sin cambiar esa gramática.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
-  una etiqueta o kicker independiente sobre el título.
+  una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - El texto del hero vive en HTML y sigue siendo editable. No forma parte de un
   asset gráfico.
 - Fredoka se usa en titulares y Nunito Sans en lectura y controles, con fuentes
@@ -65,19 +65,28 @@ la lámina maestra está en
 - Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
   distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
   para Planes, `ultrachachi-reality-check.png` para su popup, y
-  `good-practices-thumbs-up-slippers.png`, `notable-humans-medal.png`,
-  `contact-envelope.png`, `roast-vent.png`/`roast-plan-callout.png`,
-  `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para los
-  heroes de Buenas prácticas, Humanos notables y Contacto, y las secciones
-  Descárgate, Peores ideas y Login. `notable-humans-grumphya.png` sigue en el
-  aviso de la sección Humanos notables. Se mantienen transparentes y sin copy
-  incrustado; la UI conserva el contenido legible en HTML. Las escenas de error
-  existentes siguen siendo sus propios assets. Home usa
+  `good-practices-checklist.png`/`good-practices-validate-idea.png`,
+  `notable-humans-hero.png`/`notable-humans-callout.png`,
+  `contact-hero-phone.png`/`contact-coffee-inbox.png`,
+  `roast-vent.png`/`roast-plan-callout.png`,
+  `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para
+  Descárgate, Peores ideas y Login. Las dos ilustraciones de cada una de las
+  secciones Buenas prácticas, Humanos notables y Contacto usan posturas y
+  siluetas distintas. La mascota del hero de Planes se refleja horizontalmente
+  para mirar hacia el contenido. El widget lateral de Contacto aporta su fondo
+  blanco desde CSS; la ilustración mantiene su transparencia. Todas estas
+  ilustraciones conservan el fondo transparente y no incluyen copy incrustado;
+  la UI mantiene el contenido legible en HTML. Las escenas de error existentes
+  siguen siendo sus propios assets. Home usa
   `home-idea-review.png`; el hero de alta y su panel de plan usan
   `create-account-hero.png` y `create-account-plan.png` respectivamente.
+  La mascota del hero de Home se encuadra con `contain` y posición inferior
+  para que no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
-  privacidad provisional.
+  privacidad provisional. Las mascotas de hero flotan suavemente, los bloques
+  entran al desplazarse y los controles responden al hover; las animaciones se
+  desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
   `ideas-and-designs/revision-vectorial/revisados/` y las escenas completas
   `error-scene-404.png`, `error-scene-429.png` y `error-scene-500.png`. La
@@ -134,14 +143,13 @@ No se midieron LCP, CLS ni INP, por lo
 que esta revisión no certifica Core Web Vitals. Para completarla, medir Home,
 Humanos notables y alta con Lighthouse en escritorio y móvil, ambos temas y
 caché fría y caliente; revisar waterfall, bytes transferidos y cambios de
-layout. El PNG `notable-humans-grumphya.png` del aviso pesa aproximadamente
-796 KB. Los heroes Buenas prácticas, Contacto y Humanos notables pesan
-780.371 B, 780.570 B y 860.856 B, respectivamente (2.421.797 B en total;
-aproximadamente 2,42 MB / 2,31 MiB). Los nuevos assets de alta y Home son
-922.763 B (`create-account-hero.png`), 887.500 B (`create-account-plan.png`) y
-894.104 B (`home-idea-review.png`); `stage-curtain.png` pesa 681.772 B. Los
-assets se consideran candidatos a optimización solo si las mediciones móviles
-confirman impacto.
+layout. Las seis nuevas ilustraciones transparentes de Buenas prácticas,
+Humanos notables y Contacto se ajustaron a 900 px de lado máximo para su uso
+en interfaz y pesan 3.219.236 B en total (aproximadamente 3,22 MB). Los nuevos
+assets de alta y Home son 922.763 B (`create-account-hero.png`), 887.500 B
+(`create-account-plan.png`) y 894.104 B (`home-idea-review.png`);
+`stage-curtain.png` pesa 681.772 B. Los assets se consideran candidatos a
+optimización solo si las mediciones móviles confirman impacto.
 
 ## Ranking público de ideas rechazadas
 
