@@ -6,9 +6,10 @@
     "start:dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
+    "benchmark:evaluator": "tsx scripts/evaluator-benchmark.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint src --max-warnings=0"
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit --target ES2022 --module commonjs --moduleResolution node --strict --esModuleInterop --skipLibCheck scripts/evaluator-benchmark.ts scripts/prepare-test-database.ts",
+    "lint": "eslint src scripts --max-warnings=0"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

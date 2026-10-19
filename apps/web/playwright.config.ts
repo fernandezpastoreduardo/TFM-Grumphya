@@ -5,7 +5,8 @@ const API_TEST_PORT = process.env.PLAYWRIGHT_API_PORT ?? "3190";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  fullyParallel: false,
+  workers: 1,
   reporter: "list",
   use: {
     baseURL: `http://127.0.0.1:${WEB_TEST_PORT}`,

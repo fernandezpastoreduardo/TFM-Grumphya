@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg17
+        env:
+          POSTGRES_DB: grumphya_test
+          POSTGRES_USER: grumphya_test
+          POSTGRES_PASSWORD: grumphya_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U grumphya_test -d grumphya_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      ANONYMOUS_USAGE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      REGISTRATION_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      WORST_IDEAS_USER_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      WORST_IDEAS_RANKING_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      USER_DELETE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      CONTACT_MESSAGE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      BEST_USERS_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      APPROVED_IDEAS_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      ACCESS_TOKEN_SECRET: ci-only-secret-with-more-than-32-bytes
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm --filter @grumphya/web exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Audit dependencies
+        run: pnpm audit --prod --audit-level high
+      - name: Build local application image
+        run: docker build --pull --tag grumphya-ci:${{ github.sha }} .
+      - name: Scan application image
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: grumphya-ci:${{ github.sha }}
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

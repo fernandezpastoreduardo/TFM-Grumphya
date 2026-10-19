@@ -3,9 +3,15 @@ import {
   recordAiUsageSafely,
   type AiUsageRecorder,
 } from "./ai-usage";
+import {
+  readAiTokenUsage,
+  recordAiOperation,
+  type AiTokenUsage,
+} from "../observability/ai-operation.telemetry";
 
 const OPENAI_EMBEDDINGS_ENDPOINT = "https://api.openai.com/v1/embeddings";
 const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small";
+const OPERATION_NAME = "idea_embedding";
 const EMBEDDING_DIMENSIONS = 1536;
 const DEFAULT_TIMEOUT_MS = 10_000;
 const OPENAI_REQUEST_ERROR = "OpenAI embedding request failed.";
@@ -59,6 +65,29 @@ export class OpenAiTextEmbeddingPort {
   }
 
   async createEmbedding(ideaText: string, userId?: string): Promise<unknown> {
+    const startedAt = performance.now();
+    let outcome: "success" | "error" = "error";
+    let usage: AiTokenUsage = {};
+    try {
+      const result = await this.performEmbedding(ideaText, userId);
+      outcome = "success";
+      usage = result.usage;
+      return result.embedding;
+    } finally {
+      recordAiOperation(
+        OPERATION_NAME,
+        OPENAI_EMBEDDING_MODEL,
+        startedAt,
+        outcome,
+        usage,
+      );
+    }
+  }
+
+  private async performEmbedding(
+    ideaText: string,
+    userId?: string,
+  ): Promise<{ embedding: number[]; usage: AiTokenUsage }> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -91,16 +120,19 @@ export class OpenAiTextEmbeddingPort {
       } catch {
         throw new Error(OPENAI_RESPONSE_ERROR);
       }
-      const usage = readTokenUsage(responseBody);
-      if (usage) {
+      const tokenUsage = readTokenUsage(responseBody);
+      if (tokenUsage) {
         recordAiUsageSafely(this.usageRecorder, {
           userId,
           operation: "idea_embedding",
           model: OPENAI_EMBEDDING_MODEL,
-          ...usage,
+          ...tokenUsage,
         });
       }
-      return parseEmbeddingResponse(responseBody);
+      return {
+        embedding: parseEmbeddingResponse(responseBody),
+        usage: readAiTokenUsage(responseBody, true),
+      };
     } finally {
       clearTimeout(timeout);
     }
