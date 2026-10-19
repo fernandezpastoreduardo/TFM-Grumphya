@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import "../../shared/styles/account.scss";
 import "./register-with-plan.scss";
 import { PaymentSimulationDialog } from "./components/PaymentSimulationDialog";
@@ -183,9 +187,22 @@ export function RegisterWithPlan() {
 
   if (loadingPlan) {
     return (
-      <p className="auth-notice" role="status">
-        Comprobando el plan seleccionado…
-      </p>
+      <LoadingSkeleton
+        label="Comprobando el plan seleccionado"
+        className="registration-skeleton"
+      >
+        <div className="content-card auth-card registration-skeleton-form">
+          <SkeletonBlock className="skeleton-registration-label" />
+          <SkeletonBlock className="skeleton-registration-title" />
+          {Array.from({ length: 3 }, (_, index) => (
+            <div className="registration-skeleton-field" key={index}>
+              <SkeletonBlock className="skeleton-registration-label" />
+              <SkeletonBlock className="skeleton-registration-input" />
+            </div>
+          ))}
+          <SkeletonBlock className="skeleton-registration-button" />
+        </div>
+      </LoadingSkeleton>
     );
   }
   if (plan === null) {

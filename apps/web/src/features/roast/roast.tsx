@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../error-pages/error-pages";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import { RoastInput } from "./components/RoastInput";
 import {
   RoastRanking,
@@ -122,6 +126,19 @@ export function Roast() {
           </p>
         ) : null}
         <div className="roast-thread">
+          {remainingAttempts === null && sentMessages.length === 0 ? (
+            <LoadingSkeleton
+              label="Consultando los mensajes de la conversación"
+              className="roast-thread-skeleton"
+            >
+              {Array.from({ length: 3 }, (_, index) => (
+                <div className="roast-exchange-skeleton" key={index}>
+                  <SkeletonBlock className="skeleton-roast-bubble user" />
+                  <SkeletonBlock className="skeleton-roast-bubble reply" />
+                </div>
+              ))}
+            </LoadingSkeleton>
+          ) : null}
           {!showDemoExchanges &&
           remainingAttempts !== null &&
           sentMessages.length === 0 ? (

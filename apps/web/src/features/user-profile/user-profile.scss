@@ -29,6 +29,53 @@
   line-height: 1.5;
 }
 
+.profile-loading-skeleton .loading-skeleton-content {
+  gap: 18px;
+}
+.profile-account-skeleton,
+.profile-ideas-skeleton {
+  display: grid;
+  gap: 16px;
+}
+.profile-skeleton-identity {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+}
+.skeleton-profile-eyebrow {
+  width: 72px;
+  height: 13px;
+}
+.skeleton-profile-title {
+  width: min(70%, 240px);
+  height: 30px;
+}
+.skeleton-profile-avatar {
+  width: 58px;
+  height: 58px;
+}
+.skeleton-profile-detail {
+  width: min(100%, 380px);
+  height: 18px;
+}
+.skeleton-profile-detail.short {
+  width: min(68%, 260px);
+}
+.profile-skeleton-plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+}
+.skeleton-profile-plan {
+  min-height: 84px;
+  border-radius: 14px;
+}
+.skeleton-profile-idea {
+  width: 100%;
+  height: 46px;
+  border-radius: 12px;
+}
+
 .profile-error-card {
   max-width: 740px;
   margin-inline: auto;

@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
 
 const USER_HISTORY_ENDPOINT = "/api/account/worst-ideas";
-const LOADING_MESSAGE = "Cargando tu historial…";
 const ERROR_MESSAGE = "No se ha podido cargar tu historial. Prueba de nuevo.";
 const NETWORK_ERROR_MESSAGE =
   "No se ha podido cargar tu historial ahora. Prueba de nuevo.";
@@ -90,9 +93,19 @@ function UserHistoryContent({
 }: ReturnType<typeof useUserHistory>) {
   if (state.status === "loading") {
     return (
-      <p className="ranking-message" role="status">
-        {LOADING_MESSAGE}
-      </p>
+      <LoadingSkeleton
+        label="Cargando tu historial"
+        className="user-history-skeleton"
+      >
+        <SkeletonBlock className="skeleton-history-heading" />
+        <SkeletonBlock className="skeleton-history-copy" />
+        {Array.from({ length: 3 }, (_, index) => (
+          <div className="user-history-skeleton-row" key={index}>
+            <SkeletonBlock className="skeleton-history-title" />
+            <SkeletonBlock className="skeleton-history-count" />
+          </div>
+        ))}
+      </LoadingSkeleton>
     );
   }
 

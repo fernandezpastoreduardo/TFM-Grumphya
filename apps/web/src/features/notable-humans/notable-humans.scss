@@ -22,6 +22,41 @@
   padding: 0;
   list-style: none;
 }
+
+.humans-ranking-skeleton .loading-skeleton-content {
+  gap: 0;
+}
+
+.humans-ranking-skeleton-row {
+  display: grid;
+  grid-template-columns: 35px 40px minmax(0, 1fr) 75px;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  border-bottom: 1px solid #b7d4c8;
+  padding: 5px 9px;
+}
+
+.skeleton-human-rank {
+  width: 24px;
+  height: 20px;
+}
+
+.skeleton-human-avatar {
+  width: 35px;
+  height: 35px;
+}
+
+.skeleton-human-name {
+  width: min(100%, 110px);
+  height: 19px;
+}
+
+.skeleton-human-count {
+  width: 60px;
+  height: 20px;
+  justify-self: end;
+}
 .human-rank {
   color: #327b7c;
   font:

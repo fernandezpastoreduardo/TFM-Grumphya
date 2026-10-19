@@ -9,6 +9,10 @@ import {
   clearAccessToken,
   subscribeToSessionChanges,
 } from "./infrastructure/auth/session";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "./shared/components/loading-skeleton";
 
 let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 
@@ -43,9 +47,18 @@ export function App() {
     <ErrorPagesBoundary>
       <Suspense
         fallback={
-          <p className="route-loading" role="status" aria-live="polite">
-            Cargando Grumphya…
-          </p>
+          <LoadingSkeleton
+            label="Cargando Grumphya"
+            className="app-loading-skeleton"
+          >
+            <SkeletonBlock className="skeleton-app-header" />
+            <SkeletonBlock className="skeleton-app-heading" />
+            <SkeletonBlock className="skeleton-app-copy" />
+            <div className="skeleton-app-panels">
+              <SkeletonBlock className="skeleton-app-panel main" />
+              <SkeletonBlock className="skeleton-app-panel side" />
+            </div>
+          </LoadingSkeleton>
         }
       >
         <AppRoute />
@@ -98,9 +111,18 @@ function AuthenticatedRoute({ path }: { path: string }) {
 
   if (activeRole === undefined || redirectPath !== null) {
     return (
-      <p className="route-loading" role="status" aria-live="polite">
-        Comprobando tu sesión…
-      </p>
+      <LoadingSkeleton
+        label="Comprobando tu sesión"
+        className="app-loading-skeleton"
+      >
+        <SkeletonBlock className="skeleton-app-header" />
+        <SkeletonBlock className="skeleton-app-heading" />
+        <SkeletonBlock className="skeleton-app-copy" />
+        <div className="skeleton-app-panels">
+          <SkeletonBlock className="skeleton-app-panel main" />
+          <SkeletonBlock className="skeleton-app-panel side" />
+        </div>
+      </LoadingSkeleton>
     );
   }
 

@@ -1,4 +1,8 @@
 import { useState, type FormEvent } from "react";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import "./get-user-idea.scss";
 import { IdeaInput } from "./components/IdeaInput";
 import { MAX_IDEA_LENGTH } from "./idea-input-rules";
@@ -169,7 +173,14 @@ export function GetUserIdea({
           <span />
         </span>
       </button>
-      {remainingAttempts !== undefined ? (
+      {remainingAttempts === null ? (
+        <LoadingSkeleton
+          label="Comprobando tus intentos disponibles"
+          className="idea-attempts-skeleton"
+        >
+          <SkeletonBlock className="skeleton-idea-attempts" />
+        </LoadingSkeleton>
+      ) : remainingAttempts !== undefined ? (
         <p className="idea-privacy-note" aria-live="polite">
           {unlimitedAttempts
             ? "Tienes evaluaciones ilimitadas. Hasta Jappy necesita una ventaja."
@@ -181,11 +192,9 @@ export function GetUserIdea({
 }
 
 function getUsageMessage(
-  remainingAttempts: number | null,
+  remainingAttempts: number,
   quotaKind: "anonymous" | "account",
 ): string {
-  if (remainingAttempts === null)
-    return "Comprobando tus intentos disponibles…";
   if (quotaKind === "account") {
     if (remainingAttempts === 0)
       return "Has agotado las 11 evaluaciones disponibles hoy en Iluminado.";

@@ -1,6 +1,9 @@
 import type { BestUserItem } from "../services/get-best-list-best-users";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../../shared/components/loading-skeleton";
 
-const LOADING_MESSAGE = "Cargando la clasificación…";
 const ERROR_MESSAGE =
   "No se ha podido cargar la clasificación. Prueba de nuevo.";
 const EMPTY_MESSAGE =
@@ -21,9 +24,19 @@ type BestUsersProps = {
 export function BestUsers({ state, onRetry }: BestUsersProps) {
   if (state.status === "loading") {
     return (
-      <p className="ranking-message" role="status">
-        {LOADING_MESSAGE}
-      </p>
+      <LoadingSkeleton
+        label="Cargando la clasificación"
+        className="humans-ranking-skeleton"
+      >
+        {Array.from({ length: 5 }, (_, index) => (
+          <div className="humans-ranking-skeleton-row" key={index}>
+            <SkeletonBlock className="skeleton-human-rank" />
+            <SkeletonBlock className="skeleton-human-avatar" />
+            <SkeletonBlock className="skeleton-human-name" />
+            <SkeletonBlock className="skeleton-human-count" />
+          </div>
+        ))}
+      </LoadingSkeleton>
     );
   }
   if (state.status === "error") {

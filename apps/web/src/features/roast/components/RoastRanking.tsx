@@ -1,6 +1,9 @@
 import type { RoastRankingItem } from "../services/get-roast-ranking";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../../shared/components/loading-skeleton";
 
-const LOADING_MESSAGE = "Cargando el ranking de roast…";
 const ERROR_MESSAGE = "No se ha podido cargar el ranking. Prueba de nuevo.";
 const EMPTY_MESSAGE =
   "Todavía no hay usuarios en el ranking. A alguien le tocará estrenar el podio.";
@@ -33,9 +36,18 @@ export function RoastRanking({ state, onRetry }: RoastRankingProps) {
         </span>
       </div>
       {state.status === "loading" ? (
-        <p className="roast-ranking-message" role="status">
-          {LOADING_MESSAGE}
-        </p>
+        <LoadingSkeleton
+          label="Cargando el ranking de roast"
+          className="roast-ranking-skeleton"
+        >
+          <SkeletonBlock className="skeleton-roast-winner" />
+          {Array.from({ length: 5 }, (_, index) => (
+            <div className="roast-ranking-skeleton-row" key={index}>
+              <SkeletonBlock className="skeleton-roast-name" />
+              <SkeletonBlock className="skeleton-roast-count" />
+            </div>
+          ))}
+        </LoadingSkeleton>
       ) : null}
       {state.status === "error" ? (
         <div className="roast-ranking-message" role="alert">

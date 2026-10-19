@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import { WorstIdeasUser } from "./worst-ideas-user";
 import "./worst-ideas.scss";
 
 const WORST_IDEAS_ENDPOINT = "/api/worst-ideas";
-const LOADING_MESSAGE = "Cargando el ranking semanal…";
 const ERROR_MESSAGE = "No se ha podido cargar el ranking. Prueba de nuevo.";
 const EMPTY_MESSAGE =
   "Esta semana no hay ideas en el ranking. Qué semana tan sospechosamente sensata.";
@@ -107,9 +110,18 @@ function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
 function RankingContent({ state, retry }: ReturnType<typeof useWorstIdeasAll>) {
   if (state.status === "loading") {
     return (
-      <p className="ranking-message" role="status">
-        {LOADING_MESSAGE}
-      </p>
+      <LoadingSkeleton
+        label="Cargando el ranking semanal"
+        className="idea-ranking-skeleton"
+      >
+        {Array.from({ length: 5 }, (_, index) => (
+          <div className="idea-ranking-skeleton-row" key={index}>
+            <SkeletonBlock className="skeleton-ranking-position" />
+            <SkeletonBlock className="skeleton-ranking-title" />
+            <SkeletonBlock className="skeleton-ranking-count" />
+          </div>
+        ))}
+      </LoadingSkeleton>
     );
   }
 

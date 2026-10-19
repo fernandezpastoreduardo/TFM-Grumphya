@@ -1,4 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  LoadingSkeleton,
+  SkeletonBlock,
+} from "../../shared/components/loading-skeleton";
 import "../../shared/styles/account.scss";
 
 type Plan = "ILUMINADO" | "FALTON";
@@ -118,9 +122,17 @@ export function RegistrationVerification() {
 
   if (status === "checking") {
     return (
-      <p role="status">
-        Verificando el enlace. Un momento; no lo abras veinte veces.
-      </p>
+      <LoadingSkeleton
+        label="Verificando el enlace de correo"
+        className="verification-skeleton"
+      >
+        <div className="content-card registration-pending">
+          <SkeletonBlock className="skeleton-registration-label" />
+          <SkeletonBlock className="skeleton-registration-title" />
+          <SkeletonBlock className="skeleton-verification-copy" />
+          <SkeletonBlock className="skeleton-registration-button" />
+        </div>
+      </LoadingSkeleton>
     );
   }
   if (status === "verification_error") {

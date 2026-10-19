@@ -51,6 +51,32 @@
   overflow: auto;
   padding: 4px 3px 12px;
 }
+.roast-thread-skeleton {
+  width: 100%;
+}
+.skeleton-roast-quota {
+  width: min(100%, 260px);
+  height: 16px;
+}
+.roast-thread-skeleton .loading-skeleton-content {
+  gap: 14px;
+}
+.roast-exchange-skeleton {
+  display: grid;
+  gap: 9px;
+}
+.skeleton-roast-bubble {
+  height: 50px;
+  border-radius: 17px;
+}
+.skeleton-roast-bubble.user {
+  width: min(80%, 370px);
+  justify-self: end;
+}
+.skeleton-roast-bubble.reply {
+  width: min(90%, 420px);
+  justify-self: start;
+}
 .roast-exchange {
   display: grid;
   gap: 9px;
@@ -456,4 +482,32 @@
 
 .roast-composer button {
   background: #0bb0b7;
+}
+.roast-ranking-skeleton .loading-skeleton-content {
+  gap: 8px;
+}
+
+.skeleton-roast-winner {
+  width: 100%;
+  height: 142px;
+  border-radius: 18px;
+}
+
+.roast-ranking-skeleton-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--color-teal-dark) 18%, transparent);
+  padding: 12px 6px;
+}
+
+.skeleton-roast-name {
+  width: min(55%, 160px);
+  height: 20px;
+}
+
+.skeleton-roast-count {
+  width: 46px;
+  height: 20px;
 }
