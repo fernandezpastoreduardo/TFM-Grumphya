@@ -39,6 +39,7 @@ jobs:
       USER_DELETE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
       CONTACT_MESSAGE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
       BEST_USERS_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
+      ADMIN_DASHBOARD_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
       APPROVED_IDEAS_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
       ACCESS_TOKEN_SECRET: ci-only-secret-with-more-than-32-bytes
     steps:
