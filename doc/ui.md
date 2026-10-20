@@ -189,7 +189,8 @@ proporción del original; sus cabezas redondeadas incluyen las orejas de la
 mascota y la curva sube ligeramente en los extremos. Las figuras están en
 sombra, sin iluminación. Pesa 407.216 B; conserva la transparencia y el borde
 superior suavizado dentro del PNG. Ambos assets del marco conservan
-transparencia.
+transparencia. CSS escala el público manteniendo su proporción y reserva una
+franja suficiente para que no se corten ni se aplasten las cabezas.
 Los nuevos `home-grumpy-judge.png` y `admin-dashboard-audit.png` son PNG
 transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
 (aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /

@@ -1843,7 +1843,7 @@
   --frame-light: clamp(8px, 1vw, 16px);
   --curtain-height: 22.28vw;
   --header-start: clamp(102px, calc(8vw - 10px), 126px);
-  --audience-zone: 15.35vw;
+  --audience-zone: clamp(76px, calc(12.7vw + 26px), 360px);
   background-image:
     linear-gradient(
       90deg,
@@ -1878,7 +1878,7 @@
   width: 100vw;
   height: var(--audience-zone);
   background-position: center bottom;
-  background-size: 100% 100%;
+  background-size: 100% auto;
   transform: translateX(-50%);
 }
 
