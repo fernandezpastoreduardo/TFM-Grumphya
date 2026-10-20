@@ -22,7 +22,7 @@
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^10.0.1",
     "concurrently": "^9.2.1",
     "dotenv-cli": "^11.0.0",
     "husky": "^9.1.7",
