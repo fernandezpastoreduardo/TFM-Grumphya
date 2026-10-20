@@ -295,3 +295,9 @@ Actualización del prompt de roast, 18 de octubre de 2026:
 - Se añadió `postgres-password-reset.repository.postgres.spec.ts`, que crea un esquema aleatorio en `REGISTRATION_TEST_DATABASE_URL` y lo elimina al terminar. En esta ejecución local la variable no estaba configurada, así que la prueba de integración PostgreSQL se omitió. La salida de dos tests pasados corresponde al spec unitario `postgres-password-reset.repository.spec.ts`; no acredita una ejecución contra PostgreSQL. CI configura la URL de test; no se debe apuntar a una base de producción.
 - La bandeja admin puede enviar respuesta al correo de la cuenta; el texto de respuesta no se persiste. El estado incierto requiere revisar el webmail antes de un segundo intento. El correo de contacto tiene límite de tres intentos y estado de envío, con vista previa local sin SMTP.
 - Validación local final: `pnpm lint`, `pnpm typecheck` y `pnpm format:check` pasaron. `pnpm test`: API 452 pasados y 20 omitidos; web 208 pasados. El test de integración PostgreSQL de reset está entre los omitidos por falta de `REGISTRATION_TEST_DATABASE_URL`; no se comprobó aquí el comportamiento de persistencia real. No se probó entrega SMTP real.
+
+## Auditoría completa de dependencias, 20 de octubre de 2026
+
+- Se actualizaron Vitest a `4.1.12` en API y web y se fijó `shell-quote` en `1.12.0` mediante un override del workspace para corregir los hallazgos del árbol de dependencias.
+- `pnpm audit --audit-level moderate` (dependencias de producción y desarrollo del workspace) y `pnpm audit --prod --audit-level high` (solo dependencias de producción) terminaron ambos con `No known vulnerabilities found`.
+- Los umbrales, alcances y comandos están descritos en [`ci-cd.md`](ci-cd.md); la auditoría completa incluye herramientas de desarrollo que no forman parte de la imagen final.

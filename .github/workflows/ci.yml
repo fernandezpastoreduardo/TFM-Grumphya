@@ -74,7 +74,9 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Audit dependencies
+      - name: Audit all dependencies
+        run: pnpm audit --audit-level moderate
+      - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
       - name: Build local application image
         run: docker build --pull --target production --tag grumphya-ci:${{ github.sha }} .
