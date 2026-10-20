@@ -862,7 +862,7 @@
   bottom: -26px;
   left: -10px;
   height: clamp(72px, 8vw, 112px);
-  background: url("/assets/grumphya/audience-distant.png") center bottom /
+  background: url("/assets/grumphya/audience-rounded.png") center bottom /
     max(100%, 1160px) auto no-repeat;
 }
 
@@ -3021,7 +3021,7 @@
   grid-row: auto;
   align-self: stretch;
   min-width: 0;
-  margin: 24px 0 0;
+  margin: 12px 0 0;
   border: 0;
   border-radius: 0;
   padding: 0;
@@ -3083,7 +3083,7 @@
   }
 
   .home-workspace {
-    margin-top: 24px;
+    margin-top: 12px;
   }
 
   .home-hero-stage {

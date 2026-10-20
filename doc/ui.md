@@ -44,7 +44,7 @@ la lámina maestra está en
 - Los assets SVG revisados se guardan en
   `ideas-and-designs/revision-vectorial/revisados/`. Se colocan según la lámina
   maestra; no se autotracean ni se reinterpretan. El marco común usa los PNG
-  transparentes `stage-curtain-v2.png` y `audience-distant.png`; el haz de luz
+  transparentes `stage-curtain-v2.png` y `audience-rounded.png`; el haz de luz
   de Home se dibuja con CSS. Las capas de profundidad y adornos se resuelven
   con CSS.
 - Los rayos y formas de color rodean hero y acciones como paréntesis visuales,
@@ -183,8 +183,10 @@ de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
 887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` pesa 592.636 B y
-`audience-distant.png` pesa 398.672 B. Ambos assets del marco conservan
-transparencia.
+`audience-rounded.png` reemplaza el público distante por una curva de criaturas
+redondeadas y gruñonas de la familia visual de Grumphya. Pesa 737.283 B y
+conserva transparencia con el borde superior suavizado dentro del propio PNG.
+Ambos assets del marco conservan transparencia.
 Los nuevos `home-grumpy-judge.png` y `admin-dashboard-audit.png` son PNG
 transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
 (aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /

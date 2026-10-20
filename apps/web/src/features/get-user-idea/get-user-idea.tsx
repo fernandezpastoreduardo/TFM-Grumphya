@@ -119,7 +119,7 @@ export function GetUserIdea({
         errorMessage={currentError}
       />
       <fieldset className="idea-tone-options">
-        <legend>Elige cómo quieres que te responda</legend>
+        <legend>2. Elige cómo quieres que te responda</legend>
         {TONE_OPTIONS.map((option) => (
           <label className="idea-tone-option" key={option.tone}>
             <input
