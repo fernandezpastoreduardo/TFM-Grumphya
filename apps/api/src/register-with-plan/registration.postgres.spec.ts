@@ -21,7 +21,7 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
     }
   });
 
-  it("atomically persists an active unverified account, one-month plan, simulated purchase, quotas and session", async () => {
+  it("keeps registration pending until verification and simulated plan confirmation", async () => {
     adminPool = new Pool({
       connectionString: DATABASE_URL,
       connectionTimeoutMillis: 2_000,
@@ -34,28 +34,22 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       connectionTimeoutMillis: 2_000,
     });
     repository = new PostgresRegistrationRepository(testPool);
-    const service = new RegistrationService(repository);
+    let verificationToken = "";
+    const service = new RegistrationService(repository, {
+      send: async ({ text }) => {
+        verificationToken = /#([a-f0-9]{64})/u.exec(text)?.[1] ?? "";
+        return "sent";
+      },
+    });
     const intent = await service.createIntent("FALTON");
-    const session = await service.register(intent.token, {
+    const pending = await service.register(intent.token, {
       email: "Persona@example.es",
       username: "PersonaLista",
       password: "Una contraseña suficientemente segura 48!",
       privacyPolicyAcknowledged: true,
     });
-    expect(session.result.account.user.emailVerified).toBe(false);
-    expect(session.result.account.user.roastMessagesSent).toBe(0);
-    expect(session.result.account.plans).toMatchObject([
-      {
-        plan: "FALTON",
-        status: "active",
-        attemptsRemaining: { ideas: 0, roasts: 11 },
-      },
-      {
-        plan: "ILUMINADO",
-        status: "inactive",
-        attemptsRemaining: { ideas: 0, roasts: 0 },
-      },
-    ]);
+    expect(pending).toEqual({ status: "verification_pending" });
+    expect(verificationToken).toMatch(/^[a-f0-9]{64}$/u);
 
     const result = await adminPool.query<{
       users: string;
@@ -63,7 +57,7 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       unverified_users: string;
       subscriptions: string;
       purchases: string;
-      plan_code: string;
+      plan_code: string | null;
       days: number;
       usage_rows: string;
       zero_usage_rows: string;
@@ -83,17 +77,37 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
     );
     expect(result.rows[0]).toMatchObject({
       users: "1",
-      active_users: "1",
+      active_users: "0",
       unverified_users: "1",
-      subscriptions: "1",
-      purchases: "1",
-      plan_code: "FALTON",
-      usage_rows: "2",
-      zero_usage_rows: "2",
-      sessions: "1",
+      subscriptions: "0",
+      purchases: "0",
+      plan_code: null,
+      usage_rows: "0",
+      zero_usage_rows: "0",
+      sessions: "0",
     });
-    expect(result.rows[0]!.days).toBeGreaterThanOrEqual(28);
-    expect(result.rows[0]!.days).toBeLessThanOrEqual(31);
+    const verified = await service.verify(verificationToken);
+    const confirmed = await service.confirm(verified.confirmationToken);
+    expect(confirmed.result.account.user.emailVerified).toBe(true);
+    expect(confirmed.result.account.user.roastMessagesSent).toBe(0);
+    expect(confirmed.result.account.plans).toMatchObject([
+      {
+        plan: "FALTON",
+        status: "active",
+        attemptsRemaining: { ideas: 0, roasts: 11 },
+      },
+      {
+        plan: "ILUMINADO",
+        status: "inactive",
+        attemptsRemaining: { ideas: 0, roasts: 0 },
+      },
+    ]);
+    const activePlanDuration = await adminPool.query<{ days: number }>(
+      `SELECT extract(epoch FROM expires_at-starts_at)/86400 AS days
+       FROM "${schemaName}".subscriptions LIMIT 1`,
+    );
+    expect(activePlanDuration.rows[0]!.days).toBeGreaterThanOrEqual(28);
+    expect(activePlanDuration.rows[0]!.days).toBeLessThanOrEqual(31);
 
     await adminPool.query(
       `INSERT INTO "${schemaName}".registration_intents(token_hash,plan_code,expires_at)
@@ -140,10 +154,7 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
         password: "Otra contraseña suficientemente segura 48!",
         privacyPolicyAcknowledged: true,
       }),
-    ).rejects.toMatchObject({
-      statusCode: 409,
-      code: "REGISTRATION_UNAVAILABLE",
-    });
+    ).resolves.toEqual({ status: "verification_pending" });
     const afterConflict = await adminPool.query<{
       users: string;
       subscriptions: string;

@@ -81,6 +81,19 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     theme: "calm",
     mascot: "admin",
   },
+  "/recuperar-contrasena": {
+    title: "¿La contraseña se ha ido de paseo?",
+    intro:
+      "Solicita un enlace de un solo uso. No confirmaremos si existe una cuenta con ese correo.",
+    theme: "mint",
+    mascot: "login",
+  },
+  "/restablecer-contrasena": {
+    title: "Una contraseña nueva",
+    intro: "El enlace caduca pronto y solo se puede usar una vez.",
+    theme: "mint",
+    mascot: "login",
+  },
   "/verificar-cuenta": {
     title: "Una última comprobación",
     intro:
@@ -147,6 +160,16 @@ const SECTION_CONTENT_BY_PATH: Record<
   "/panel-control": lazy(() =>
     import("../features/admin-dashboard/admin-dashboard").then((module) => ({
       default: module.AdminDashboard,
+    })),
+  ),
+  "/recuperar-contrasena": lazy(() =>
+    import("../features/password-reset/password-reset").then((module) => ({
+      default: module.PasswordReset,
+    })),
+  ),
+  "/restablecer-contrasena": lazy(() =>
+    import("../features/password-reset/password-reset").then((module) => ({
+      default: module.PasswordReset,
     })),
   ),
   "/verificar-cuenta": lazy(() =>

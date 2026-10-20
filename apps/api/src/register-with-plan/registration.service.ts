@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { domainToASCII } from "node:url";
 import { Logger } from "@nestjs/common";
 import {
@@ -11,6 +11,8 @@ import {
   type SessionIdentity,
   type AccountProfile,
   type UserGoodIdeas,
+  type RegistrationPendingResult,
+  type PendingRegistration,
 } from "./registration.models";
 import type { RegistrationRepository } from "./registration.repository";
 import {
@@ -24,11 +26,16 @@ import {
   verifyPassword,
 } from "../infrastructure/auth/password-hasher";
 import { ADMIN_RESERVED_USERNAME } from "../infrastructure/auth/reserved-usernames";
+import { isStrongPassword } from "../infrastructure/auth/password-policy";
+import type { MailService } from "../infrastructure/mail/mail.service";
+import { renderGrumphyaEmail } from "../infrastructure/mail/grumphya-email";
 export { verifyPassword } from "../infrastructure/auth/password-hasher";
 const INTENT_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const REMEMBERED_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const VERIFIED_SESSION_TTL_MS = 15 * 60 * 1000;
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const RESEND_RESPONSE_FLOOR_MS = 350;
 const GENERIC_LOGIN_ERROR = {
   status: 401,
   code: "LOGIN_UNAVAILABLE",
@@ -36,19 +43,8 @@ const GENERIC_LOGIN_ERROR = {
     "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.",
 } as const;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
-const PASSWORD_LOWERCASE_PATTERN = /\p{Ll}/u;
-const PASSWORD_NUMBER_PATTERN = /\p{N}/u;
-const PASSWORD_SPECIAL_PATTERN = /[^\p{L}\p{N}\s]/u;
 const USERNAME_PATTERN =
   /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
-const GENERIC_CONFLICT = {
-  status: 409,
-  code: "REGISTRATION_UNAVAILABLE",
-  message:
-    "No se ha podido completar el alta con esos datos. Revisa la información e inténtalo de nuevo.",
-} as const;
-
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -57,10 +53,64 @@ function newToken(): string {
   return randomBytes(32).toString("hex");
 }
 
+class VerificationDeliveryError extends Error {}
+
+function validateResendEmail(value: unknown): string {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => key !== "email") ||
+    typeof value.email !== "string"
+  ) {
+    throw new RegistrationError(
+      400,
+      "INVALID_EMAIL",
+      "Escribe un correo válido.",
+    );
+  }
+  const email = normalizeEmail(value.email);
+  if (!email)
+    throw new RegistrationError(
+      400,
+      "INVALID_EMAIL",
+      "Escribe un correo válido.",
+    );
+  return email;
+}
+
+function getVerificationOrigin(): string {
+  const configuredOrigin = process.env.WEB_ORIGIN;
+  if (!configuredOrigin) throw new VerificationDeliveryError();
+  try {
+    const origin = new URL(configuredOrigin);
+    if (
+      origin.origin !== configuredOrigin.replace(/\/$/u, "") ||
+      (process.env.NODE_ENV === "production" && origin.protocol !== "https:")
+    ) {
+      throw new Error("Invalid web origin.");
+    }
+    return origin.origin;
+  } catch {
+    throw new VerificationDeliveryError();
+  }
+}
+
+function classifyDeliveryError(): string {
+  return "MAIL_DELIVERY_FAILED";
+}
+
+async function waitForMinimumDuration(startedAt: number, minimumMs: number) {
+  const remainingMs = minimumMs - (Date.now() - startedAt);
+  if (remainingMs > 0)
+    await new Promise<void>((resolve) => setTimeout(resolve, remainingMs));
+}
+
 export class RegistrationService {
   private readonly logger = new Logger(RegistrationService.name);
 
-  constructor(private readonly repository: RegistrationRepository) {}
+  constructor(
+    private readonly repository: RegistrationRepository,
+    private readonly mail: Pick<MailService, "send">,
+  ) {}
 
   async createIntent(value: unknown): Promise<RegistrationIntent> {
     if (value !== "ILUMINADO" && value !== "FALTON") {
@@ -84,7 +134,7 @@ export class RegistrationService {
   async register(
     token: string | undefined,
     value: unknown,
-  ): Promise<SessionIssue> {
+  ): Promise<RegistrationPendingResult> {
     const intentPlan = await this.currentIntent(token);
     if (!token || !intentPlan)
       throw new RegistrationError(
@@ -94,45 +144,100 @@ export class RegistrationService {
       );
     const input = validateRegistrationInput(value);
     const passwordHash = await hashPassword(input.password);
-    const userId = randomUUID();
-    const accessToken = issueAccessToken(userId).token;
-    const refreshToken = newToken();
-    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+    const verificationToken = newToken();
+    const verificationExpiresAt = new Date(
+      Date.now() + VERIFICATION_TOKEN_TTL_MS,
+    );
+    let pendingRegistration: PendingRegistration | undefined;
     try {
-      const registration = await this.repository.activateWithRegistration(
-        userId,
+      pendingRegistration = await this.repository.consumeIntentAndRegister(
         hashToken(token),
         input,
         passwordHash,
-        hashToken(accessToken),
-        hashToken(refreshToken),
-        expiresAt,
+        hashToken(verificationToken),
+        verificationExpiresAt,
       );
-      return {
-        result: {
-          status: "active",
-          plan: registration.plan,
-          account: registration.account,
-          accessToken,
-          expiresIn: ACCESS_TOKEN_TTL_SECONDS,
-        },
-        refreshToken,
-        rememberMe: false,
-        expiresAt,
-      };
+      await this.deliverVerification(
+        pendingRegistration.email,
+        verificationToken,
+      );
+      return { status: "verification_pending" };
     } catch (error) {
       if (error instanceof RegistrationError) throw error;
-      if (isUniqueViolation(error))
-        throw new RegistrationError(
-          GENERIC_CONFLICT.status,
-          GENERIC_CONFLICT.code,
-          GENERIC_CONFLICT.message,
-        );
+      if (isUniqueViolation(error)) return { status: "verification_pending" };
+      if (error instanceof VerificationDeliveryError) {
+        if (pendingRegistration)
+          await this.repository.releaseVerificationResendCooldown(
+            pendingRegistration.id,
+          );
+        this.logger.error("Registration verification delivery failed", {
+          errorCode: "MAIL_DELIVERY_FAILED",
+        });
+        return { status: "verification_pending" };
+      }
       throw new RegistrationError(
         503,
         "REGISTRATION_UNAVAILABLE",
         "No se ha podido completar el alta ahora.",
       );
+    }
+  }
+
+  async resendVerification(value: unknown): Promise<RegistrationPendingResult> {
+    const requestStartedAt = Date.now();
+    const email = validateResendEmail(value);
+    const verificationToken = newToken();
+    let pendingRegistration: PendingRegistration | null = null;
+    try {
+      pendingRegistration = await this.repository.replaceVerificationToken(
+        email,
+        hashToken(verificationToken),
+        new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS),
+      );
+      if (pendingRegistration)
+        await this.deliverVerification(
+          pendingRegistration.email,
+          verificationToken,
+        );
+    } catch {
+      if (pendingRegistration)
+        await this.repository.releaseVerificationResendCooldown(
+          pendingRegistration.id,
+        );
+      this.logger.error("Registration verification delivery failed", {
+        errorCode: classifyDeliveryError(),
+      });
+    } finally {
+      await waitForMinimumDuration(requestStartedAt, RESEND_RESPONSE_FLOOR_MS);
+    }
+    return { status: "verification_pending" };
+  }
+
+  private async deliverVerification(
+    email: string,
+    token: string,
+  ): Promise<void> {
+    const origin = getVerificationOrigin();
+    const verificationUrl = `${origin}/verificar-cuenta#${token}`;
+    const content = renderGrumphyaEmail({
+      title: "Confirma tu correo",
+      preheader: "Un paso breve para terminar de crear tu cuenta.",
+      paragraphs: [
+        "Has solicitado crear una cuenta en Grumphya.",
+        "Confirma tu correo con el botón. El enlace caduca en 24 horas y solo se puede utilizar una vez.",
+        "Si no has solicitado esta cuenta, puedes ignorar este mensaje.",
+      ],
+      action: { label: "Verificar mi correo", url: verificationUrl },
+    });
+    try {
+      await this.mail.send({
+        to: email,
+        subject: "Confirma tu correo para Grumphya",
+        text: content.text,
+        html: content.html,
+      });
+    } catch {
+      throw new VerificationDeliveryError();
     }
   }
 
@@ -503,22 +608,6 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
   };
 }
 
-function isStrongPassword(value: unknown): value is string {
-  if (
-    typeof value !== "string" ||
-    value.length < 12 ||
-    value.length > 128 ||
-    hasControlCharacters(value)
-  )
-    return false;
-  return (
-    PASSWORD_UPPERCASE_PATTERN.test(value) &&
-    PASSWORD_LOWERCASE_PATTERN.test(value) &&
-    PASSWORD_NUMBER_PATTERN.test(value) &&
-    PASSWORD_SPECIAL_PATTERN.test(value)
-  );
-}
-
 function normalizeEmail(value: string): string | null {
   const trimmed = value.trim();
   if (trimmed.length > 254 || !EMAIL_PATTERN.test(trimmed)) return null;
@@ -530,15 +619,6 @@ function normalizeEmail(value: string): string | null {
   return normalized.length <= 254 && EMAIL_PATTERN.test(normalized)
     ? normalized
     : null;
-}
-
-function hasControlCharacters(value: string): boolean {
-  for (const character of value) {
-    const codePoint = character.codePointAt(0);
-    if (codePoint !== undefined && (codePoint < 32 || codePoint === 127))
-      return true;
-  }
-  return false;
 }
 
 function loginUnavailable(): RegistrationError {

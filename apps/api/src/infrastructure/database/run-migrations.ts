@@ -72,6 +72,18 @@ const MIGRATIONS = [
     version: "024_admin_ai_usage_attribution",
     file: "024_admin_ai_usage_attribution.sql",
   },
+  {
+    version: "025_contact_confirmation_delivery",
+    file: "025_contact_confirmation_delivery.sql",
+  },
+  {
+    version: "026_registration_verification_delivery",
+    file: "026_registration_verification_delivery.sql",
+  },
+  {
+    version: "027_password_reset_tokens",
+    file: "027_password_reset_tokens.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

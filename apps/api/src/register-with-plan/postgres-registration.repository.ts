@@ -64,6 +64,14 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
   ): Promise<PendingRegistration> {
     await this.ensureSchema();
     return this.transaction(async (client) => {
+      await client.query(
+        `DELETE FROM users AS expired_user
+         USING pending_registrations AS expired_registration
+         WHERE expired_registration.user_id=expired_user.id
+           AND expired_user.status='pending_email_verification'
+           AND expired_registration.verification_expires_at <= now()
+           AND expired_registration.verified_token_hash IS NULL`,
+      );
       const intent = await client.query<{ plan_code: PlanCode }>(
         "DELETE FROM registration_intents WHERE token_hash=$1 AND expires_at > now() RETURNING plan_code",
         [tokenHash],
@@ -89,16 +97,47 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
          VALUES($1,$2,$3,$4) RETURNING id`,
         [userId, plan, verificationHash, verificationExpiresAt],
       );
-      return {
-        id: pending.rows[0]!.id,
-        email: input.email.trim(),
-        username: input.username.trim(),
-        passwordHash,
-        plan,
-        verificationHash,
-        verificationExpiresAt,
-      };
+      return { id: pending.rows[0]!.id, email: input.email.trim() };
     });
+  }
+
+  async replaceVerificationToken(
+    email: string,
+    verificationHash: string,
+    verificationExpiresAt: Date,
+  ): Promise<PendingRegistration | null> {
+    await this.ensureSchema();
+    return this.transaction(async (client) => {
+      const result = await client.query<{ id: string; email: string }>(
+        `UPDATE pending_registrations AS pending
+         SET verification_token_hash=$2, verification_expires_at=$3,
+             verification_resend_count=verification_resend_count+1,
+             verification_last_sent_at=now()
+         FROM users AS user_account
+         WHERE pending.user_id=user_account.id
+           AND user_account.email_normalized=$1
+           AND user_account.status='pending_email_verification'
+           AND pending.verified_token_hash IS NULL
+           AND pending.verification_resend_count < 5
+           AND pending.verification_last_sent_at < now() - interval '60 seconds'
+         RETURNING pending.id,user_account.email`,
+        [email, verificationHash, verificationExpiresAt],
+      );
+      const pending = result.rows[0];
+      return pending ? { id: pending.id, email: pending.email } : null;
+    });
+  }
+
+  async releaseVerificationResendCooldown(
+    registrationId: string,
+  ): Promise<void> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE pending_registrations
+       SET verification_last_sent_at=now() - interval '60 seconds'
+       WHERE id=$1 AND verified_token_hash IS NULL`,
+      [registrationId],
+    );
   }
 
   async activateWithRegistration(

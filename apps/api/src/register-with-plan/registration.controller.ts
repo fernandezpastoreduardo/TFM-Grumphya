@@ -12,10 +12,6 @@ import {
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { RegistrationError } from "./registration.models";
-import {
-  REGISTRATION_REPOSITORY,
-  type RegistrationRepository,
-} from "./registration.repository";
 import { RegistrationService } from "./registration.service";
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
@@ -30,10 +26,8 @@ type AuthenticatedRequest = Request & { user?: { userId: string } };
 @Controller()
 export class RegistrationController {
   private readonly service: RegistrationService;
-  constructor(
-    @Inject(REGISTRATION_REPOSITORY) repository: RegistrationRepository,
-  ) {
-    this.service = new RegistrationService(repository);
+  constructor(@Inject(RegistrationService) service: RegistrationService) {
+    this.service = service;
   }
 
   @Post("registration-intents")
@@ -73,17 +67,17 @@ export class RegistrationController {
     @Body() body: unknown,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const session = await this.service.register(
+    const pending = await this.service.register(
       readCookie(request, INTENT_COOKIE),
       body,
     );
-    response.cookie(
-      REFRESH_COOKIE,
-      session.refreshToken,
-      sessionCookieOptions(session),
-    );
     response.clearCookie(INTENT_COOKIE, privateCookieOptions());
-    return session.result;
+    return pending;
+  }
+
+  @Post("registrations/resend-verification")
+  async resendVerification(@Body() body: unknown) {
+    return this.service.resendVerification(body);
   }
 
   @Post("registrations/verify")

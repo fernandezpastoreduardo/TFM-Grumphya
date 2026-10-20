@@ -10,14 +10,27 @@ import {
   hashAccessToken,
 } from "../infrastructure/auth/access-token-session.lookup";
 import { createSecurityMiddleware } from "../security/security.middleware";
-import { CONTACT_MESSAGE_REPOSITORY } from "./submit-contact-message.models";
+import {
+  CONTACT_MESSAGE_MAILER,
+  CONTACT_MESSAGE_REPOSITORY,
+} from "./submit-contact-message.models";
 import { SubmitContactMessageController } from "./submit-contact-message.controller";
 
 const WEB_ORIGIN = "http://127.0.0.1:5173";
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const OTHER_USER_ID = "00000000-0000-4000-8000-000000000002";
+const REQUEST_KEY = "10000000-0000-4000-8000-000000000001";
+const MESSAGE_ID = "20000000-0000-4000-8000-000000000001";
 const ACCESS_SECRET = "contact-message-http-test-secret-at-least-32-bytes";
-const repository = { createForUser: vi.fn() };
+const repository = {
+  createForUser: vi.fn(),
+  getForUser: vi.fn(),
+  claimConfirmation: vi.fn(),
+  markConfirmationSent: vi.fn(),
+  markConfirmationPreviewed: vi.fn(),
+  markConfirmationFailed: vi.fn(),
+};
+const mailer = { sendConfirmation: vi.fn() };
 let activeTokenHash: string | null = null;
 
 class SubmitContactMessageHttpTestModule {}
@@ -26,6 +39,7 @@ Module({
   providers: [
     AccessTokenGuard,
     { provide: CONTACT_MESSAGE_REPOSITORY, useValue: repository },
+    { provide: CONTACT_MESSAGE_MAILER, useValue: mailer },
     {
       provide: ACCESS_TOKEN_SESSION_LOOKUP,
       useValue: {
@@ -44,7 +58,22 @@ describe("submit contact message HTTP flow", () => {
   beforeEach(async () => {
     process.env.WEB_ORIGIN = WEB_ORIGIN;
     process.env.ACCESS_TOKEN_SECRET = ACCESS_SECRET;
-    repository.createForUser.mockReset().mockResolvedValue(undefined);
+    repository.createForUser.mockReset().mockResolvedValue({
+      id: MESSAGE_ID,
+      createdAt: "2026-10-20T10:00:00.000Z",
+      recipient: "persona@example.es",
+      subject: "Consulta",
+      status: "pending",
+      canRetry: true,
+    });
+    repository.getForUser.mockReset();
+    repository.claimConfirmation.mockReset().mockResolvedValue("claimed");
+    repository.markConfirmationSent.mockReset().mockResolvedValue(undefined);
+    repository.markConfirmationPreviewed
+      .mockReset()
+      .mockResolvedValue(undefined);
+    repository.markConfirmationFailed.mockReset().mockResolvedValue(true);
+    mailer.sendConfirmation.mockReset().mockResolvedValue("sent");
     accessToken = issueAccessToken(USER_ID).token;
     activeTokenHash = hashAccessToken(accessToken);
     app = await NestFactory.create<NestExpressApplication>(
@@ -125,9 +154,16 @@ describe("submit contact message HTTP flow", () => {
     );
 
     expect(accepted.status).toBe(201);
-    expect(await accepted.json()).toEqual({ status: "received" });
+    expect(await accepted.json()).toEqual({
+      status: "saved",
+      confirmation: "sent",
+      retryAllowed: false,
+      reference: MESSAGE_ID,
+      createdAt: "2026-10-20T10:00:00.000Z",
+    });
     expect(repository.createForUser).toHaveBeenCalledWith(
       USER_ID,
+      REQUEST_KEY,
       "Consulta",
       "Necesito ayuda con mi cuenta.",
     );
@@ -153,7 +189,7 @@ describe("submit contact message HTTP flow", () => {
   ): Promise<Response> {
     return fetch(`${apiOrigin}/contact-messages`, {
       method: "POST",
-      headers,
+      headers: { "Idempotency-Key": REQUEST_KEY, ...headers },
       body: JSON.stringify(body),
     });
   }

@@ -13,10 +13,14 @@ type ContactMessageFormProps = {
   subject: string;
   message: string;
   isSubmitting: boolean;
+  isRetrying: boolean;
   error: string;
   success: string;
+  retryError: string;
+  showRetry: boolean;
   onSubjectChange: (value: string) => void;
   onMessageChange: (value: string) => void;
+  onRetry: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -24,10 +28,14 @@ export function ContactMessageForm({
   subject,
   message,
   isSubmitting,
+  isRetrying,
   error,
   success,
+  retryError,
+  showRetry,
   onSubjectChange,
   onMessageChange,
+  onRetry,
   onSubmit,
 }: ContactMessageFormProps) {
   return (
@@ -39,7 +47,7 @@ export function ContactMessageForm({
       <h2 id="contact-account-title">Cuéntanos qué necesitas</h2>
       <p className="contact-account-intro">
         Tu mensaje queda guardado junto a tu cuenta para que podamos atenderlo.
-        El correo automático todavía está tomando café.
+        Te enviaremos un correo para confirmar que lo hemos recibido.
       </p>
       <form onSubmit={onSubmit}>
         <label htmlFor="contact-subject">
@@ -90,10 +98,28 @@ export function ContactMessageForm({
           {success}
         </p>
       ) : null}
+      {showRetry ? (
+        <div className="contact-confirmation-retry">
+          <button
+            className="button-secondary"
+            disabled={isRetrying}
+            onClick={onRetry}
+            type="button"
+          >
+            {isRetrying ? "Reintentando correo…" : "Reintentar confirmación"}
+          </button>
+          {retryError ? (
+            <p className="contact-message-error" role="alert">
+              {retryError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <p className="contact-plan-note">
         Guardamos el mensaje para poder revisarlo; todavía no tenemos un plazo
-        de borrado definido ni un canal de respuesta. No incluyas contraseñas ni
-        datos de pago.
+        de borrado definido. La confirmación solo acredita que lo hemos
+        recibido, no el plazo de respuesta. No incluyas contraseñas ni datos de
+        pago.
       </p>
     </section>
   );

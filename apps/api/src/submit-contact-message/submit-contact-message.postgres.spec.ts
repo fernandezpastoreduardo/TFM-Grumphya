@@ -6,6 +6,7 @@ import { PostgresContactMessageRepository } from "./postgres-contact-message.rep
 
 const DATABASE_URL = process.env.CONTACT_MESSAGE_TEST_DATABASE_URL;
 const SCHEMA_PREFIX = "contact_message_test_";
+const REQUEST_KEY = "10000000-0000-4000-8000-000000000001";
 
 describe.skipIf(!DATABASE_URL)("contact message persistence", () => {
   let adminPool: Pool;
@@ -42,19 +43,30 @@ describe.skipIf(!DATABASE_URL)("contact message persistence", () => {
     }
   });
 
-  it("persists a message for its account and physically removes it with that account", async () => {
-    await repository.createForUser(
+  it("persists idempotently for its account and physically removes it with that account", async () => {
+    const first = await repository.createForUser(
       userId,
+      REQUEST_KEY,
       "Consulta de cuenta",
       "Necesito ayuda con el estado de mi plan.",
     );
+    const retry = await repository.createForUser(
+      userId,
+      REQUEST_KEY,
+      "Consulta de cuenta",
+      "Necesito ayuda con el estado de mi plan.",
+    );
+    expect(first.id).toBe(retry.id);
+    expect(retry.recipient).toMatch(/@example\.es$/);
 
     const stored = await testPool.query<{
       user_id: string;
       subject: string;
       message: string;
+      confirmation_status: string;
     }>(
-      `SELECT user_id, subject, message FROM contact_messages WHERE user_id = $1`,
+      `SELECT user_id, subject, message, confirmation_status
+       FROM contact_messages WHERE user_id = $1`,
       [userId],
     );
     expect(stored.rows).toEqual([
@@ -62,6 +74,7 @@ describe.skipIf(!DATABASE_URL)("contact message persistence", () => {
         user_id: userId,
         subject: "Consulta de cuenta",
         message: "Necesito ayuda con el estado de mi plan.",
+        confirmation_status: "pending",
       },
     ]);
 

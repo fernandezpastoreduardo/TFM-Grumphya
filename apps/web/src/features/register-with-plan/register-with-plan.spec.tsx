@@ -1,27 +1,17 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RegisterWithPlan } from "./register-with-plan";
 
 const PLAN_RESPONSE = { plan: "ILUMINADO" };
-const REGISTRATION_RESPONSE = {
-  status: "active",
-  plan: "ILUMINADO",
-  account: {},
-  accessToken: "test-only-access-token",
-  expiresIn: 600,
-};
+const REGISTRATION_RESPONSE = { status: "verification_pending" };
 const VALID_EMAIL = "persona@example.es";
 const VALID_USERNAME = "persona-lista";
 const VALID_PASSWORD = "Una contraseña suficientemente segura 48!";
-const REGISTER_SUBMIT_BUTTON_NAME = /dáme de alta un mes y te pago el café/i;
+const REGISTER_SUBMIT_BUTTON_NAME = /crear cuenta y verificar correo/i;
 const PASSWORD_REQUIREMENTS =
   "Mínimo 12 caracteres, con mayúscula, minúscula, número y carácter especial.";
 const TERMS_PATH = "/terminos-y-condiciones";
-const DUPLICATE_RESPONSE = {
-  message:
-    "No se ha podido confirmar el alta. Para evitar un envío duplicado, vuelve a cargar la página antes de intentarlo otra vez.",
-};
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -184,7 +174,7 @@ describe("RegisterWithPlan", () => {
     );
   });
 
-  it("posts the registration and opens the simulated payment dialog", async () => {
+  it("posts the registration and asks the user to check email without starting a session", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       if (String(input) === "/api/registration-intents/current") {
@@ -216,14 +206,16 @@ describe("RegisterWithPlan", () => {
     );
 
     expect(
-      await screen.findByRole("heading", {
-        name: /un momento\. estoy preparando tu cuenta/i,
-      }),
+      await screen.findByRole("heading", { name: /revisa tu correo/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "el pago es simulado y no se te cobrará nada",
+      /no se activa la cuenta ni el plan/i,
     );
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).not.toHaveBeenCalledWith(
+      "/api/auth/refresh",
+      expect.anything(),
+    );
   });
 
   it("locks the submit button during the request and prevents another POST after acceptance", async () => {
@@ -260,12 +252,10 @@ describe("RegisterWithPlan", () => {
 
     finishRegistration?.(jsonResponse(REGISTRATION_RESPONSE, 201));
     expect(
-      await screen.findByRole("heading", {
-        name: /un momento\. estoy preparando tu cuenta/i,
-      }),
+      await screen.findByRole("heading", { name: /revisa tu correo/i }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /dáme de alta|dándote de alta/i }),
+      screen.queryByRole("button", { name: /crear cuenta|dándote de alta/i }),
     ).not.toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(2);
   });
@@ -302,12 +292,12 @@ describe("RegisterWithPlan", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("shows the same vague response for registration conflicts", async () => {
+  it("shows the generic check-email state for duplicate registration details", async () => {
     const user = userEvent.setup();
     vi.mocked(fetch).mockImplementation(async (input) =>
       String(input) === "/api/registration-intents/current"
         ? jsonResponse(PLAN_RESPONSE)
-        : jsonResponse(DUPLICATE_RESPONSE, 409),
+        : jsonResponse(REGISTRATION_RESPONSE, 201),
     );
     render(<RegisterWithPlan />);
 
@@ -325,11 +315,46 @@ describe("RegisterWithPlan", () => {
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      DUPLICATE_RESPONSE.message,
-    );
+    expect(
+      await screen.findByRole("heading", { name: /revisa tu correo/i }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/correo ya existe|nombre de usuario ya existe/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("requests a resend through a generic response", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      if (String(input) === "/api/registration-intents/current")
+        return jsonResponse(PLAN_RESPONSE);
+      if (String(input) === "/api/registrations/resend-verification")
+        return jsonResponse(REGISTRATION_RESPONSE);
+      return jsonResponse(REGISTRATION_RESPONSE, 201);
+    });
+    render(<RegisterWithPlan />);
+    await user.type(
+      await screen.findByLabelText(/correo electrónico/i),
+      VALID_EMAIL,
+    );
+    await user.type(
+      screen.getByLabelText(/nombre de usuario/i),
+      VALID_USERNAME,
+    );
+    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
+    await user.click(
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: /solicitar otro enlace/i }),
+    );
+    expect(
+      await screen.findByText(/si hay una verificación pendiente/i),
+    ).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/registrations/resend-verification",
+      expect.objectContaining({ body: JSON.stringify({ email: VALID_EMAIL }) }),
+    );
   });
 });

@@ -7,6 +7,7 @@ import { createSecurityMiddleware } from "../security/security.middleware";
 import { RegistrationController } from "./registration.controller";
 import { InMemoryRegistrationRepository } from "./registration-testing.repository";
 import { REGISTRATION_REPOSITORY } from "./registration.repository";
+import { RegistrationService } from "./registration.service";
 import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 
@@ -19,6 +20,7 @@ const REGISTRATION_BODY = {
 };
 
 let repository = new InMemoryRegistrationRepository();
+let verificationToken = "";
 
 class RegistrationHttpTestModule {}
 Module({
@@ -27,6 +29,16 @@ Module({
     {
       provide: REGISTRATION_REPOSITORY,
       useFactory: () => repository,
+    },
+    {
+      provide: RegistrationService,
+      useFactory: () =>
+        new RegistrationService(repository, {
+          send: async ({ text }) => {
+            verificationToken = /#([a-f0-9]{64})/u.exec(text)?.[1] ?? "";
+            return "sent";
+          },
+        }),
     },
     AccessTokenGuard,
     {
@@ -48,6 +60,7 @@ describe("registration HTTP flow", () => {
     process.env.ACCESS_TOKEN_SECRET =
       "registration-http-test-secret-with-at-least-32-bytes";
     repository = new InMemoryRegistrationRepository();
+    verificationToken = "";
     app = await NestFactory.create<NestExpressApplication>(
       RegistrationHttpTestModule,
       { logger: false },
@@ -66,11 +79,13 @@ describe("registration HTTP flow", () => {
     delete process.env.ACCESS_TOKEN_SECRET;
   });
 
-  it("keeps the selected plan server-side and activates the simulated subscription atomically", async () => {
+  it("keeps registration pending until verification and simulated plan confirmation", async () => {
     const intentResponse = await post("/registration-intents", {
       plan: "FALTON",
     });
-    expect(intentResponse.status).toBe(201);
+    expect(intentResponse.status, await intentResponse.clone().text()).toBe(
+      201,
+    );
     const intentCookie = cookieFrom(intentResponse);
     expect(intentCookie).toMatch(/^grumphya_registration_intent=/);
     expect(intentResponse.headers.get("set-cookie")).toContain("HttpOnly");
@@ -89,53 +104,48 @@ describe("registration HTTP flow", () => {
       intentCookie,
     );
     expect(registrationResponse.status).toBe(201);
-    expect(registrationResponse.headers.get("set-cookie")).toContain(
+    expect(registrationResponse.headers.get("set-cookie") ?? "").not.toContain(
       "grumphya_refresh=",
     );
-    expect(registrationResponse.headers.get("set-cookie")).toContain(
-      "HttpOnly",
-    );
     const registrationBody = await registrationResponse.json();
-    expect(registrationBody).toMatchObject({
-      status: "active",
-      plan: "FALTON",
-      expiresIn: 600,
-      account: {
-        user: {
-          email: "persona@example.es",
-          username: "PersonaLista",
-          emailVerified: false,
-          createdAt: expect.any(String),
-          roastMessagesSent: 0,
-        },
-      },
+    expect(registrationBody).toEqual({ status: "verification_pending" });
+    expect(repository.sessions).toHaveLength(0);
+    expect(repository.subscriptions).toHaveLength(0);
+    expect(verificationToken).toMatch(/^[a-f0-9]{64}$/u);
+    const verificationResponse = await post("/registrations/verify", {
+      token: verificationToken,
     });
-    expect(registrationBody.account.plans).toEqual(
+    expect(verificationResponse.status).toBe(201);
+    const confirmationCookie = cookieFrom(verificationResponse);
+    expect(confirmationCookie).toContain("grumphya_verified_registration=");
+    expect(repository.sessions).toHaveLength(0);
+    const confirmationResponse = await post(
+      "/registrations/confirm",
+      {},
+      confirmationCookie,
+    );
+    expect(confirmationResponse.headers.get("set-cookie")).toContain(
+      "grumphya_refresh=",
+    );
+    const confirmationBody = await confirmationResponse.json();
+    expect(confirmationBody.account.user).toMatchObject({
+      email: "persona@example.es",
+      emailVerified: true,
+    });
+    expect(confirmationBody.account.plans).toEqual(
       expect.arrayContaining([
-        {
-          plan: "FALTON",
-          status: "active",
-          attemptsRemaining: { ideas: 0, roasts: 11 },
-          startsAt: expect.any(String),
-          expiresAt: expect.any(String),
-        },
-        {
-          plan: "ILUMINADO",
-          status: "inactive",
-          attemptsRemaining: { ideas: 0, roasts: 0 },
-          startsAt: null,
-          expiresAt: null,
-        },
+        expect.objectContaining({ plan: "FALTON", status: "active" }),
+        expect.objectContaining({ plan: "ILUMINADO", status: "inactive" }),
       ]),
     );
-    const refreshCookie = cookieFrom(registrationResponse);
-    const accessToken = registrationBody.accessToken as string;
+    const refreshCookie = cookieFrom(confirmationResponse);
+    const accessToken = confirmationBody.accessToken as string;
     const cookieOnlyProfile = await get("/account/profile", refreshCookie);
     expect(cookieOnlyProfile.status).toBe(401);
     const profileResponse = await getProtected("/account/profile", accessToken);
     expect(profileResponse.status).toBe(200);
     expect(await profileResponse.json()).toMatchObject({
-      user: { emailVerified: false },
+      user: { emailVerified: true },
     });
     const ownerId = repository.users[0]?.id;
     if (!ownerId) throw new Error("Registered user is missing in test store.");
@@ -203,7 +213,10 @@ describe("registration HTTP flow", () => {
       cookieFrom(intentResponse),
     );
     expect(registrationResponse.status).toBe(201);
-    const registrationBody = await registrationResponse.json();
+    expect(await registrationResponse.json()).toEqual({
+      status: "verification_pending",
+    });
+    const confirmationBody = await verifyAndConfirmRegistration();
 
     const loginResponse = await post("/auth/login", {
       identifier: "PersonaLista",
@@ -222,7 +235,7 @@ describe("registration HTTP flow", () => {
       expiresIn: 600,
       accessToken: expect.any(String),
     });
-    expect(loginBody.accessToken).not.toBe(registrationBody.accessToken);
+    expect(loginBody.accessToken).not.toBe(confirmationBody.accessToken);
     const originalRefreshCookie = cookieFrom(loginResponse);
 
     const refreshResponse = await post(
@@ -280,6 +293,7 @@ describe("registration HTTP flow", () => {
       cookieFrom(intentResponse),
     );
     expect(registrationResponse.status).toBe(201);
+    await verifyAndConfirmRegistration();
     const unknownUser = await post("/auth/login", {
       identifier: "NoExiste",
       password: REGISTRATION_BODY.password,
@@ -343,6 +357,20 @@ describe("registration HTTP flow", () => {
       },
       body: JSON.stringify(body),
     });
+  }
+
+  async function verifyAndConfirmRegistration() {
+    if (!verificationToken) throw new Error("Test email was not captured.");
+    const verificationResponse = await post("/registrations/verify", {
+      token: verificationToken,
+    });
+    const confirmationCookie = cookieFrom(verificationResponse);
+    const confirmationResponse = await post(
+      "/registrations/confirm",
+      {},
+      confirmationCookie,
+    );
+    return confirmationResponse.json();
   }
 
   async function postProtected(

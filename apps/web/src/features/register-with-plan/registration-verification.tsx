@@ -62,6 +62,9 @@ function isConfirmationResponse(value: unknown): value is ConfirmationResponse {
 export function RegistrationVerification() {
   const [status, setStatus] = useState<VerificationStatus>("checking");
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
   const verificationStarted = useRef(false);
 
   useEffect(() => {
@@ -98,6 +101,42 @@ export function RegistrationVerification() {
     }
     void verifyEmail();
   }, []);
+
+  async function resendVerification() {
+    if (resending) return;
+    setResending(true);
+    setResendMessage("");
+    try {
+      const response = await fetch("/api/registrations/resend-verification", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      const body: unknown = await readJson(response);
+      if (
+        response.ok &&
+        typeof body === "object" &&
+        body !== null &&
+        "status" in body &&
+        body.status === "verification_pending"
+      ) {
+        setResendMessage(
+          "Si hay una verificación pendiente para ese correo, enviaremos otro enlace cuando sea posible.",
+        );
+      } else {
+        setResendMessage(
+          "No se ha podido procesar la solicitud. Inténtalo más tarde.",
+        );
+      }
+    } catch {
+      setResendMessage(
+        "No se ha podido procesar la solicitud. Inténtalo más tarde.",
+      );
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function confirmSimulatedPlan() {
     if (plan === null) return;
@@ -146,6 +185,29 @@ export function RegistrationVerification() {
           No se ha podido verificar el correo
         </h2>
         <p role="alert">{GENERIC_VERIFICATION_ERROR}</p>
+        <form
+          className="registration-resend-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void resendVerification();
+          }}
+        >
+          <label htmlFor="verification-resend-email">
+            Correo electrónico usado en el alta
+          </label>
+          <input
+            id="verification-resend-email"
+            type="email"
+            autoComplete="email"
+            required
+            value={resendEmail}
+            onChange={(event) => setResendEmail(event.currentTarget.value)}
+          />
+          <button className="button-primary" type="submit" disabled={resending}>
+            {resending ? "Solicitando…" : "Solicitar otro enlace"}
+          </button>
+          {resendMessage ? <p role="status">{resendMessage}</p> : null}
+        </form>
         <a className="button-primary" href="/precios">
           Volver a los planes
         </a>

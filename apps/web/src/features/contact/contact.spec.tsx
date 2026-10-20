@@ -16,6 +16,19 @@ vi.mock("../../infrastructure/auth/session", () => ({
 const mockedUseSessionStatus = vi.mocked(useSessionStatus);
 const mockedAuthenticatedFetch = vi.mocked(authenticatedFetch);
 
+function contactResponse(confirmation = "sent"): Response {
+  return new Response(
+    JSON.stringify({
+      status: "saved",
+      confirmation,
+      retryAllowed: confirmation === "pending" || confirmation === "failed",
+      reference: "20000000-0000-4000-8000-000000000001",
+      createdAt: "2026-10-20T10:00:00.000Z",
+    }),
+    { status: 201, headers: { "Content-Type": "application/json" } },
+  );
+}
+
 beforeEach(() => {
   mockedUseSessionStatus.mockReturnValue({
     isAuthenticated: true,
@@ -46,16 +59,12 @@ describe("Contact", () => {
     expect(
       screen.getByText(/mensaje queda guardado junto a tu cuenta/i),
     ).toBeVisible();
-    expect(
-      screen.getByText(/plazo de borrado definido ni un canal de respuesta/i),
-    ).toBeVisible();
+    expect(screen.getByText(/plazo de borrado definido/i)).toBeVisible();
   });
 
   it("submits the authenticated user's message and confirms it was received", async () => {
     const user = userEvent.setup();
-    mockedAuthenticatedFetch.mockResolvedValue(
-      new Response(null, { status: 201 }),
-    );
+    mockedAuthenticatedFetch.mockResolvedValue(contactResponse());
     render(<Contact />);
 
     await user.type(
@@ -72,6 +81,10 @@ describe("Contact", () => {
       "/api/contact-messages",
       expect.objectContaining({
         method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "Idempotency-Key": expect.any(String),
+        }),
         body: JSON.stringify({
           subject: "Consulta sobre mi cuenta",
           message: "Necesito ayuda para entender el estado de mi plan.",
@@ -79,7 +92,7 @@ describe("Contact", () => {
       }),
     );
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /mensaje registrado/i,
+      /mensaje guardado/i,
     );
   });
 
@@ -109,6 +122,67 @@ describe("Contact", () => {
     );
   });
 
+  it("retries a saved confirmation without resubmitting the contact message", async () => {
+    const user = userEvent.setup();
+    mockedAuthenticatedFetch
+      .mockResolvedValueOnce(contactResponse("failed"))
+      .mockResolvedValueOnce(contactResponse());
+    render(<Contact />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /asunto/i }),
+      "Consulta de mi cuenta",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /mensaje/i }),
+      "Necesito ayuda para entender el estado de mi plan.",
+    );
+    await user.click(screen.getByRole("button", { name: /enviar mensaje/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /reintentar confirmación/i }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /hemos enviado un correo/i,
+    );
+    expect(mockedAuthenticatedFetch).toHaveBeenCalledTimes(2);
+    expect(mockedAuthenticatedFetch).toHaveBeenNthCalledWith(
+      1,
+      "/api/contact-messages",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(mockedAuthenticatedFetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/contact-messages/20000000-0000-4000-8000-000000000001/confirmation/retry",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("labels a development email preview without implying delivery", async () => {
+    const user = userEvent.setup();
+    mockedAuthenticatedFetch.mockResolvedValueOnce(
+      contactResponse("previewed"),
+    );
+    render(<Contact />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /asunto/i }),
+      "Consulta de mi cuenta",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /mensaje/i }),
+      "Necesito ayuda para entender el estado de mi plan.",
+    );
+    await user.click(screen.getByRole("button", { name: /enviar mensaje/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /vista previa del correo; no se ha enviado/i,
+    );
+    expect(
+      screen.queryByRole("button", { name: /reintentar confirmación/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("disables repeated submission while the message is being saved", async () => {
     const user = userEvent.setup();
     let resolveResponse: ((response: Response) => void) | undefined;
@@ -135,9 +209,9 @@ describe("Contact", () => {
     expect(submitButton).toBeDisabled();
     expect(mockedAuthenticatedFetch).toHaveBeenCalledTimes(1);
 
-    resolveResponse?.(new Response(null, { status: 201 }));
+    resolveResponse?.(contactResponse());
     expect(await screen.findByRole("status")).toHaveTextContent(
-      /mensaje registrado/i,
+      /mensaje guardado/i,
     );
   });
 

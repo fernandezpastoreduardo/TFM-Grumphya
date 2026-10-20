@@ -86,12 +86,9 @@ export type UserGoodIdeas = { ideas: UserGoodIdea[] };
 export type PendingRegistration = {
   id: string;
   email: string;
-  username: string;
-  passwordHash: string;
-  plan: PlanCode;
-  verificationHash: string;
-  verificationExpiresAt: Date;
-  verifiedToken?: string;
+};
+export type RegistrationPendingResult = {
+  status: "verification_pending";
 };
 
 export class RegistrationError extends HttpException {

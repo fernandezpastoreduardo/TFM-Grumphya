@@ -56,6 +56,9 @@ describe("AuthenticationPage", () => {
       vi.fn().mockResolvedValue(jsonResponse(USER_LOGIN_RESPONSE)),
     );
     render(<AuthenticationPage />);
+    expect(
+      screen.getByRole("link", { name: /he olvidado la contraseña/i }),
+    ).toHaveAttribute("href", "/recuperar-contrasena");
 
     await user.type(screen.getByLabelText(/usuario o correo/i), IDENTIFIER);
     await user.type(screen.getByLabelText("Contraseña"), PASSWORD);

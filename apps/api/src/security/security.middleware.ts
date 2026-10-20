@@ -61,7 +61,8 @@ export function createSecurityMiddleware(
       request.path.startsWith("/api/registration") ||
       request.path === "/api/contact-messages" ||
       request.path === "/api/admin/dashboard" ||
-      request.path === "/api/admin/contact-messages"
+      request.path === "/api/admin/contact-messages" ||
+      request.path.startsWith("/api/dev/mail-preview")
     ) {
       response.setHeader("Cache-Control", "no-store");
     }
