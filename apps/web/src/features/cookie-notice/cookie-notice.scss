@@ -1,0 +1,127 @@
+.cookie-notice {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 10000;
+  width: min(100%, 520px);
+  max-height: min(calc(100dvh - 40px), 760px);
+  margin: 0;
+  overflow-y: auto;
+  padding: clamp(22px, 5vw, 36px);
+  border: 3px solid var(--color-line);
+  border-radius: 28px;
+  background: var(--color-paper);
+  box-shadow: 0 22px 70px rgb(0 0 0 / 28%);
+  color: var(--color-ink);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.cookie-notice-backdrop {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(16 27 32 / 72%);
+}
+
+.cookie-notice::backdrop {
+  background: rgb(16 27 32 / 72%);
+}
+
+.cookie-notice-mascot {
+  display: block;
+  width: min(100%, 285px);
+  height: 150px;
+  margin: -4px auto 10px;
+  object-fit: contain;
+}
+
+.cookie-notice h2 {
+  margin: 0 0 12px;
+  font-family: "Fredoka", "Trebuchet MS", sans-serif;
+  font-size: clamp(1.8rem, 7vw, 2.35rem);
+  font-weight: 650;
+  line-height: 1.08;
+}
+
+.cookie-notice p {
+  max-width: 420px;
+  margin: 0 auto 24px;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.cookie-notice-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.cookie-notice-button {
+  min-height: 48px;
+  padding: 11px 16px;
+  border: 2px solid var(--color-line);
+  border-radius: 15px;
+  cursor: pointer;
+  font-weight: 800;
+  line-height: 1.25;
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease;
+}
+
+.cookie-notice-button:hover {
+  transform: translateY(-1px);
+}
+
+.cookie-notice-button-primary {
+  background: var(--color-teal);
+  color: var(--color-ink);
+}
+
+.cookie-notice-button-secondary {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.cookie-notice-button:focus-visible {
+  outline: 3px solid var(--color-pink);
+  outline-offset: 3px;
+}
+
+#root:has(.theme-dark) .cookie-notice {
+  border-color: var(--color-mint-deep);
+  background: #18272b;
+  color: #fffefa;
+}
+
+#root:has(.theme-dark) .cookie-notice-button {
+  border-color: var(--color-mint-deep);
+  color: #101b20;
+}
+
+#root:has(.theme-dark) .cookie-notice-button-primary {
+  background: #64d5d2;
+}
+
+#root:has(.theme-dark) .cookie-notice-button-secondary {
+  background: #b8efd6;
+}
+
+@media (max-width: 480px) {
+  .cookie-notice {
+    padding: 20px 18px;
+    max-height: calc(100dvh - 28px);
+    border-radius: 22px;
+  }
+
+  .cookie-notice-mascot {
+    height: 125px;
+    margin-bottom: 8px;
+  }
+
+  .cookie-notice p {
+    font-size: 0.95rem;
+  }
+}

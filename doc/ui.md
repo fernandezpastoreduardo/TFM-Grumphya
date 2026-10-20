@@ -126,6 +126,18 @@ la lámina maestra está en
   tienen semántica nativa, nombre accesible, estado anunciado y foco visible.
   Los colores no son la única forma de comunicar selección o estado.
 
+## Aviso de cookies
+
+Al montar la aplicación se muestra el popup «Ni galletitas ni galletitos» con
+una ilustración de Grumphya pateando una galleta. El texto informa de que no se
+usan cookies de terceros y de que las cookies propias se limitan a las
+estrictamente necesarias para el funcionamiento y el uso anónimo y seguro. Los
+botones «Aceptar» y «Denegar» tienen el mismo efecto: cierran el popup y no
+cambian la configuración de cookies. La elección no se guarda en cookies ni en
+otro almacenamiento del navegador, por lo que el aviso vuelve a aparecer al
+cargar de nuevo la aplicación. Escape también lo cierra; el diálogo mantiene el
+foco dentro y devuelve el foco anterior al cerrarse.
+
 ## Revisión de temas, responsive y accesibilidad (octubre de 2026)
 
 La revisión comparó Home en claro y oscuro y Humanos notables en ambos temas en

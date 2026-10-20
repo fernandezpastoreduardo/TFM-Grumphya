@@ -13,6 +13,7 @@ import {
   LoadingSkeleton,
   SkeletonBlock,
 } from "./shared/components/loading-skeleton";
+import { CookieNotice } from "./features/cookie-notice/cookie-notice";
 
 let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 
@@ -45,24 +46,27 @@ export function App() {
 
   return (
     <ErrorPagesBoundary>
-      <Suspense
-        fallback={
-          <LoadingSkeleton
-            label="Cargando Grumphya"
-            className="app-loading-skeleton"
-          >
-            <SkeletonBlock className="skeleton-app-header" />
-            <SkeletonBlock className="skeleton-app-heading" />
-            <SkeletonBlock className="skeleton-app-copy" />
-            <div className="skeleton-app-panels">
-              <SkeletonBlock className="skeleton-app-panel main" />
-              <SkeletonBlock className="skeleton-app-panel side" />
-            </div>
-          </LoadingSkeleton>
-        }
-      >
-        <AppRoute />
-      </Suspense>
+      <>
+        <Suspense
+          fallback={
+            <LoadingSkeleton
+              label="Cargando Grumphya"
+              className="app-loading-skeleton"
+            >
+              <SkeletonBlock className="skeleton-app-header" />
+              <SkeletonBlock className="skeleton-app-heading" />
+              <SkeletonBlock className="skeleton-app-copy" />
+              <div className="skeleton-app-panels">
+                <SkeletonBlock className="skeleton-app-panel main" />
+                <SkeletonBlock className="skeleton-app-panel side" />
+              </div>
+            </LoadingSkeleton>
+          }
+        >
+          <AppRoute />
+        </Suspense>
+        <CookieNotice />
+      </>
     </ErrorPagesBoundary>
   );
 }
