@@ -12,6 +12,9 @@ import { ACCESS_TOKEN_SESSION_LOOKUP } from "../src/infrastructure/auth/access-t
 import { AccessTokenGuard } from "../src/infrastructure/auth/access-token.guard";
 import { UserDeleteController } from "../src/user-delete/user-delete.controller";
 import { USER_DELETE_REPOSITORY } from "../src/user-delete/user-delete.models";
+import { MailModule } from "../src/infrastructure/mail/mail.module";
+import { MailService } from "../src/infrastructure/mail/mail.service";
+import { RegistrationService } from "../src/register-with-plan/registration.service";
 
 const DEFAULT_TEST_PORT = 3100;
 const BODY_LIMIT = "8kb";
@@ -19,13 +22,21 @@ const registrationRepository = new InMemoryRegistrationRepository();
 
 class IsolatedE2ETestModule {}
 Module({
-  imports: [EvaluationTestingModule],
+  imports: [EvaluationTestingModule, MailModule],
   controllers: [RegistrationController, UserDeleteController],
   providers: [
     AccessTokenGuard,
     {
       provide: REGISTRATION_REPOSITORY,
       useValue: registrationRepository,
+    },
+    {
+      provide: RegistrationService,
+      useFactory: (
+        repository: InMemoryRegistrationRepository,
+        mail: MailService,
+      ) => new RegistrationService(repository, mail),
+      inject: [REGISTRATION_REPOSITORY, MailService],
     },
     {
       provide: ACCESS_TOKEN_SESSION_LOOKUP,

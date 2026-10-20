@@ -3,10 +3,9 @@ import { expect, test } from "@playwright/test";
 const EMAIL = "persona-e2e@example.es";
 const USERNAME = "personaE2E";
 const PASSWORD = "Una contraseña segura para e2e 2026!";
-const PAYMENT_NOTICE = "el pago es simulado y no se te cobrará nada";
-const REGISTER_BUTTON_NAME = /dáme de alta.*pago.*café/i;
+const REGISTER_BUTTON_NAME = /crear cuenta y verificar correo/i;
 
-test("selects a plan, activates the simulated purchase and deletes the account from the profile", async ({
+test("verifies the registration, activates the simulated purchase and deletes the account from the profile", async ({
   page,
 }) => {
   await page.goto("/precios");
@@ -33,22 +32,56 @@ test("selects a plan, activates the simulated purchase and deletes the account f
       response.url().endsWith("/api/registrations") &&
       response.request().method() === "POST",
   );
-  const accountPreparationHeadingPromise = expect(
-    page.getByRole("heading", {
-      name: /un momento\. estoy preparando tu cuenta/i,
-    }),
-  ).toBeVisible();
   const submitClick = page
     .getByRole("button", { name: REGISTER_BUTTON_NAME })
     .click();
   const [registrationResponse] = await Promise.all([
     registrationResponsePromise,
-    accountPreparationHeadingPromise,
     submitClick,
   ]);
   expect(registrationResponse.status()).toBe(201);
-  await expect(page.getByRole("status")).toContainText(PAYMENT_NOTICE);
-  await expect(page).toHaveURL(/\/perfil$/, { timeout: 7_000 });
+  await expect(
+    page.getByRole("heading", { name: "Revisa tu correo" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    /no se activa la cuenta ni el plan hasta que confirmes el correo/i,
+  );
+
+  const previewResponse = await page.request.get(
+    "/api/dev/mail-preview/latest",
+  );
+  expect(previewResponse.ok()).toBe(true);
+  const mailPreview: unknown = await previewResponse.json();
+  expect(mailPreview).toMatchObject({ to: EMAIL });
+  const verificationText =
+    typeof mailPreview === "object" &&
+    mailPreview !== null &&
+    "text" in mailPreview &&
+    typeof mailPreview.text === "string"
+      ? mailPreview.text
+      : "";
+  const verificationLink = verificationText.match(
+    /https?:\/\/\S+\/verificar-cuenta#[a-f0-9]+/,
+  )?.[0];
+  expect(verificationLink).toBeDefined();
+  await page.goto(verificationLink!);
+  await expect(
+    page.getByRole("heading", { name: "Correo verificado" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Confirmar contratación simulada" })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Contratación simulada completada",
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    /no se ha procesado ningún pago/i,
+  );
+
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/perfil$/);
 
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
   const profileMascot = page.locator(".section-hero-mascot.mascot-profile");
@@ -65,7 +98,6 @@ test("selects a plan, activates the simulated purchase and deletes the account f
   await expect(
     page.getByRole("button", { name: "Cerrar sesión" }),
   ).toBeVisible();
-  await expect(page.getByText(/correo sin verificar/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Faltón" })).toBeVisible();
   await expect(
     page.getByText(/11 de 11 envíos disponibles hoy/i),
