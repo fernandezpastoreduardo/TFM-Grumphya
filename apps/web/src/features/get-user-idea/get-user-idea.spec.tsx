@@ -15,9 +15,7 @@ const SUBMIT_LABEL = /^evaluar idea/i;
 const MICROPHONE_BUTTON_LABEL = /dictar idea/i;
 const PERMISSION_DENIED_MESSAGE = /permiso al micrófono/i;
 
-async function continueToToneStep(
-  user: ReturnType<typeof userEvent.setup>,
-) {
+async function continueToToneStep(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: NEXT_STEP_LABEL }));
 }
 

@@ -451,9 +451,7 @@ describe("Home", () => {
     await user.click(
       screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
     );
-    await user.click(
-      screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
-    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
     const dialog = screen.getByRole("dialog", {
@@ -546,9 +544,9 @@ describe("Home", () => {
     expect(errorAlert).toHaveTextContent(/no se pudo completar el scoring/i);
     await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
     await user.click(screen.getByRole("button", { name: /cambiar idea/i }));
-    expect(
-      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
-    ).toHaveValue(TEST_IDEA_TEXT);
+    expect(screen.getByRole("textbox", { name: IDEA_INPUT_NAME })).toHaveValue(
+      TEST_IDEA_TEXT,
+    );
     expect(
       screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }),
     ).toBeEnabled();

@@ -18,6 +18,7 @@
     "test:e2e": "pnpm --filter @grumphya/web test:e2e",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
+    "quality:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md"
   },

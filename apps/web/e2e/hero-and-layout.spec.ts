@@ -85,8 +85,8 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
 
   expect(desktopSpacing).toEqual({
     headingMarginBottom: "0px",
-    workspaceMarginTop: "40px",
-    copyPaddingTop: "20px",
+    workspaceMarginTop: "12px",
+    copyPaddingTop: "0px",
     copyGap: "20px",
     resultMarginTop: "40px",
     marketingMarginTop: "40px",

@@ -54,7 +54,7 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
     page.getByRole("heading", { name: /antes de construirla/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: /qué aplicación/i }),
+    page.getByRole("textbox", { name: /cuéntame tu idea/i }),
   ).toBeVisible();
 
   const resultRegion = page.getByRole("region", {
@@ -64,7 +64,7 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
   await page.getByRole("button", { name: /evaluar idea/i }).click();
   await expect(page.getByRole("alert")).toContainText(/hay aire/i);
 
-  const ideaInput = page.getByRole("textbox", { name: /qué aplicación/i });
+  const ideaInput = page.getByRole("textbox", { name: /cuéntame tu idea/i });
   await ideaInput.fill(IDEA_TEXT_FIRST);
   await page.getByRole("radio", { name: /dame tu mejor golpe/i }).check();
   await page.getByRole("button", { name: /evaluar idea/i }).click();
