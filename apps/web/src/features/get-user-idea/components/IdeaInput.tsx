@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { MAX_IDEA_LENGTH } from "../idea-input-rules";
 import { TranscriptUserIdea } from "../../transcript-user-idea/transcript-user-idea";
 
@@ -6,9 +7,10 @@ type IdeaInputProps = {
   onChange: (value: string) => void;
   onDictatedText: (transcript: string) => void;
   errorMessage?: string;
+  textareaRef?: RefObject<HTMLTextAreaElement | null>;
 };
 
-const IDEA_INPUT_LABEL = "1. Cuéntame tu idea. A ver si se sostiene.";
+const IDEA_INPUT_LABEL = "1. Veamos esa idea millonaria";
 const IDEA_INPUT_HELP =
   "Quién la usaría, qué le duele y qué haría la app. Lo básico, vamos.";
 const INPUT_ID = "idea-text";
@@ -20,6 +22,7 @@ export function IdeaInput({
   onChange,
   onDictatedText,
   errorMessage,
+  textareaRef,
 }: IdeaInputProps) {
   const describedBy = errorMessage ? `${HELP_ID} ${ERROR_ID}` : HELP_ID;
 
@@ -31,6 +34,7 @@ export function IdeaInput({
       <div className="idea-input-area">
         <textarea
           id={INPUT_ID}
+          ref={textareaRef}
           name="ideaText"
           className="idea-input-textarea"
           rows={5}

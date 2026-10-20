@@ -9,7 +9,8 @@ import {
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
-const IDEA_INPUT_NAME = /cuéntame tu idea/i;
+const IDEA_INPUT_NAME = /veamos esa idea millonaria/i;
+const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
 const LOADING_BUTTON_NAME = /evaluando/i;
 const EVALUATION_RESPONSE = {
@@ -23,6 +24,10 @@ const ANONYMOUS_USAGE_RESPONSE = {
   ideas: { limit: 3, used: 0, remaining: 3 },
   roasts: { limit: 3, used: 0, remaining: 3 },
 };
+
+async function continueToToneStep(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }));
+}
 
 function respondToUsageInitialization(url: unknown) {
   if (url === "/api/auth/refresh") {
@@ -130,8 +135,11 @@ describe("Home", () => {
       screen.getByRole("region", { name: /resultado de la evaluación/i }),
     ).toBeEmptyDOMElement();
     expect(
-      screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
-    ).toBeDisabled();
+      screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: SUBMIT_BUTTON_NAME }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(/conectando con los servicios/i),
     ).toBeInTheDocument();
@@ -204,6 +212,7 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
+    await continueToToneStep(user);
     const submitButton = screen.getByRole("button", {
       name: SUBMIT_BUTTON_NAME,
     });
@@ -287,6 +296,7 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
+    await continueToToneStep(user);
     const submitButton = screen.getByRole("button", {
       name: SUBMIT_BUTTON_NAME,
     });
@@ -437,10 +447,13 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
+    await continueToToneStep(user);
     await user.click(
       screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
     );
-    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+    await user.click(
+      screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
+    );
 
     expect(await screen.findByText("7,15/10")).toBeInTheDocument();
     const dialog = screen.getByRole("dialog", {
@@ -497,7 +510,9 @@ describe("Home", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
 
-    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+    await user.click(
+      screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }),
+    );
 
     expect(fetchMock).not.toHaveBeenCalledWith(
       "/api/evaluation-process",
@@ -524,19 +539,20 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
-
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      /no se pudo completar el scoring/i,
-    );
+    const errorAlert = await screen.findByRole("alert");
+    expect(errorAlert).toHaveTextContent(/no se pudo completar el scoring/i);
+    await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
+    await user.click(screen.getByRole("button", { name: /cambiar idea/i }));
     expect(
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
     ).toHaveValue(TEST_IDEA_TEXT);
     expect(
-      screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
+      screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }),
     ).toBeEnabled();
-    expect(screen.getByRole("alert").textContent).not.toContain(TEST_IDEA_TEXT);
+    expect(errorAlert.textContent).not.toContain(TEST_IDEA_TEXT);
   });
 
   it("explains when the evaluator exceeded its time limit", async () => {
@@ -564,6 +580,7 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     const alert = await screen.findByRole("alert");
@@ -603,6 +620,7 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     const loadingButton = screen.getByRole("button", {
@@ -654,6 +672,7 @@ describe("Home", () => {
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
+    await continueToToneStep(user);
     await user.click(
       screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
     );

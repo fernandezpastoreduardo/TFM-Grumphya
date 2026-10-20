@@ -8,12 +8,70 @@ import * as speechToText from "../../shared/utils/speech-to-text";
 const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
 const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
 const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
-const INPUT_LABEL = /cuéntame tu idea/i;
+const INPUT_LABEL = /veamos esa idea millonaria/i;
+const NEXT_STEP_LABEL = /^adelante$/i;
+const BACK_TO_IDEA_LABEL = /cambiar idea/i;
 const SUBMIT_LABEL = /^evaluar idea/i;
 const MICROPHONE_BUTTON_LABEL = /dictar idea/i;
 const PERMISSION_DENIED_MESSAGE = /permiso al micrófono/i;
 
+async function continueToToneStep(
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  await user.click(screen.getByRole("button", { name: NEXT_STEP_LABEL }));
+}
+
 describe("GetUserIdea", () => {
+  it("shows the idea step first, validates it, and advances to tone selection", async () => {
+    const user = userEvent.setup();
+    render(<GetUserIdea onSubmit={vi.fn()} />);
+
+    expect(screen.getByRole("textbox", { name: INPUT_LABEL })).toBeVisible();
+    expect(
+      screen.queryByRole("radio", { name: /tengo la piel fina/i }),
+    ).not.toBeInTheDocument();
+
+    await continueToToneStep(user);
+    expect(screen.getByRole("alert")).toHaveTextContent(/hay aire/i);
+
+    await user.type(
+      screen.getByRole("textbox", { name: INPUT_LABEL }),
+      VALID_IDEA,
+    );
+    await continueToToneStep(user);
+
+    expect(
+      screen.getByRole("radio", { name: /tengo la piel fina/i }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("textbox", { name: INPUT_LABEL }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns to the idea step without losing text or the selected tone", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<GetUserIdea onSubmit={onSubmit} />);
+    const ideaInput = screen.getByRole("textbox", { name: INPUT_LABEL });
+    await user.type(ideaInput, VALID_IDEA);
+    await continueToToneStep(user);
+    await user.click(
+      screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
+    );
+    await user.click(screen.getByRole("button", { name: BACK_TO_IDEA_LABEL }));
+
+    expect(screen.getByRole("textbox", { name: INPUT_LABEL })).toHaveValue(
+      VALID_IDEA,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      ideaText: VALID_IDEA,
+      tone: "hard",
+    });
+  });
+
   it("sends trimmed text and the selected tone when submitted", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
@@ -23,6 +81,7 @@ describe("GetUserIdea", () => {
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       `  ${VALID_IDEA}  `,
     );
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
 
     expect(onSubmit).toHaveBeenCalledWith({
@@ -46,6 +105,7 @@ describe("GetUserIdea", () => {
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       VALID_IDEA,
     );
+    await continueToToneStep(user);
 
     const submitButton = screen.getByRole("button", { name: SUBMIT_LABEL });
     expect(submitButton).toBeEnabled();
@@ -73,6 +133,7 @@ describe("GetUserIdea", () => {
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       VALID_IDEA,
     );
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
 
     expect(onSubmit).toHaveBeenCalledOnce();
@@ -98,6 +159,7 @@ describe("GetUserIdea", () => {
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       VALID_IDEA,
     );
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
 
     expect(onSubmit).toHaveBeenCalledOnce();
@@ -112,6 +174,7 @@ describe("GetUserIdea", () => {
 
     await user.click(input);
     await user.paste(CLIPBOARD_IDEA);
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
 
     expect(onSubmit).toHaveBeenCalledWith({
@@ -189,8 +252,7 @@ describe("GetUserIdea", () => {
     const onSubmit = vi.fn();
     render(<GetUserIdea onSubmit={onSubmit} />);
 
-    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
-
+    await continueToToneStep(user);
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(/hay aire/i);
 
@@ -198,7 +260,7 @@ describe("GetUserIdea", () => {
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       "     ",
     );
-    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+    await continueToToneStep(user);
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toBeVisible();
   });
@@ -210,7 +272,7 @@ describe("GetUserIdea", () => {
     const input = screen.getByRole("textbox", { name: INPUT_LABEL });
 
     await user.type(input, "demasiado");
-    await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
+    await continueToToneStep(user);
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent(
       /al menos 10 caracteres/i,
@@ -231,6 +293,7 @@ describe("GetUserIdea", () => {
 
     fireEvent.change(input, { target: { value: unsafeLookingText } });
     expect(document.querySelector("img")).not.toBeInTheDocument();
+    await continueToToneStep(user);
     await user.click(screen.getByRole("button", { name: SUBMIT_LABEL }));
 
     expect(onSubmit).toHaveBeenCalledWith({
@@ -256,6 +319,7 @@ describe("GetUserIdea", () => {
       screen.getByRole("textbox", { name: INPUT_LABEL }),
       VALID_IDEA,
     );
+    await continueToToneStep(user);
     await user.click(
       screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
     );
@@ -279,8 +343,14 @@ describe("GetUserIdea", () => {
       screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
     ).toHaveFocus();
     await user.tab();
+    expect(screen.getByRole("button", { name: NEXT_STEP_LABEL })).toHaveFocus();
+    await user.keyboard("{Enter}");
     expect(
       screen.getByRole("radio", { name: /tengo la piel fina/i }),
+    ).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(
+      screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
     ).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: SUBMIT_LABEL })).toHaveFocus();

@@ -63,6 +63,30 @@
   opacity: 0.7;
 }
 
+.idea-step-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.idea-back-button {
+  justify-self: end;
+  border: 0;
+  padding: 4px 0;
+  color: var(--color-teal-dark);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.idea-back-button:focus-visible {
+  outline: 3px solid var(--color-teal-dark);
+  outline-offset: 3px;
+}
+
 .idea-input-meta {
   display: flex;
   justify-content: space-between;

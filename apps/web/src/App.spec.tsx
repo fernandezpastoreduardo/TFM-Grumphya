@@ -54,7 +54,7 @@ describe("App", () => {
       screen.getByRole("link", { name: /grumphya, inicio/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("textbox", { name: /cuéntame tu idea/i }),
+      screen.getByRole("textbox", { name: /veamos esa idea millonaria/i }),
     ).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
