@@ -58,7 +58,18 @@ PGPORT=5432
 PGDATABASE=<base-produccion>
 PGUSER=<usuario-runtime-no-superusuario>
 PGPASSWORD=<secreto-inyectado-por-secret-manager>
+MAIL_SMTP_HOST=<servidor-smtp>
+MAIL_SMTP_PORT=<puerto-smtp>
+MAIL_USERNAME=<usuario-smtp>
+MAIL_PASSWORD=<secreto-smtp>
+MAIL_FROM_ADDRESS=<remitente-configurado>
 ```
+
+`compose.production.yaml` toma `WEB_ORIGIN` del entorno y monta la
+configuración SMTP desde `./.env.mail`, un secreto de archivo separado que
+contiene solo las variables `MAIL_*` anteriores. En despliegues reales,
+inyecta este secreto desde el gestor de secretos de la plataforma; no reutilices
+el `.env` general, que puede contener claves OpenAI y `ADMIN_PASSWORD`.
 
 En producción la API escucha en la interfaz privada del contenedor/servicio; no la publiques directamente a Internet. Exige TLS PostgreSQL con verificación del certificado. La red de la base solo acepta conexiones desde la API y el migrador.
 
