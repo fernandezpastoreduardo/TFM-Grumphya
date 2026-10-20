@@ -36,9 +36,11 @@ la lámina maestra está en
 - La composición aprobada muestra el telón por arriba y las siluetas del público
   por abajo. Ambos elementos son decorativos, ocupan el ancho de la ventana y
   permanecen por encima del contenido cuando la página se desplaza.
-- El telón conserva la cenefa superior roja y dorada; los paños laterales son
-  más estrechos y cortos para dejar libre el contenido. El público muestra más
-  cabezas pequeñas vistas desde más lejos y ocupa una franja menos alta. El
+- El telón usa una cenefa horizontal en azul marino oscuro, a juego con las
+  siluetas del público. Su borde inferior cae suavemente hacia los extremos y
+  no incluye paños laterales ni el borde vertical de atado. El PNG conserva los
+  pliegues y la transparencia, sin filtros ni desenfoque CSS. El público muestra
+  más cabezas pequeñas vistas desde más lejos y ocupa una franja menos alta. El
   desenfoque de su borde superior y el desvanecido a transparencia forman parte
   del PNG; CSS no aplica opacidad ni filtro al público.
 - Los assets SVG revisados se guardan en
@@ -182,12 +184,13 @@ de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 (aproximadamente 3,58 MB). El nuevo
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
-887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` pesa 592.636 B y
-`audience-rounded.png` representa la platea como una multitud de Grumphyas
-pequeñas, vistas desde atrás y sin rasgos faciales. Conserva el lienzo y la
-proporción del original; sus cabezas redondeadas incluyen las orejas de la
-mascota y la curva sube ligeramente en los extremos. Las figuras están en
-sombra, sin iluminación. Pesa 407.216 B; conserva la transparencia y el borde
+  887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` es la cenefa
+  azul oscuro transparente sin desenfoque y pesa 383.096 B.
+  `audience-rounded.png` representa la platea como una multitud de Grumphyas
+  pequeñas, vistas desde atrás y sin rasgos faciales. Conserva el lienzo y la
+  proporción del original; sus cabezas redondeadas incluyen las orejas de la
+  mascota y la curva sube ligeramente en los extremos. Las figuras están en
+  sombra, sin iluminación. Pesa 407.216 B; conserva la transparencia y el borde
 superior suavizado dentro del PNG. Ambos assets del marco conservan
 transparencia. CSS escala el público manteniendo su proporción y reserva una
 franja suficiente para que no se corten ni se aplasten las cabezas.

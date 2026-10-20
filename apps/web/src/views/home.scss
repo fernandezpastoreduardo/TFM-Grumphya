@@ -852,8 +852,6 @@
   height: clamp(138px, 15vw, 210px);
   background: url("/assets/grumphya/stage-curtain-v2.png") center top /
     min(100%, 1440px) auto no-repeat;
-  filter: blur(1.2px);
-  opacity: 0.76;
 }
 
 .home-page::after {
@@ -1866,7 +1864,7 @@
   width: 100vw;
   height: var(--curtain-height);
   background-position: center top;
-  background-size: 100% 100%;
+  background-size: 100% auto;
   transform: translateX(-50%);
 }
 
