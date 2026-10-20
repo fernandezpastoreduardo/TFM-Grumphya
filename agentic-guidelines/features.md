@@ -20,6 +20,14 @@ This only captures the text content from `IdeaInput`. It can be added by the use
 - writing with device's keyboard
 - using device's microphone. In this case we have to call transcriptUserIdea
 
+En Home, el contenedor `GetUserIdea` presenta la captura en dos pasos. El
+primero muestra el campo de texto y «Adelante»; esa acción valida entre 10 y
+2.000 caracteres y solo avanza a la selección de tono, sin llamar a la API ni
+consumir intentos. El segundo paso permite elegir `soft` o `hard` y ofrece
+«Evaluar idea», que envía `ideaText` y `tone` al flujo `evaluateIdea`. «Cambiar
+idea» vuelve al campo conservando el texto y el tono seleccionado. Al cambiar
+de paso, el foco se mueve al primer control interactivo de la nueva vista.
+
 La Home may show a brief, temporary client-side synthesis beside the mascot while the idea is being written. This preview is presentation only: it is not evaluated, sent, or persisted.
 
 ## transcriptUserIdea

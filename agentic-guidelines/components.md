@@ -4,7 +4,7 @@
 
 ### IdeaInput
 
-Nombre único del componente de captura. Contiene el área de texto, mascota, botón de envío, selector «piel fina / mejor golpe» y control de dictado. Captura una idea escrita, pegada o transcrita. Las tarjetas conservan sus acentos azul/rosa, con `idea-tone-soft-bandage-v2.png` para «piel fina» y `idea-tone-hard-boxing-v2.png` para «mejor golpe». Props: `tone`, `onSubmit`, `remainingAttempts`, `isSubmitting` y `error`. Debe usar `label`, estado de carga y mensaje accesible de validación. El dictado no envía la idea automáticamente.
+Componente presentacional local a `get-user-idea`. Captura una idea escrita, pegada o transcrita mediante área de texto y control de dictado; no elige el tono ni envía la evaluación. El contenedor `GetUserIdea` gestiona el formulario en dos pasos: primero valida la idea y muestra «Adelante»; después permite seleccionar «Tengo la piel fina» o «Dame tu mejor golpe» y muestra «Evaluar idea». «Cambiar idea» vuelve al primer paso conservando el texto y el tono. Solo el envío del segundo paso llama a `onSubmit`; el dictado nunca envía automáticamente. Las tarjetas conservan sus acentos azul/rosa, con `idea-tone-soft-bandage-v2.png` para «piel fina» y `idea-tone-hard-boxing-v2.png` para «mejor golpe». El contenedor comunica intentos restantes, carga y errores; los campos y cambios de paso deben mantener etiquetas, validación accesible y foco coherente.
 
 ### EvaluationResult
 
