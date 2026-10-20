@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: grumphya-api:production
+    command:
+      [
+        "sh",
+        "/workspace/docker/api-entrypoint.sh",
+        "node",
+        "apps/api/dist/main.js",
+      ]
+    environment:
+      NODE_ENV: production
+      WEB_ORIGIN: ${WEB_ORIGIN:?Define WEB_ORIGIN con el origen HTTPS de la web}
+    secrets:
+      - mail_settings
+  web:
+    profiles: ["development"]
+
+secrets:
+  mail_settings:
+    file: ./.env.mail

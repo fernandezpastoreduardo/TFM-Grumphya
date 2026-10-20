@@ -14,6 +14,8 @@ describe("AdminDashboardService", () => {
         .fn()
         .mockRejectedValue(new Error(PRIVATE_DATABASE_DETAIL)),
       listContactMessages: vi.fn(),
+      claimContactMessageReply: vi.fn(),
+      completeContactMessageReply: vi.fn(),
       recordAiUsage: vi.fn(),
       recordApplicationError: vi.fn(),
     } satisfies Partial<AdminDashboardRepository>;
@@ -38,6 +40,8 @@ describe("AdminDashboardService", () => {
       listContactMessages: vi
         .fn()
         .mockRejectedValue(new Error(PRIVATE_DATABASE_DETAIL)),
+      claimContactMessageReply: vi.fn(),
+      completeContactMessageReply: vi.fn(),
       recordAiUsage: vi.fn(),
       recordApplicationError: vi.fn(),
     } satisfies Partial<AdminDashboardRepository>;

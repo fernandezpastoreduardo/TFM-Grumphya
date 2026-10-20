@@ -107,6 +107,9 @@ export function AuthenticationPage() {
             <span aria-hidden="true">↗</span>
           </button>
         </form>
+        <p>
+          <a href="/recuperar-contrasena">He olvidado la contraseña</a>
+        </p>
         {notice ? (
           <p className="auth-notice" role="status">
             {notice}

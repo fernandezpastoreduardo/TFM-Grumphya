@@ -41,6 +41,7 @@ COPY --from=production-dependencies --chown=node:node /workspace/apps/api/node_m
 COPY --from=production-dependencies /workspace/apps/api/package.json /workspace/apps/api/package.json
 COPY --from=build --chown=node:node /workspace/apps/api/dist /workspace/apps/api/dist
 COPY --chown=node:node apps/api/migrations /workspace/apps/api/migrations
+COPY --chown=node:node docker/api-entrypoint.sh /workspace/docker/api-entrypoint.sh
 
 RUN mkdir -p /workspace/var/avatars \
   && chown -R node:node /workspace/var \

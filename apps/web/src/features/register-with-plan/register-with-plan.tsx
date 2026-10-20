@@ -5,21 +5,9 @@ import {
 } from "../../shared/components/loading-skeleton";
 import "../../shared/styles/account.scss";
 import "./register-with-plan.scss";
-import { PaymentSimulationDialog } from "./components/PaymentSimulationDialog";
-import {
-  notifySessionChanged,
-  setAccessToken,
-} from "../../infrastructure/auth/session";
 
 type Plan = "ILUMINADO" | "FALTON";
 type PlanResponse = { plan: Plan };
-type RegistrationResponse = {
-  status: "active";
-  plan: Plan;
-  account: unknown;
-  accessToken: string;
-  expiresIn: number;
-};
 type RegistrationField =
   "email" | "username" | "password" | "privacyPolicyAcknowledged";
 
@@ -33,6 +21,8 @@ const PRIVACY_ERROR =
   "Debes confirmar que has leído la política de privacidad.";
 const GENERIC_ERROR =
   "No se ha podido completar el alta. Para evitar duplicados, vuelve a cargar la página antes de intentarlo otra vez.";
+const PENDING_COPY =
+  "Si el correo puede usarse, recibirás un enlace para verificarlo. No se activa la cuenta ni el plan hasta que confirmes el correo y la contratación simulada.";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN =
   /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
@@ -62,21 +52,12 @@ function isPlanResponse(value: unknown): value is PlanResponse {
   );
 }
 
-function isRegistrationResponse(value: unknown): value is RegistrationResponse {
+function isRegistrationPendingResponse(value: unknown): boolean {
   return (
     typeof value === "object" &&
     value !== null &&
     "status" in value &&
-    value.status === "active" &&
-    "plan" in value &&
-    (value.plan === "ILUMINADO" || value.plan === "FALTON") &&
-    "account" in value &&
-    typeof value.account === "object" &&
-    value.account !== null &&
-    "accessToken" in value &&
-    typeof value.accessToken === "string" &&
-    "expiresIn" in value &&
-    typeof value.expiresIn === "number"
+    value.status === "verification_pending"
   );
 }
 
@@ -85,10 +66,13 @@ export function RegisterWithPlan() {
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const submissionLocked = useRef(false);
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<RegistrationField | null>(null);
-  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -160,10 +144,9 @@ export function RegisterWithPlan() {
         }),
       });
       const body: unknown = await readJson(response);
-      if (response.ok && isRegistrationResponse(body) && body.plan === plan) {
-        setAccessToken(body.accessToken);
-        notifySessionChanged();
-        setProcessingPayment(true);
+      if (response.ok && isRegistrationPendingResponse(body)) {
+        setRegisteredEmail(email);
+        setVerificationPending(true);
         return;
       }
       const responseMessage =
@@ -181,8 +164,30 @@ export function RegisterWithPlan() {
     }
   }
 
-  function navigateToProfile() {
-    window.location.assign("/perfil");
+  async function resendVerification() {
+    if (resending || !registeredEmail) return;
+    setResending(true);
+    setResendMessage("");
+    try {
+      const response = await fetch("/api/registrations/resend-verification", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+      const body: unknown = await readJson(response);
+      if (response.ok && isRegistrationPendingResponse(body)) {
+        setResendMessage(
+          "Si hay una verificación pendiente para ese correo, enviaremos otro enlace cuando sea posible.",
+        );
+      } else {
+        setResendMessage(GENERIC_ERROR);
+      }
+    } catch {
+      setResendMessage(GENERIC_ERROR);
+    } finally {
+      setResending(false);
+    }
   }
 
   if (loadingPlan) {
@@ -222,6 +227,27 @@ export function RegisterWithPlan() {
         <a className="button-primary" href="/precios">
           Ver los planes <span aria-hidden="true">↗</span>
         </a>
+      </section>
+    );
+  }
+  if (verificationPending) {
+    return (
+      <section
+        className="content-card registration-pending"
+        aria-labelledby="registration-pending-title"
+      >
+        <span className="eyebrow">Un paso más</span>
+        <h2 id="registration-pending-title">Revisa tu correo</h2>
+        <p role="status">{PENDING_COPY}</p>
+        <button
+          className="button-primary"
+          type="button"
+          onClick={() => void resendVerification()}
+          disabled={resending}
+        >
+          {resending ? "Solicitando…" : "Solicitar otro enlace"}
+        </button>
+        {resendMessage ? <p role="status">{resendMessage}</p> : null}
       </section>
     );
   }
@@ -334,14 +360,11 @@ export function RegisterWithPlan() {
                 ? "Dándote de alta…"
                 : submitted
                   ? "Alta enviada"
-                  : "Dáme de alta un mes y te pago el café"}{" "}
+                  : "Crear cuenta y verificar correo"}{" "}
               <span aria-hidden="true">↗</span>
             </button>
           </form>
-          <p className="auth-privacy">
-            El plan se activa en el servidor. El pago se simula y no se procesa
-            dinero real. La verificación del correo queda pendiente.
-          </p>
+          <p className="auth-privacy">{PENDING_COPY}</p>
         </section>
         <aside className="auth-aside">
           <div
@@ -355,10 +378,6 @@ export function RegisterWithPlan() {
           </p>
         </aside>
       </div>
-      <PaymentSimulationDialog
-        open={processingPayment}
-        onComplete={navigateToProfile}
-      />
     </>
   );
 }

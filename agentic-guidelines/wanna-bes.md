@@ -22,9 +22,9 @@ El límite secundario de creación de perfiles anónimos —20 por IP en 24 hora
 
 ## Verificación de correo en las nuevas altas
 
-**Estado:** pendiente.
+**Estado:** implementado; queda la purga de datos pendientes históricos.
 
-La primera versión activa la cuenta y el plan tras completar el alta con contratación simulada, sin verificar que la persona controla el correo introducido. Añadir verificación de email antes de habilitar la cuenta y sus permisos.
+Las altas nuevas permanecen pendientes hasta verificar el correo con un token aleatorio de un solo uso (24 horas) y confirmar explícitamente la contratación simulada dentro de 15 minutos. Los hashes de tokens se guardan en PostgreSQL; no se crea plan, sesión ni cuota antes de confirmar. El correo usa SMTP configurado en servidor; la vista previa local de desarrollo no se envía. Se conserva compatibilidad con filas históricas pendientes, pero no existe purga automática de registros vencidos. Definir plazo y job de purga verificable antes de producción.
 
 ## Autenticación de dos factores
 
@@ -46,7 +46,7 @@ La conexión se cifra en tránsito entre cada tramo TLS configurado, pero la apl
 
 **Estado:** pendiente de definir una política de retención y automatización.
 
-Las filas heredadas de `pending_registrations` con enlaces de verificación caducados pueden permanecer en PostgreSQL; el alta directa actual no crea nuevas filas, pero esta tanda no elimina usuarios pendientes históricos. Definir plazos de conservación y un job de purga segura que elimine físicamente datos vencidos de acuerdo con esos plazos, y probar que no afecte a cuentas activas ni a altas recientes.
+Las filas de `pending_registrations` con enlaces caducados pueden permanecer en PostgreSQL. Definir plazos de conservación y un job de purga segura que elimine físicamente datos vencidos, y probar que no afecte a cuentas activas ni a altas recientes.
 
 ## Retención estricta de caché de uso de planes
 
@@ -58,11 +58,11 @@ Las filas heredadas de `pending_registrations` con enlaces de verificación cadu
 
 **Estado:** pendiente.
 
-El formulario de Contacto autenticado guarda el asunto y el mensaje en PostgreSQL asociados a la cuenta. La bandeja de entrada de Jappy permite consultar los mensajes recientes; no hay respuesta dentro de la aplicación ni servidor/proveedor de correo local, así que no se generan notificaciones. El acceso al contenido queda restringido al rol admin. Asunto y mensaje se guardan como texto claro, sin cifrado a nivel de aplicación; el cifrado en tránsito/en reposo depende de la configuración de cada entorno y aún debe verificarse para producción. Las filas no caducan ni se purgan automáticamente; la baja física del usuario sí las elimina por la relación `ON DELETE CASCADE`. Definir un plazo de retención y un proceso de purga verificable, responsables y plazos de respuesta; limitar y auditar el acceso del personal al contenido. Actualizar la política de privacidad para informar de los datos recogidos, finalidad, personas con acceso y conservación antes de abrir el servicio. Configurar un canal de correo saliente y un flujo de atención antes de presentar la respuesta como operativa.
+El formulario de Contacto autenticado guarda el asunto y el mensaje en PostgreSQL asociados a la cuenta. Tras guardar, la API solicita una confirmación al SMTP compartido con asunto genérico, fecha y referencia; no copia el texto del mensaje. En desarrollo se genera una vista previa local y la UI aclara que no se ha enviado; las filas históricas se marcan como `not_requested`, sin afirmar que recibieron un correo. La clave de idempotencia impide que un reintento HTTP cree otra fila. El estado de confirmación y hasta tres intentos se registran; una entrega que queda en curso no se reintenta automáticamente y la UI ofrece reintentar solo cuando el servidor confirma que hay intentos disponibles. La bandeja de entrada de Jappy permite consultar los mensajes recientes y responder desde el buzón configurado. El servidor obtiene la dirección del destinatario de la cuenta asociada al mensaje y comprueba el rol admin activo en PostgreSQL en cada petición. El asunto de respuesta incorpora una referencia breve; el cuerpo no se guarda en la aplicación ni se registra en logs. Solo se conserva el estado mínimo y la fecha del último intento. Si la entrega queda incierta, el panel exige revisar el webmail de OVHcloud antes de autorizar un único reintento. Las respuestas recibidas se leen en ese webmail; la aplicación no utiliza IMAP. El acceso al contenido queda restringido al rol admin. Asunto y mensaje original se guardan como texto claro, sin cifrado a nivel de aplicación; el cifrado en tránsito/en reposo depende de la configuración de cada entorno y aún debe verificarse para producción. Las filas no caducan ni se purgan automáticamente; la baja física del usuario sí las elimina por la relación `ON DELETE CASCADE`. Definir un plazo de retención y un proceso de purga verificable, responsables y plazos de respuesta; limitar y auditar el acceso del personal al contenido. Actualizar la política de privacidad para informar de los datos recogidos, finalidad, personas con acceso y conservación antes de abrir el servicio.
 
 ## Correo de contacto
 
-**Pendiente:** cuando haya un proveedor de correo activo, enviar al usuario una confirmación al registrar un mensaje de contacto y habilitar una respuesta del administrador por correo. La confirmación no debe incluir el contenido completo del mensaje; la respuesta debe conservar una referencia segura al mensaje y no exponer direcciones ni contenido en logs.
+**Implementado con límites operativos:** el registro autenticado del mensaje envía una confirmación mediante el SMTP compartido, con asunto genérico, fecha y referencia; no incluye el texto enviado. Si falla la entrega, el mensaje permanece guardado y la UI permite hasta tres intentos totales de confirmación. Jappy puede responder desde la bandeja del panel: el destinatario se obtiene de PostgreSQL, el correo usa el remitente y Reply-To configurados, y solo una sesión con rol admin activo en PostgreSQL puede iniciar el envío. El estado y la fecha del intento se guardan, no el cuerpo de la respuesta. Para evitar duplicados, el primer envío se reclama atómicamente y, si la entrega queda incierta, el panel requiere confirmar que se revisó el webmail antes de permitir un segundo intento. El usuario responde al buzón de OVHcloud y el equipo lee esas respuestas en el webmail; no hay lectura IMAP en la aplicación. Los mensajes no tienen aún política de purga y los estados de entrega no prueban recepción por el destinatario.
 
 ## Retención de métricas del panel
 

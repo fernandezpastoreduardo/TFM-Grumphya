@@ -25,6 +25,12 @@ export interface RegistrationRepository {
     verificationHash: string,
     verificationExpiresAt: Date,
   ): Promise<PendingRegistration>;
+  replaceVerificationToken(
+    email: string,
+    verificationHash: string,
+    verificationExpiresAt: Date,
+  ): Promise<PendingRegistration | null>;
+  releaseVerificationResendCooldown(registrationId: string): Promise<void>;
   activateWithRegistration(
     userId: string,
     tokenHash: string,

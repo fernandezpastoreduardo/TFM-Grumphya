@@ -20,6 +20,8 @@ type TestUser = {
   email: string;
   username: string;
   passwordHash: string;
+  emailVerified: boolean;
+  status: "pending_email_verification" | "email_verified" | "active";
 };
 type TestRegistration = {
   id: string;
@@ -30,6 +32,8 @@ type TestRegistration = {
   verifiedTokenHash?: string;
   verifiedTokenExpiresAt?: Date;
   confirmed: boolean;
+  resendCount: number;
+  lastSentAt: number;
 };
 type TestSubscription = {
   userId: string;
@@ -85,36 +89,91 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
   ) {
     const plan = await this.currentIntent(tokenHash);
     if (!plan) throw new Error("Registration intent unavailable.");
+    const expiredRegistrationIds = new Set(
+      this.registrations
+        .filter(
+          (registration) =>
+            registration.verificationExpiresAt.getTime() <= Date.now() &&
+            !registration.verifiedTokenHash,
+        )
+        .map((registration) => registration.userId),
+    );
+    for (let index = this.users.length - 1; index >= 0; index -= 1) {
+      if (expiredRegistrationIds.has(this.users[index]!.id))
+        this.users.splice(index, 1);
+    }
+    for (let index = this.registrations.length - 1; index >= 0; index -= 1) {
+      if (expiredRegistrationIds.has(this.registrations[index]!.userId))
+        this.registrations.splice(index, 1);
+    }
     const email = input.email.trim().toLowerCase();
-    const username = input.username.trim().toLowerCase();
+    const username = input.username.trim().normalize("NFC");
+    const normalizedUsername = username.toLowerCase();
     if (
       this.users.some(
-        (user) => user.email === email || user.username === username,
+        (user) =>
+          user.email === email ||
+          user.username.toLowerCase() === normalizedUsername,
       )
     ) {
       throw Object.assign(new Error("Unique conflict"), { code: "23505" });
     }
     this.intents.delete(tokenHash);
     const id = randomUUID();
-    const user = { id, email, username, passwordHash };
+    const user = {
+      id,
+      email,
+      username,
+      passwordHash,
+      emailVerified: false,
+      status: "pending_email_verification" as const,
+    };
     this.users.push(user);
+    const registrationId = randomUUID();
     this.registrations.push({
-      id: randomUUID(),
+      id: registrationId,
       userId: id,
       plan,
       verificationHash,
       verificationExpiresAt,
       confirmed: false,
+      resendCount: 0,
+      lastSentAt: Date.now(),
     });
-    return {
-      id,
-      email,
-      username,
-      passwordHash,
-      plan,
-      verificationHash,
-      verificationExpiresAt,
-    };
+    return { id: registrationId, email };
+  }
+  async replaceVerificationToken(
+    email: string,
+    verificationHash: string,
+    verificationExpiresAt: Date,
+  ) {
+    const user = this.users.find((item) => item.email === email);
+    const registration = user
+      ? this.registrations.find(
+          (item) => item.userId === user.id && !item.verifiedTokenHash,
+        )
+      : undefined;
+    if (
+      !user ||
+      !registration ||
+      registration.resendCount >= 5 ||
+      registration.lastSentAt > Date.now() - 60_000
+    ) {
+      return null;
+    }
+    registration.verificationHash = verificationHash;
+    registration.verificationExpiresAt = verificationExpiresAt;
+    registration.resendCount += 1;
+    registration.lastSentAt = Date.now();
+    return { id: registration.id, email: user.email };
+  }
+  async releaseVerificationResendCooldown(
+    registrationId: string,
+  ): Promise<void> {
+    const registration = this.registrations.find(
+      (item) => item.id === registrationId,
+    );
+    if (registration) registration.lastSentAt = Date.now() - 61_000;
   }
   async activateWithRegistration(
     userId: string,
@@ -139,7 +198,14 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
       throw Object.assign(new Error("Unique conflict"), { code: "23505" });
     }
     this.intents.delete(tokenHash);
-    this.users.push({ id: userId, email, username, passwordHash });
+    this.users.push({
+      id: userId,
+      email,
+      username,
+      passwordHash,
+      emailVerified: true,
+      status: "active",
+    });
     this.subscriptions.push({ userId, plan, status: "active" });
     this.sessions.push({
       userId,
@@ -157,8 +223,9 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     const normalized = identifier.trim().toLowerCase();
     const user = this.users.find(
       (item) =>
-        item.email.toLowerCase() === normalized ||
-        item.username.toLowerCase() === normalized,
+        item.status === "active" &&
+        (item.email.toLowerCase() === normalized ||
+          item.username.toLowerCase() === normalized),
     );
     return user
       ? {
@@ -195,6 +262,11 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     registration.verifiedTokenHash = verifiedTokenHash;
     registration.verifiedTokenExpiresAt = verifiedTokenExpiresAt;
     registration.verificationHash = "consumed";
+    const user = this.users.find((item) => item.id === registration.userId);
+    if (user) {
+      user.emailVerified = true;
+      user.status = "email_verified";
+    }
     return { status: "email_verified", plan: registration.plan };
   }
   async getVerifiedRegistrationUserId(
@@ -234,6 +306,8 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
       status: "active",
     });
     registration.confirmed = true;
+    const user = this.users.find((item) => item.id === registration.userId);
+    if (user) user.status = "active";
     this.sessions.push({
       userId: registration.userId,
       accessHash: accessTokenHash,
@@ -343,7 +417,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
         role: "user",
         email: user.email,
         username: user.username,
-        emailVerified: false,
+        emailVerified: user.emailVerified,
         createdAt: new Date().toISOString(),
         roastMessagesSent: 0,
       },

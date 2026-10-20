@@ -100,10 +100,15 @@ pestaña **Resumen**, y añade tres vistas informativas de operación:
 Las pestañas son información de operación y documentación. No lanzan
 benchmarks, escaneos ni pruebas desde el navegador.
 
-- Contacto: hasta 100 mensajes recientes, con alias, correo, asunto, contenido
-  y fecha. El contenido no se escribe en logs. No existe respuesta dentro de la
-  aplicación ni retención/purga automática; la baja física del usuario elimina
-  sus mensajes por cascada. Estos pendientes están descritos en
+- Contacto: hasta 100 mensajes recientes, con alias, correo, asunto, contenido,
+  fecha y estado de confirmación/respuesta. El contenido no se escribe en logs.
+  Jappy puede enviar una respuesta al correo asociado a la cuenta; el texto de
+  respuesta no se persiste. El remitente y Reply-To usan la dirección SMTP
+  configurada. Los logs omiten el contenido de la respuesta y el destinatario.
+  Un envío con estado incierto requiere revisar el webmail de OVHcloud antes de
+  un único reintento. No hay lectura IMAP ni
+  retención/purga automática; la baja física del usuario elimina sus mensajes
+  por cascada. Estos pendientes están descritos en
   [`wanna-bes.md`](../agentic-guidelines/wanna-bes.md).
 
 ## Sesiones y separación de cuentas

@@ -83,6 +83,39 @@ describe("RegistrationVerification", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("offers a generic resend from an expired or invalid verification link", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({}, 400))
+        .mockResolvedValueOnce(
+          jsonResponse({ status: "verification_pending" }),
+        ),
+    );
+    const user = userEvent.setup();
+    render(<RegistrationVerification />);
+
+    await user.type(
+      await screen.findByLabelText(/correo electrónico usado en el alta/i),
+      "persona@example.es",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /solicitar otro enlace/i }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /si hay una verificación pendiente/i,
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/registrations/resend-verification",
+      expect.objectContaining({
+        body: JSON.stringify({ email: "persona@example.es" }),
+      }),
+    );
+  });
+
   it("keeps verified email and offers a retry when plan confirmation fails", async () => {
     vi.stubGlobal(
       "fetch",

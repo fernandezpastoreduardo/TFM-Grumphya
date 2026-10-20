@@ -42,11 +42,12 @@ const dashboard = {
 const contacts = {
   messages: [
     {
-      id: "contact-1",
+      id: "00000000-0000-4000-8000-000000000001",
       subject: "Una consulta",
       message: "Quería comentar una cosa.",
       createdAt: "2026-10-18T12:00:00.000Z",
       sender: { username: "persona", email: "persona@example.es" },
+      reply: { status: "not_replied", attemptedAt: null, retryAllowed: false },
     },
   ],
 };
@@ -90,6 +91,60 @@ describe("AdminDashboard", () => {
     expect(
       screen.getByText(/Coste medio por cuenta · semana/),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Responder por correo" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no se leen desde esta aplicación/),
+    ).toBeInTheDocument();
+  });
+
+  it("sends an admin reply without accepting a recipient from the browser", async () => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    const user = userEvent.setup();
+    vi.mocked(authenticatedFetch).mockImplementation(async (input) => {
+      if (String(input).endsWith("/reply")) {
+        return new Response(
+          JSON.stringify({
+            status: "sent",
+            reference: "00000000-0000-4000-8000-000000000001",
+            attemptedAt: "2026-10-20T10:00:00.000Z",
+            retryAllowed: false,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify(
+          String(input).includes("contact-messages") ? contacts : dashboard,
+        ),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+    render(<AdminDashboard />);
+    await user.click(
+      await screen.findByRole("button", { name: "Responder por correo" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Respuesta para persona" }),
+      "Gracias por escribirnos. Te respondemos pronto.",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Enviar respuesta por correo" }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Respuesta enviada por correo.",
+    );
+    const request = vi
+      .mocked(authenticatedFetch)
+      .mock.calls.find((call) => String(call[0]).endsWith("/reply"));
+    expect(request?.[1]?.body).toBe(
+      JSON.stringify({
+        response: "Gracias por escribirnos. Te respondemos pronto.",
+      }),
+    );
   });
 
   it("opens the benchmark, privacy-safe telemetry and security tabs", async () => {

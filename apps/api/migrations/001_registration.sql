@@ -37,7 +37,9 @@ CREATE TABLE IF NOT EXISTS pending_registrations (
   verification_token_hash text NOT NULL UNIQUE,
   verification_expires_at timestamptz NOT NULL,
   verified_token_hash text UNIQUE,
-  confirmed_at timestamptz
+  confirmed_at timestamptz,
+  verification_resend_count integer NOT NULL DEFAULT 0,
+  verification_last_sent_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS subscriptions (

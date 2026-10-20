@@ -29,12 +29,15 @@ load_api_settings "$SECRETS_DIR/grumphya_env" \
 load_api_settings "$SECRETS_DIR/openai_settings" \
   EVALUATION_PROVIDER OPENAI_MODEL OPENAI_REASONING_EFFORT EVALUATION_TIMEOUT_MS
 load_api_settings "$SECRETS_DIR/openai_key" OPENAI_API_KEY ADMIN_PASSWORD
+if [ -f "$SECRETS_DIR/mail_settings" ]; then
+  load_api_settings "$SECRETS_DIR/mail_settings" MAIL_SMTP_HOST MAIL_SMTP_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_FROM_ADDRESS
+fi
 
 export API_HOST=0.0.0.0
 export API_PORT=3000
 export PGHOST=db
 export PGPORT=5432
-export WEB_ORIGIN=http://127.0.0.1:5173
+export WEB_ORIGIN=${WEB_ORIGIN:-http://127.0.0.1:5173}
 export PGPASSWORD="$GRUMPHYA_DB_PASSWORD"
 unset GRUMPHYA_DB_PASSWORD
 

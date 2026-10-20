@@ -6,14 +6,25 @@ import { AuthSecurityModule } from "../infrastructure/auth/auth-security.module"
 import { PLAN_USAGE_REPOSITORY } from "./plan-usage.models";
 import { PostgresPlanUsageRepository } from "./postgres-plan-usage.repository";
 import { PlanUsageService } from "./plan-usage.service";
+import { RegistrationService } from "./registration.service";
+import { MailModule } from "../infrastructure/mail/mail.module";
+import { MailService } from "../infrastructure/mail/mail.service";
 
 @Module({
-  imports: [AuthSecurityModule],
+  imports: [AuthSecurityModule, MailModule],
   controllers: [RegistrationController],
   providers: [
     {
       provide: REGISTRATION_REPOSITORY,
       useClass: PostgresRegistrationRepository,
+    },
+    {
+      provide: RegistrationService,
+      useFactory: (
+        repository: PostgresRegistrationRepository,
+        mail: MailService,
+      ) => new RegistrationService(repository, mail),
+      inject: [REGISTRATION_REPOSITORY, MailService],
     },
     {
       provide: PLAN_USAGE_REPOSITORY,

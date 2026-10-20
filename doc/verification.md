@@ -281,3 +281,23 @@ Actualización del prompt de roast, 18 de octubre de 2026:
 - El job `supply-chain` ahora construye y analiza la etapa `production` del Dockerfile, que excluye herramientas y dependencias de desarrollo. La imagen final usa `node:24.21.0-trixie-slim`; `docker build --pull --target production` terminó correctamente y `pnpm audit --prod --audit-level high` no encontró vulnerabilidades conocidas en las dependencias de producción.
 - Antes de Trivy, CI ejecuta `scripts/test-production-image.mjs` contra la imagen construida. La comprobación valida dependencias de runtime, migraciones incluidas, ejecución con usuario no-root y ausencia de ejecutables de gestores de paquetes; no inicia la API ni requiere PostgreSQL. El comando local está documentado en [`ci-cd.md`](ci-cd.md).
 - No se volvió a ejecutar Trivy localmente: la revisión automática rechazó montar `docker.sock` en un contenedor externo. La ejecución de Trivy posterior al cambio queda pendiente de un evento que active CI. El workflow se activa en pull requests y en pushes a `main`, no en pushes a otras ramas; véase [`ci-cd.md`](ci-cd.md).
+
+## Verificación de correo para nuevas cuentas, 20 de octubre de 2026
+
+- El alta ahora crea una cuenta pendiente y guarda solo el hash SHA-256 del token de verificación de un solo uso. No crea sesión, suscripción, cuota ni compra simulada antes de verificar el correo y confirmar la contratación. Las cuentas que ya estaban activas mantienen su acceso.
+- El mensaje de verificación se envía por el puerto SMTP de la API con plantilla Grumphya HTML y texto plano. El enlace usa `WEB_ORIGIN`, la ruta `/verificar-cuenta` y un fragmento URL para que el token no viaje en solicitudes HTTP ni en logs del servidor. Sin SMTP configurado en desarrollo, MailService guarda una previsualización en memoria (no envía correo) consultable en `GET /api/dev/mail-preview/latest`; el endpoint no está disponible en producción.
+- El reenvío responde de forma genérica, rota el token anterior, aplica espera y máximo por cuenta, y queda sujeto al límite por IP existente. Si SMTP falla, el registro queda pendiente y se puede solicitar otro enlace sin repetir el alta. No se registran token, contraseña ni correo en logs.
+- Las pruebas locales cubren el flujo de registro pendiente, verificación y confirmación, expiración/reutilización del token, reenvío, fallo de entrega y ausencia de permisos antes de confirmar. SMTP se simula en pruebas; no se envió correo real.
+
+## Restablecimiento de contraseña y respuestas desde el panel, 20 de octubre de 2026
+
+- Se añadió solicitud genérica de recuperación, token de un solo uso con vigencia de 20 minutos, actualización de contraseña bcrypt y revocación transaccional de sesiones. Los enlaces usan fragmento URL y el envío SMTP falla de forma cerrada invalidando el token.
+- Se añadió `postgres-password-reset.repository.postgres.spec.ts`, que crea un esquema aleatorio en `REGISTRATION_TEST_DATABASE_URL` y lo elimina al terminar. En esta ejecución local la variable no estaba configurada, así que la prueba de integración PostgreSQL se omitió. La salida de dos tests pasados corresponde al spec unitario `postgres-password-reset.repository.spec.ts`; no acredita una ejecución contra PostgreSQL. CI configura la URL de test; no se debe apuntar a una base de producción.
+- La bandeja admin puede enviar respuesta al correo de la cuenta; el texto de respuesta no se persiste. El estado incierto requiere revisar el webmail antes de un segundo intento. El correo de contacto tiene límite de tres intentos y estado de envío, con vista previa local sin SMTP.
+- Validación local final: `pnpm lint`, `pnpm typecheck` y `pnpm format:check` pasaron. `pnpm test`: API 452 pasados y 20 omitidos; web 208 pasados. El test de integración PostgreSQL de reset está entre los omitidos por falta de `REGISTRATION_TEST_DATABASE_URL`; no se comprobó aquí el comportamiento de persistencia real. No se probó entrega SMTP real.
+
+## Auditoría completa de dependencias, 20 de octubre de 2026
+
+- Se actualizaron Vitest a `4.1.12` en API y web y se fijó `shell-quote` en `1.12.0` mediante un override del workspace para corregir los hallazgos del árbol de dependencias.
+- `pnpm audit --audit-level moderate` (dependencias de producción y desarrollo del workspace) y `pnpm audit --prod --audit-level high` (solo dependencias de producción) terminaron ambos con `No known vulnerabilities found`.
+- Los umbrales, alcances y comandos están descritos en [`ci-cd.md`](ci-cd.md); la auditoría completa incluye herramientas de desarrollo que no forman parte de la imagen final.

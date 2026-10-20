@@ -3,3 +3,5 @@ packages:
 allowBuilds:
   "@parcel/watcher": false
   esbuild: true
+overrides:
+  shell-quote: 1.12.0

@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { verifyPassword as verifyPasswordHash } from "../infrastructure/auth/password-hasher";
-import { RegistrationService, verifyPassword } from "./registration.service";
+import {
+  hashToken,
+  RegistrationService,
+  verifyPassword,
+} from "./registration.service";
 import { InMemoryRegistrationRepository } from "./registration-testing.repository";
 
 const validRegistration = {
@@ -12,53 +16,37 @@ const validRegistration = {
 const JWT_TEST_SECRET = "registration-test-jwt-secret-with-32-bytes-min";
 const LEGACY_SCRYPT_HASH =
   "scrypt$00112233445566778899aabbccddeeff$a93fa84b70923122587058ae0f2e8acb917268e2773ae0eaf2cdd764f829395899384239d564fa901a58a30f0ecc37799a4aa764298a348814a22787e22f0bf6";
+const verificationTokens = new WeakMap<RegistrationService, string>();
 
 describe("register with plan", () => {
   beforeEach(() => {
     process.env.ACCESS_TOKEN_SECRET = JWT_TEST_SECRET;
+    process.env.WEB_ORIGIN = "http://127.0.0.1:5173";
   });
 
   afterEach(() => {
     delete process.env.ACCESS_TOKEN_SECRET;
+    delete process.env.WEB_ORIGIN;
   });
 
   it("creates an expiring intent for a supported plan", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const intent = await service.createIntent("ILUMINADO");
     expect(intent.plan).toBe("ILUMINADO");
     expect(intent.token).toHaveLength(64);
   });
 
-  it("activates the account and plan, stores a password hash and returns plan quotas", async () => {
+  it("does not activate the account or issue a session before email verification", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("FALTON");
-    const session = await service.register(intent.token, validRegistration);
+    const pending = await service.register(intent.token, validRegistration);
     const user = repository.users[0];
-    expect(session.result).toMatchObject({
-      status: "active",
-      plan: "FALTON",
-      expiresIn: 600,
-    });
-    expect(session.result.account.user).toMatchObject({
-      email: "person@example.com",
-      emailVerified: false,
-    });
-    expect(session.result.account.plans).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          plan: "FALTON",
-          status: "active",
-          attemptsRemaining: { ideas: 0, roasts: 11 },
-        }),
-        expect.objectContaining({
-          plan: "ILUMINADO",
-          status: "inactive",
-          attemptsRemaining: { ideas: 0, roasts: 0 },
-        }),
-      ]),
+    expect(pending).toEqual({ status: "verification_pending" });
+    expect(repository.sessions).toHaveLength(0);
+    expect(repository.subscriptions).toHaveLength(0);
+    expect(repository.registrations[0]?.verificationHash).toBe(
+      hashToken(verificationTokens.get(service) ?? ""),
     );
     expect(user?.passwordHash).not.toContain(validRegistration.password);
     expect(
@@ -67,6 +55,11 @@ describe("register with plan", () => {
     expect(await verifyPassword("incorrect password", user!.passwordHash)).toBe(
       false,
     );
+    const activated = await verifyAndConfirm(service);
+    expect(activated.result).toMatchObject({
+      status: "active",
+      plan: "FALTON",
+    });
     expect(repository.sessions).toHaveLength(1);
     expect(repository.subscriptions).toEqual([
       { userId: user?.id, plan: "FALTON", status: "active" },
@@ -74,9 +67,7 @@ describe("register with plan", () => {
   });
 
   it("returns the same generic conflict for duplicate email and username", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const firstIntent = await service.createIntent("ILUMINADO");
     await service.register(firstIntent.token, validRegistration);
     const duplicateEmailIntent = await service.createIntent("FALTON");
@@ -91,19 +82,98 @@ describe("register with plan", () => {
         email: "otra@example.com",
       }),
     ]);
-    const emailConflict = publicError(duplicateEmail);
-    const usernameConflict = publicError(duplicateUsername);
-    expect(emailConflict).toEqual(usernameConflict);
-    expect(emailConflict).toMatchObject({
-      statusCode: 409,
-      code: "REGISTRATION_UNAVAILABLE",
+    expect(duplicateEmail).toMatchObject({
+      status: "fulfilled",
+      value: { status: "verification_pending" },
+    });
+    expect(duplicateUsername).toMatchObject({
+      status: "fulfilled",
+      value: { status: "verification_pending" },
+    });
+  });
+
+  it("keeps a failed SMTP registration pending and allows a limited resend with token rotation", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const tokens: string[] = [];
+    const send = vi.fn(async ({ text }: { text: string }) => {
+      const token = /#([a-f0-9]{64})/u.exec(text)?.[1];
+      if (token) tokens.push(token);
+      return "sent" as const;
+    });
+    send.mockImplementationOnce(async ({ text }) => {
+      const token = /#([a-f0-9]{64})/u.exec(text)?.[1];
+      if (token) tokens.push(token);
+      throw new Error("SMTP refused");
+    });
+    const service = new RegistrationService(repository, { send });
+    const intent = await service.createIntent("ILUMINADO");
+
+    await expect(
+      service.register(intent.token, validRegistration),
+    ).resolves.toEqual({ status: "verification_pending" });
+    expect(repository.sessions).toHaveLength(0);
+    expect(repository.subscriptions).toHaveLength(0);
+    expect(repository.registrations[0]!.lastSentAt).toBeLessThan(
+      Date.now() - 60_000,
+    );
+    const replaceToken = vi.spyOn(repository, "replaceVerificationToken");
+
+    await service.resendVerification({ email: validRegistration.email });
+    expect(replaceToken).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(tokens).toHaveLength(2);
+    await expect(service.verify(tokens[0]!)).rejects.toMatchObject({
+      code: "INVALID_VERIFICATION",
+    });
+    const deliveryCountAfterFirstResend = send.mock.calls.length;
+    await service.resendVerification({ email: validRegistration.email });
+    expect(send).toHaveBeenCalledTimes(deliveryCountAfterFirstResend);
+    for (let resendNumber = 1; resendNumber < 5; resendNumber += 1) {
+      repository.registrations[0]!.lastSentAt = Date.now() - 61_000;
+      await service.resendVerification({ email: validRegistration.email });
+    }
+    repository.registrations[0]!.lastSentAt = Date.now() - 61_000;
+    await service.resendVerification({ email: validRegistration.email });
+    expect(send).toHaveBeenCalledTimes(6);
+    await expect(service.verify(tokens.at(-1)!)).resolves.toMatchObject({
+      result: { status: "email_verified" },
+    });
+  });
+
+  it("rejects expired and reused verification tokens", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const intent = await service.createIntent("FALTON");
+    await service.register(intent.token, validRegistration);
+    const token = verificationTokens.get(service)!;
+    repository.registrations[0]!.verificationExpiresAt = new Date(
+      Date.now() - 1,
+    );
+
+    await expect(service.verify(token)).rejects.toMatchObject({
+      code: "INVALID_VERIFICATION",
+    });
+    repository.registrations[0]!.verificationExpiresAt = new Date(
+      Date.now() + 60_000,
+    );
+    const verified = await service.verify(token);
+    await expect(service.verify(token)).rejects.toMatchObject({
+      code: "INVALID_VERIFICATION",
+    });
+    await expect(
+      service.confirm(verified.confirmationToken),
+    ).resolves.toMatchObject({
+      result: { status: "active" },
+    });
+    await expect(
+      service.confirm(verified.confirmationToken),
+    ).rejects.toMatchObject({
+      code: "VERIFICATION_REQUIRED",
     });
   });
 
   it("requires an acknowledged privacy policy and a syntactically valid email", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const intent = await service.createIntent("ILUMINADO");
     await expect(
       service.register(intent.token, {
@@ -117,9 +187,7 @@ describe("register with plan", () => {
   });
 
   it("reserves the admin username regardless of letter casing", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const intent = await service.createIntent("ILUMINADO");
 
     await expect(
@@ -131,9 +199,7 @@ describe("register with plan", () => {
   });
 
   it("requires a long password with uppercase, lowercase, number and special character", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const weakPasswords = [
       "una clave larga 2026!",
       "UNA CLAVE LARGA 2026!",
@@ -149,9 +215,7 @@ describe("register with plan", () => {
   });
 
   it("rejects unexpected payload fields instead of silently accepting them", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const intent = await service.createIntent("ILUMINADO");
     await expect(
       service.register(intent.token, { ...validRegistration, role: "admin" }),
@@ -160,7 +224,7 @@ describe("register with plan", () => {
 
   it("normalizes international email domains and Unicode usernames, and rejects malformed input", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("ILUMINADO");
     await service.register(intent.token, {
       ...validRegistration,
@@ -187,9 +251,13 @@ describe("register with plan", () => {
 
   it("returns the profile and lets an account purchase an inactive plan only once", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("ILUMINADO");
-    const session = await service.register(intent.token, validRegistration);
+    const session = await registerAndConfirm(
+      service,
+      intent.token,
+      validRegistration,
+    );
     const profile = await service.accountProfile(session.refreshToken);
     const faltonPlan = profile.plans.find((plan) => plan.plan === "FALTON");
     const iluminadoPlan = profile.plans.find(
@@ -247,9 +315,9 @@ describe("register with plan", () => {
 
   it("returns approved ideas for the requested session owner in newest-first order", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("ILUMINADO");
-    await service.register(intent.token, validRegistration);
+    await registerAndConfirm(service, intent.token, validRegistration);
     const ownerId = repository.users[0]!.id;
     repository.goodIdeas.push(
       {
@@ -290,16 +358,16 @@ describe("register with plan", () => {
 
   it("loads the dynamic profile for a verified access-token owner id", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("FALTON");
-    await service.register(intent.token, validRegistration);
+    await registerAndConfirm(service, intent.token, validRegistration);
     const ownerId = repository.users[0]!.id;
 
     await expect(service.getUserProfile(ownerId)).resolves.toMatchObject({
       user: {
         email: "person@example.com",
         username: "Persona",
-        emailVerified: false,
+        emailVerified: true,
       },
       plans: expect.arrayContaining([
         expect.objectContaining({
@@ -313,7 +381,7 @@ describe("register with plan", () => {
 
   it("rejects a malformed owner id before querying approved ideas", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
 
     await expect(
       service.getUserGoodIdeas("not-a-user-id"),
@@ -326,9 +394,9 @@ describe("register with plan", () => {
 
   it("logs in with normalized alias or email and issues a 30-day remembered session", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("ILUMINADO");
-    await service.register(intent.token, validRegistration);
+    await registerAndConfirm(service, intent.token, validRegistration);
 
     const session = await service.login({
       identifier: " PERSONA ",
@@ -350,9 +418,9 @@ describe("register with plan", () => {
 
   it("upgrades a legacy scrypt hash with an expected-hash conditional update", async () => {
     const repository = new InMemoryRegistrationRepository();
-    const service = new RegistrationService(repository);
+    const service = makeService(repository);
     const intent = await service.createIntent("ILUMINADO");
-    await service.register(intent.token, validRegistration);
+    await registerAndConfirm(service, intent.token, validRegistration);
     const user = repository.users[0];
     if (!user) throw new Error("Test account was not created.");
     user.passwordHash = LEGACY_SCRYPT_HASH;
@@ -376,9 +444,7 @@ describe("register with plan", () => {
   });
 
   it("uses one generic error for an unknown account and an incorrect password", async () => {
-    const service = new RegistrationService(
-      new InMemoryRegistrationRepository(),
-    );
+    const service = makeService(new InMemoryRegistrationRepository());
     const attempts = await Promise.allSettled([
       service.login({
         identifier: "missing-user",
@@ -402,20 +468,29 @@ describe("register with plan", () => {
   });
 });
 
-function publicError(result: PromiseSettledResult<unknown>) {
-  if (result.status === "fulfilled")
-    return { status: "fulfilled", value: result.value };
-  const error = result.reason as unknown;
-  if (typeof error !== "object" || error === null || !("response" in error))
-    return error;
-  const typed = error as {
-    statusCode?: number;
-    code?: string;
-    response?: unknown;
-  };
-  return {
-    statusCode: typed.statusCode,
-    code: typed.code,
-    response: typed.response,
-  };
+function makeService(repository: InMemoryRegistrationRepository) {
+  const service = new RegistrationService(repository, {
+    send: async ({ text }) => {
+      const token = /#([a-f0-9]{64})/u.exec(text)?.[1];
+      if (token) verificationTokens.set(service, token);
+      return "sent";
+    },
+  });
+  return service;
+}
+
+async function registerAndConfirm(
+  service: RegistrationService,
+  intentToken: string,
+  input: typeof validRegistration = validRegistration,
+) {
+  await service.register(intentToken, input);
+  return verifyAndConfirm(service);
+}
+
+async function verifyAndConfirm(service: RegistrationService) {
+  const token = verificationTokens.get(service);
+  if (!token) throw new Error("Test verification token was not captured.");
+  const verification = await service.verify(token);
+  return service.confirm(verification.confirmationToken);
 }

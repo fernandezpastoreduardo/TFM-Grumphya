@@ -140,6 +140,67 @@ describe("Docker service entrypoints", () => {
     expect(result.unapprovedSetting).toBeUndefined();
   });
 
+  it("loads outbound mail settings from the dedicated secret and leaves IMAP unused", () => {
+    const directory = createTemporaryDirectory();
+    const secretsDirectory = resolve(directory, "secrets");
+    mkdirSync(secretsDirectory);
+    writeSecret(
+      secretsDirectory,
+      API_SETTINGS_FILE,
+      [
+        "ACCESS_TOKEN_SECRET=access-secret",
+        "ANONYMOUS_IP_HMAC_SECRET=anonymous-secret",
+        "GRUMPHYA_DB_PASSWORD=database-secret",
+      ].join("\n"),
+    );
+    writeSecret(
+      secretsDirectory,
+      OPENAI_SETTINGS_FILE,
+      "EVALUATION_PROVIDER=local\n",
+    );
+    writeSecret(
+      secretsDirectory,
+      OPENAI_KEY_FILE,
+      "OPENAI_API_KEY=api-secret\n",
+    );
+    writeSecret(
+      secretsDirectory,
+      "mail_settings",
+      [
+        "MAIL_SMTP_HOST=smtp.example.test",
+        "MAIL_SMTP_PORT=465",
+        "MAIL_IMAP_HOST=imap.example.test",
+        "MAIL_FROM_ADDRESS=mail@example.test",
+      ].join("\n"),
+    );
+
+    const environment: NodeJS.ProcessEnv = {
+      ...process.env,
+      GRUMPHYA_SECRETS_DIR: secretsDirectory,
+    };
+    delete environment.MAIL_SMTP_HOST;
+    delete environment.MAIL_SMTP_PORT;
+    delete environment.MAIL_FROM_ADDRESS;
+    delete environment.MAIL_IMAP_HOST;
+    delete environment.MAIL_USERNAME;
+    const output = execFileSync(
+      "sh",
+      [
+        API_ENTRYPOINT_PATH,
+        "node",
+        "-e",
+        "process.stdout.write(JSON.stringify({host:process.env.MAIL_SMTP_HOST,port:process.env.MAIL_SMTP_PORT,from:process.env.MAIL_FROM_ADDRESS,imap:process.env.MAIL_IMAP_HOST,username:process.env.MAIL_USERNAME}))",
+      ],
+      { encoding: "utf8", env: environment },
+    );
+
+    expect(readJsonOutput<Record<string, unknown>>(output)).toEqual({
+      host: "smtp.example.test",
+      port: "465",
+      from: "mail@example.test",
+    });
+  });
+
   it("exports the database container settings from its secret file before starting PostgreSQL", () => {
     const directory = createTemporaryDirectory();
     const secretsDirectory = resolve(directory, "secrets");
