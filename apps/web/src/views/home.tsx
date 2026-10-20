@@ -319,60 +319,62 @@ export function Home() {
           </div>
         </header>
 
-        <header className="home-heading">
-          <div className="home-hero-strip">
-            <div className="home-heading-copy">
-              <h1>
-                <span className="hero-line hero-line-yellow">
-                  Antes de construirla,
-                </span>
-                <span className="hero-line hero-line-pink">
-                  mira dónde puede romperse.
-                </span>
-              </h1>
-              <p className="home-rude-line">
-                Grumphya revisa viabilidad, riesgos y supuestos de tu idea de
-                app.
-              </p>
-              <HeroRayCluster placement="hero-rays-copy-start" />
-              <HeroRayCluster placement="hero-rays-copy-end" />
-            </div>
-            <div className="home-hero-stage" aria-hidden="true">
-              <span className="home-stage-light" />
-              <span className="home-creature" />
-              <HeroRayCluster placement="hero-rays-stage-start" />
-              <HeroRayCluster placement="hero-rays-stage-end" />
-            </div>
-          </div>
-        </header>
+        <div className="home-hero-layout">
+          <div className="home-functional-column">
+            <header className="home-heading">
+              <div className="home-heading-copy">
+                <h1>
+                  <span className="hero-line hero-line-yellow">
+                    Antes de construirla,
+                  </span>
+                  <span className="hero-line hero-line-pink">
+                    mira dónde puede romperse.
+                  </span>
+                </h1>
+                <p className="home-rude-line">
+                  Grumphya revisa viabilidad, riesgos y supuestos de tu idea de
+                  app.
+                </p>
+                <HeroRayCluster placement="hero-rays-copy-start" />
+                <HeroRayCluster placement="hero-rays-copy-end" />
+              </div>
+            </header>
 
-        <section className="home-workspace" aria-label="Preparar una idea">
-          <GetUserIdea
-            onSubmit={(request) => void handleEvaluation(request)}
-            onQuotaExhausted={
-              ideaQuotaKind === "anonymous"
-                ? () => setIsQuotaDialogOpen(true)
-                : undefined
-            }
-            isSubmitting={isEvaluating}
-            remainingAttempts={getIdeaAttemptsRemaining(
-              session.isAuthenticated,
-              anonymousUsage.usage?.ideas.remaining,
-              session.accountAttempts?.ideas,
-              session.accountAttempts?.ideasPlanActive ?? null,
-            )}
-            quotaKind={ideaQuotaKind}
-            unlimitedAttempts={session.accountAttempts?.isAdmin === true}
-          />
-          {anonymousUsage.error ? (
-            <p className="home-result-error" role="alert">
-              {anonymousUsage.error}
-            </p>
-          ) : null}
-          <p className="home-manifesto">
-            Porque poder hacerlo no significa que debas hacerlo.
-          </p>
-        </section>
+            <section className="home-workspace" aria-label="Preparar una idea">
+              <GetUserIdea
+                onSubmit={(request) => void handleEvaluation(request)}
+                onQuotaExhausted={
+                  ideaQuotaKind === "anonymous"
+                    ? () => setIsQuotaDialogOpen(true)
+                    : undefined
+                }
+                isSubmitting={isEvaluating}
+                remainingAttempts={getIdeaAttemptsRemaining(
+                  session.isAuthenticated,
+                  anonymousUsage.usage?.ideas.remaining,
+                  session.accountAttempts?.ideas,
+                  session.accountAttempts?.ideasPlanActive ?? null,
+                )}
+                quotaKind={ideaQuotaKind}
+                unlimitedAttempts={session.accountAttempts?.isAdmin === true}
+              />
+              {anonymousUsage.error ? (
+                <p className="home-result-error" role="alert">
+                  {anonymousUsage.error}
+                </p>
+              ) : null}
+              <p className="home-manifesto">
+                Porque poder hacerlo no significa que debas hacerlo.
+              </p>
+            </section>
+          </div>
+          <div className="home-hero-stage" aria-hidden="true">
+            <span className="home-stage-light" />
+            <span className="home-creature" />
+            <HeroRayCluster placement="hero-rays-stage-start" />
+            <HeroRayCluster placement="hero-rays-stage-end" />
+          </div>
+        </div>
 
         <section
           className="home-result"

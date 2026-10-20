@@ -373,7 +373,7 @@
   right: -8px;
   left: -8px;
   height: clamp(138px, 15vw, 210px);
-  background: url("/assets/grumphya/stage-curtain.png") center top /
+  background: url("/assets/grumphya/stage-curtain-v2.png") center top /
     min(100%, 1440px) auto no-repeat;
   filter: blur(1.2px);
   opacity: 0.76;
@@ -385,10 +385,8 @@
   bottom: -26px;
   left: -10px;
   height: clamp(72px, 8vw, 112px);
-  background: url("/assets/grumphya/audience.svg") center bottom /
+  background: url("/assets/grumphya/audience-distant.png") center bottom /
     max(100%, 1160px) auto no-repeat;
-  filter: blur(7px);
-  opacity: 0.44;
 }
 
 .app-frame {
@@ -659,8 +657,6 @@
   width: 100%;
   height: var(--audience-zone);
   background-size: max(100%, 1100px) auto;
-  filter: blur(5.5px);
-  opacity: 0.48;
 }
 
 .site-brand {
@@ -1521,11 +1517,6 @@
     color: #fffefa;
     background: var(--color-pink);
   }
-}
-
-.app-page.theme-dark::after {
-  z-index: 0;
-  opacity: 0.44;
 }
 
 .app-page.theme-dark .site-nav a[aria-current="page"] {

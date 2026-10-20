@@ -16,6 +16,9 @@ la lámina maestra está en
   transparente, copy breve con jerarquía clara, mascota con presencia y
   controles interactivos en primer plano. Los acentos pueden variar por
   sección sin cambiar esa gramática.
+- En Home, el copy y el formulario de idea forman una tarjeta clara en la
+  columna funcional; la columna de la mascota conserva su escenario. El
+  textarea usa un tono verde muy claro para distinguirse de la tarjeta.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - El favicon apunta directamente a `/assets/grumphya/mascot-isotype.svg`, el
@@ -33,14 +36,17 @@ la lámina maestra está en
 - La composición aprobada muestra el telón por arriba y las siluetas del público
   por abajo. Ambos elementos son decorativos, ocupan el ancho de la ventana y
   permanecen por encima del contenido cuando la página se desplaza.
-- El CSS aplica más desenfoque al público que al telón. Los elementos
-  interactivos y el texto permanecen nítidos y utilizables.
+- El telón conserva la cenefa superior roja y dorada; los paños laterales son
+  más estrechos y cortos para dejar libre el contenido. El público muestra más
+  cabezas pequeñas vistas desde más lejos y ocupa una franja menos alta. El
+  desenfoque de su borde superior y el desvanecido a transparencia forman parte
+  del PNG; CSS no aplica opacidad ni filtro al público.
 - Los assets SVG revisados se guardan en
   `ideas-and-designs/revision-vectorial/revisados/`. Se colocan según la lámina
-  maestra; no se autotracean ni se reinterpretan. El público conserva su SVG;
-  el telón usa el PNG transparente `stage-curtain.png`, y el haz de luz de Home
-  se dibuja con CSS. Las capas de profundidad, desenfoques y adornos se
-  resuelven con CSS.
+  maestra; no se autotracean ni se reinterpretan. El marco común usa los PNG
+  transparentes `stage-curtain-v2.png` y `audience-distant.png`; el haz de luz
+  de Home se dibuja con CSS. Las capas de profundidad y adornos se resuelven
+  con CSS.
 - Los rayos y formas de color rodean hero y acciones como paréntesis visuales,
   conservan aire respecto a los controles y no se solapan con ellos.
 
@@ -176,7 +182,9 @@ de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 (aproximadamente 3,58 MB). El nuevo
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
-887.500 B (`create-account-plan.png`); `stage-curtain.png` pesa 681.772 B.
+887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` pesa 592.636 B y
+`audience-distant.png` pesa 398.672 B. Ambos assets del marco conservan
+transparencia.
 Los nuevos `home-grumpy-judge.png` y `admin-dashboard-audit.png` son PNG
 transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
 (aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /
