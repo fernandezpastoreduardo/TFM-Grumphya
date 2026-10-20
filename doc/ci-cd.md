@@ -1,6 +1,6 @@
 # CI/CD y seguridad de la imagen
 
-El workflow `.github/workflows/ci.yml` se ejecuta en pull requests y al publicar en `main`; un push a otra rama no lo inicia por sí solo. Ambos jobs usan `ubuntu-24.04` para evitar cambios imprevistos de imagen y avisos por migraciones de `ubuntu-latest`. Fija Node mediante `.node-version` (`24.21.0`), pnpm (`12.5.1`) e instala desde `pnpm-lock.yaml` con `--frozen-lockfile`. El job `quality-and-e2e` prepara PostgreSQL/pgvector y ejecuta, en este orden, `format:check`, lint, typecheck, tests, build y Playwright Chromium. `format:check` es una puerta obligatoria; CI no modifica ni formatea archivos automáticamente.
+El workflow `.github/workflows/ci.yml` se ejecuta en pull requests y al publicar en `main`; un push a otra rama no lo inicia por sí solo. Ambos jobs usan `ubuntu-24.04` para evitar cambios imprevistos de imagen y avisos por migraciones de `ubuntu-latest`. Fija Node mediante `.node-version` (`24.21.0`), pnpm (`12.5.1`) e instala desde `pnpm-lock.yaml` con `--frozen-lockfile`. El job `quality-and-e2e` prepara PostgreSQL/pgvector y ejecuta `pnpm quality:check`, que corre formato, lint, typecheck, tests, build en ese orden. El mismo comando está en el hook Husky `pre-commit`, así un cambio que falle una puerta local se rechaza antes de crear el commit. Tras instalar Chromium, CI ejecuta Playwright; el hook Husky `pre-push` corre también `pnpm test:e2e` antes de publicar. Para preparar el navegador local, instala Chromium con `pnpm --filter @grumphya/web exec playwright install chromium`. CI no modifica ni formatea archivos automáticamente.
 
 Los tests PostgreSQL reciben un servicio temporal `pgvector/pgvector:0.8.7-pg17`. Antes de la suite, `prepare-test-database.ts` habilita `vector` en `public` y comprueba que está disponible. Cada spec que necesita persistencia crea un esquema aleatorio, ejecuta migraciones en él y lo elimina al terminar. Playwright arranca API y web en puertos de test dedicados, con repositorios en memoria y el adaptador de evaluación simulado; no usa credenciales ni datos de desarrollo/producción. La suite E2E corre con un worker porque comparte ese servidor de prueba y sus contadores de rate limit. No configura un proveedor LLM en CI.
 
@@ -17,11 +17,7 @@ La imagen se escanea pero no se publica ni despliega automáticamente. El despli
 ```sh
 pnpm install --frozen-lockfile
 pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm quality:check
 pnpm --filter @grumphya/web exec playwright install chromium
 pnpm test:e2e
 pnpm audit --audit-level moderate
