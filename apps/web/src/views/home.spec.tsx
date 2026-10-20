@@ -9,6 +9,7 @@ import {
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
+const IDEA_INPUT_NAME = /cuéntame tu idea/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
 const LOADING_BUTTON_NAME = /evaluando/i;
 const EVALUATION_RESPONSE = {
@@ -123,7 +124,7 @@ describe("Home", () => {
       "true",
     );
     expect(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
     ).toBeVisible();
     expect(
       screen.getByRole("region", { name: /resultado de la evaluación/i }),
@@ -200,7 +201,7 @@ describe("Home", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
     const submitButton = screen.getByRole("button", {
@@ -283,7 +284,7 @@ describe("Home", () => {
     );
 
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
     const submitButton = screen.getByRole("button", {
@@ -377,7 +378,7 @@ describe("Home", () => {
     });
     const heroDescription = screen.getByText(/grumphya revisa viabilidad/i);
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       "Una app para cuidar erizos en hoteles",
     );
 
@@ -433,7 +434,7 @@ describe("Home", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
     await user.click(
@@ -520,7 +521,7 @@ describe("Home", () => {
     );
     render(<Home />);
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
 
@@ -530,7 +531,7 @@ describe("Home", () => {
       /no se pudo completar el scoring/i,
     );
     expect(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
     ).toHaveValue(TEST_IDEA_TEXT);
     expect(
       screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
@@ -560,7 +561,7 @@ describe("Home", () => {
     );
     render(<Home />);
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
@@ -599,7 +600,7 @@ describe("Home", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
@@ -650,7 +651,7 @@ describe("Home", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
     await user.type(
-      screen.getByRole("textbox", { name: /qué aplicación tienes en mente/i }),
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
       TEST_IDEA_TEXT,
     );
     await user.click(

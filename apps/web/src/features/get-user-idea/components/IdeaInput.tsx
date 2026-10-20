@@ -8,7 +8,7 @@ type IdeaInputProps = {
   errorMessage?: string;
 };
 
-const IDEA_INPUT_LABEL = "¿Qué aplicación tienes en mente?";
+const IDEA_INPUT_LABEL = "1. Cuéntame tu idea. A ver si se sostiene.";
 const IDEA_INPUT_HELP =
   "Quién la usaría, qué le duele y qué haría la app. Lo básico, vamos.";
 const INPUT_ID = "idea-text";

@@ -299,11 +299,6 @@
   background: #f28da3;
 }
 
-.home-page.theme-dark::after {
-  z-index: 0;
-  opacity: 0.44;
-}
-
 .home-page.theme-dark .home-nav-link.is-current {
   border-color: #f28da3;
   color: #172123;
@@ -855,10 +850,8 @@
   right: -8px;
   left: -8px;
   height: clamp(138px, 15vw, 210px);
-  background: url("/assets/grumphya/stage-curtain.png") center top /
+  background: url("/assets/grumphya/stage-curtain-v2.png") center top /
     min(100%, 1440px) auto no-repeat;
-  filter: blur(1.2px);
-  opacity: 0.76;
 }
 
 .home-page::after {
@@ -867,10 +860,8 @@
   bottom: -26px;
   left: -10px;
   height: clamp(72px, 8vw, 112px);
-  background: url("/assets/grumphya/audience.svg") center bottom /
+  background: url("/assets/grumphya/audience-rounded.png") center bottom /
     max(100%, 1160px) auto no-repeat;
-  filter: blur(7px);
-  opacity: 0.44;
 }
 
 .home-shell {
@@ -1346,8 +1337,6 @@
   width: 100%;
   height: var(--audience-zone);
   background-size: max(100%, 1100px) auto;
-  filter: blur(5.5px);
-  opacity: 0.48;
 }
 
 .home-shell {
@@ -1852,7 +1841,7 @@
   --frame-light: clamp(8px, 1vw, 16px);
   --curtain-height: 22.28vw;
   --header-start: clamp(102px, calc(8vw - 10px), 126px);
-  --audience-zone: 15.35vw;
+  --audience-zone: clamp(76px, calc(12.7vw + 26px), 360px);
   background-image:
     linear-gradient(
       90deg,
@@ -1875,7 +1864,7 @@
   width: 100vw;
   height: var(--curtain-height);
   background-position: center top;
-  background-size: 100% 100%;
+  background-size: 100% auto;
   transform: translateX(-50%);
 }
 
@@ -1887,7 +1876,7 @@
   width: 100vw;
   height: var(--audience-zone);
   background-position: center bottom;
-  background-size: 100% 100%;
+  background-size: 100% auto;
   transform: translateX(-50%);
 }
 
@@ -2970,4 +2959,137 @@
 .evaluation-reopen-button:focus-visible {
   outline: 3px solid #f2c64a;
   outline-offset: 3px;
+}
+
+.home-shell {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "topbar"
+    "hero"
+    "result"
+    "marketing"
+    "footer";
+  grid-template-rows: auto auto auto auto auto;
+}
+
+.home-topbar {
+  grid-area: topbar;
+}
+
+.home-hero-layout {
+  display: grid;
+  grid-area: hero;
+  grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+  align-items: center;
+  gap: clamp(24px, 4.5vw, 56px);
+  min-width: 0;
+}
+
+.home-functional-column {
+  min-width: 0;
+  border: 2px solid var(--color-teal-dark);
+  border-radius: 28px;
+  padding: clamp(20px, 2.6vw, 30px);
+  color: #172123;
+  background: var(--color-paper);
+  box-shadow: 7px 8px 0 #226b7026;
+}
+
+.home-heading {
+  display: block;
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 218px;
+  min-width: 0;
+  margin: 0;
+}
+
+.home-heading-copy {
+  grid-area: auto;
+  max-width: none;
+  padding: 0;
+}
+
+.home-heading-copy .home-rude-line {
+  color: #304548;
+}
+
+.home-workspace {
+  grid-area: auto;
+  grid-column: auto;
+  grid-row: auto;
+  align-self: stretch;
+  min-width: 0;
+  margin: 12px 0 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-functional-column .idea-privacy-note {
+  color: #304548;
+}
+
+.home-hero-stage {
+  grid-area: auto;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 490px);
+  height: clamp(370px, 43vw, 510px);
+  margin: 0;
+}
+
+.home-result {
+  grid-area: result;
+}
+
+.home-marketing {
+  grid-area: marketing;
+}
+
+.home-footer {
+  grid-area: footer;
+}
+
+@media (max-width: 979px) and (min-width: 641px) {
+  .home-hero-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 0.45fr);
+    gap: 24px;
+  }
+
+  .home-hero-stage {
+    grid-column: 2;
+    grid-row: 1;
+    width: min(100%, 390px);
+    height: clamp(230px, 35vw, 300px);
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-hero-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .home-functional-column {
+    border-radius: 22px;
+    padding: 18px 14px;
+  }
+
+  .home-workspace {
+    margin-top: 12px;
+  }
+
+  .home-hero-stage {
+    grid-column: 1;
+    grid-row: 2;
+    width: min(100%, 390px);
+    height: clamp(188px, 50vw, 244px);
+    margin: 0 auto;
+  }
 }
