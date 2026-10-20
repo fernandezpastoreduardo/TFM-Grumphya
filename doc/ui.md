@@ -183,10 +183,13 @@ de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
 887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` pesa 592.636 B y
-`audience-rounded.png` reemplaza el público distante por una curva de criaturas
-redondeadas y gruñonas de la familia visual de Grumphya. Pesa 737.283 B y
-conserva transparencia con el borde superior suavizado dentro del propio PNG.
-Ambos assets del marco conservan transparencia.
+`audience-rounded.png` representa la platea como una multitud de Grumphyas
+pequeñas, vistas desde atrás y sin rasgos faciales. Conserva el lienzo y la
+proporción del original; sus cabezas redondeadas incluyen las orejas de la
+mascota y la curva sube ligeramente en los extremos. Las figuras están en
+sombra, sin iluminación. Pesa 407.216 B; conserva la transparencia y el borde
+superior suavizado dentro del PNG. Ambos assets del marco conservan
+transparencia.
 Los nuevos `home-grumpy-judge.png` y `admin-dashboard-audit.png` son PNG
 transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
 (aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /
