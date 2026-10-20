@@ -50,8 +50,10 @@ la lámina maestra está en
   la acción, con foco visible y estados accesibles.
 - Las tarjetas de tono «Tengo la piel fina» y «Dame tu mejor golpe» son la
   excepción de color: mantienen sus fondos azul y rosa y texto negro también en
-  modo oscuro. Cada tarjeta integra su variante aprobada de la mascota desde el
-  borde inferior izquierdo, dejando aire sobre la ilustración y el texto a su
+  modo oscuro. La tarjeta suave usa la pose con venda
+  `idea-tone-soft-bandage-v2.png`; la intensa, la pose de boxeo
+  `idea-tone-hard-boxing-v2.png`. Cada tarjeta integra la ilustración desde el
+  borde inferior izquierdo, dejando aire sobre la mascota y el texto a su
   derecha.
 - El cambio claro/oscuro se presenta como un switch con accionador turquesa; el
   selector de tono sigue siendo un control separado.
@@ -71,7 +73,7 @@ la lámina maestra está en
   `good-practices-checklist.png`/`good-practices-validate-idea.png`,
   `notable-humans-hero.png`/`notable-humans-callout.png`,
   `contact-hero-phone.png`/`contact-message-tube.png`,
-  `roast-vent.png`/`roast-plan-callout.png`,
+  `descargate-boxing-bag.png`/`roast-plan-callout.png`,
   `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para
   Descárgate, Peores ideas y Login. El hero de Mi cuenta usa
   `profile-account-shield.png`. Las dos ilustraciones de cada una de las
@@ -89,8 +91,8 @@ la lámina maestra está en
   Grumphya examinando gráficas mediante una lupa. El hero de alta y su panel de
   plan usan
   `create-account-hero.png` y `create-account-plan.png` respectivamente.
-  La mascota del hero de Home se encuadra con `contain` y posición inferior
-  para que no quede cortada.
+  La mascota del hero de Home se encuadra con `contain`, posición inferior y
+  reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
   privacidad provisional. Las mascotas de hero flotan suavemente, los bloques
@@ -150,11 +152,12 @@ Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
 No se midieron LCP, CLS ni INP, por lo
 que esta revisión no certifica Core Web Vitals. Para completarla, medir Home,
-Humanos notables, Contacto, alta y `/panel-control` con Lighthouse en escritorio
-y móvil, ambos temas y caché fría y caliente; revisar waterfall, bytes
-transferidos y cambios de layout. Las siete ilustraciones transparentes de Buenas prácticas, Humanos
-notables, Contacto y Mi cuenta se ajustaron a 900 px de lado máximo para su uso
-en interfaz y pesan 3.584.291 B en total (aproximadamente 3,58 MB). El nuevo
+Humanos notables, Contacto, Descárgate, alta y `/panel-control` con Lighthouse
+en escritorio y móvil, ambos temas y caché fría y caliente; revisar waterfall,
+bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
+de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
+900 px de lado máximo para su uso en interfaz y pesan 3.584.291 B en total
+(aproximadamente 3,58 MB). El nuevo
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
 887.500 B (`create-account-plan.png`); `stage-curtain.png` pesa 681.772 B.
@@ -163,6 +166,12 @@ transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
 (aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /
 1,61 MiB). Ambos respetan el límite de 900 px. Se incluirán en las mediciones
 Lighthouse pendientes para cuantificar su efecto en la carga móvil.
+La nueva ilustración de Descárgate y los dos assets de las tarjetas de tono
+suman 1.095.690 B (aprox. 1,10 MB / 1,04 MiB), una reducción de 2.040.647 B
+(aprox. 65,1 %) frente a sus versiones anteriores. `descargate-boxing-bag.png`
+mide 1124 × 900 px y pesa 668.414 B; `idea-tone-soft-bandage-v2.png` mide
+512 × 554 px y pesa 224.619 B; `idea-tone-hard-boxing-v2.png` mide 512 × 512 px
+y pesa 202.657 B. Los tres conservan transparencia.
 
 ## Ranking público de ideas rechazadas
 
