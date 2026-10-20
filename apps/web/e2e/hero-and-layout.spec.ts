@@ -23,6 +23,11 @@ const HERO_ASSETS = [
     asset: "/assets/grumphya/plans-coffee.png",
   },
   {
+    path: "/descargate",
+    mascotClass: "mascot-roast",
+    asset: "/assets/grumphya/descargate-boxing-bag.png",
+  },
+  {
     path: "/panel-control",
     mascotClass: "mascot-admin",
     asset: "/assets/grumphya/admin-dashboard-audit.png",
@@ -116,6 +121,29 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   expect(homeAssetResponse.ok()).toBe(true);
   expect(homeAssetResponse.headers()["content-type"]).toContain("image/png");
   expect(await assetHasTransparentPixels(page, homeAssetPath)).toBe(true);
+
+  const toneIllustrations = [
+    {
+      selector: ".idea-tone-illustration-soft",
+      asset: "/assets/grumphya/idea-tone-soft-bandage-v2.png",
+    },
+    {
+      selector: ".idea-tone-illustration-hard",
+      asset: "/assets/grumphya/idea-tone-hard-boxing-v2.png",
+    },
+  ] as const;
+  for (const illustration of toneIllustrations) {
+    const renderedBackground = await page
+      .locator(illustration.selector)
+      .evaluate((element) => getComputedStyle(element).backgroundImage);
+    expect(renderedBackground).toContain(illustration.asset);
+    const response = await page.request.get(illustration.asset);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]).toContain("image/png");
+    expect(await assetHasTransparentPixels(page, illustration.asset)).toBe(
+      true,
+    );
+  }
 });
 
 test("uses Grumphya's navigation logo as the site favicon", async ({

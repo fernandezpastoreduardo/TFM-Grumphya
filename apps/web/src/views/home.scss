@@ -1610,7 +1610,7 @@
   bottom: 8%;
   width: min(53%, 245px);
   height: 70%;
-  transform: translateX(50%);
+  transform: translateX(50%) scaleX(-1);
 }
 
 .home-workspace {
