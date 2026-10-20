@@ -530,9 +530,9 @@ describe("Home", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /no se pudo completar el scoring/i,
     );
-    expect(
-      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
-    ).toHaveValue(TEST_IDEA_TEXT);
+    expect(screen.getByRole("textbox", { name: IDEA_INPUT_NAME })).toHaveValue(
+      TEST_IDEA_TEXT,
+    );
     expect(
       screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }),
     ).toBeEnabled();
