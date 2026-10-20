@@ -84,6 +84,10 @@ const MIGRATIONS = [
     version: "027_password_reset_tokens",
     file: "027_password_reset_tokens.sql",
   },
+  {
+    version: "028_admin_contact_message_replies",
+    file: "028_admin_contact_message_replies.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

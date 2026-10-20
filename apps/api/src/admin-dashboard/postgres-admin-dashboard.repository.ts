@@ -8,12 +8,14 @@ import {
 } from "../infrastructure/ai/ai-usage";
 import type {
   AdminContactMessage,
+  ContactMessageReplyClaim,
   AdminDashboardRepository,
   AdminDashboardSnapshot,
 } from "./admin-dashboard.models";
 
 const CONTACT_MESSAGE_LIMIT = 100;
 const MAX_ERROR_CODE_LENGTH = 100;
+const MAX_ADMIN_REPLY_ATTEMPTS = 2;
 
 type SnapshotRow = {
   weekly_revenue_eur: string;
@@ -216,11 +218,19 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       created_at: Date;
       username: string;
       email: string;
+      reply_status: "sending" | "sent" | "previewed" | "uncertain" | null;
+      reply_attempt_count: number | null;
+      reply_last_attempt_at: Date | null;
     }>(
       `SELECT contact.id,contact.subject,contact.message,contact.created_at,
-         user_account.username,user_account.email
+         user_account.username,user_account.email,
+         admin_reply.status AS reply_status,
+         admin_reply.attempt_count AS reply_attempt_count,
+         admin_reply.last_attempt_at AS reply_last_attempt_at
        FROM contact_messages contact
        JOIN users user_account ON user_account.id=contact.user_id
+       LEFT JOIN admin_contact_message_replies admin_reply
+         ON admin_reply.contact_message_id=contact.id
        ORDER BY contact.created_at DESC,contact.id DESC LIMIT $1`,
       [CONTACT_MESSAGE_LIMIT],
     );
@@ -230,7 +240,90 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       message: row.message,
       createdAt: row.created_at.toISOString(),
       sender: { username: row.username, email: row.email },
+      reply: {
+        status: row.reply_status ?? "not_replied",
+        attemptedAt: row.reply_last_attempt_at?.toISOString() ?? null,
+        retryAllowed:
+          row.reply_status === "uncertain" &&
+          (row.reply_attempt_count ?? MAX_ADMIN_REPLY_ATTEMPTS) <
+            MAX_ADMIN_REPLY_ATTEMPTS,
+      },
     }));
+  }
+
+  async claimContactMessageReply(
+    messageId: string,
+    adminUserId: string,
+    reviewedWebmail: boolean,
+  ): Promise<ContactMessageReplyClaim | null> {
+    await this.ensureSchema();
+    const initial = await this.pool.query(
+      `INSERT INTO admin_contact_message_replies
+         (contact_message_id,admin_user_id,status,attempt_count,last_attempt_at)
+       SELECT contact.id,$2,'sending',1,now()
+       FROM contact_messages contact
+       WHERE contact.id=$1
+       ON CONFLICT (contact_message_id) DO NOTHING
+       RETURNING contact_message_id`,
+      [messageId, adminUserId],
+    );
+    let claimed = Boolean(initial.rowCount);
+    if (!claimed && reviewedWebmail) {
+      const retry = await this.pool.query(
+        `UPDATE admin_contact_message_replies
+         SET status='sending',admin_user_id=$2,
+             attempt_count=attempt_count+1,last_attempt_at=now()
+         WHERE contact_message_id=$1 AND status='uncertain'
+           AND attempt_count < $3
+         RETURNING contact_message_id`,
+        [messageId, adminUserId, MAX_ADMIN_REPLY_ATTEMPTS],
+      );
+      claimed = Boolean(retry.rowCount);
+    }
+    const result = await this.pool.query<{
+      id: string;
+      subject: string;
+      created_at: Date;
+      email: string;
+      status: "sending" | "sent" | "previewed" | "uncertain" | null;
+      attempt_count: number;
+      last_attempt_at: Date;
+    }>(
+      `SELECT contact.id,contact.subject,contact.created_at,
+         user_account.email,admin_reply.status,admin_reply.attempt_count,
+         admin_reply.last_attempt_at
+       FROM contact_messages contact
+       JOIN users user_account ON user_account.id=contact.user_id
+       LEFT JOIN admin_contact_message_replies admin_reply
+         ON admin_reply.contact_message_id=contact.id
+       WHERE contact.id=$1`,
+      [messageId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      subject: row.subject,
+      createdAt: row.created_at.toISOString(),
+      recipient: row.email,
+      status: row.status ?? "not_replied",
+      attemptedAt: row.last_attempt_at?.toISOString() ?? null,
+      attemptCount: row.attempt_count ?? 0,
+      claimed,
+    };
+  }
+
+  async completeContactMessageReply(
+    messageId: string,
+    status: "sent" | "previewed" | "uncertain",
+  ): Promise<void> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE admin_contact_message_replies
+       SET status=$2,sent_at=CASE WHEN $2='sent' THEN now() ELSE NULL END
+       WHERE contact_message_id=$1 AND status='sending'`,
+      [messageId, status],
+    );
   }
 
   async recordAiUsage(record: AiUsageRecord): Promise<void> {

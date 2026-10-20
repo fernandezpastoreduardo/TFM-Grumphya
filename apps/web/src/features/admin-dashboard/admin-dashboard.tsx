@@ -1,5 +1,7 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
+import { AdminContactMessageReply } from "./admin-contact-message-reply";
+import type { AdminContactMessage } from "./admin-dashboard.models";
 import {
   LoadingSkeleton,
   SkeletonBlock,
@@ -28,17 +30,10 @@ type AiCostByActor = {
   anonymousUsd: number;
 };
 type AiCostTrendWeek = AiCostByActor & { weekStart: string; totalUsd: number };
-type ContactMessage = {
-  id: string;
-  subject: string;
-  message: string;
-  createdAt: string;
-  sender: { username: string; email: string };
-};
 type DashboardState =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; data: DashboardData; messages: ContactMessage[] };
+  | { status: "ready"; data: DashboardData; messages: AdminContactMessage[] };
 
 const DASHBOARD_ERROR = "No se han podido consultar los datos del panel.";
 const EUR = new Intl.NumberFormat("es-ES", {
@@ -133,7 +128,7 @@ function isDashboardData(value: unknown): value is DashboardData {
     )
   );
 }
-function isContact(value: unknown): value is ContactMessage {
+function isContact(value: unknown): value is AdminContactMessage {
   return (
     isRecord(value) &&
     typeof value.id === "string" &&
@@ -143,7 +138,24 @@ function isContact(value: unknown): value is ContactMessage {
     Number.isFinite(Date.parse(value.createdAt)) &&
     isRecord(value.sender) &&
     typeof value.sender.username === "string" &&
-    typeof value.sender.email === "string"
+    typeof value.sender.email === "string" &&
+    isRecord(value.reply) &&
+    isReplyStatus(value.reply.status) &&
+    (value.reply.attemptedAt === null ||
+      (typeof value.reply.attemptedAt === "string" &&
+        Number.isFinite(Date.parse(value.reply.attemptedAt)))) &&
+    typeof value.reply.retryAllowed === "boolean"
+  );
+}
+function isReplyStatus(
+  value: unknown,
+): value is AdminContactMessage["reply"]["status"] {
+  return (
+    value === "not_replied" ||
+    value === "sending" ||
+    value === "sent" ||
+    value === "previewed" ||
+    value === "uncertain"
   );
 }
 
@@ -411,6 +423,7 @@ export function AdminDashboard() {
                         </time>
                       </div>
                       <p className="admin-contact-message">{contact.message}</p>
+                      <AdminContactMessageReply contact={contact} />
                     </article>
                   ))}
                 </div>
@@ -418,8 +431,11 @@ export function AdminDashboard() {
                 <p>Aún no han llegado mensajes.</p>
               )}
               <p className="admin-dashboard-note">
-                Se muestran los 100 mensajes más recientes. El envío de
-                confirmaciones y respuestas por correo está pendiente.
+                Se muestran los 100 mensajes más recientes. Las respuestas se
+                envían desde el buzón de OVHcloud; las respuestas recibidas se
+                consultan en el webmail y no se leen desde esta aplicación. Si
+                un envío queda sin confirmar, revisa el webmail antes de
+                autorizar un reintento.
               </p>
             </section>
           </>

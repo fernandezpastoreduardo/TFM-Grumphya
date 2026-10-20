@@ -8,6 +8,11 @@ import { AdminRoleGuard } from "./admin-role.guard";
 import { PostgresAdminDashboardRepository } from "./postgres-admin-dashboard.repository";
 import { ApplicationErrorFilter } from "./application-error.filter";
 import { APP_FILTER, HttpAdapterHost } from "@nestjs/core";
+import {
+  ADMIN_CONTACT_REPLY_MAILER,
+  AdminContactMessageReply,
+} from "./admin-contact-message-reply.service";
+import { AdminContactReplyMailer } from "./admin-contact-reply-mailer";
 
 @Module({
   imports: [AuthSecurityModule],
@@ -19,6 +24,11 @@ import { APP_FILTER, HttpAdapterHost } from "@nestjs/core";
         new PostgresAdminDashboardRepository(createPostgresPool()),
     },
     AdminDashboardService,
+    AdminContactMessageReply,
+    {
+      provide: ADMIN_CONTACT_REPLY_MAILER,
+      useClass: AdminContactReplyMailer,
+    },
     {
       provide: AdminRoleGuard,
       useFactory: () => new AdminRoleGuard(createPostgresPool()),

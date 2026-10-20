@@ -265,6 +265,55 @@
   overflow-wrap: anywhere;
   line-height: 1.55;
 }
+.admin-contact-reply {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-teal-dark) 18%, transparent);
+}
+.admin-contact-reply-status,
+.admin-contact-reply-help {
+  margin: 0;
+  color: var(--color-ink-muted, #4b5860);
+  font-size: 0.9rem;
+}
+.admin-contact-reply-form {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  width: min(100%, 680px);
+}
+.admin-contact-reply-form > label:first-child {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  font-weight: 600;
+}
+.admin-contact-reply-form textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--color-teal-dark) 34%, transparent);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--color-ink, #251f35);
+  background: white;
+  font: inherit;
+}
+.admin-contact-reply-review {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 680px;
+  font-size: 0.9rem;
+}
+.admin-contact-reply-error {
+  margin: 0;
+  color: #9b2525;
+}
 @media (max-width: 560px) {
   .admin-ai-costs {
     grid-template-columns: 1fr;

@@ -135,4 +135,77 @@ describe("PostgresAdminDashboardRepository", () => {
     });
     expect(query).toHaveBeenCalledTimes(3);
   });
+
+  it("claims a reply atomically and obtains its recipient from the joined user row", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ contact_message_id: "message-id" }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "message-id",
+            subject: "Consulta",
+            created_at: new Date("2026-10-18T12:00:00.000Z"),
+            email: "owner@example.es",
+            status: "sending",
+            attempt_count: 1,
+            last_attempt_at: new Date("2026-10-20T10:00:00.000Z"),
+          },
+        ],
+      });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(
+      repository.claimContactMessageReply("message-id", "admin-id", false),
+    ).resolves.toMatchObject({
+      recipient: "owner@example.es",
+      subject: "Consulta",
+      claimed: true,
+      attemptCount: 1,
+    });
+    expect(query.mock.calls[0]?.[0]).toContain("FROM contact_messages contact");
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "ON CONFLICT (contact_message_id) DO NOTHING",
+    );
+    expect(query.mock.calls[1]?.[0]).toContain("JOIN users user_account");
+    expect(query.mock.calls[1]?.[0]).toContain("user_account.email");
+  });
+
+  it("does not retry an uncertain reply unless the admin has reviewed webmail", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: "message-id",
+            subject: "Consulta",
+            created_at: new Date("2026-10-18T12:00:00.000Z"),
+            email: "owner@example.es",
+            status: "uncertain",
+            attempt_count: 1,
+            last_attempt_at: new Date("2026-10-20T10:00:00.000Z"),
+          },
+        ],
+      });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    const claim = await repository.claimContactMessageReply(
+      "message-id",
+      "admin-id",
+      false,
+    );
+    expect(claim).toMatchObject({ status: "uncertain", claimed: false });
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "ON CONFLICT (contact_message_id) DO NOTHING",
+    );
+  });
 });
