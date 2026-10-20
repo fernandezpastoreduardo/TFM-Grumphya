@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PostgresRegistrationRepository } from "./postgres-registration.repository";
 import { RegistrationService } from "./registration.service";
 
 const DATABASE_URL = process.env.REGISTRATION_TEST_DATABASE_URL;
+const TEST_WEB_ORIGIN = "http://127.0.0.1:5173";
 
 describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
   let adminPool: Pool | undefined;
@@ -12,7 +13,12 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
   let repository: PostgresRegistrationRepository | undefined;
   let schemaName: string;
 
+  beforeEach(() => {
+    vi.stubEnv("WEB_ORIGIN", TEST_WEB_ORIGIN);
+  });
+
   afterEach(async () => {
+    vi.unstubAllEnvs();
     if (repository) await repository.close();
     else if (testPool) await testPool.end();
     if (adminPool && schemaName) {
@@ -103,7 +109,7 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       },
     ]);
     const activePlanDuration = await adminPool.query<{ days: number }>(
-      `SELECT extract(epoch FROM expires_at-starts_at)/86400 AS days
+      `SELECT (extract(epoch FROM expires_at-starts_at)/86400)::int AS days
        FROM "${schemaName}".subscriptions LIMIT 1`,
     );
     expect(activePlanDuration.rows[0]!.days).toBeGreaterThanOrEqual(28);
