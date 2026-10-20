@@ -35,6 +35,11 @@ export interface RegistrationRepository {
     sessionExpiresAt: Date,
   ): Promise<DirectRegistration>;
   findLoginIdentity(identifier: string): Promise<LoginIdentity | null>;
+  updatePasswordHash(
+    userId: string,
+    expectedHash: string,
+    passwordHash: string,
+  ): Promise<boolean>;
   createSession(
     userId: string,
     accessTokenHash: string,

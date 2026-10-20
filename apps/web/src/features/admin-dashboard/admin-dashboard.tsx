@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
 import {
   LoadingSkeleton,
@@ -60,6 +60,22 @@ const WEEK_LABEL = new Intl.DateTimeFormat("es-ES", {
   month: "short",
   timeZone: "UTC",
 });
+const ADMIN_TABS = [
+  { id: "summary", label: "Resumen" },
+  { id: "benchmark", label: "Benchmark de IA" },
+  { id: "telemetry", label: "Telemetría de IA" },
+  { id: "security", label: "Pruebas de seguridad" },
+] as const;
+type AdminTab = (typeof ADMIN_TABS)[number]["id"];
+
+function getNextTabIndex(currentIndex: number, key: string): number | null {
+  if (key === "ArrowRight") return (currentIndex + 1) % ADMIN_TABS.length;
+  if (key === "ArrowLeft")
+    return (currentIndex - 1 + ADMIN_TABS.length) % ADMIN_TABS.length;
+  if (key === "Home") return 0;
+  if (key === "End") return ADMIN_TABS.length - 1;
+  return null;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -133,6 +149,22 @@ function isContact(value: unknown): value is ContactMessage {
 
 export function AdminDashboard() {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
+  const [activeTab, setActiveTab] = useState<AdminTab>("summary");
+  function handleTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) {
+    const nextIndex = getNextTabIndex(currentIndex, event.key);
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextTab = ADMIN_TABS[nextIndex];
+    setActiveTab(nextTab.id);
+    const tabButtons =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+        '[role="tab"]',
+      );
+    tabButtons?.[nextIndex]?.focus();
+  }
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -226,137 +258,284 @@ export function AdminDashboard() {
           tokens registrados.
         </p>
       </section>
-      <section
-        className="admin-metrics"
-        aria-label="Ingresos simulados y costes estimados"
+      <div
+        className="admin-dashboard-tabs"
+        role="tablist"
+        aria-label="Secciones del panel"
       >
+        {ADMIN_TABS.map((tab, index) => (
+          <button
+            aria-controls={`admin-panel-${tab.id}`}
+            aria-selected={activeTab === tab.id}
+            id={`admin-tab-${tab.id}`}
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(event) => handleTabKeyDown(event, index)}
+            role="tab"
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <section
+        aria-labelledby={`admin-tab-${activeTab}`}
+        className="admin-dashboard-tabpanel"
+        id={`admin-panel-${activeTab}`}
+        role="tabpanel"
+        tabIndex={0}
+      >
+        {activeTab === "summary" ? (
+          <>
+            <section
+              className="admin-metrics"
+              aria-label="Ingresos simulados y costes estimados"
+            >
+              <Metric
+                title="Ingresos simulados · esta semana"
+                value={EUR.format(data.revenue.weeklyEur)}
+              />
+              <Metric
+                title="Ingresos simulados · total"
+                value={EUR.format(data.revenue.totalEur)}
+              />
+              <Metric
+                title="Coste IA · esta semana"
+                value={USD.format(data.estimatedAiCost.weeklyUsd)}
+              />
+              <Metric
+                title="Coste IA · total"
+                value={USD.format(data.estimatedAiCost.totalUsd)}
+              />
+              <Metric
+                title="Coste medio por cuenta · semana"
+                value={USD.format(
+                  data.estimatedAiCost.weeklyAveragePerAccountUsd,
+                )}
+              />
+              <Metric
+                title="Coste medio por cuenta · total"
+                value={USD.format(
+                  data.estimatedAiCost.totalAveragePerAccountUsd,
+                )}
+              />
+            </section>
+            <p className="admin-dashboard-note">
+              El coste medio por cuenta incluye a usuarios registrados y admins
+              activos ({data.estimatedAiCost.activeRegisteredAccountCount} y{" "}
+              {data.estimatedAiCost.activeAdminAccountCount}, respectivamente).
+              Los usos sin cuenta también forman parte del gasto total y se
+              muestran aparte. Eventos sin precio configurado:{" "}
+              {data.estimatedAiCost.unpricedUsageEvents}.
+            </p>
+            <section
+              className="admin-dashboard-card admin-ai-costs"
+              aria-labelledby="admin-ai-costs-title"
+            >
+              <div className="admin-dashboard-section-heading">
+                <div>
+                  <span className="eyebrow">Gastos de IA · USD</span>
+                  <h2 id="admin-ai-costs-title">Quién genera el coste</h2>
+                </div>
+              </div>
+              <CostBreakdown
+                title="Esta semana"
+                costs={data.estimatedAiCost.weeklyByActor}
+              />
+              <CostBreakdown
+                title="Acumulado"
+                costs={data.estimatedAiCost.totalByActor}
+              />
+              <AiCostChart weeks={data.estimatedAiCost.weeklyTrend} />
+            </section>
+            <section
+              className="admin-dashboard-card"
+              aria-labelledby="admin-errors-title"
+            >
+              <h2 id="admin-errors-title">Errores más registrados</h2>
+              {data.errors.length ? (
+                <div className="admin-table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">Código</th>
+                        <th scope="col">Esta semana</th>
+                        <th scope="col">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.errors.map((error) => (
+                        <tr key={error.code}>
+                          <th scope="row">{error.code}</th>
+                          <td>{error.weeklyCount}</td>
+                          <td>{error.totalCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p>No hay errores registrados.</p>
+              )}
+            </section>
+            <section
+              className="admin-dashboard-card"
+              aria-labelledby="admin-contacts-title"
+            >
+              <div className="admin-dashboard-section-heading">
+                <div>
+                  <span className="eyebrow">Bandeja de entrada</span>
+                  <h2 id="admin-contacts-title">Mensajes de contacto</h2>
+                </div>
+                <span>{state.messages.length}</span>
+              </div>
+              {state.messages.length ? (
+                <div className="admin-contact-list">
+                  {state.messages.map((contact) => (
+                    <article className="admin-contact" key={contact.id}>
+                      <div className="admin-contact-heading">
+                        <div>
+                          <h3>{contact.subject}</h3>
+                          <p>
+                            {contact.sender.username} ·{" "}
+                            <a
+                              href={`mailto:${encodeURIComponent(contact.sender.email)}`}
+                            >
+                              {contact.sender.email}
+                            </a>
+                          </p>
+                        </div>
+                        <time dateTime={contact.createdAt}>
+                          {DATE.format(new Date(contact.createdAt))}
+                        </time>
+                      </div>
+                      <p className="admin-contact-message">{contact.message}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p>Aún no han llegado mensajes.</p>
+              )}
+              <p className="admin-dashboard-note">
+                Se muestran los 100 mensajes más recientes. El envío de
+                confirmaciones y respuestas por correo está pendiente.
+              </p>
+            </section>
+          </>
+        ) : null}
+        {activeTab === "benchmark" ? <BenchmarkTab /> : null}
+        {activeTab === "telemetry" ? <TelemetryTab data={data} /> : null}
+        {activeTab === "security" ? <SecurityTab /> : null}
+      </section>
+    </div>
+  );
+}
+
+function BenchmarkTab() {
+  return (
+    <section
+      className="admin-dashboard-card"
+      aria-labelledby="admin-benchmark-title"
+    >
+      <h2 id="admin-benchmark-title">Benchmark de evaluaciones y prompts</h2>
+      <p>
+        Compara versiones de instrucciones y modelos con seis casos sintéticos
+        etiquetados, incluidos intentos de inyección de instrucciones. No
+        utiliza ideas enviadas por usuarios.
+      </p>
+      <ul>
+        <li>Compara el acuerdo con las decisiones esperadas por caso.</li>
+        <li>Compara la consistencia de estado y motivo entre variantes.</li>
+        <li>
+          Las salidas del benchmark contienen métricas agregadas, nunca el texto
+          de los casos.
+        </li>
+      </ul>
+      <p>Para ejecutar una comparación desde el entorno de desarrollo:</p>
+      <pre>
+        <code>
+          pnpm --filter @grumphya/api run benchmark:evaluator -- --help
+        </code>
+      </pre>
+      <p className="admin-dashboard-note">
+        El benchmark requiere una clave de proveedor y puede generar coste. El
+        panel no muestra una última ejecución porque sus resultados no se
+        guardan en la base de datos.
+      </p>
+    </section>
+  );
+}
+
+function TelemetryTab({ data }: { data: DashboardData }) {
+  return (
+    <section
+      className="admin-dashboard-card"
+      aria-labelledby="admin-telemetry-title"
+    >
+      <h2 id="admin-telemetry-title">Telemetría de operaciones de IA</h2>
+      <p>
+        Los eventos estructurados registran operación, modelo, resultado,
+        latencia, tokens y coste estimado.
+      </p>
+      <div className="admin-metrics">
         <Metric
-          title="Ingresos simulados · esta semana"
-          value={EUR.format(data.revenue.weeklyEur)}
-        />
-        <Metric
-          title="Ingresos simulados · total"
-          value={EUR.format(data.revenue.totalEur)}
-        />
-        <Metric
-          title="Coste IA · esta semana"
+          title="Coste estimado · esta semana"
           value={USD.format(data.estimatedAiCost.weeklyUsd)}
         />
         <Metric
-          title="Coste IA · total"
+          title="Coste estimado · total"
           value={USD.format(data.estimatedAiCost.totalUsd)}
         />
         <Metric
-          title="Coste medio por cuenta · semana"
-          value={USD.format(data.estimatedAiCost.weeklyAveragePerAccountUsd)}
+          title="Eventos sin precio configurado"
+          value={String(data.estimatedAiCost.unpricedUsageEvents)}
         />
-        <Metric
-          title="Coste medio por cuenta · total"
-          value={USD.format(data.estimatedAiCost.totalAveragePerAccountUsd)}
-        />
-      </section>
+      </div>
       <p className="admin-dashboard-note">
-        El coste medio por cuenta incluye a usuarios registrados y admins
-        activos ({data.estimatedAiCost.activeRegisteredAccountCount} y{" "}
-        {data.estimatedAiCost.activeAdminAccountCount}, respectivamente). Los
-        usos sin cuenta también forman parte del gasto total y se muestran
-        aparte. Eventos sin precio configurado:{" "}
-        {data.estimatedAiCost.unpricedUsageEvents}.
+        Las trazas no incluyen ideas, mensajes, direcciones IP, tokens de sesión
+        ni identificadores de traza persistentes. Los eventos detallados se
+        envían al registro del proceso; el panel muestra costes totales
+        agregados y usos sin precio. El registro privado conserva consumo por
+        operación y modelo para calcular estas métricas.
       </p>
-      <section
-        className="admin-dashboard-card admin-ai-costs"
-        aria-labelledby="admin-ai-costs-title"
-      >
-        <div className="admin-dashboard-section-heading">
-          <div>
-            <span className="eyebrow">Gastos de IA · USD</span>
-            <h2 id="admin-ai-costs-title">Quién genera el coste</h2>
-          </div>
-        </div>
-        <CostBreakdown
-          title="Esta semana"
-          costs={data.estimatedAiCost.weeklyByActor}
-        />
-        <CostBreakdown
-          title="Acumulado"
-          costs={data.estimatedAiCost.totalByActor}
-        />
-        <AiCostChart weeks={data.estimatedAiCost.weeklyTrend} />
-      </section>
-      <section
-        className="admin-dashboard-card"
-        aria-labelledby="admin-errors-title"
-      >
-        <h2 id="admin-errors-title">Errores más registrados</h2>
-        {data.errors.length ? (
-          <div className="admin-table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Código</th>
-                  <th scope="col">Esta semana</th>
-                  <th scope="col">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.errors.map((error) => (
-                  <tr key={error.code}>
-                    <th scope="row">{error.code}</th>
-                    <td>{error.weeklyCount}</td>
-                    <td>{error.totalCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p>No hay errores registrados.</p>
-        )}
-      </section>
-      <section
-        className="admin-dashboard-card"
-        aria-labelledby="admin-contacts-title"
-      >
-        <div className="admin-dashboard-section-heading">
-          <div>
-            <span className="eyebrow">Bandeja de entrada</span>
-            <h2 id="admin-contacts-title">Mensajes de contacto</h2>
-          </div>
-          <span>{state.messages.length}</span>
-        </div>
-        {state.messages.length ? (
-          <div className="admin-contact-list">
-            {state.messages.map((contact) => (
-              <article className="admin-contact" key={contact.id}>
-                <div className="admin-contact-heading">
-                  <div>
-                    <h3>{contact.subject}</h3>
-                    <p>
-                      {contact.sender.username} ·{" "}
-                      <a
-                        href={`mailto:${encodeURIComponent(contact.sender.email)}`}
-                      >
-                        {contact.sender.email}
-                      </a>
-                    </p>
-                  </div>
-                  <time dateTime={contact.createdAt}>
-                    {DATE.format(new Date(contact.createdAt))}
-                  </time>
-                </div>
-                <p className="admin-contact-message">{contact.message}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p>Aún no han llegado mensajes.</p>
-        )}
-        <p className="admin-dashboard-note">
-          Se muestran los 100 mensajes más recientes. El envío de confirmaciones
-          y respuestas por correo está pendiente.
-        </p>
-      </section>
-    </div>
+    </section>
+  );
+}
+
+function SecurityTab() {
+  return (
+    <section
+      className="admin-dashboard-card"
+      aria-labelledby="admin-security-title"
+    >
+      <h2 id="admin-security-title">Pruebas de seguridad</h2>
+      <ul>
+        <li>
+          Inyección de instrucciones dentro de ideas y descripciones no
+          confiables.
+        </li>
+        <li>
+          Cuotas anónimas y de planes, con límites aplicados en el servidor.
+        </li>
+        <li>
+          Aislamiento entre cuentas y acceso al panel protegido por rol admin.
+        </li>
+        <li>
+          Pruebas PostgreSQL de integración con esquemas temporales; E2E con
+          repositorios en memoria y servicios locales aislados.
+        </li>
+      </ul>
+      <p>
+        La suite automatizada se ejecuta en CI junto con auditoría de
+        dependencias y análisis de la imagen de contenedor.
+      </p>
+      <p className="admin-dashboard-note">
+        Consulta los documentos <code>doc/ci-cd.md</code> y{" "}
+        <code>doc/ai-evaluation-and-observability.md</code> para comandos,
+        alcance y limitaciones.
+      </p>
+    </section>
   );
 }
 

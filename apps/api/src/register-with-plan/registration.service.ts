@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { domainToASCII } from "node:url";
+import { Logger } from "@nestjs/common";
 import {
   RegistrationError,
   type PlanCode,
@@ -19,14 +20,15 @@ import {
 import { hashAccessToken } from "../infrastructure/auth/access-token-session.lookup";
 import {
   hashPassword,
+  needsPasswordRehash,
   verifyPassword,
 } from "../infrastructure/auth/password-hasher";
+import { ADMIN_RESERVED_USERNAME } from "../infrastructure/auth/reserved-usernames";
 export { verifyPassword } from "../infrastructure/auth/password-hasher";
 const INTENT_TTL_MS = 15 * 60 * 1000;
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const REMEMBERED_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const VERIFIED_SESSION_TTL_MS = 15 * 60 * 1000;
-const DUMMY_PASSWORD_HASH = `scrypt$${"0".repeat(32)}$${"0".repeat(128)}`;
 const GENERIC_LOGIN_ERROR = {
   status: 401,
   code: "LOGIN_UNAVAILABLE",
@@ -56,6 +58,8 @@ function newToken(): string {
 }
 
 export class RegistrationService {
+  private readonly logger = new Logger(RegistrationService.name);
+
   constructor(private readonly repository: RegistrationRepository) {}
 
   async createIntent(value: unknown): Promise<RegistrationIntent> {
@@ -258,9 +262,24 @@ export class RegistrationService {
     const identity = await this.repository.findLoginIdentity(value.identifier);
     const passwordMatches = await verifyPassword(
       value.password,
-      identity?.passwordHash ?? DUMMY_PASSWORD_HASH,
+      identity?.passwordHash,
     );
     if (!identity || !passwordMatches) throw loginUnavailable();
+
+    if (needsPasswordRehash(identity.passwordHash)) {
+      try {
+        const upgradedHash = await hashPassword(value.password);
+        await this.repository.updatePasswordHash(
+          identity.userId,
+          identity.passwordHash,
+          upgradedHash,
+        );
+      } catch {
+        this.logger.error("Password hash upgrade failed", {
+          errorCode: "PASSWORD_HASH_UPGRADE_FAILED",
+        });
+      }
+    }
 
     const accessToken = issueAccessToken(identity.userId).token;
     const refreshToken = newToken();
@@ -452,7 +471,9 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
   }
   if (
     typeof username !== "string" ||
-    !USERNAME_PATTERN.test(username.trim().normalize("NFC"))
+    !USERNAME_PATTERN.test(username.trim().normalize("NFC")) ||
+    username.trim().normalize("NFC").toLocaleLowerCase("es-ES") ===
+      ADMIN_RESERVED_USERNAME
   ) {
     throw new RegistrationError(
       400,

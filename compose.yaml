@@ -21,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: development
     image: grumphya-app:local
     restart: unless-stopped
     command:
@@ -64,6 +65,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: development
     image: grumphya-app:local
     restart: unless-stopped
     command:

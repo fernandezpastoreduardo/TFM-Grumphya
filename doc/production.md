@@ -36,12 +36,13 @@ La API ejecuta las migraciones pendientes de forma diferida cuando algunos
 repositorios se inicializan por primera vez; `PostgresPlanUsageRepository`, por
 ejemplo, llama a `runMigrations` desde `ensureSchema` al reservar o consultar
 uso de plan. En ese flujo se usan las credenciales de PostgreSQL del runtime.
-Las migraciones hasta `018_user_rejected_ideas.sql` forman parte del runner de
-la API. La `018` crea el historial privado de ideas rechazadas por usuario.
-Todavía no hay un paso de release separado que aplique las migraciones con la
-identidad `grumphya_migrator`. Antes de desplegar con tráfico real, definir y
-probar la estrategia de migración explícita, revisar los permisos necesarios y
-evitar que el primer request de usuario tenga que ejecutar DDL.
+Las migraciones hasta `024_admin_ai_usage_attribution.sql` forman parte del
+runner de la API. Esta última añade el tipo de actor a la atribución de costes
+de IA del panel admin. Todavía no hay un paso de release separado que aplique
+las migraciones con la identidad `grumphya_migrator`. Antes de desplegar con
+tráfico real, definir y probar la estrategia de migración explícita, revisar
+los permisos necesarios y evitar que el primer request de usuario tenga que
+ejecutar DDL.
 
 ## Variables requeridas para API
 
@@ -65,8 +66,8 @@ En producción la API escucha en la interfaz privada del contenedor/servicio; no
 
 - `grumphya_runtime`: cuenta de base de datos no-superusuario, limitada al esquema y operaciones que requiere la app; sin permisos de crear roles/extensiones.
 - `grumphya_migrator`: identidad objetivo, separada para el pipeline de despliegue de migraciones. El comportamiento actual aún ejecuta migraciones desde la API con las credenciales runtime; separar esa operación es trabajo pendiente antes de producción.
-- Usuarios de la aplicación: creados por el flujo de registro con plan; credenciales de usuario final se almacenan como hash de contraseña, nunca en claro.
-- Administrador local: el bootstrap actual reserva el alias `jappy`, sincroniza su contraseña con `ADMIN_PASSWORD` y revoca sus sesiones previas en cada arranque de API no-test. Aunque se documente como credencial local, el código también ejecutaría este bootstrap en producción si no se cambia. Antes de desplegar, eliminar/sustituir el bootstrap por aprovisionamiento individual controlado, rotación gestionada y MFA. El servidor consulta el rol en PostgreSQL para cada ruta admin; no confiar en claims del cliente.
+- Usuarios de la aplicación: creados por el flujo de registro con plan; las contraseñas nuevas se guardan como hashes bcrypt cost 12 sobre prehash SHA-256 hexadecimal, nunca en claro ni cifradas de forma reversible. Los hashes scrypt antiguos se actualizan después de un inicio de sesión válido. Los hashes de tokens y las firmas HMAC de JWT son mecanismos separados.
+- Administrador local: el bootstrap actual reserva el alias `jappy`, sincroniza su contraseña con `ADMIN_PASSWORD` y revoca sus sesiones previas en cada arranque de API no-test. El alta pública también rechaza ese alias sin distinguir mayúsculas/minúsculas, pero esta protección contra colisiones no convierte el bootstrap en apto para producción. El código también ejecutaría el bootstrap en producción si no se cambia. Antes de desplegar, eliminar/sustituirlo por aprovisionamiento individual controlado, rotación gestionada y MFA. El servidor consulta el rol en PostgreSQL para cada ruta admin; no confiar en claims del cliente.
 - GitHub Actions/deploy: identidad OIDC o token de alcance mínimo, con expiración/rotación; nunca clave personal compartida.
 
 Las identidades runtime y migrator son objetivos de configuración por crear en el proveedor elegido. Jappy se provisiona localmente, pero el bootstrap de código actual no está limitado a ese entorno y debe reemplazarse antes de producción.

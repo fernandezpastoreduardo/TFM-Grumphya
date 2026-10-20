@@ -1,14 +1,14 @@
 import type { RoastReplyPort } from "./roast-reply.port";
 import {
-  readTokenUsage,
-  recordAiUsageSafely,
-  type AiUsageRecorder,
-} from "../infrastructure/ai/ai-usage";
-import {
   readAiTokenUsage,
   recordAiOperation,
   type AiTokenUsage,
 } from "../infrastructure/observability/ai-operation.telemetry";
+import {
+  readTokenUsage,
+  recordAiUsageSafely,
+  type AiUsageRecorder,
+} from "../infrastructure/ai/ai-usage";
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const OPENAI_MODEL = "gpt-5.4-mini";

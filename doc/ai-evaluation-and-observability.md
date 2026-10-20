@@ -12,7 +12,7 @@ pnpm --filter @grumphya/api run benchmark:evaluator -- \
   --prompts propuesta-v8=agentic-guidelines/prompts/evaluation-v8.txt
 ```
 
-Cada fichero indicado con `--prompts` contiene las instrucciones del sistema que se comparan con las instrucciones actuales; el adaptador conserva las instrucciones de título seguro y fidelidad de promesa. El runner valida la respuesta con el validador de producción y presenta acuerdo con las etiquetas, acuerdo entre variantes para estado y motivo, y número de casos. Un desacuerdo esperado devuelve código de salida 1. Revisa manualmente los fallos antes de cambiar la rúbrica o el prompt: el corpus es pequeño y sus etiquetas no sustituyen una evaluación humana ni demuestran calidad general. La comparación puede generar llamadas facturables al proveedor.
+Cada fichero indicado con `--prompts` contiene las instrucciones del sistema que se comparan con las instrucciones actuales; solo se admiten ficheros regulares no vacíos dentro de `agentic-guidelines/prompts`, de hasta 64 KiB. Se rechazan rutas fuera del directorio, enlaces simbólicos que escapen de él y ficheros demasiado grandes o vacíos, para evitar leer archivos locales arbitrarios y enviarlos al proveedor. El adaptador conserva las instrucciones de título seguro y fidelidad de promesa. El runner valida la respuesta con el validador de producción y presenta acuerdo con las etiquetas, acuerdo entre variantes para estado y motivo, y número de casos. Un desacuerdo esperado devuelve código de salida 1. Revisa manualmente los fallos antes de cambiar la rúbrica o el prompt: el corpus es pequeño y sus etiquetas no sustituyen una evaluación humana ni demuestran calidad general. La comparación puede generar llamadas facturables al proveedor.
 
 El informe agregado omite ideas, explicaciones, títulos y salidas del modelo. El proveedor recibe las ideas sintéticas del corpus y los prompts indicados. No uses ideas reales de usuarios como corpus. No guardes informes crudos del proveedor.
 
@@ -27,6 +27,16 @@ El informe agregado omite ideas, explicaciones, títulos y salidas del modelo. E
 ## Métricas de operaciones de IA
 
 Cada llamada a OpenAI en evaluación, embeddings, equivalencia semántica y roast emite una línea JSON `ai_operation` a stdout. Incluye nombre de operación, modelo, resultado, duración, identificador aleatorio por llamada, tokens de entrada/salida disponibles y coste estimado. No incluye texto, cuenta, cookie, IP, token de sesión ni clave API; el identificador no permite correlacionar llamadas de una sesión.
+
+El panel admin presenta estos controles en pestañas. **Benchmark de IA**
+describe el corpus sintético y cómo ejecutar la comparación; no presenta
+resultados históricos porque el runner no los persiste. **Telemetría de IA**
+muestra costes agregados y usos sin precio. **Pruebas de seguridad** resume el
+alcance de la suite automatizada y de los análisis ejecutados por CI. Ninguna
+pestaña ejecuta modelos o pruebas desde el navegador. Para calcular promedios
+por cuenta, el registro privado de consumos almacena tokens y costes asociados
+a `userId`; estos identificadores no aparecen en los eventos stdout ni en la
+interfaz.
 
 Configura tarifas USD por millón de tokens que correspondan a la tarifa del proveedor para cada modelo activo. Los nombres de variables se forman así:
 

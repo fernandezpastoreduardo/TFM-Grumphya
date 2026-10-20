@@ -3,8 +3,9 @@ import type { Pool } from "pg";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import { hashPassword } from "../infrastructure/auth/password-hasher";
+import { ADMIN_RESERVED_USERNAME } from "../infrastructure/auth/reserved-usernames";
 
-const ADMIN_USERNAME = "jappy";
+const ADMIN_USERNAME = ADMIN_RESERVED_USERNAME;
 const ADMIN_EMAIL = "jappy@grumphya.invalid";
 const ADMIN_POLICY_VERSION = "admin-bootstrap-v1";
 const ADMIN_PASSWORD_MIN_LENGTH = 12;
