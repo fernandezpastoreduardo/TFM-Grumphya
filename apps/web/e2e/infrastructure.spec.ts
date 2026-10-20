@@ -54,18 +54,21 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
     page.getByRole("heading", { name: /antes de construirla/i }),
   ).toBeVisible();
   await expect(
-    page.getByRole("textbox", { name: /cuéntame tu idea/i }),
+    page.getByRole("textbox", { name: /veamos esa idea millonaria/i }),
   ).toBeVisible();
 
   const resultRegion = page.getByRole("region", {
     name: /resultado de la evaluación/i,
   });
   await expect(resultRegion).toBeEmpty();
-  await page.getByRole("button", { name: /evaluar idea/i }).click();
+  await page.getByRole("button", { name: /adelante/i }).click();
   await expect(page.getByRole("alert")).toContainText(/hay aire/i);
 
-  const ideaInput = page.getByRole("textbox", { name: /cuéntame tu idea/i });
+  const ideaInput = page.getByRole("textbox", {
+    name: /veamos esa idea millonaria/i,
+  });
   await ideaInput.fill(IDEA_TEXT_FIRST);
+  await page.getByRole("button", { name: /adelante/i }).click();
   await page.getByRole("radio", { name: /dame tu mejor golpe/i }).check();
   await page.getByRole("button", { name: /evaluar idea/i }).click();
   const evaluationDialog = page.getByRole("dialog", {
@@ -82,7 +85,9 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
   ).toBeEnabled();
 
   await page.getByRole("button", { name: /cerrar resultado/i }).click();
+  await page.getByRole("button", { name: /cambiar idea/i }).click();
   await ideaInput.fill(IDEA_TEXT_SECOND);
+  await page.getByRole("button", { name: /adelante/i }).click();
   await page.getByRole("radio", { name: /tengo la piel fina/i }).check();
   await page.getByRole("button", { name: /evaluar idea/i }).click();
   await expect(evaluationDialog.getByText(/\d,\d{2}\/10/)).toBeVisible();

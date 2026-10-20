@@ -132,6 +132,10 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
       asset: "/assets/grumphya/idea-tone-hard-boxing-v2.png",
     },
   ] as const;
+  await page
+    .getByRole("textbox", { name: /veamos esa idea millonaria/i })
+    .fill("Una app para compartir herramientas entre vecinos");
+  await page.getByRole("button", { name: /adelante/i }).click();
   for (const illustration of toneIllustrations) {
     const renderedBackground = await page
       .locator(illustration.selector)
