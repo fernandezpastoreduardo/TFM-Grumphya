@@ -28,14 +28,14 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts de por vida por perfil de nav
 
 ## Estado de preparación
 
-Verificado en macOS Apple Silicon el 9 de octubre de 2026:
+Entorno y stack actuales:
 
-- Node.js 24 y pnpm 12.
-- React 19 + Vite 7 y NestJS 11.
+- Node.js 24.21.0 y pnpm 12.5.1. El proyecto admite Node `^22.22.2 || ^24.15.0`; consulta [stack](stack.md) para la política y versiones exactas.
+- React 19 + Vite 7, NestJS 12 y TypeScript 6.
 - Docker Desktop 4.94.0, Docker Engine 29.8.2 y Compose 5.5.1.
 - PostgreSQL 17 con `pgvector` 0.8.7 en Docker Compose.
-- Las pruebas, compilaciones, lint y endpoints HTTP se documentan con sus resultados en [verificación](verification.md).
+- Las versiones de herramientas y sus decisiones de actualización están en [stack](stack.md). Las pruebas, compilaciones, lint y endpoints HTTP se documentan con sus resultados históricos en [verificación](verification.md).
 
-Docker Desktop ya está instalado y el motor verificado. La instalación del motor requirió autorizar el diálogo de macOS. No se ha desplegado infraestructura remota.
+El entorno Docker local se verificó en macOS Apple Silicon. No se ha desplegado infraestructura remota.
 
 No guardes contraseñas reales, tokens de GitHub, claves SSH ni claves de proveedores en esta carpeta o en Git. Para producción, inyecta secretos desde el gestor de secretos de la plataforma elegida.

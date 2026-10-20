@@ -26,8 +26,8 @@ Integración de pagos reales para los planes.
 
 ## Arquitectura prevista
 
-- Frontend: React 19, TypeScript y Vite 7.
-- Backend: NestJS 11 y TypeScript como monolito modular.
+- Frontend: React 19, TypeScript 6 y Vite 7.
+- Backend: NestJS 12 y TypeScript 6 como monolito modular.
 - Persistencia: PostgreSQL 17 con `pgvector` 0.8.7 para buscar similitud semántica.
 - La evaluación, la autorización, los límites y la activación de planes se validan en el backend.
 

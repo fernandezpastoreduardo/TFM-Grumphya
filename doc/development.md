@@ -2,7 +2,7 @@
 
 ## Requisitos
 
-- macOS, Linux o Windows con Node.js 22–24 y pnpm 12.
+- macOS, Linux o Windows con Node.js `^22.22.2 || ^24.15.0` y pnpm 12. El repositorio fija Node 24.21.0 en `.node-version`; configura el mismo runtime localmente para reproducir CI. Los rangos admitidos están definidos en `package.json`.
 - Docker Desktop y PostgreSQL 17 con extensión pgvector 0.8.x (arranca con Compose).
 - Para tests E2E: navegador Chromium de Playwright.
 
