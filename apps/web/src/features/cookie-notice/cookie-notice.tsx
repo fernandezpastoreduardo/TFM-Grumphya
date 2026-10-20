@@ -120,9 +120,7 @@ export function CookieNotice() {
 
 function hasDismissedNotice(): boolean {
   try {
-    return (
-      window.localStorage.getItem(COOKIE_NOTICE_DISMISSED_KEY) === "true"
-    );
+    return window.localStorage.getItem(COOKIE_NOTICE_DISMISSED_KEY) === "true";
   } catch {
     return false;
   }
