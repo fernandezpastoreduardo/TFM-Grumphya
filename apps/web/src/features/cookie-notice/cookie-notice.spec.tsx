@@ -1,12 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CookieNotice } from "./cookie-notice";
 
 const ACCEPT_BUTTON_NAME = "Aceptar y continuar sin galletas";
 const DENY_BUTTON_NAME = "Denegar y continuar sin galletas";
+const DISMISSED_STORAGE_KEY = "grumphya.cookie-notice.dismissed.v1";
 
 describe("CookieNotice", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem(DISMISSED_STORAGE_KEY);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("explains that only necessary cookies are used", () => {
     render(<CookieNotice />);
 
@@ -71,18 +80,44 @@ describe("CookieNotice", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.localStorage.getItem(DISMISSED_STORAGE_KEY)).toBe("true");
   });
 
-  it("does not persist the choice in cookies or browser storage", async () => {
+  it("persists dismissal in this browser and keeps it dismissed after remount", async () => {
     const user = userEvent.setup();
-    const localStorageWrite = vi.spyOn(Storage.prototype, "setItem");
     const startingCookie = document.cookie;
+    const { unmount } = render(<CookieNotice />);
+
+    await user.click(screen.getByRole("button", { name: DENY_BUTTON_NAME }));
+    expect(window.localStorage.getItem(DISMISSED_STORAGE_KEY)).toBe("true");
+    unmount();
+    render(<CookieNotice />);
+
+    expect(document.cookie).toBe(startingCookie);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps the notice available when browser storage cannot be read", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("Storage unavailable");
+    });
+
+    render(<CookieNotice />);
+
+    expect(
+      screen.getByRole("dialog", { name: "Ni galletitas ni galletitos" }),
+    ).toBeInTheDocument();
+  });
+
+  it("still closes the notice when browser storage cannot be written", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("Storage unavailable");
+    });
     render(<CookieNotice />);
 
     await user.click(screen.getByRole("button", { name: DENY_BUTTON_NAME }));
 
-    expect(document.cookie).toBe(startingCookie);
-    expect(localStorageWrite).not.toHaveBeenCalled();
-    localStorageWrite.mockRestore();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

@@ -11,6 +11,20 @@ export default defineConfig({
   use: {
     baseURL: `http://127.0.0.1:${WEB_TEST_PORT}`,
     trace: "retain-on-failure",
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: `http://127.0.0.1:${WEB_TEST_PORT}`,
+          localStorage: [
+            {
+              name: "grumphya.cookie-notice.dismissed.v1",
+              value: "true",
+            },
+          ],
+        },
+      ],
+    },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
@@ -20,6 +34,7 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 30_000,
       env: {
+        NODE_ENV: "test",
         EVALUATION_TEST_PORT: API_TEST_PORT,
         WEB_ORIGIN: `http://127.0.0.1:${WEB_TEST_PORT}`,
         ACCESS_TOKEN_SECRET:

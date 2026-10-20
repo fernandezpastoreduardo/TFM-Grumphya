@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import "./cookie-notice.scss";
 
 const COOKIE_NOTICE_TITLE = "Ni galletitas ni galletitos";
+const COOKIE_NOTICE_DISMISSED_KEY = "grumphya.cookie-notice.dismissed.v1";
 const COOKIE_NOTICE_COPY =
   "NO usamos cookies de terceros. Solo cookies propias y estrictamente necesarias para que la web no se caiga a pedazos y puedas usarla de forma anónima y segura.";
 const SUPPORTS_NATIVE_MODAL =
@@ -9,7 +10,7 @@ const SUPPORTS_NATIVE_MODAL =
   typeof HTMLDialogElement.prototype.showModal === "function";
 
 export function CookieNotice() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(() => !hasDismissedNotice());
   const dialogRef = useRef<HTMLDialogElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
   const lastButtonRef = useRef<HTMLButtonElement>(null);
@@ -37,6 +38,7 @@ export function CookieNotice() {
   }, []);
 
   function closeNotice() {
+    persistNoticeDismissal();
     const dialog = dialogRef.current;
     if (dialog?.open) closeDialog(dialog);
     setIsOpen(false);
@@ -114,6 +116,24 @@ export function CookieNotice() {
   ) : (
     <div className="cookie-notice-backdrop">{noticeDialog}</div>
   );
+}
+
+function hasDismissedNotice(): boolean {
+  try {
+    return (
+      window.localStorage.getItem(COOKIE_NOTICE_DISMISSED_KEY) === "true"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function persistNoticeDismissal(): void {
+  try {
+    window.localStorage.setItem(COOKIE_NOTICE_DISMISSED_KEY, "true");
+  } catch {
+    // Storage can be unavailable in private browsing or restricted contexts.
+  }
 }
 
 function closeDialog(dialog: HTMLDialogElement) {

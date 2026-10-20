@@ -135,10 +135,14 @@ una ilustración de Grumphya pateando una galleta. El texto informa de que no se
 usan cookies de terceros y de que las cookies propias se limitan a las
 estrictamente necesarias para el funcionamiento y el uso anónimo y seguro. Los
 botones «Aceptar» y «Denegar» tienen el mismo efecto: cierran el popup y no
-cambian la configuración de cookies. La elección no se guarda en cookies ni en
-otro almacenamiento del navegador, por lo que el aviso vuelve a aparecer al
-cargar de nuevo la aplicación. Escape también lo cierra; el diálogo mantiene el
-foco dentro y devuelve el foco anterior al cerrarse.
+cambian la configuración de cookies. El cierre se recuerda en
+`localStorage` (`grumphya.cookie-notice.dismissed.v1`), no en una cookie; el
+aviso no vuelve a aparecer al recargar o cambiar de sección en ese perfil de
+navegador. Si el almacenamiento no está disponible o se limpia, el popup vuelve
+a mostrarse. Escape también lo cierra; el diálogo mantiene el foco dentro y
+devuelve el foco anterior al cerrarse. La prueba E2E específica comprueba la
+persistencia entre navegación y recarga; las demás pruebas Playwright empiezan
+con el aviso ya descartado.
 
 ## Revisión de temas, responsive y accesibilidad (octubre de 2026)
 
