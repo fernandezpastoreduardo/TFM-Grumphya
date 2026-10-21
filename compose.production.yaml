@@ -12,7 +12,7 @@ services:
     volumes:
       - grumphya-production-postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -33,6 +33,7 @@ services:
         "apps/api/dist/infrastructure/database/migrate.js",
       ]
     restart: "no"
+    user: "0"
     secrets:
       - database_settings
     environment:
@@ -59,6 +60,7 @@ services:
         "apps/api/dist/main.js",
       ]
     restart: unless-stopped
+    user: "0"
     secrets:
       - grumphya_env
       - database_settings
@@ -150,6 +152,7 @@ services:
     profiles: ["admin"]
     command: ["sh", "/workspace/docker/admin-provision-entrypoint.sh"]
     restart: "no"
+    user: "0"
     secrets:
       - database_settings
       - admin_settings

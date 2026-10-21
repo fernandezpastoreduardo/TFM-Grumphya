@@ -79,4 +79,7 @@ export WEB_ORIGIN=${WEB_ORIGIN:-http://127.0.0.1:5173}
 export PGPASSWORD="$GRUMPHYA_DB_PASSWORD"
 unset GRUMPHYA_DB_PASSWORD
 
+if [ "$(id -u)" -eq 0 ]; then
+  exec setpriv --reuid=node --regid=node --init-groups "$@"
+fi
 exec "$@"
