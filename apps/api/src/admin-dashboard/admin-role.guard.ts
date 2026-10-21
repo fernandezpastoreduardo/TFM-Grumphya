@@ -2,7 +2,9 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
+  Optional,
   UnauthorizedException,
 } from "@nestjs/common";
 import type { Request } from "express";
@@ -15,7 +17,7 @@ type AdminRequest = Request & { user?: { userId?: unknown } };
 export class AdminRoleGuard implements CanActivate {
   private readonly pool: Pool;
 
-  constructor(pool?: Pool) {
+  constructor(@Optional() @Inject("ADMIN_ROLE_GUARD_POOL") pool?: Pool) {
     this.pool = pool ?? createPostgresPool();
   }
 

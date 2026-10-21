@@ -12,7 +12,7 @@ import { PasswordResetService } from "./password-reset.service";
   providers: [
     {
       provide: PASSWORD_RESET_REPOSITORY,
-      useClass: PostgresPasswordResetRepository,
+      useFactory: () => new PostgresPasswordResetRepository(),
     },
     {
       provide: PasswordResetService,

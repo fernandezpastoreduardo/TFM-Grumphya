@@ -18,7 +18,10 @@ import { OpenAiUserAvatarModerator } from "./openai-user-avatar.moderator";
   providers: [
     UserAvatarService,
     AccessTokenGuard,
-    { provide: USER_AVATAR_REPOSITORY, useClass: PostgresUserAvatarRepository },
+    {
+      provide: USER_AVATAR_REPOSITORY,
+      useFactory: () => new PostgresUserAvatarRepository(),
+    },
     { provide: USER_AVATAR_STORAGE, useClass: LocalUserAvatarStorage },
     { provide: USER_AVATAR_PROCESSOR, useClass: SharpUserAvatarProcessor },
     {

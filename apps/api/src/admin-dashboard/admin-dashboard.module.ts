@@ -31,7 +31,7 @@ import { AdminContactReplyMailer } from "./admin-contact-reply-mailer";
     },
     {
       provide: AdminRoleGuard,
-      useFactory: () => new AdminRoleGuard(createPostgresPool()),
+      useValue: new AdminRoleGuard(createPostgresPool()),
     },
     {
       provide: APP_FILTER,

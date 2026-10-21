@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { upsertAdminAccount } from "./admin-account-bootstrap";
+import { provisionAdminAccount } from "./admin-account-bootstrap";
 
 function poolWithReservedAccount(role: string | null) {
   const queries: Array<{ sql: string; values?: unknown[] }> = [];
@@ -18,51 +18,61 @@ function poolWithReservedAccount(role: string | null) {
   };
   return {
     pool: { connect: vi.fn().mockResolvedValue(client) },
-    client,
     queries,
   };
 }
 
-describe("admin account bootstrap", () => {
+describe("explicit administrator provisioning", () => {
   it("fails closed when the reserved alias belongs to a normal user", async () => {
     const fake = poolWithReservedAccount("user");
-    await expect(upsertAdminAccount(fake.pool, "scrypt-hash")).rejects.toThrow(
-      "Reserved admin username is already in use.",
+    await expect(
+      provisionAdminAccount(fake.pool, "password-hash"),
+    ).rejects.toThrow("Reserved admin username is already in use.");
+    expect(fake.queries.some(({ sql }) => sql.includes("COMMIT"))).toBe(false);
+    expect(fake.queries.some(({ sql }) => sql.includes("ROLLBACK"))).toBe(true);
+  });
+
+  it("does not change the administrator password or sessions on repeat provisioning", async () => {
+    const fake = poolWithReservedAccount("admin");
+    await expect(provisionAdminAccount(fake.pool, "new-hash")).resolves.toBe(
+      "unchanged",
     );
     expect(
       fake.queries.some(({ sql }) =>
         sql.includes("UPDATE users SET password_hash"),
       ),
     ).toBe(false);
-    expect(fake.queries.some(({ sql }) => sql.includes("COMMIT"))).toBe(false);
-    expect(fake.queries.some(({ sql }) => sql.includes("ROLLBACK"))).toBe(true);
+    expect(
+      fake.queries.some(({ sql }) => sql.includes("UPDATE auth_sessions")),
+    ).toBe(false);
+    expect(fake.queries.some(({ sql }) => sql.includes("COMMIT"))).toBe(true);
   });
 
-  it("rotates the configured secret hash and revokes prior admin sessions", async () => {
+  it("changes the password and revokes sessions only for an explicit rotation", async () => {
     const fake = poolWithReservedAccount("admin");
-    await upsertAdminAccount(fake.pool, "new-scrypt-hash");
+    await expect(
+      provisionAdminAccount(fake.pool, "new-hash", true),
+    ).resolves.toBe("password-changed");
     expect(
       fake.queries.find(({ sql }) =>
         sql.includes("UPDATE users SET password_hash"),
       )?.values,
-    ).toEqual(["admin-id", "new-scrypt-hash"]);
+    ).toEqual(["admin-id", "new-hash"]);
     expect(
-      fake.queries.some(({ sql }) =>
-        sql.includes("UPDATE auth_sessions SET revoked_at"),
-      ),
+      fake.queries.some(({ sql }) => sql.includes("UPDATE auth_sessions")),
     ).toBe(true);
-    expect(fake.queries.some(({ sql }) => sql.includes("COMMIT"))).toBe(true);
   });
 
-  it("creates the reserved admin identity without persisting a plaintext password", async () => {
+  it("creates the reserved administrator with a password hash", async () => {
     const fake = poolWithReservedAccount(null);
-    await upsertAdminAccount(fake.pool, "opaque-scrypt-hash");
+    await expect(
+      provisionAdminAccount(fake.pool, "opaque-password-hash"),
+    ).resolves.toBe("created");
     const insert = fake.queries.find(({ sql }) =>
       sql.includes("INSERT INTO users"),
     );
     expect(insert?.sql).toContain("'admin'");
     expect(insert?.values).toContain("jappy");
-    expect(insert?.values).toContain("opaque-scrypt-hash");
-    expect(insert?.values).not.toContain("ADMIN_PASSWORD");
+    expect(insert?.values).toContain("opaque-password-hash");
   });
 });

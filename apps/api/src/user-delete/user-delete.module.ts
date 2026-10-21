@@ -13,7 +13,7 @@ import {
   providers: [
     {
       provide: USER_DELETE_REPOSITORY,
-      useClass: PostgresUserDeleteRepository,
+      useFactory: () => new PostgresUserDeleteRepository(),
     },
     {
       provide: ACCESS_TOKEN_SESSION_LOOKUP,

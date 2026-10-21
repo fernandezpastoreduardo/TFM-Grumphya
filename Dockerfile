@@ -25,6 +25,30 @@ FROM development AS build
 
 RUN pnpm --filter @grumphya/api build
 
+FROM pgvector/pgvector:0.8.7-pg17 AS database-production
+COPY docker/postgres-entrypoint.sh /usr/local/bin/grumphya-postgres-entrypoint.sh
+COPY docker/initdb/000-provision-runtime-role.sh /docker-entrypoint-initdb.d/000-provision-runtime-role.sh
+COPY docker/postgres-backup.sh /usr/local/bin/grumphya-postgres-backup.sh
+RUN chmod 0555 /usr/local/bin/grumphya-postgres-entrypoint.sh \
+  /docker-entrypoint-initdb.d/000-provision-runtime-role.sh \
+  /usr/local/bin/grumphya-postgres-backup.sh
+ENTRYPOINT ["/usr/local/bin/grumphya-postgres-entrypoint.sh"]
+CMD ["postgres"]
+
+FROM pnpm-base AS web-build
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm --filter @grumphya/web build
+
+FROM nginx:1.30-alpine AS web-production
+COPY docker/nginx-spa.conf /etc/nginx/conf.d/default.conf
+COPY --from=web-build /workspace/apps/web/dist /usr/share/nginx/html
+EXPOSE 8080
+
 FROM pnpm-base AS production-dependencies
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -42,6 +66,8 @@ COPY --from=production-dependencies /workspace/apps/api/package.json /workspace/
 COPY --from=build --chown=node:node /workspace/apps/api/dist /workspace/apps/api/dist
 COPY --chown=node:node apps/api/migrations /workspace/apps/api/migrations
 COPY --chown=node:node docker/api-entrypoint.sh /workspace/docker/api-entrypoint.sh
+COPY --chown=node:node docker/database-entrypoint.sh /workspace/docker/database-entrypoint.sh
+COPY --chown=node:node docker/admin-provision-entrypoint.sh /workspace/docker/admin-provision-entrypoint.sh
 
 RUN mkdir -p /workspace/var/avatars \
   && chown -R node:node /workspace/var \

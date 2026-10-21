@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { MailModule } from "./infrastructure/mail/mail.module";
 import { AdminDashboardModule } from "./admin-dashboard/admin-dashboard.module";
-import { AdminAccountBootstrap } from "./admin-dashboard/admin-account-bootstrap";
 import { HealthController } from "./health.controller";
 import { EvaluationProcessController } from "./idea-evaluation/evaluation-process.controller";
 import { createEvaluationProvider } from "./idea-evaluation/evaluation-provider.factory";
@@ -175,10 +174,6 @@ function createIdeaSubmissionService(
   ],
   providers: [
     EvaluationProcessService,
-    {
-      provide: AdminAccountBootstrap,
-      useFactory: () => new AdminAccountBootstrap(createPostgresPool()),
-    },
     {
       provide: EVALUATION_PORT,
       useFactory: (repository: AdminDashboardRepository) =>

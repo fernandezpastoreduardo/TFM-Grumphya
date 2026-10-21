@@ -12,7 +12,7 @@ import { ContactMessageConfirmationMailer } from "./contact-message-confirmation
   providers: [
     {
       provide: CONTACT_MESSAGE_REPOSITORY,
-      useClass: PostgresContactMessageRepository,
+      useFactory: () => new PostgresContactMessageRepository(),
     },
     {
       provide: CONTACT_MESSAGE_MAILER,

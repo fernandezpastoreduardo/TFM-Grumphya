@@ -1,20 +1,9 @@
 import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
-import { Pool } from "pg";
+import { createPostgresPool } from "./infrastructure/database/postgres-pool";
 
 @Controller("health")
 export class HealthController {
-  private readonly pool = new Pool({
-    host: process.env.PGHOST ?? "/tmp",
-    port: Number(process.env.PGPORT ?? 5432),
-    database: process.env.PGDATABASE ?? "grumphya_dev",
-    user: process.env.PGUSER ?? process.env.USER,
-    password: process.env.PGPASSWORD,
-    ssl:
-      process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: true }
-        : undefined,
-    connectionTimeoutMillis: 2_000,
-  });
+  private readonly pool = createPostgresPool();
 
   @Get()
   async check() {
