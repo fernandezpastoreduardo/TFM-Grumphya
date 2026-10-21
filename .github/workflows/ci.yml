@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   quality-and-e2e:
@@ -57,6 +57,11 @@ jobs:
       - run: pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts
       - name: Run local quality gates
         run: pnpm quality:check
+      - name: Test the VPS deployment gate and automatic rollback
+        run: |
+          node scripts/test-deploy-policy.mjs
+          bash -n docker/vps-deploy.sh scripts/test-vps-deploy.sh
+          bash scripts/test-vps-deploy.sh
       - run: pnpm --filter @grumphya/web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
 
@@ -79,17 +84,170 @@ jobs:
         run: pnpm audit --audit-level moderate
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
-      - name: Build local application image
-        run: docker build --pull --target production --tag grumphya-ci:${{ github.sha }} .
+      - name: Build API image
+        run: docker build --pull --target production --tag grumphya-api:${{ github.sha }} .
+      - name: Build static web image
+        run: docker build --pull --target web-production --build-arg DEPLOY_SHA=${{ github.sha }} --tag grumphya-web:${{ github.sha }} .
+      - name: Build PostgreSQL image
+        run: docker build --pull --target database-production --tag grumphya-database:${{ github.sha }} .
+      - name: Pin Caddy image to this revision
+        run: |
+          docker pull caddy:2.10-alpine
+          docker tag caddy:2.10-alpine grumphya-proxy:${{ github.sha }}
       - name: Test production image contract
-        run: node scripts/test-production-image.mjs grumphya-ci:${{ github.sha }}
-      - name: Scan application image
+        run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
+      - name: Scan API image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           version: v0.76.0
-          image-ref: grumphya-ci:${{ github.sha }}
+          image-ref: grumphya-api:${{ github.sha }}
           scan-type: image
           scanners: vuln
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Scan web image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          image-ref: grumphya-web:${{ github.sha }}
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan PostgreSQL image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          image-ref: grumphya-database:${{ github.sha }}
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Scan Caddy image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          image-ref: grumphya-proxy:${{ github.sha }}
+          scan-type: image
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Package the already-scanned release images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p release/docker release/migrations
+          docker save --output release/images.tar \
+            grumphya-api:${{ github.sha }} \
+            grumphya-web:${{ github.sha }} \
+            grumphya-database:${{ github.sha }} \
+            grumphya-proxy:${{ github.sha }}
+          cp compose.production.yaml release/compose.production.yaml
+          cp -R docker/. release/docker/
+          cp apps/api/migrations/*.sql release/migrations/
+          cat > release/release.env <<'EOF'
+          DEPLOY_SHA=${{ github.sha }}
+          API_IMAGE=grumphya-api:${{ github.sha }}
+          WEB_IMAGE=grumphya-web:${{ github.sha }}
+          DATABASE_IMAGE=grumphya-database:${{ github.sha }}
+          PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
+          EOF
+          tar -C release -czf release-bundle.tar.gz compose.production.yaml docker migrations images.tar release.env
+      - name: Keep the release artifact for the gated deployment job
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: production-release-${{ github.sha }}
+          path: release-bundle.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  deploy-production:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      needs.quality-and-e2e.result == 'success' &&
+      needs.supply-chain.result == 'success' &&
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+    needs: [quality-and-e2e, supply-chain]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      PRODUCTION_SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+      PRODUCTION_SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+      PRODUCTION_SSH_PORT: ${{ vars.PRODUCTION_SSH_PORT }}
+      PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+      PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+      PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+    steps:
+      - name: Download the exact scanned release artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: production-release-${{ github.sha }}
+          path: release
+      - name: Deploy and verify, rolling back on failed public health checks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          : "${PRODUCTION_SSH_HOST:?Create secret PRODUCTION_SSH_HOST}"
+          : "${PRODUCTION_SSH_USER:?Create secret PRODUCTION_SSH_USER}"
+          : "${PRODUCTION_SSH_PRIVATE_KEY:?Create secret PRODUCTION_SSH_PRIVATE_KEY}"
+          : "${PRODUCTION_SSH_KNOWN_HOSTS:?Create secret PRODUCTION_SSH_KNOWN_HOSTS}"
+          : "${PRODUCTION_DOMAIN:?Create variable PRODUCTION_DOMAIN}"
+          [[ "$PRODUCTION_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$PRODUCTION_SSH_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]
+          [[ "$PRODUCTION_DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]
+          ssh_port=${PRODUCTION_SSH_PORT:-22}
+          [[ "$ssh_port" =~ ^[0-9]{1,5}$ ]]
+          (( 10#$ssh_port > 0 && 10#$ssh_port <= 65535 ))
+          release_file=release/release-bundle.tar.gz
+          test -s "$release_file"
+          release_bytes=$(stat -c '%s' "$release_file")
+          release_sha256=$(sha256sum "$release_file" | cut -d ' ' -f 1)
+          install -d -m 700 "$RUNNER_TEMP/production-ssh"
+          printf '%s\n' "$PRODUCTION_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/production-ssh/id_ed25519"
+          printf '%s\n' "$PRODUCTION_SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/production-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/production-ssh/id_ed25519" "$RUNNER_TEMP/production-ssh/known_hosts"
+          ssh_args=(-i "$RUNNER_TEMP/production-ssh/id_ed25519" -p "$ssh_port" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/production-ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh_target="$PRODUCTION_SSH_USER@$PRODUCTION_SSH_HOST"
+          previous_sha=$(ssh "${ssh_args[@]}" "$ssh_target" "preflight $GITHUB_SHA $release_bytes")
+          [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]]
+          verify_previous_release() {
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "https://$PRODUCTION_DOMAIN/" >/dev/null
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "https://$PRODUCTION_DOMAIN/api/health" > "$RUNNER_TEMP/health.json"
+            node -e 'const health = require(process.argv[1]); if (health.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/health.json" "$previous_sha"
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "https://$PRODUCTION_DOMAIN/build.json" > "$RUNNER_TEMP/web-build.json"
+            node -e 'const build = require(process.argv[1]); if (build.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/web-build.json" "$previous_sha"
+            echo "Rollback health check passed for revision $previous_sha."
+          }
+          request_rollback_and_verify() {
+            trap - ERR
+            echo "Deployment verification failed; requesting rollback to the previous release."
+            ssh "${ssh_args[@]}" "$ssh_target" rollback
+            verify_previous_release
+          }
+          if ! ssh "${ssh_args[@]}" "$ssh_target" "deploy $GITHUB_SHA $release_bytes $release_sha256" < "$release_file"; then
+            active_sha=$(ssh "${ssh_args[@]}" "$ssh_target" status)
+            if [[ "$active_sha" == "$GITHUB_SHA" ]]; then
+              request_rollback_and_verify
+            else
+              verify_previous_release
+            fi
+            exit 1
+          fi
+          trap request_rollback_and_verify ERR
+          curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "https://$PRODUCTION_DOMAIN/" >/dev/null
+          curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/account" >/dev/null
+          curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/api/health" > "$RUNNER_TEMP/health.json"
+          node -e 'const health = require(process.argv[1]); if (health.revision !== process.argv[2] || health.status !== "ok") process.exit(1)' "$RUNNER_TEMP/health.json" "$GITHUB_SHA"
+          curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/build.json" > "$RUNNER_TEMP/web-build.json"
+          node -e 'const build = require(process.argv[1]); if (build.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/web-build.json" "$GITHUB_SHA"
+          trap - ERR
