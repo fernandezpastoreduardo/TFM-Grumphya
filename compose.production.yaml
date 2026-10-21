@@ -1,10 +1,56 @@
 services:
-  api:
+  db:
+    image: grumphya-database:production
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: database-production
+    restart: unless-stopped
+    secrets:
+      - database_settings
+      - postgres_admin_settings
+    volumes:
+      - grumphya-production-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    networks: [backend]
+
+  migrate:
+    image: grumphya-api:production
     build:
       context: .
       dockerfile: Dockerfile
       target: production
+    command:
+      [
+        "sh",
+        "/workspace/docker/database-entrypoint.sh",
+        "node",
+        "apps/api/dist/infrastructure/database/migrate.js",
+      ]
+    restart: "no"
+    secrets:
+      - database_settings
+    environment:
+      NODE_ENV: production
+      PGSSL_MODE: disable-internal
+      PGHOST: db
+      PGPORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend]
+
+  api:
     image: grumphya-api:production
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
     command:
       [
         "sh",
@@ -12,14 +58,140 @@ services:
         "node",
         "apps/api/dist/main.js",
       ]
+    restart: unless-stopped
+    secrets:
+      - grumphya_env
+      - database_settings
+      - openai_settings
+      - openai_key
+      - mail_settings
     environment:
       NODE_ENV: production
-      WEB_ORIGIN: ${WEB_ORIGIN:?Define WEB_ORIGIN con el origen HTTPS de la web}
-    secrets:
-      - mail_settings
+      REQUIRE_PRODUCTION_SECRETS: "true"
+      PGSSL_MODE: disable-internal
+      PGHOST: db
+      PGPORT: 5432
+      WEB_ORIGIN: ${WEB_ORIGIN:-https://${DOMAIN:?Define DOMAIN for the public website}}
+      USER_AVATAR_DIRECTORY: /workspace/var/avatars
+      TRUST_PROXY: 172.31.0.254/32
+    volumes:
+      - grumphya-production-avatars:/workspace/var/avatars
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    networks: [backend, egress]
+
   web:
-    profiles: ["development"]
+    image: grumphya-web:production
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-production
+    restart: unless-stopped
+    expose: ["8080"]
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    networks: [edge]
+
+  proxy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Define DOMAIN without scheme or path}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - grumphya-caddy-data:/data
+      - grumphya-caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      edge:
+        ipv4_address: 172.30.0.254
+      backend:
+        ipv4_address: 172.31.0.254
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  admin-provision:
+    image: grumphya-api:production
+    profiles: ["admin"]
+    command: ["sh", "/workspace/docker/admin-provision-entrypoint.sh"]
+    restart: "no"
+    secrets:
+      - database_settings
+      - admin_settings
+    environment:
+      NODE_ENV: production
+      PGSSL_MODE: disable-internal
+      PGHOST: db
+      PGPORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+  egress: {}
+
+volumes:
+  grumphya-production-postgres:
+  grumphya-production-avatars:
+  grumphya-caddy-data:
+  grumphya-caddy-config:
 
 secrets:
+  grumphya_env:
+    file: ./.secrets/grumphya_env
+  database_settings:
+    file: ./.secrets/database_settings
+  postgres_admin_settings:
+    file: ./.secrets/postgres_admin_settings
+  openai_settings:
+    file: ./.secrets/openai_settings
+  openai_key:
+    file: ./.secrets/openai_key
   mail_settings:
-    file: ./.env.mail
+    file: ./.secrets/mail_settings
+  admin_settings:
+    file: ./.secrets/admin_settings
