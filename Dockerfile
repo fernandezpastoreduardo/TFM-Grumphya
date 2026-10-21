@@ -37,11 +37,14 @@ CMD ["postgres"]
 
 FROM pnpm-base AS web-build
 
+ARG DEPLOY_SHA=local
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 RUN pnpm install --frozen-lockfile
 COPY . .
+RUN printf '{"revision":"%s"}\n' "$DEPLOY_SHA" > apps/web/public/build.json
 RUN pnpm --filter @grumphya/web build
 
 FROM nginx:1.30-alpine AS web-production

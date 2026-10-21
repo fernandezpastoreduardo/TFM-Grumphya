@@ -12,7 +12,12 @@ export class HealthController {
         "select extversion as version from pg_extension where extname = 'vector'",
       );
       if (!rows[0]) throw new Error("pgvector extension is not enabled");
-      return { status: "ok", database: "ok", pgvector: rows[0].version };
+      return {
+        status: "ok",
+        database: "ok",
+        pgvector: rows[0].version,
+        revision: process.env.DEPLOY_SHA ?? "local",
+      };
     } catch {
       throw new ServiceUnavailableException({
         status: "error",

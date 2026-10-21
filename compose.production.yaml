@@ -1,6 +1,6 @@
 services:
   db:
-    image: grumphya-database:production
+    image: ${DATABASE_IMAGE:-grumphya-database:production}
     build:
       context: .
       dockerfile: Dockerfile
@@ -20,7 +20,7 @@ services:
     networks: [backend]
 
   migrate:
-    image: grumphya-api:production
+    image: ${API_IMAGE:-grumphya-api:production}
     build:
       context: .
       dockerfile: Dockerfile
@@ -46,7 +46,7 @@ services:
     networks: [backend]
 
   api:
-    image: grumphya-api:production
+    image: ${API_IMAGE:-grumphya-api:production}
     build:
       context: .
       dockerfile: Dockerfile
@@ -67,6 +67,7 @@ services:
       - mail_settings
     environment:
       NODE_ENV: production
+      DEPLOY_SHA: ${DEPLOY_SHA:-local}
       REQUIRE_PRODUCTION_SECRETS: "true"
       PGSSL_MODE: disable-internal
       PGHOST: db
@@ -94,11 +95,13 @@ services:
     networks: [backend, egress]
 
   web:
-    image: grumphya-web:production
+    image: ${WEB_IMAGE:-grumphya-web:production}
     build:
       context: .
       dockerfile: Dockerfile
       target: web-production
+      args:
+        DEPLOY_SHA: ${DEPLOY_SHA:-local}
     restart: unless-stopped
     expose: ["8080"]
     healthcheck:
@@ -110,7 +113,7 @@ services:
     networks: [edge]
 
   proxy:
-    image: caddy:2.10-alpine
+    image: ${PROXY_IMAGE:-caddy:2.10-alpine}
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:?Define DOMAIN without scheme or path}
@@ -143,7 +146,7 @@ services:
       retries: 5
 
   admin-provision:
-    image: grumphya-api:production
+    image: ${API_IMAGE:-grumphya-api:production}
     profiles: ["admin"]
     command: ["sh", "/workspace/docker/admin-provision-entrypoint.sh"]
     restart: "no"
@@ -176,9 +179,13 @@ networks:
 
 volumes:
   grumphya-production-postgres:
+    name: grumphya-production-postgres
   grumphya-production-avatars:
+    name: grumphya-production-avatars
   grumphya-caddy-data:
+    name: grumphya-caddy-data
   grumphya-caddy-config:
+    name: grumphya-caddy-config
 
 secrets:
   grumphya_env:
