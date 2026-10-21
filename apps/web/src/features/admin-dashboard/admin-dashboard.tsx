@@ -432,7 +432,7 @@ export function AdminDashboard() {
               )}
               <p className="admin-dashboard-note">
                 Se muestran los 100 mensajes más recientes. Las respuestas se
-                envían desde el buzón de OVHcloud; las respuestas recibidas se
+                envían desde el buzón de IONOS; las respuestas recibidas se
                 consultan en el webmail y no se leen desde esta aplicación. Si
                 un envío queda sin confirmar, revisa el webmail antes de
                 autorizar un reintento.

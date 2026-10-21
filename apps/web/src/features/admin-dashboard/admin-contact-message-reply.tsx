@@ -9,7 +9,7 @@ const REPLY_MIN_LENGTH = 10;
 const REPLY_MAX_LENGTH = 4000;
 const SEND_LABEL = "Enviar respuesta por correo";
 const GENERIC_ERROR =
-  "No se ha podido registrar el estado de la respuesta. Revisa el webmail de OVHcloud antes de volver a intentarlo.";
+  "No se ha podido registrar el estado de la respuesta. Revisa el webmail de IONOS antes de volver a intentarlo.";
 
 type ReplyStatus = AdminContactReplyStatus;
 type ReplyResult = {
@@ -115,8 +115,8 @@ export function AdminContactMessageReply({
                     required
                     type="checkbox"
                   />
-                  He revisado el webmail de OVHcloud y confirmo que no consta
-                  este envío.
+                  He revisado el webmail de IONOS y confirmo que no consta este
+                  envío.
                 </label>
               ) : null}
               <button
@@ -162,9 +162,9 @@ function getStatusCopy(status: ReplyStatus): string {
   if (status === "previewed")
     return "Vista previa local generada; no se ha enviado ningún correo.";
   if (status === "uncertain")
-    return "No se ha podido confirmar la entrega. Revisa el webmail de OVHcloud antes de repetir el envío.";
+    return "No se ha podido confirmar la entrega. Revisa el webmail de IONOS antes de repetir el envío.";
   if (status === "sending")
-    return "El envío está en curso o su estado no se pudo confirmar. Revisa el webmail de OVHcloud antes de repetirlo.";
+    return "El envío está en curso o su estado no se pudo confirmar. Revisa el webmail de IONOS antes de repetirlo.";
   return "Aún no se ha enviado una respuesta.";
 }
 
