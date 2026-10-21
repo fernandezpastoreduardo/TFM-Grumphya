@@ -16,7 +16,7 @@ import { MailService } from "../infrastructure/mail/mail.service";
   providers: [
     {
       provide: REGISTRATION_REPOSITORY,
-      useClass: PostgresRegistrationRepository,
+      useFactory: () => new PostgresRegistrationRepository(),
     },
     {
       provide: RegistrationService,
@@ -28,7 +28,7 @@ import { MailService } from "../infrastructure/mail/mail.service";
     },
     {
       provide: PLAN_USAGE_REPOSITORY,
-      useClass: PostgresPlanUsageRepository,
+      useFactory: () => new PostgresPlanUsageRepository(),
     },
     PlanUsageService,
   ],

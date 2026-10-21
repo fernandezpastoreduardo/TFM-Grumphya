@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "start:dev": "tsx watch src/main.ts",
+    "provision-admin": "tsx src/admin-dashboard/provision-admin.ts",
+    "change-admin-password": "tsx src/admin-dashboard/provision-admin.ts --change-password",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
     "benchmark:evaluator": "tsx scripts/evaluator-benchmark.ts",

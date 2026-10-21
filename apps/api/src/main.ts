@@ -41,7 +41,7 @@ async function bootstrap() {
   }
 
   app.setGlobalPrefix("api");
-  app.set("trust proxy", false);
+  app.set("trust proxy", process.env.TRUST_PROXY ?? false);
   app.enableCors({
     origin: allowedWebOrigin,
     methods: ["GET", "POST", "DELETE"],
