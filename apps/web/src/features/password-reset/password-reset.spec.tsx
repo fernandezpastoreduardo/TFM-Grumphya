@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import { Suspense } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PasswordReset } from "./password-reset";
@@ -21,6 +22,31 @@ afterEach(() => {
 });
 
 describe("PasswordReset", () => {
+  it("keeps the reset token when a sibling delays the first render", async () => {
+    const token = "c".repeat(64);
+    window.history.replaceState({}, "", `/restablecer-contrasena#${token}`);
+    let release: () => void = () => undefined;
+    let ready = false;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    function DelayedSibling() {
+      if (!ready) throw pending;
+      return null;
+    }
+    render(
+      <Suspense fallback={<p>Cargando</p>}>
+        <PasswordReset />
+        <DelayedSibling />
+      </Suspense>,
+    );
+    expect(screen.getByText("Cargando")).toBeInTheDocument();
+    ready = true;
+    await act(async () => release());
+    expect(screen.getByLabelText("Nueva contraseña")).toBeInTheDocument();
+    expect(window.location.hash).toBe("");
+  });
+
   it("submits an email and always displays the generic request message", async () => {
     const user = userEvent.setup();
     vi.stubGlobal(

@@ -25,11 +25,25 @@ FROM development AS build
 
 RUN pnpm --filter @grumphya/api build
 
+# Keep PostgreSQL on the same Debian release for the existing data volume.
+# Rebuild gosu with a patched Go toolchain instead of excluding it from Trivy.
+FROM golang:1.27.3-alpine AS gosu-build
+RUN apk add --no-cache git \
+  && git clone --depth 1 --branch 1.19 https://github.com/tianon/gosu.git /gosu \
+  && test "$(git -C /gosu rev-parse HEAD)" = 6456aaa0f3c854d199d0f037f068eb97515b7513 \
+  && cd /gosu \
+  && CGO_ENABLED=0 go build -trimpath -o /out/gosu .
+
 FROM pgvector/pgvector:0.8.7-pg17 AS database-production
+COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 COPY docker/postgres-entrypoint.sh /usr/local/bin/grumphya-postgres-entrypoint.sh
 COPY docker/initdb/000-provision-runtime-role.sh /docker-entrypoint-initdb.d/000-provision-runtime-role.sh
 COPY docker/postgres-backup.sh /usr/local/bin/grumphya-postgres-backup.sh
-RUN chmod 0555 /usr/local/bin/grumphya-postgres-entrypoint.sh \
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/* \
+  && gosu nobody true \
+  && chmod 0555 /usr/local/bin/grumphya-postgres-entrypoint.sh \
   /docker-entrypoint-initdb.d/000-provision-runtime-role.sh \
   /usr/local/bin/grumphya-postgres-backup.sh
 ENTRYPOINT ["/usr/local/bin/grumphya-postgres-entrypoint.sh"]

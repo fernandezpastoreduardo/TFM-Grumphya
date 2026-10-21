@@ -90,10 +90,8 @@ jobs:
         run: docker build --pull --target web-production --build-arg DEPLOY_SHA=${{ github.sha }} --tag grumphya-web:${{ github.sha }} .
       - name: Build PostgreSQL image
         run: docker build --pull --target database-production --tag grumphya-database:${{ github.sha }} .
-      - name: Pin Caddy image to this revision
-        run: |
-          docker pull caddy:2.10-alpine
-          docker tag caddy:2.10-alpine grumphya-proxy:${{ github.sha }}
+      - name: Build Caddy image
+        run: docker build --pull --file docker/Caddy.Dockerfile --tag grumphya-proxy:${{ github.sha }} .
       - name: Test production image contract
         run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
       - name: Scan API image

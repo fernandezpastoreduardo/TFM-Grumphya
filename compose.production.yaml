@@ -115,7 +115,7 @@ services:
     networks: [edge]
 
   proxy:
-    image: ${PROXY_IMAGE:-caddy:2.10-alpine}
+    image: ${PROXY_IMAGE:-caddy:2.11.7-alpine}
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:?Define DOMAIN without scheme or path}
