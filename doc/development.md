@@ -15,7 +15,7 @@ pnpm install
 pnpm db:setup
 ```
 
-`pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y un secreto HMAC de IP aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
+`pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y secretos HMAC de IP y access token aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
 
 ## Arranque
 
@@ -24,7 +24,7 @@ pnpm db:setup
 Para revisión local con base de datos persistente, prepara primero los archivos
 de entorno locales con `pnpm db:setup` y asegúrate de que existan `.env.openai`
 y `.env`. Configura una contraseña fuerte `ADMIN_PASSWORD` en `.env` para el
-bootstrap local de Jappy; `OPENAI_API_KEY` solo hace falta para las funciones
+aprovisionamiento explícito local de Jappy; `OPENAI_API_KEY` solo hace falta para las funciones
 de IA. Compose requiere esos archivos; no copies sus valores a documentación o
 Git. Después arranca o renueva los tres servicios:
 
@@ -39,6 +39,21 @@ solo en loopback: PostgreSQL `127.0.0.1:5433`, API `127.0.0.1:3000` y web
 de Compose conecta a `db:5432` por la red Docker, así que `PGPORT` no necesita
 cambiar. En el flujo mixto (API ejecutada en el host), alinea también `PGPORT`
 con el puerto publicado y reinicia los procesos.
+
+Jappy no cambia cuando se inicia la API. Después de que PostgreSQL esté
+disponible, crea la cuenta local de forma explícita; las ejecuciones siguientes
+no cambian su contraseña:
+
+```sh
+dotenv -e .env.docker -e .env -- pnpm --filter @grumphya/api provision-admin
+```
+
+Para cambiar la contraseña de forma deliberada y revocar las sesiones activas,
+actualiza `ADMIN_PASSWORD` en `.env` y ejecuta:
+
+```sh
+dotenv -e .env.docker -e .env -- pnpm --filter @grumphya/api change-admin-password
+```
 
 La base vive en el volumen con nombre de Compose `grumphya-postgres-data`.
 Reiniciar o recrear contenedores, incluido el comando anterior, conserva ese
@@ -68,11 +83,10 @@ necesita cada servicio. El contenedor de API recibe el secreto de DB como
 `PGPASSWORD` y elimina `GRUMPHYA_DB_PASSWORD` del entorno antes de iniciar
 NestJS. Además, aplica una allowlist distinta a cada archivo: `.env.docker`
 solo puede definir credenciales de PostgreSQL, JWT y HMAC; `.env.openai` solo
-configuración de proveedor, modelo, razonamiento y timeout; `.env` solo
-`OPENAI_API_KEY` y `ADMIN_PASSWORD`. Así, un archivo de proveedor no puede
-sobrescribir secretos de DB o autenticación. El bootstrap admin se ejecuta en
-cualquier entorno no-test y revoca las sesiones anteriores de Jappy cada vez
-que arranca la API; no uses esta provisión en producción.
+configuración de proveedor, modelo, razonamiento y timeout; `.env` solo carga
+`OPENAI_API_KEY` al contenedor. El comando explícito de aprovisionamiento local
+lee `ADMIN_PASSWORD` desde `.env`; la API no la recibe al arrancar. Así, un
+archivo de proveedor no puede sobrescribir secretos de DB o autenticación.
 
 Compose usa secretos respaldados por archivos locales: se montan en los
 contenedores como archivos y no se copian a la imagen gracias a

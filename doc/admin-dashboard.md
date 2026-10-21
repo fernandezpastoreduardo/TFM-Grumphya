@@ -23,25 +23,22 @@ esta autorización.
 
 ## Cuenta local Jappy
 
-Durante el arranque, en todo entorno con `NODE_ENV` distinto de `test`, el
-backend reserva el alias `jappy` y sincroniza su contraseña desde
-`ADMIN_PASSWORD`. La variable se lee solo en el servidor y se elimina del
-entorno del proceso; el valor nunca se publica en la UI ni se registra. Debe
-tener entre 12 y 128 caracteres, con mayúscula, minúscula, número y carácter
-especial. El registro público rechaza el alias reservado sin distinguir
-mayúsculas y minúsculas; el flujo de alta y el bootstrap comparten la misma
-constante para evitar que acepten nombres distintos. Si una cuenta normal
-existente ya posee el alias reservado, el arranque falla sin cambiar su rol.
-La contraseña de Jappy se guarda como hash bcrypt cost 12 con prehash SHA-256,
-igual que las contraseñas nuevas de las cuentas; nunca se guarda cifrada ni en
-texto claro.
+El alias `jappy` se reserva para la cuenta administradora; el registro público
+lo rechaza sin distinguir mayúsculas y minúsculas. Crea la cuenta mediante el
+comando explícito `provision-admin`; repetirlo no cambia una contraseña ya
+guardada. Para una contraseña nueva, ejecuta el comando explícito
+`change-admin-password`, que sustituye el hash y revoca las sesiones activas.
+La contraseña debe tener entre 12 y 128 caracteres, con mayúscula, minúscula,
+número y carácter especial. Se guarda como hash bcrypt cost 12 con prehash
+SHA-256, igual que las contraseñas nuevas de las cuentas; nunca se guarda
+cifrada ni en texto claro.
 
-El bootstrap actual actualiza el hash y revoca las sesiones anteriores de
-Jappy en cada arranque, aunque la contraseña configurada no haya cambiado. Por
-eso, reiniciar la API exige volver a iniciar sesión con Jappy. El código no
-limita este bootstrap al entorno local: debe sustituirse por un proceso de
-aprovisionamiento individual y controlado antes de producción; véase
-[`production.md`](production.md).
+En desarrollo, los comandos se ejecutan con los valores de `.env.docker` y
+`.env`; en producción, se usa el contenedor temporal `admin-provision` y el
+archivo separado `admin_settings`. El arranque normal de la API no lee
+`ADMIN_PASSWORD`, no modifica el hash y no revoca sesiones. Consulta
+[`development.md`](development.md) y [`production.md`](production.md) para los
+comandos de cada entorno.
 
 ## Datos del panel
 
@@ -105,8 +102,8 @@ benchmarks, escaneos ni pruebas desde el navegador.
   Jappy puede enviar una respuesta al correo asociado a la cuenta; el texto de
   respuesta no se persiste. El remitente y Reply-To usan la dirección SMTP
   configurada. Los logs omiten el contenido de la respuesta y el destinatario.
-  Un envío con estado incierto requiere revisar el webmail de OVHcloud antes de
-  un único reintento. No hay lectura IMAP ni
+  Un envío con estado incierto requiere revisar el webmail de la cuenta SMTP
+  configurada antes de un único reintento. No hay lectura IMAP ni
   retención/purga automática; la baja física del usuario elimina sus mensajes
   por cascada. Estos pendientes están descritos en
   [`wanna-bes.md`](../agentic-guidelines/wanna-bes.md).
