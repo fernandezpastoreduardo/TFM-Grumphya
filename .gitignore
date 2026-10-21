@@ -18,3 +18,4 @@ test-results/
 *.tsbuildinfo
 apps/*/.env*
 !apps/*/.env.example
+apps/web/public/assets/.DS_Store
