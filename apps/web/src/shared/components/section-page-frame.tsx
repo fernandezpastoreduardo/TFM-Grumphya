@@ -154,12 +154,24 @@ function SectionHero({ page }: { page: SectionPageMeta }) {
         </h1>
         <p>{page.intro}</p>
       </div>
-      <div
-        className={`section-hero-mascot${mascotClass}`}
-        role="img"
-        aria-label="Grumphya, la criatura que examina las ideas"
-      />
+      <SectionHeroMascot mascotClass={mascotClass} />
     </section>
+  );
+}
+
+function SectionHeroMascot({
+  mascotClass,
+  mobile = false,
+}: {
+  mascotClass: string;
+  mobile?: boolean;
+}) {
+  return (
+    <div
+      className={`${mobile ? "section-mobile-mascot" : "section-hero-mascot"}${mascotClass}`}
+      role="img"
+      aria-label="Grumphya, la criatura que examina las ideas"
+    />
   );
 }
 
@@ -200,6 +212,9 @@ export function SectionPageFrame({
         <main className="section-main">
           {showHero ? <SectionHero page={page} /> : null}
           {children}
+          {showHero && page.mascot ? (
+            <SectionHeroMascot mascotClass={` mascot-${page.mascot}`} mobile />
+          ) : null}
         </main>
         <footer className="site-footer">
           <a className="site-brand" href="/">

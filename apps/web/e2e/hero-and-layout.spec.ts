@@ -94,7 +94,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   });
 
   const homeHero = await page
-    .locator(".home-hero-stage .home-creature")
+    .locator(".home-hero-layout > .home-hero-stage .home-creature")
     .evaluate((element) => {
       const style = getComputedStyle(element);
       return {
@@ -108,9 +108,9 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   );
   expect(homeHero.backgroundSize).toBe("contain");
   expect(homeHero.backgroundPosition).toBe("50% 100%");
-  const homeStage = page.locator(".home-hero-stage");
+  const homeStage = page.locator(".home-hero-layout > .home-hero-stage");
   const homeMascotBox = await page
-    .locator(".home-hero-stage .home-creature")
+    .locator(".home-hero-layout > .home-hero-stage .home-creature")
     .boundingBox();
   const homeStageBox = await homeStage.boundingBox();
   expect(homeMascotBox).not.toBeNull();
@@ -208,6 +208,9 @@ test("uses the section hero assets with transparent pixels", async ({
 }) => {
   for (const hero of HERO_ASSETS) {
     if ("role" in hero && hero.role === "admin") {
+      await page.addInitScript(() => {
+        localStorage.setItem("grumphya-theme", "dark");
+      });
       await page.route("**/api/auth/refresh", (route) =>
         route.fulfill({
           status: 200,
@@ -227,11 +230,26 @@ test("uses the section hero assets with transparent pixels", async ({
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            metrics: {
-              totalUsers: 0,
-              activePlans: 0,
-              evaluationsToday: 0,
-              roastsToday: 0,
+            revenue: { weeklyEur: 0, totalEur: 0 },
+            estimatedAiCost: {
+              weeklyUsd: 0,
+              totalUsd: 0,
+              weeklyAveragePerAccountUsd: 0,
+              totalAveragePerAccountUsd: 0,
+              activeRegisteredAccountCount: 0,
+              activeAdminAccountCount: 0,
+              weeklyByActor: {
+                registeredUsersUsd: 0,
+                adminsUsd: 0,
+                anonymousUsd: 0,
+              },
+              totalByActor: {
+                registeredUsersUsd: 0,
+                adminsUsd: 0,
+                anonymousUsd: 0,
+              },
+              weeklyTrend: [],
+              unpricedUsageEvents: 0,
             },
             errors: [],
           }),
@@ -265,7 +283,88 @@ test("uses the section hero assets with transparent pixels", async ({
       assetIsTransparent,
       `${hero.asset} should have transparent pixels`,
     ).toBe(true);
+
+    if ("role" in hero && hero.role === "admin") {
+      const dashboardTextColor = await page
+        .locator(".admin-dashboard")
+        .evaluate((element) => getComputedStyle(element).color);
+      expect(dashboardTextColor).toBe("rgb(23, 33, 35)");
+    }
   }
+});
+
+test("stacks mobile mascots after page content and prevents iPhone input zoom", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/contacto");
+
+  const sectionMascot = page.locator(".section-mobile-mascot");
+  const sectionContent = page.locator(".section-main > .contact-layout");
+  await expect(sectionMascot).toBeVisible();
+  await expect(page.locator(".section-hero-mascot")).toBeHidden();
+  const sectionMascotBox = await sectionMascot.boundingBox();
+  const sectionContentBox = await sectionContent.boundingBox();
+  expect(sectionMascotBox).not.toBeNull();
+  expect(sectionContentBox).not.toBeNull();
+  expect(sectionMascotBox!.y).toBeGreaterThanOrEqual(
+    sectionContentBox!.y + sectionContentBox!.height,
+  );
+
+  const mobileInputSize = await page
+    .locator(".contact-card input")
+    .first()
+    .evaluate((input) => getComputedStyle(input).fontSize);
+  expect(mobileInputSize).toBe("16px");
+  const curtainAndHeader = await page.evaluate(() => ({
+    curtainHeight: Number.parseFloat(
+      getComputedStyle(
+        document.querySelector(".app-page") as Element,
+        "::before",
+      ).height,
+    ),
+    headerTop: document.querySelector(".site-header")!.getBoundingClientRect()
+      .top,
+  }));
+  expect(curtainAndHeader.headerTop).toBeGreaterThanOrEqual(
+    curtainAndHeader.curtainHeight,
+  );
+
+  await page.goto("/");
+  const homeMascot = page.locator(".home-hero-stage-mobile");
+  const marketing = page.locator(".home-marketing");
+  const footer = page.locator(".home-footer");
+  await expect(homeMascot).toBeVisible();
+  await expect(
+    page.locator(".home-hero-layout > .home-hero-stage"),
+  ).toBeHidden();
+  const homeMascotBox = await homeMascot.boundingBox();
+  const marketingBox = await marketing.boundingBox();
+  const footerBox = await footer.boundingBox();
+  expect(homeMascotBox).not.toBeNull();
+  expect(marketingBox).not.toBeNull();
+  expect(footerBox).not.toBeNull();
+  expect(homeMascotBox!.y).toBeGreaterThanOrEqual(
+    marketingBox!.y + marketingBox!.height,
+  );
+  expect(homeMascotBox!.y + homeMascotBox!.height).toBeLessThanOrEqual(
+    footerBox!.y,
+  );
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.goto("/");
+  const continueButton = page.getByRole("button", { name: /^adelante$/i });
+  const buttonBox = await continueButton.boundingBox();
+  const actionsBox = await page.locator(".idea-step-actions").boundingBox();
+  expect(buttonBox).not.toBeNull();
+  expect(actionsBox).not.toBeNull();
+  expect(
+    Math.abs(
+      buttonBox!.x +
+        buttonBox!.width / 2 -
+        (actionsBox!.x + actionsBox!.width / 2),
+    ),
+  ).toBeLessThanOrEqual(1);
 });
 
 test("serves the profile hero as a transparent PNG", async ({ page }) => {

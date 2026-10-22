@@ -323,7 +323,7 @@
 }
 @media (max-width: 979px) {
   .mobile-menu-portal {
-    --header-start: clamp(82px, calc(8vw - 30px), 106px);
+    --header-start: clamp(38px, calc(8vw + 8px), 52px);
     display: contents !important;
   }
 
@@ -335,5 +335,16 @@
   .site-mobile-menu.mobile-menu-portal nav {
     z-index: 9002 !important;
     pointer-events: auto;
+  }
+}
+
+@media (max-width: 979px) {
+  .mobile-menu-backdrop {
+    z-index: calc(var(--layer-modal) - 1) !important;
+  }
+
+  .home-mobile-menu.mobile-menu-portal nav,
+  .site-mobile-menu.mobile-menu-portal nav {
+    z-index: var(--layer-modal) !important;
   }
 }

@@ -469,6 +469,16 @@ export function Home() {
           </nav>
         </section>
 
+        <div
+          className="home-hero-stage home-hero-stage-mobile"
+          aria-hidden="true"
+        >
+          <span className="home-stage-light" />
+          <span className="home-creature" />
+          <HeroRayCluster placement="hero-rays-stage-start" />
+          <HeroRayCluster placement="hero-rays-stage-end" />
+        </div>
+
         <footer className="home-footer">
           <span
             className={

@@ -214,39 +214,48 @@
   filter: drop-shadow(4px 8px 0 #1a4e5040);
   transform: scaleX(-1) rotate(3deg);
 }
-.section-hero-mascot.mascot-pointing {
+.section-hero-mascot.mascot-pointing,
+.section-mobile-mascot.mascot-pointing {
   background-image: url("/assets/grumphya/mascot-pointing.svg");
   transform: rotate(2deg);
 }
-.section-hero-mascot.mascot-plans {
+.section-hero-mascot.mascot-plans,
+.section-mobile-mascot.mascot-plans {
   background-image: url("/assets/grumphya/plans-coffee.png");
   transform: scaleX(-1);
 }
-.section-hero-mascot.mascot-good-practices {
+.section-hero-mascot.mascot-good-practices,
+.section-mobile-mascot.mascot-good-practices {
   background-image: url("/assets/grumphya/good-practices-checklist.png");
   transform: none;
 }
-.section-hero-mascot.mascot-notable-humans {
+.section-hero-mascot.mascot-notable-humans,
+.section-mobile-mascot.mascot-notable-humans {
   background-image: url("/assets/grumphya/notable-humans-hero.png");
   transform: none;
 }
-.section-hero-mascot.mascot-contact {
+.section-hero-mascot.mascot-contact,
+.section-mobile-mascot.mascot-contact {
   background-image: url("/assets/grumphya/contact-hero-phone.png");
   transform: none;
 }
-.section-hero-mascot.mascot-roast {
+.section-hero-mascot.mascot-roast,
+.section-mobile-mascot.mascot-roast {
   background-image: url("/assets/grumphya/descargate-boxing-bag.png");
   transform: none;
 }
-.section-hero-mascot.mascot-worst-ideas {
+.section-hero-mascot.mascot-worst-ideas,
+.section-mobile-mascot.mascot-worst-ideas {
   background-image: url("/assets/grumphya/worst-ideas-wall.png");
   transform: none;
 }
-.section-hero-mascot.mascot-login {
+.section-hero-mascot.mascot-login,
+.section-mobile-mascot.mascot-login {
   background-image: url("/assets/grumphya/login-credentials.png");
   transform: none;
 }
-.section-hero-mascot.mascot-admin {
+.section-hero-mascot.mascot-admin,
+.section-mobile-mascot.mascot-admin {
   background-image: url("/assets/grumphya/admin-dashboard-audit.png");
   transform: none;
 }
@@ -854,6 +863,7 @@
     transition: none;
   }
 }
+
 .app-page {
   --frame-dark: clamp(6px, 0.7vw, 10px);
   --frame-light: clamp(8px, 1vw, 16px);
@@ -1638,5 +1648,48 @@
   .section-main :is(button, a):active {
     translate: none;
     scale: none;
+  }
+}
+
+.section-mobile-mascot {
+  display: none;
+  align-self: end;
+  width: 100%;
+  height: 270px;
+  background: url("/assets/grumphya/mascot-neutral.svg") center bottom / contain
+    no-repeat;
+  filter: drop-shadow(4px 8px 0 #1a4e5040);
+  transform: scaleX(-1) rotate(3deg);
+  animation: section-mascot-float 5.8s ease-in-out 500ms infinite;
+}
+
+.app-page::before {
+  z-index: 0;
+}
+
+.app-page {
+  --curtain-height: clamp(40px, 5vw, 72px);
+  --header-start: clamp(82px, calc(6vw + 10px), 96px);
+  --header-start-mobile: clamp(38px, calc(8vw + 8px), 52px);
+}
+
+@media (max-width: 979px) {
+  .app-page {
+    --curtain-height: clamp(32px, 8vw, 48px);
+    --header-start: var(--header-start-mobile);
+  }
+}
+
+@media (max-width: 700px) {
+  .section-hero-mascot {
+    display: none;
+  }
+
+  .section-mobile-mascot {
+    display: block;
+    align-self: center;
+    width: min(100%, 340px);
+    height: 210px;
+    margin: -8px auto 0;
   }
 }
