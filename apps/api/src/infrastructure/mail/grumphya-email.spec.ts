@@ -15,6 +15,8 @@ describe("Grumphya email layout", () => {
 
     expect(email.html).toContain('lang="es"');
     expect(email.html).toContain("style=");
+    expect(email.html).toContain("#087887");
+    expect(email.html).toContain("#f4c95d");
     expect(email.html).toContain(
       "https://example.test/verificar-cuenta?token=abc",
     );
