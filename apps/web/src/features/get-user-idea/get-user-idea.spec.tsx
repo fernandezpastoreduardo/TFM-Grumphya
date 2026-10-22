@@ -8,7 +8,7 @@ import * as speechToText from "../../shared/utils/speech-to-text";
 const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
 const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
 const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
-const INPUT_LABEL = /veamos esa idea millonaria/i;
+const INPUT_LABEL = /escribe, pega o dicta tu idea/i;
 const NEXT_STEP_LABEL = /^adelante$/i;
 const BACK_TO_IDEA_LABEL = /cambiar idea/i;
 const SUBMIT_LABEL = /^evaluar idea/i;

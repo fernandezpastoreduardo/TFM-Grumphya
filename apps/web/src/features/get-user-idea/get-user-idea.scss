@@ -208,6 +208,40 @@
   }
 }
 
+.idea-input-label {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 8px;
+  overflow: visible;
+  font-size: 1rem;
+  font-weight: 900;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+@media (max-width: 979px) and (min-width: 641px) {
+  .idea-input-label {
+    margin-bottom: 3px;
+    font-size: 0.77rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .idea-input-label {
+    margin-bottom: 2px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (min-width: 980px) {
+  .idea-input-label {
+    margin-bottom: 10px;
+    font-size: 1.08rem;
+  }
+}
+
 @media (max-width: 359px) {
   .idea-tone-option {
     padding-inline: 5px;

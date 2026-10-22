@@ -21,8 +21,6 @@ import {
   type EvaluationProcessResult,
 } from "../features/idea-evaluation/evaluation-process";
 
-type Health = { status: "ok"; database: "ok"; pgvector: string };
-const API_HEALTH_PATH = "/api/health";
 const EVALUATION_FAILURE_MESSAGE =
   "No se pudo completar el scoring. La idea sigue en el formulario; inténtalo otra vez.";
 const THEME_LABEL = {
@@ -76,24 +74,7 @@ function HeroRayCluster({ placement }: { placement: HeroRayPlacement }) {
   );
 }
 
-function isHealthResponse(value: unknown): value is Health {
-  if (typeof value !== "object" || value === null) return false;
-  if (
-    !("status" in value) ||
-    !("database" in value) ||
-    !("pgvector" in value)
-  ) {
-    return false;
-  }
-  return (
-    value.status === "ok" &&
-    value.database === "ok" &&
-    typeof value.pgvector === "string"
-  );
-}
-
 export function Home() {
-  const [health, setHealth] = useState<Health | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evaluationResult, setEvaluationResult] =
     useState<EvaluationProcessResult | null>(null);
@@ -137,26 +118,6 @@ export function Home() {
       else dialog.removeAttribute("open");
     }
   }, [isQuotaDialogOpen]);
-
-  useEffect(() => {
-    let isMounted = true;
-    fetch(API_HEALTH_PATH)
-      .then(async (response) => {
-        if (!response.ok) return null;
-        const payload: unknown = await response.json();
-        return isHealthResponse(payload) ? payload : null;
-      })
-      .then((result) => {
-        if (isMounted) setHealth(result);
-      })
-      .catch(() => {
-        if (isMounted) setHealth(null);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   async function handleEvaluation(request: {
     ideaText: string;
@@ -392,7 +353,7 @@ export function Home() {
             >
               {isEvaluating
                 ? "Volver a la evaluación en curso"
-                : "Ver resultado de la evaluación"}
+                : "Volver a ver la evaluación"}
             </button>
           ) : null}
         </section>
@@ -480,17 +441,6 @@ export function Home() {
         </div>
 
         <footer className="home-footer">
-          <span
-            className={
-              health ? "home-health-light is-online" : "home-health-light"
-            }
-            aria-hidden="true"
-          />
-          <span>
-            {health
-              ? `Servicios listos · PostgreSQL ${health.pgvector} con pgvector`
-              : "Conectando con los servicios…"}
-          </span>
           <span className="home-footer-note">Será por malas ideas.</span>
         </footer>
       </main>

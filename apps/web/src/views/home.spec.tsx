@@ -9,7 +9,7 @@ import {
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
-const IDEA_INPUT_NAME = /veamos esa idea millonaria/i;
+const IDEA_INPUT_NAME = /escribe, pega o dicta tu idea/i;
 const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
 const LOADING_BUTTON_NAME = /evaluando/i;
@@ -64,12 +64,6 @@ describe("Home", () => {
             status: 200,
             headers: { "Content-Type": "application/json" },
           });
-        }
-        if (input === "/api/health") {
-          return new Response(
-            JSON.stringify({ status: "ok", database: "ok", pgvector: "0.8.7" }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          );
         }
         return new Response("{}", { status: 503 });
       }),
@@ -135,14 +129,15 @@ describe("Home", () => {
       screen.getByRole("region", { name: /resultado de la evaluación/i }),
     ).toBeEmptyDOMElement();
     expect(
+      screen.queryByText(/servicios listos|conectando con los servicios/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Será por malas ideas.")).toBeInTheDocument();
+    expect(
       screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }),
     ).toBeEnabled();
     expect(
       screen.queryByRole("button", { name: SUBMIT_BUTTON_NAME }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/conectando con los servicios/i),
-    ).toBeInTheDocument();
   });
 
   it("keeps the long idea-processing notice out of the Home form", async () => {
@@ -492,7 +487,7 @@ describe("Home", () => {
     await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
     expect(dialog).not.toBeVisible();
     await user.click(
-      screen.getByRole("button", { name: /ver resultado de la evaluación/i }),
+      screen.getByRole("button", { name: /volver a ver la evaluación/i }),
     );
     expect(
       screen.getByRole("dialog", { name: /resultado de la evaluación/i }),

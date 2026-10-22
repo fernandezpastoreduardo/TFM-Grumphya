@@ -133,7 +133,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
     },
   ] as const;
   await page
-    .getByRole("textbox", { name: /veamos esa idea millonaria/i })
+    .getByRole("textbox", { name: /escribe, pega o dicta tu idea/i })
     .fill("Una app para compartir herramientas entre vecinos");
   await page.getByRole("button", { name: /adelante/i }).click();
   for (const illustration of toneIllustrations) {

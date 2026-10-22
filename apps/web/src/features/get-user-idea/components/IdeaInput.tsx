@@ -10,7 +10,7 @@ type IdeaInputProps = {
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 };
 
-const IDEA_INPUT_LABEL = "1. Veamos esa idea millonaria";
+const IDEA_INPUT_LABEL = "1. Escribe, pega o dicta tu idea";
 const IDEA_INPUT_HELP =
   "Quién la usaría, qué le duele y qué haría la app. Lo básico, vamos.";
 const INPUT_ID = "idea-text";
