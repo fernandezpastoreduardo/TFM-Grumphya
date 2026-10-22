@@ -124,6 +124,8 @@ la lámina maestra está en
 - La versión de escritorio y la móvil conservan la misma identidad. En móvil,
   la composición se apila y mantiene separación entre grupos para que el
   textarea, las opciones, la acción y la mascota se lean como pasos distintos.
+  En las páginas de sección, la mascota del hero se recoloca después del
+  contenido principal en móvil para evitar que compita con el titular.
   En la Home, el hero mantiene 20 px entre su copy y 40 px entre los bloques
   principales, tanto en móvil como en escritorio.
 
@@ -164,10 +166,11 @@ principal y demasiado espacio entre el hero y el contenido. El header ahora
 reserva una columna para el selector en escritorio y lo coloca junto al menú
 móvil en tablet; el espacio entre hero y contenido usa un valor fluido y menor.
 La revisión estática de los breakpoints confirma que la navegación se sustituye
-por un menú móvil hasta 979 px y que los layouts de sección se apilan. No se
-pudo capturar una ventana móvil real en este entorno; queda pendiente la
-verificación visual con viewport de 390 × 844 px antes de dar por cerrada la
-revisión responsive.
+por un menú móvil hasta 979 px y que los layouts de sección se apilan. El E2E
+comprueba algunas posiciones y tamaños en viewport de 390 × 844 px, incluido el
+apilado de la mascota de sección y el tamaño mínimo de los campos. Estas
+aserciones de layout no sustituyen la revisión visual manual en ese viewport,
+que sigue pendiente.
 
 El menú móvil se comporta como diálogo modal: al abrir, enfoca el primer enlace;
 Tab y Mayús+Tab recorren sus opciones sin salir del menú; Escape lo cierra y
