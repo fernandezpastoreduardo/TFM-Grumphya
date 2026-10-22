@@ -1,6 +1,8 @@
 .admin-dashboard {
   display: grid;
   gap: 18px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .theme-dark .admin-dashboard {
@@ -98,6 +100,7 @@
 .admin-dashboard-tabpanel {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 .admin-dashboard-heading,
 .admin-dashboard-card,
@@ -109,6 +112,8 @@
   padding: clamp(18px, 3vw, 28px);
   background: color-mix(in srgb, var(--color-paper) 94%, #dff8ef);
   box-shadow: 0 10px 28px #18565d12;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .admin-dashboard-heading h2,
 .admin-dashboard-card h2 {
@@ -144,6 +149,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px 28px;
+  min-width: 0;
 }
 .admin-ai-costs > .admin-dashboard-section-heading,
 .admin-ai-cost-chart {
@@ -160,6 +166,7 @@
 }
 .admin-cost-breakdown dl > div {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 7px;
@@ -224,15 +231,21 @@
   font-size: 0.9rem;
 }
 .admin-table-scroll {
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 .admin-dashboard table {
   width: 100%;
+  min-width: 520px;
   border-collapse: collapse;
   text-align: left;
 }
 .admin-dashboard pre {
+  max-width: 100%;
   overflow-x: auto;
+  overflow-wrap: anywhere;
   border-radius: 12px;
   padding: 14px;
   background: color-mix(in srgb, var(--color-teal-dark) 8%, white);
@@ -301,6 +314,7 @@
   justify-items: start;
   gap: 12px;
   width: min(100%, 680px);
+  min-width: 0;
 }
 .admin-contact-reply-form > label:first-child {
   display: grid;
@@ -331,8 +345,23 @@
   color: #9b2525;
 }
 @media (max-width: 560px) {
+  .admin-dashboard-heading,
+  .admin-dashboard-card {
+    padding: 16px;
+  }
+  .admin-dashboard-section-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
   .admin-ai-costs {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .admin-cost-breakdown dl > div {
+    align-items: baseline;
+  }
+  .admin-cost-breakdown dd {
+    margin-left: auto;
   }
   .admin-ai-cost-chart svg text {
     font-size: 10px;
