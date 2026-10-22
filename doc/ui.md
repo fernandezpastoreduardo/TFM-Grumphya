@@ -19,9 +19,11 @@ la lámina maestra está en
 - En Home, el copy y el formulario de idea forman una tarjeta clara en la
   columna funcional; la columna de la mascota conserva su escenario. El
   textarea usa un tono verde muy claro para distinguirse de la tarjeta.
-- El formulario de Home avanza en dos pasos: primero muestra «1. Veamos esa
-  idea millonaria», el textarea y «Adelante»; después muestra la elección de
+- El formulario de Home avanza en dos pasos: primero muestra «1. Escribe, pega
+  o dicta tu idea», el textarea y «Adelante»; después muestra la elección de
   tono y «Evaluar idea». «Cambiar idea» conserva el texto y el tono elegidos.
+  Tras recibir un resultado, la acción para volver a él dice «Volver a ver la
+  evaluación».
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - El favicon apunta directamente a `/assets/grumphya/mascot-isotype.svg`, el
@@ -126,6 +128,8 @@ la lámina maestra está en
   textarea, las opciones, la acción y la mascota se lean como pasos distintos.
   En las páginas de sección, la mascota del hero se recoloca después del
   contenido principal en móvil para evitar que compita con el titular.
+  En la Home móvil, el copy del hero se alinea a la izquierda y el resultado de
+  evaluación permanece centrado.
   En la Home, el hero mantiene 20 px entre su copy y 40 px entre los bloques
   principales, tanto en móvil como en escritorio.
 
