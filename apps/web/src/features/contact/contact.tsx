@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import { useNativeDialog } from "../../shared/hooks/use-native-dialog";
 import {
   LoadingSkeleton,
   SkeletonBlock,
@@ -36,6 +37,8 @@ export function Contact() {
 
 function AnonymousContactDemo() {
   const [dismissed, setDismissed] = useState(false);
+  const dialogRef = useNativeDialog(dismissed);
+
   function dismissForm() {
     setDismissed(true);
   }
@@ -80,9 +83,15 @@ function AnonymousContactDemo() {
       </aside>
       {dismissed ? (
         <dialog
-          open
+          ref={dialogRef}
           className="prototype-dialog contact-dialog"
           aria-labelledby="contact-dialog-title"
+          aria-modal="true"
+          onClose={() => setDismissed(false)}
+          onCancel={(event) => {
+            event.preventDefault();
+            setDismissed(false);
+          }}
         >
           <button
             className="dialog-close"

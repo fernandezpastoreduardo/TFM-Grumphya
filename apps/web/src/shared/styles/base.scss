@@ -34,10 +34,26 @@
   --color-paper: #fffefa;
   --color-lilac: #e6dcf5;
   --color-line: #216b70;
+  --layer-modal: 20000;
 }
 
 * {
   box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  body
+    :is(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+      textarea,
+      select
+    ) {
+    font-size: max(16px, 1em);
+  }
+}
+
+dialog[open] {
+  z-index: var(--layer-modal);
 }
 
 body {

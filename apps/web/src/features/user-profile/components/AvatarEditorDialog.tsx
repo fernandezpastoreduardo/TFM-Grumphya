@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, MouseEvent, PointerEvent } from "react";
+import { createPortal } from "react-dom";
+import { usePersistentTheme } from "../../../shared/hooks/use-persistent-theme";
 
 const CROP_VIEWPORT_SIZE = 240;
 const PREVIEW_SIZE = 104;
@@ -33,6 +35,7 @@ export function AvatarEditorDialog({
   onClose,
   onUpload,
 }: AvatarEditorDialogProps) {
+  const { theme } = usePersistentTheme();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -166,8 +169,11 @@ export function AvatarEditorDialog({
   const previewScale = PREVIEW_SIZE / CROP_VIEWPORT_SIZE;
   const previewTransform = `translate(calc(-50% + ${offset.x * previewScale}px), calc(-50% + ${offset.y * previewScale}px))`;
 
-  return (
-    <div className="avatar-dialog-backdrop" onMouseDown={handleBackdropClick}>
+  return createPortal(
+    <div
+      className={`avatar-dialog-backdrop theme-${theme}`}
+      onMouseDown={handleBackdropClick}
+    >
       <section
         ref={dialogRef}
         className="avatar-editor-dialog"
@@ -315,11 +321,6 @@ export function AvatarEditorDialog({
             contenido. El archivo publicado se normaliza y se guarda en el
             servidor.
           </p>
-          {validationError || uploadError ? (
-            <p className="avatar-dialog-error" role="alert">
-              {validationError || uploadError}
-            </p>
-          ) : null}
           <div className="avatar-dialog-actions">
             <button
               className="button-secondary"
@@ -329,17 +330,25 @@ export function AvatarEditorDialog({
             >
               Cancelar
             </button>
-            <button
-              className="button-primary"
-              type="submit"
-              disabled={!file || imageSize.width === 0 || uploading}
-            >
-              {uploading ? "Revisando imagen…" : "Guardar avatar"}
-            </button>
+            <div className="avatar-dialog-submit-group">
+              <button
+                className="button-primary"
+                type="submit"
+                disabled={!file || imageSize.width === 0 || uploading}
+              >
+                {uploading ? "Revisando imagen…" : "Guardar avatar"}
+              </button>
+              {validationError || uploadError ? (
+                <p className="avatar-dialog-error" role="alert">
+                  {validationError || uploadError}
+                </p>
+              ) : null}
+            </div>
           </div>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 
   function handleBackdropClick(event: MouseEvent<HTMLDivElement>) {

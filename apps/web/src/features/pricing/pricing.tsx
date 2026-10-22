@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import { useNativeDialog } from "../../shared/hooks/use-native-dialog";
 import "./pricing.scss";
 
 export function Pricing() {
   const session = useSessionStatus();
   const [showLesson, setShowLesson] = useState(false);
+  const lessonDialogRef = useNativeDialog(showLesson);
   const [selectingPlan, setSelectingPlan] = useState<
     "ILUMINADO" | "FALTON" | null
   >(null);
@@ -132,9 +134,15 @@ export function Pricing() {
       </p>
       {showLesson ? (
         <dialog
-          open
+          ref={lessonDialogRef}
           className="prototype-dialog"
           aria-labelledby="ultra-dialog-title"
+          aria-modal="true"
+          onClose={() => setShowLesson(false)}
+          onCancel={(event) => {
+            event.preventDefault();
+            setShowLesson(false);
+          }}
         >
           <button
             className="dialog-close"

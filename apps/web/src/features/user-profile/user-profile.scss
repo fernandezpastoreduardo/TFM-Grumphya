@@ -186,7 +186,7 @@
 
 .avatar-dialog-backdrop {
   position: fixed;
-  z-index: 1100;
+  z-index: var(--layer-modal);
   inset: 0;
   display: grid;
   overflow-y: auto;
@@ -364,9 +364,16 @@
 }
 
 .avatar-dialog-error {
-  margin: 10px 0;
+  margin: 6px 0 0;
   color: #a11d3d;
   font-weight: 800;
+  line-height: 1.35;
+}
+
+.avatar-dialog-submit-group {
+  display: grid;
+  justify-items: end;
+  max-width: min(100%, 330px);
 }
 
 .avatar-dialog-actions {
@@ -560,6 +567,10 @@
 .theme-dark .profile-ideas-card,
 .theme-dark .profile-error-card {
   background: color-mix(in srgb, var(--color-paper) 12%, #203c3b);
+}
+
+.theme-dark .profile-renewal-note {
+  color: #172123;
 }
 
 .theme-dark .profile-details dt,

@@ -103,9 +103,17 @@ describe("AvatarEditorDialog", () => {
       new File(["script"], "image.svg", { type: "image/svg+xml" }),
     );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
+    const validationError = await screen.findByRole("alert");
+    expect(validationError).toHaveTextContent(
       "Elige una imagen JPG, PNG o WebP de hasta 5 MB.",
     );
+    const submitButton = screen.getByRole("button", {
+      name: "Guardar avatar",
+    });
+    expect(submitButton.parentElement).toHaveClass(
+      "avatar-dialog-submit-group",
+    );
+    expect(submitButton.parentElement).toContainElement(validationError);
     expect(
       screen.getByRole("dialog", { name: "Editar avatar" }),
     ).toBeInTheDocument();

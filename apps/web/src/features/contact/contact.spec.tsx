@@ -230,4 +230,24 @@ describe("Contact", () => {
     ).toBeVisible();
     expect(screen.getByText(/vista de demostración/i)).toBeVisible();
   });
+
+  it("opens the demonstration message in a modal dialog", async () => {
+    const user = userEvent.setup();
+    mockedUseSessionStatus.mockReturnValue({
+      isAuthenticated: false,
+      accountAttempts: null,
+      avatarUrl: null,
+      isSigningOut: false,
+      signOut: vi.fn(),
+    });
+    render(<Contact />);
+
+    await user.click(screen.getByRole("textbox", { name: "Nombre" }));
+
+    const dialog = screen.getByRole("dialog", {
+      name: /a nadie le importa lo que tengas que decir/i,
+    });
+    expect(dialog).toHaveAttribute("open");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
 });

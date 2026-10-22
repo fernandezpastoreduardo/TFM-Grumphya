@@ -36,6 +36,21 @@ function jsonResponse(body: unknown, status = 201): Response {
 }
 
 describe("Pricing registration intent", () => {
+  it("opens the UltraChachi lesson as a modal dialog", async () => {
+    const user = userEvent.setup();
+    render(<Pricing />);
+
+    await user.click(
+      screen.getByRole("button", { name: /pulsar para descubrir la trampa/i }),
+    );
+
+    const dialog = screen.getByRole("dialog", {
+      name: /¿aún estamos así de verde\?/i,
+    });
+    expect(dialog).toHaveAttribute("open");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
+
   it("posts the selected plan then navigates to a clean registration URL", async () => {
     const user = userEvent.setup();
     const assign = vi.fn();
