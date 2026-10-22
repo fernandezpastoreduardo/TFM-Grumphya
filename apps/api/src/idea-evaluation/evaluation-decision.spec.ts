@@ -15,6 +15,8 @@ const VALID_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
   "Pagar por declaraciones que nadie verifica convierte el engaño en el negocio más rentable de tu app.";
+const HARD_REJECTION_MESSAGE_PREFIX =
+  "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
 const INSUFFICIENT_MESSAGE =
   "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.";
 const CRITERION_IDS = [
@@ -241,11 +243,16 @@ describe("validateModelDecision", () => {
     );
   });
 
-  it("makes the hard rejection reply much sharper than the neutral reply", () => {
+  it("makes the hard rejection sharper while preserving its factual explanation", () => {
     const decision = createRejectedDecision();
+    const softMessage = renderMessage(decision, "soft");
+    const hardMessage = renderMessage(decision, "hard");
 
-    expect(renderMessage(decision, "soft")).toBe(REJECTION_MESSAGE);
-    expect(renderMessage(decision, "hard")).toBe(REJECTION_MESSAGE);
+    expect(softMessage).toContain(REJECTION_MESSAGE);
+    expect(hardMessage).toBe(
+      `${HARD_REJECTION_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
+    );
+    expect(hardMessage).not.toBe(softMessage);
   });
 
   it("rejects quotation marks added around a basis fragment", () => {

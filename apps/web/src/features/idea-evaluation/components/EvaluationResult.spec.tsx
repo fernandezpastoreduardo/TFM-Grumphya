@@ -6,7 +6,7 @@ import { EvaluationResult } from "./EvaluationResult";
 const SCORED_RESULT: EvaluationProcessResult = {
   status: "RECHAZADA",
   score: 1.3,
-  headline: "Pues… no decepciona; no esperaba gran cosa.",
+  headline: "La propuesta se ha estampado contra lo esencial.",
   message:
     "Ignorar el consentimiento no es una estrategia, aunque el formulario te deje intentarlo.",
 };

@@ -5,6 +5,7 @@ const API_KEY = "test-openai-key";
 const IDEA_TEXT = "Una web tipo tinder pero para grillos";
 const FINGERPRINT = "Servicio de citas para que los grillos encuentren pareja.";
 const RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
+const DEFAULT_FINGERPRINT_TIMEOUT_MS = 30_000;
 
 function createResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -86,5 +87,28 @@ describe("OpenAiSemanticIdeaFingerprintPort", () => {
     await expect(port.createFingerprint(IDEA_TEXT)).rejects.toThrow(
       "OpenAI idea normalization failed.",
     );
+  });
+
+  it("allows up to 30 seconds for a long idea to be normalized", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiSemanticIdeaFingerprintPort({ apiKey: API_KEY });
+    const result = port.createFingerprint(IDEA_TEXT);
+    const rejection = expect(result).rejects.toThrow(
+      "OpenAI idea normalization failed.",
+    );
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_FINGERPRINT_TIMEOUT_MS - 1);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    await rejection;
   });
 });

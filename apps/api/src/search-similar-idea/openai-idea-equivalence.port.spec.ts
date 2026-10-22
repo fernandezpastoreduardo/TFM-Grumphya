@@ -7,6 +7,7 @@ const FINGERPRINT =
   "Aplicación de citas para que los saltamontes encuentren pareja.";
 const SAFE_TITLE = "Tinder para saltamontes";
 const RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
+const DEFAULT_EQUIVALENCE_TIMEOUT_MS = 30_000;
 
 function createResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -106,6 +107,29 @@ describe("OpenAiIdeaEquivalencePort", () => {
     );
 
     await vi.advanceTimersByTimeAsync(25);
+    await rejection;
+  });
+
+  it("allows up to 30 seconds to compare long idea descriptions", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiIdeaEquivalencePort({ apiKey: API_KEY });
+    const result = port.classifyIdeas(IDEA_TEXT, FINGERPRINT, [SAFE_TITLE]);
+    const rejection = expect(result).rejects.toThrow(
+      "OpenAI semantic comparison failed.",
+    );
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_EQUIVALENCE_TIMEOUT_MS - 1);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
     await rejection;
   });
 });

@@ -42,6 +42,14 @@ describe("GetUserIdea", () => {
       screen.getByRole("radio", { name: /tengo la piel fina/i }),
     ).toBeVisible();
     expect(
+      screen.getByText("Con corazones, confeti y muchísimo cariño."),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Sin azúcar: critico la idea, nunca a quien la propone.",
+      ),
+    ).toBeVisible();
+    expect(
       screen.queryByRole("textbox", { name: INPUT_LABEL }),
     ).not.toBeInTheDocument();
   });

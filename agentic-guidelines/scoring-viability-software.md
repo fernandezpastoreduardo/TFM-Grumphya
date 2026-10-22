@@ -312,8 +312,11 @@ La reutilización de resultados o caché es opcional y queda fuera del primer in
 
 El modelo recibe la idea, pero no el tono ni mantiene conversación. Devuelve
 una explicación neutral junto con los datos estructurados; el servidor aplica
-el tono solo al redactar `message`: `soft` es cercano y ligeramente irónico;
-`hard` es mordaz e incisivo. Estado, criterios, puntuaciones, motivo y título
+el tono solo al redactar `message`: `soft` es deliberadamente empalagoso,
+afectuoso y lleno de confeti; `hard` es seco, mordaz y gruñón. El titular y la
+introducción del mensaje marcan la diferencia; la explicación conserva los
+hechos y consecuencias. El tono duro critica la idea y su mecanismo, nunca a la
+persona, y ambos tonos son aptos para todos los públicos. Estado, criterios, puntuaciones, motivo y título
 seguro no dependen del tono. La explicación usa español sencillo,
 nombra el defecto y su consecuencia y, cuando se deduce de la idea, quién
 tendría que usar la propuesta y por qué eso limita su adopción. No inventa datos,
@@ -321,9 +324,9 @@ no invita a concretar, no ofrece soluciones ni culpa a la persona. No debe usar
 «bloqueo» o «bloqueante» como etiqueta del resultado.
 
 El servidor presenta el score, compone `headline` con copy propio de Grumphya
-según estado y tono, y muestra `message` como explicación. Por ejemplo, el modo
-borde de una idea rechazada puede titular «Pues… no decepciona; no esperaba
-gran cosa.» El modo directo usa «Vaya, justo falla donde más importa.»
+según estado y tono, y muestra `message` como explicación. El modo suave puede
+titular «¡Un abrazo y confeti para esta pega importante!»; el modo borde puede
+decir «La propuesta se ha estampado contra lo esencial.»
 Resultados sin veto y entradas insuficientes también tienen titulares propios;
 ningún titular afirma viabilidad. El estado técnico interno no se presenta con
 jerga de informe.
@@ -343,6 +346,12 @@ UTF-16. En `RECHAZADA`, 8–120 palabras y ≤900 unidades UTF-16 para explicar
 todos los suspensos. En ambos casos, una frase, un solo párrafo, sin Markdown,
 listas, preguntas ni saltos de línea. Se renderiza como texto plano. `headline` se selecciona en el servidor y nunca
 contiene «bloqueo».
+
+El servidor añade una introducción de tono a la explicación neutral. La
+respuesta visible puede ocupar hasta 360 unidades UTF-16 sin rechazo y 1.000
+con rechazo; el cliente acepta esos límites. La introducción del modo suave
+añade una frase cariñosa y la del modo borde una pulla dirigida al mecanismo,
+sin alterar el contenido factual.
 
 ## 8. Contrato interno mínimo
 
@@ -725,17 +734,17 @@ No devolver una decisión parcialmente válida ni “arreglar” incoherencias p
 
 En cada incremento: **RED → GREEN → REFACTOR**. Escribir y ejecutar primero el test que falla por el comportamiento ausente; implementar lo mínimo; volver a ejecutar y refactorizar manteniéndolo verde. Registrar el comando y el fallo relevante, no fabricar evidencia de un RED.
 
-| Incremento        | Primero escribir pruebas de…                                                 | Implementar después                                                           |
-| ----------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 0. Reconocimiento | Checks actuales y mapa de integración, sin cambiar comportamiento            | Solo ubicación y plan acotado                                                 |
-| 1. Entrada        | Vacío, solo espacios, 2.000/2.001 unidades, tipo erróneo y tono inválido     | Normalizador y validador                                                      |
-| 2. Contrato       | Prefijo, estados, nulls, scores y veto, tabla 12.7                           | Validador puro de salida                                                      |
-| 3. Tono           | Mismo mensaje base en ambos modos; límites y no mutación                     | Renderer determinista                                                         |
-| 4. Caso de uso    | Una llamada, tono enviado solo para redactar, salida válida, error y timeout | Servicio usando EvaluationPort                                                |
-| 5. Puerto y fake  | Inyección del fake de prueba, resultado controlado y cero llamadas de red    | Fake determinista únicamente en tests; integración del SDK queda para después |
-| 6. HTTP           | DTO, éxito, 400/503/504 y ausencia de campos internos                        | Endpoint consistente con el proyecto                                          |
-| 7. UI             | Envío, modo, loading, error, titular, score y explicación                    | Cableado del formulario existente                                             |
-| 8. Integración    | Flujo completo con proveedor fake y repetición de envío                      | Ajustes mínimos y checks finales                                              |
+| Incremento        | Primero escribir pruebas de…                                                         | Implementar después                                                           |
+| ----------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 0. Reconocimiento | Checks actuales y mapa de integración, sin cambiar comportamiento                    | Solo ubicación y plan acotado                                                 |
+| 1. Entrada        | Vacío, solo espacios, 2.000/2.001 unidades, tipo erróneo y tono inválido             | Normalizador y validador                                                      |
+| 2. Contrato       | Prefijo, estados, nulls, scores y veto, tabla 12.7                                   | Validador puro de salida                                                      |
+| 3. Tono           | Mensaje factual conservado, copy claramente distinto por modo, límites y no mutación | Renderer determinista                                                         |
+| 4. Caso de uso    | Una llamada, tono enviado solo para redactar, salida válida, error y timeout         | Servicio usando EvaluationPort                                                |
+| 5. Puerto y fake  | Inyección del fake de prueba, resultado controlado y cero llamadas de red            | Fake determinista únicamente en tests; integración del SDK queda para después |
+| 6. HTTP           | DTO, éxito, 400/503/504 y ausencia de campos internos                                | Endpoint consistente con el proyecto                                          |
+| 7. UI             | Envío, modo, loading, error, titular, score y explicación                            | Cableado del formulario existente                                             |
+| 8. Integración    | Flujo completo con proveedor fake y repetición de envío                              | Ajustes mínimos y checks finales                                              |
 
 No crear todos los archivos y escribir tests después. Tampoco testear una función inventada que no utiliza la ruta real de producción.
 
