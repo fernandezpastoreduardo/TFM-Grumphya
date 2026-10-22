@@ -36,6 +36,7 @@ type SpeechRecognitionAvailability =
 
 type SpeechRecognitionConstructor = {
   new (): SpeechRecognitionLike;
+  prototype: SpeechRecognitionLike;
   available?: (options: SpeechRecognitionOptions) => Promise<unknown>;
   install?: (options: SpeechRecognitionOptions) => Promise<boolean>;
 };
@@ -68,7 +69,7 @@ export async function isSpeechToTextAvailable(): Promise<boolean> {
   }
 
   try {
-    if (!("processLocally" in new Recognition())) return false;
+    if (!("processLocally" in Recognition.prototype)) return false;
     const availability = await Recognition.available(LOCAL_SPEECH_OPTIONS);
     return (
       isSpeechRecognitionAvailability(availability) &&
