@@ -368,7 +368,7 @@ describe("EvaluationProcessService", () => {
       (error: unknown) => error,
     );
 
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(120_000);
     const caught = await outcome;
 
     expect(caught).toBeInstanceOf(GatewayTimeoutException);

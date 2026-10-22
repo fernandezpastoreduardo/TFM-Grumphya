@@ -6,7 +6,7 @@ import {
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const FINGERPRINT_MODEL = "gpt-5.4-mini";
-const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const REQUEST_ERROR = "OpenAI idea normalization failed.";
 const RESPONSE_ERROR = "OpenAI idea normalization response is invalid.";
 
