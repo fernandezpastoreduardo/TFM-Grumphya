@@ -56,7 +56,7 @@ const LOCAL_SPEECH_OPTIONS: SpeechRecognitionOptions = {
 };
 const PERMISSION_ERRORS = new Set(["not-allowed", "service-not-allowed"]);
 
-export async function isSpeechToTextAvailable(): Promise<boolean> {
+export function isSpeechToTextSupported(): boolean {
   const speechWindow = window as SpeechRecognitionWindow;
   const Recognition =
     speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
@@ -67,17 +67,7 @@ export async function isSpeechToTextAvailable(): Promise<boolean> {
   ) {
     return false;
   }
-
-  try {
-    if (!("processLocally" in Recognition.prototype)) return false;
-    const availability = await Recognition.available(LOCAL_SPEECH_OPTIONS);
-    return (
-      isSpeechRecognitionAvailability(availability) &&
-      availability !== "unavailable"
-    );
-  } catch {
-    return false;
-  }
+  return "processLocally" in Recognition.prototype;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

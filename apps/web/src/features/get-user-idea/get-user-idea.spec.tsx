@@ -21,7 +21,7 @@ async function continueToToneStep(user: ReturnType<typeof userEvent.setup>) {
 
 describe("GetUserIdea", () => {
   beforeEach(() => {
-    vi.spyOn(speechToText, "isSpeechToTextAvailable").mockResolvedValue(true);
+    vi.spyOn(speechToText, "isSpeechToTextSupported").mockReturnValue(true);
   });
 
   it("shows the idea step first, validates it, and advances to tone selection", async () => {

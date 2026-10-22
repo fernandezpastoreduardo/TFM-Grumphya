@@ -12,7 +12,7 @@ describe("TranscriptUserIdea", () => {
   afterEach(() => vi.restoreAllMocks());
 
   beforeEach(() => {
-    vi.spyOn(speechToText, "isSpeechToTextAvailable").mockResolvedValue(true);
+    vi.spyOn(speechToText, "isSpeechToTextSupported").mockReturnValue(true);
   });
 
   it("starts dictation and sends recognized text to the input", async () => {
@@ -143,7 +143,7 @@ describe("TranscriptUserIdea", () => {
   });
 
   it("hides the microphone when local transcription is unsupported", async () => {
-    vi.spyOn(speechToText, "isSpeechToTextAvailable").mockResolvedValue(false);
+    vi.spyOn(speechToText, "isSpeechToTextSupported").mockReturnValue(false);
     render(<TranscriptUserIdea onTranscript={vi.fn()} />);
 
     await act(async () => {

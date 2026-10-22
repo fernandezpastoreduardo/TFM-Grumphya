@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./transcript-user-idea.scss";
 import {
-  isSpeechToTextAvailable,
+  isSpeechToTextSupported,
   startSpeechToText,
   type SpeechToTextError,
   type SpeechToTextSession,
@@ -32,7 +32,7 @@ const LISTENING_STATUS =
   "Escuchando en este dispositivo. Suelta la idea; luego podrás corregir la transcripción.";
 
 export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
-  const [isAvailable, setIsAvailable] = useState(false);
+  const [isAvailable] = useState(isSpeechToTextSupported);
   const [isListening, setIsListening] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [error, setError] = useState("");
@@ -44,16 +44,6 @@ export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
     },
     [],
   );
-
-  useEffect(() => {
-    let isMounted = true;
-    void isSpeechToTextAvailable().then((available) => {
-      if (isMounted) setIsAvailable(available);
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   function handleError(reason: SpeechToTextError) {
     sessionRef.current = null;
