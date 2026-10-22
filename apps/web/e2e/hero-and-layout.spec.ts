@@ -334,6 +334,11 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   const mobileHeroHeading = page.locator(".home-heading-copy h1");
   const mobileHeroDescription = page.locator(".home-rude-line");
   await expect(mobileHeroHeading).toBeVisible();
+  const ideaInputLabel = page.locator(".idea-input-label");
+  await expect(ideaInputLabel).toBeVisible();
+  const ideaInputLabelBox = await ideaInputLabel.boundingBox();
+  expect(ideaInputLabelBox).not.toBeNull();
+  expect(ideaInputLabelBox!.width).toBeGreaterThan(1);
   expect(
     await mobileHeroHeading.evaluate(
       (element) => getComputedStyle(element).textAlign,
@@ -357,6 +362,13 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   ).toBeVisible();
   await mobileMenu.getByRole("link", { name: "Contacto" }).click();
   await expect(page).toHaveURL(/\/contacto$/);
+
+  await page.getByRole("button", { name: "Abrir menú de secciones" }).click();
+  const sectionMenu = page.getByRole("dialog", { name: "Menú de navegación" });
+  const plansLink = sectionMenu.getByRole("link", { name: "Planes" });
+  await expect(plansLink).toBeVisible();
+  await plansLink.click();
+  await expect(page).toHaveURL(/\/precios$/);
 
   await page.goto("/");
   const homeMascot = page.locator(".home-hero-stage-mobile");

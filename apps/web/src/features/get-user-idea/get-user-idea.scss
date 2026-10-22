@@ -569,16 +569,6 @@
   gap: 0;
 }
 
-.idea-input-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  clip-path: inset(50%);
-}
-
 .idea-input-textarea {
   min-height: clamp(112px, 13vw, 150px);
   max-height: 170px;
