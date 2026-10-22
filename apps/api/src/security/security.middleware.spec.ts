@@ -89,6 +89,20 @@ describe("security middleware", () => {
     expect(next).toHaveBeenCalledTimes(10);
   });
 
+  it("applies a configured API request limit", () => {
+    const middleware = createSecurityMiddleware({ apiRequestLimit: 1 });
+    const request = createRequest();
+    const next = vi.fn() as NextFunction;
+
+    middleware(request, createResponse().response, next);
+    const { response, headers } = createResponse();
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
   it("limits public worst-ideas ranking reads by client IP", () => {
     const middleware = createSecurityMiddleware();
     const request = createRequest("/api/worst-ideas", "GET");
