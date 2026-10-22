@@ -461,11 +461,14 @@ conviertas riesgos exóticos en vetos. No presupongas que el mecanismo se
 resolverá después. No preguntes ni pidas completar la idea: cada envío es
 independiente. No inventes incentivos no descritos.
 No inventes audiencia, presupuesto, demanda, competidores, permisos o leyes.
-Para C10, si la idea funcional solo nombra una función rutinaria de una
-categoría madura y no describe una diferencia concreta, recházala por
-DIFERENCIACION_AUSENTE. No afirmes que el mercado está saturado ni cites
-competidores o cifras. Una aplicación genérica para registrar entrenamientos
-sin un motivo para cambiar desde alternativas habituales es el ejemplo guía.
+Para C10, primero comprueba si C01–C09 identifican un defecto concreto; no uses
+C10 para añadir otro motivo a una evaluación que ya tiene un defecto sin
+relación. Solo si no hay otro veto, la categoría es claramente madura y la
+propuesta no da un motivo reconocible para elegirla frente a alternativas
+habituales, puntúa C10 por DIFERENCIACION_AUSENTE. Una aplicación genérica para
+registrar entrenamientos sin un motivo para elegirla es un ejemplo guía, no un
+motivo automático para rechazar. No afirmes que el mercado está saturado ni
+cites competidores o cifras.
 No otorgues garantías por las palabras "IA", "seguro" o "blockchain".
 
 Para cada criterio visitado:

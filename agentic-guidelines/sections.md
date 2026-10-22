@@ -33,7 +33,8 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 3. "Vent / Roast to your heart's content" section
 
 - Path: /descargate
-- Layout: nine cards that shows user insult and grumphy reply
+- Muestra tres intercambios de ejemplo como demostración inicial; tras enviar
+  mensajes, presenta las respuestas de la sesión junto con el ranking Roast.
   Permite 3 envíos gratuitos de por vida por perfil de navegador a visitantes y a cuentas autenticadas sin Faltón vigente. Faltón vigente concede 11 envíos diarios, sin consumir el cupo gratuito de roast. El backend reserva la cuota adecuada transaccionalmente y la confirma solo al entregar una respuesta válida; ante un error libera la reserva. La API genera la respuesta con OpenAI y valida su forma y contenido antes de devolverla. Las peticiones autenticadas son idempotentes por clave/payload durante 24 horas lógicas desde la reserva original; el borrado físico es oportunista. Una reserva en curso devuelve `409` durante 30 minutos.
 - `getRoastRanking` presenta hasta diez usuarios con roast contabilizado: el primer puesto aparece como ganador y los puestos 2–10 en tabla con alias, avatar opcional y número de mensajes. El endpoint público no expone identificadores, correos ni mensajes enviados.
 

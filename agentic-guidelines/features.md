@@ -145,7 +145,7 @@ Caso de uso principal del MVP.
 - `IdeaSubmissionService` orquesta `searchSimilarIdea` antes de `evaluationProcess`; esta detección no lee datos de evaluación. Al coincidir, `updateWorstIdea` registra la recepción y la UI ofrece una acción explícita para continuar. Sin coincidencia, ejecuta `evaluationProcess`.
 - `searchSimilarIdea` solo busca ideas previamente rechazadas. Una idea aprobada no se persiste ni entra en Worst Ideas; por eso no se detecta como repetida hasta que alguna evaluación la rechace.
 - Tras un rechazo nuevo, invoca `addToWorstIdeas`; el embedding y el título seguro se guardan sin el texto original. Ninguna idea aprobada se incorpora al ranking.
-- La rúbrica C10 rechaza una función genérica en una categoría madura cuando la idea no expresa un público, necesidad, resultado o mecanismo diferencial; no afirma cifras ni nombres de competidores. Toda idea funcional completada recibe una puntuación numérica.
+- La rúbrica C10 siempre puntúa una idea funcional, pero solo puede ser motivo de rechazo si la categoría es claramente madura y no hay un motivo reconocible para elegir la propuesta; antes se valoran los defectos concretos C01–C09 y no se rechaza por la mera existencia de alternativas. No afirma cifras ni nombres de competidores. Toda idea funcional completada recibe una puntuación numérica.
 - La evaluación, persistencia, idempotencia de la recepción y cuotas anónimas y de cuenta están conectadas en la API. El evaluador real requiere configuración explícita.
 - Salida del primer corte: estado, score conceptual, titular y explicación; contrato detallado en `scoring-viability-software.md`.
 - Errores: entrada vacía, contenido no evaluable, límite agotado, proveedor de IA no disponible.
