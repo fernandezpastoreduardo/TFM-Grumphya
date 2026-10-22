@@ -391,7 +391,16 @@
 
 .theme-dark .avatar-editor-dialog {
   border-color: #4db8b1;
+  color: #fff;
   background: #183b3b;
+}
+
+.theme-dark .avatar-editor-dialog .avatar-dialog-close {
+  color: #fff;
+}
+
+.theme-dark .avatar-editor-dialog .avatar-dialog-error {
+  color: #ffb8c5;
 }
 
 .theme-dark .avatar-preview-column small {
