@@ -486,6 +486,9 @@ describe("Home", () => {
 
     await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
     expect(dialog).not.toBeVisible();
+    expect(
+      screen.queryByRole("radio", { name: /tengo la piel fina/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: IDEA_INPUT_NAME })).toHaveValue(
       TEST_IDEA_TEXT,
     );
