@@ -331,6 +331,34 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   );
 
   await page.goto("/");
+  const mobileHeroHeading = page.locator(".home-heading-copy h1");
+  const mobileHeroDescription = page.locator(".home-rude-line");
+  await expect(mobileHeroHeading).toBeVisible();
+  expect(
+    await mobileHeroHeading.evaluate(
+      (element) => getComputedStyle(element).textAlign,
+    ),
+  ).toBe("left");
+  expect(
+    await mobileHeroDescription.evaluate(
+      (element) => getComputedStyle(element).textAlign,
+    ),
+  ).toBe("left");
+  expect(
+    await page
+      .locator(".home-heading-copy")
+      .evaluate((element) => getComputedStyle(element).paddingTop),
+  ).toBe("10px");
+
+  await page.getByRole("button", { name: "Abrir menú de secciones" }).click();
+  const mobileMenu = page.getByRole("dialog", { name: "Menú de navegación" });
+  await expect(
+    mobileMenu.getByRole("link", { name: "Contacto" }),
+  ).toBeVisible();
+  await mobileMenu.getByRole("link", { name: "Contacto" }).click();
+  await expect(page).toHaveURL(/\/contacto$/);
+
+  await page.goto("/");
   const homeMascot = page.locator(".home-hero-stage-mobile");
   const marketing = page.locator(".home-marketing");
   const footer = page.locator(".home-footer");

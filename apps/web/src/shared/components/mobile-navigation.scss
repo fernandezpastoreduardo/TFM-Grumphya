@@ -340,11 +340,21 @@
 
 @media (max-width: 979px) {
   .mobile-menu-backdrop {
-    z-index: calc(var(--layer-modal) - 1) !important;
+    z-index: 0 !important;
+    pointer-events: auto;
+  }
+
+  .mobile-menu-portal {
+    position: fixed !important;
+    z-index: var(--layer-modal) !important;
+    inset: 0;
+    display: block !important;
+    pointer-events: none;
   }
 
   .home-mobile-menu.mobile-menu-portal nav,
   .site-mobile-menu.mobile-menu-portal nav {
-    z-index: var(--layer-modal) !important;
+    z-index: 1 !important;
+    pointer-events: auto;
   }
 }
