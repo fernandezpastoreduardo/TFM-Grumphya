@@ -155,14 +155,15 @@
   }
   .human-callout {
     display: grid;
-    grid-template-columns: 120px 1fr;
-    align-items: center;
-    gap: 0 18px;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: 8px;
   }
   .human-callout-mascot {
-    grid-row: span 4;
-    width: 120px;
-    height: 150px;
+    grid-row: auto;
+    width: min(100%, 150px);
+    height: 140px;
+    margin: 0 auto 8px;
   }
 }
 
