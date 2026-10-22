@@ -88,6 +88,10 @@ const MIGRATIONS = [
     version: "028_admin_contact_message_replies",
     file: "028_admin_contact_message_replies.sql",
   },
+  {
+    version: "029_application_error_diagnostics",
+    file: "029_application_error_diagnostics.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

@@ -101,6 +101,8 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         error_code: string;
         weekly_count: string;
         total_count: string;
+        last_occurred_at: Date;
+        latest_diagnostic_code: string | null;
       }>(`
         WITH boundaries AS (
           SELECT date_trunc('week', now() AT TIME ZONE 'Europe/Madrid')
@@ -108,7 +110,10 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         )
         SELECT error_code,
           count(*) FILTER (WHERE occurred_at >= boundaries.week_start)::text AS weekly_count,
-          count(*)::text AS total_count
+          count(*)::text AS total_count,
+          max(occurred_at) AS last_occurred_at,
+          (array_agg(diagnostic_code ORDER BY occurred_at DESC)
+            FILTER (WHERE diagnostic_code IS NOT NULL))[1] AS latest_diagnostic_code
         FROM application_error_events CROSS JOIN boundaries
         GROUP BY error_code
         ORDER BY count(*) DESC, error_code ASC
@@ -205,6 +210,8 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         code: error.error_code,
         weeklyCount: Number(error.weekly_count),
         totalCount: Number(error.total_count),
+        lastOccurredAt: error.last_occurred_at.toISOString(),
+        latestDiagnosticCode: error.latest_diagnostic_code,
       })),
     };
   }
@@ -359,16 +366,22 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
   async recordApplicationError(
     errorCode: string,
     statusCode: number,
+    diagnosticCode?: string,
   ): Promise<void> {
     await this.ensureSchema();
     const normalizedCode = /^[A-Z0-9_]{1,100}$/u.test(errorCode)
       ? errorCode.slice(0, MAX_ERROR_CODE_LENGTH)
       : "UNCLASSIFIED_ERROR";
+    const normalizedDiagnosticCode =
+      diagnosticCode && /^[a-z][a-z0-9_]{0,99}$/u.test(diagnosticCode)
+        ? diagnosticCode
+        : null;
     if (!Number.isInteger(statusCode) || statusCode < 400 || statusCode > 599)
       return;
     await this.pool.query(
-      "INSERT INTO application_error_events(error_code,status_code) VALUES($1,$2)",
-      [normalizedCode, statusCode],
+      `INSERT INTO application_error_events
+         (error_code,status_code,diagnostic_code) VALUES($1,$2,$3)`,
+      [normalizedCode, statusCode, normalizedDiagnosticCode],
     );
   }
 

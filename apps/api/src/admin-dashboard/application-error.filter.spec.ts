@@ -28,18 +28,18 @@ function createFilter() {
 }
 
 describe("ApplicationErrorFilter", () => {
-  it("does not persist expected client errors that an unauthenticated caller can trigger", () => {
+  it("does not persist expected client errors that an unauthenticated caller can trigger", async () => {
     const { filter, host, repository } = createFilter();
 
-    filter.catch(new HttpException("Forbidden", 403), host);
+    await filter.catch(new HttpException("Forbidden", 403), host);
 
     expect(repository.recordApplicationError).not.toHaveBeenCalled();
   });
 
-  it("persists sanitized server error codes without exception messages", () => {
+  it("persists sanitized server error codes without exception messages", async () => {
     const { filter, host, repository } = createFilter();
 
-    filter.catch(
+    await filter.catch(
       new HttpException(
         { code: "ADMIN_DASHBOARD_UNAVAILABLE", message: "private detail" },
         503,
@@ -50,6 +50,26 @@ describe("ApplicationErrorFilter", () => {
     expect(repository.recordApplicationError).toHaveBeenCalledWith(
       "ADMIN_DASHBOARD_UNAVAILABLE",
       503,
+      undefined,
+    );
+  });
+
+  it("persists a safe evaluation validation category for admin diagnosis", async () => {
+    const { filter, host, repository } = createFilter();
+    const exception = Object.assign(
+      new HttpException(
+        { code: "INVALID_EVALUATION_RESPONSE", message: "generic" },
+        503,
+      ),
+      { applicationErrorDiagnostic: "decision_semantics" },
+    );
+
+    await filter.catch(exception, host);
+
+    expect(repository.recordApplicationError).toHaveBeenCalledWith(
+      "INVALID_EVALUATION_RESPONSE",
+      503,
+      "decision_semantics",
     );
   });
 });

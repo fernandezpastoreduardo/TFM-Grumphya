@@ -313,6 +313,9 @@ describe("EvaluationProcessService", () => {
     }
 
     expect(caught).toBeInstanceOf(ServiceUnavailableException);
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "criteria_prefix",
+    });
     expect(getExceptionResponse(caught)).toEqual(INVALID_RESPONSE);
     expect(port.evaluate).toHaveBeenCalledTimes(1);
     expect(String(caught)).not.toContain("secret");

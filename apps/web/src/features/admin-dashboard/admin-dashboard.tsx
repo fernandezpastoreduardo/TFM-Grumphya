@@ -22,7 +22,13 @@ type DashboardData = {
     weeklyTrend: AiCostTrendWeek[];
     unpricedUsageEvents: number;
   };
-  errors: Array<{ code: string; weeklyCount: number; totalCount: number }>;
+  errors: Array<{
+    code: string;
+    weeklyCount: number;
+    totalCount: number;
+    lastOccurredAt: string;
+    latestDiagnosticCode: string | null;
+  }>;
 };
 type AiCostByActor = {
   registeredUsersUsd: number;
@@ -55,6 +61,7 @@ const WEEK_LABEL = new Intl.DateTimeFormat("es-ES", {
   month: "short",
   timeZone: "UTC",
 });
+const DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
 const ADMIN_TABS = [
   { id: "summary", label: "Resumen" },
   { id: "benchmark", label: "Benchmark de IA" },
@@ -124,7 +131,12 @@ function isDashboardData(value: unknown): value is DashboardData {
         isRecord(item) &&
         typeof item.code === "string" &&
         isCount(item.weeklyCount) &&
-        isCount(item.totalCount),
+        isCount(item.totalCount) &&
+        typeof item.lastOccurredAt === "string" &&
+        Number.isFinite(Date.parse(item.lastOccurredAt)) &&
+        (item.latestDiagnosticCode === null ||
+          (typeof item.latestDiagnosticCode === "string" &&
+            DIAGNOSTIC_CODE_PATTERN.test(item.latestDiagnosticCode))),
     )
   );
 }
@@ -374,6 +386,8 @@ export function AdminDashboard() {
                         <th scope="col">Código</th>
                         <th scope="col">Esta semana</th>
                         <th scope="col">Total</th>
+                        <th scope="col">Última vez</th>
+                        <th scope="col">Diagnóstico reciente</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -382,6 +396,12 @@ export function AdminDashboard() {
                           <th scope="row">{error.code}</th>
                           <td>{error.weeklyCount}</td>
                           <td>{error.totalCount}</td>
+                          <td>
+                            <time dateTime={error.lastOccurredAt}>
+                              {DATE.format(new Date(error.lastOccurredAt))}
+                            </time>
+                          </td>
+                          <td>{error.latestDiagnosticCode ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
