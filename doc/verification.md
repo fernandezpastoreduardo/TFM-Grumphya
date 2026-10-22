@@ -184,6 +184,12 @@ Integración de `main` y diagnósticos seguros de validación, 13 de octubre de 
 - Los fallos de validación de la respuesta del proveedor ahora llevan un diagnóstico interno categorizado mediante una unión cerrada: `response_shape`, `criteria_prefix`, `criterion_value`, `decision_fields`, `visible_message` o `decision_semantics`. El log incluye únicamente `INVALID_EVALUATION_RESPONSE validation=<código>`; la respuesta HTTP sigue usando el mensaje genérico.
 - Las pruebas comprueban las categorías esperadas y que ni secretos ni el texto de la idea se incluyen en el log. Los códigos no derivan de contenido externo ni interpolan valores arbitrarios, por lo que mejoran el diagnóstico sin ampliar la exposición de datos.
 
+Diagnóstico persistente de errores de evaluación y última ocurrencia, 22 de octubre de 2026:
+
+- El historial técnico explica una causa concreta ya reproducida: GPT envolvió `basis` en comillas aunque la idea no las contenía. El adaptador elimina comillas exteriores solo si el contenido interior coincide literalmente; ahora reconoce comillas rectas, tipográficas y españolas sin relajar esta comprobación. Las siete filas actuales de `INVALID_EVALUATION_RESPONSE` solo guardan código y estado HTTP, por lo que no se puede atribuirles una categoría retrospectiva con la información disponible en el repositorio.
+- La excepción de respuesta inválida conserva el código público genérico y transporta internamente la categoría cerrada del validador. El filtro global la persiste junto al evento, y el panel muestra el último diagnóstico disponible y la fecha/hora de la ocurrencia más reciente. La persistencia se espera antes de responder para que el fallo no se pierda como escritura en segundo plano.
+- La migración `029_application_error_diagnostics.sql` añade la columna opcional de diagnóstico; los eventos históricos quedan con `NULL`. No se almacena idea, salida del modelo ni mensaje de excepción.
+
 Límites registrados en esa revisión: el rate limit por ruta en memoria es por proceso y no coordina réplicas; antes de producción multiinstancia debe moverse a un almacén compartido o gateway. En aquel momento las cuotas diarias y autenticación/autorización de cuentas estaban pendientes; el alta, login y rutas de perfil protegidas se implementaron después. Esta revisión no fue un pentest ni escaneo dinámico completo.
 
 ## Verificación de `manageUserUnknow`, 15 de octubre de 2026

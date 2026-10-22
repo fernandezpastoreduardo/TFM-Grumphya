@@ -21,6 +21,11 @@ const DEFAULT_REASONING_EFFORT = "medium";
 const MAX_OUTPUT_TOKENS = 6_000;
 const OPENAI_RESPONSE_ERROR = "OpenAI evaluation response is invalid.";
 const OUTPUT_SCHEMA_NAME = "grumphya_evaluation_decision";
+const BASIS_QUOTE_PAIRS = [
+  { opening: '"', closing: '"' },
+  { opening: "“", closing: "”" },
+  { opening: "«", closing: "»" },
+] as const;
 
 export type OpenAiEvaluationFailureCode =
   | "OPENAI_TRANSPORT_FAILURE"
@@ -219,13 +224,14 @@ function normalizeQuotedBasis(value: unknown, ideaText: string): unknown {
   if (!isRecord(value) || typeof value.basis !== "string") return value;
 
   const basis = value.basis;
-  if (basis.length < 2 || !basis.startsWith('"') || !basis.endsWith('"')) {
-    return value;
+  for (const { opening, closing } of BASIS_QUOTE_PAIRS) {
+    if (!basis.startsWith(opening) || !basis.endsWith(closing)) continue;
+    const literalBasis = basis.slice(opening.length, -closing.length);
+    if (literalBasis.length > 0 && ideaText.includes(literalBasis)) {
+      return { ...value, basis: literalBasis };
+    }
   }
-
-  const literalBasis = basis.slice(1, -1);
-  if (!ideaText.includes(literalBasis)) return value;
-  return { ...value, basis: literalBasis };
+  return value;
 }
 
 export class OpenAiEvaluationPort implements EvaluationPort {

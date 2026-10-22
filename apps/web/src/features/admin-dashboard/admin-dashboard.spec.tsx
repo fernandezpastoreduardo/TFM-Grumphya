@@ -37,7 +37,15 @@ const dashboard = {
     ],
     unpricedUsageEvents: 1,
   },
-  errors: [{ code: "EVALUATOR_UNAVAILABLE", weeklyCount: 2, totalCount: 4 }],
+  errors: [
+    {
+      code: "INVALID_EVALUATION_RESPONSE",
+      weeklyCount: 2,
+      totalCount: 4,
+      lastOccurredAt: "2026-10-21T18:30:00.000Z",
+      latestDiagnosticCode: "decision_semantics",
+    },
+  ],
 };
 const contacts = {
   messages: [
@@ -75,7 +83,13 @@ describe("AdminDashboard", () => {
     expect(
       await screen.findByRole("heading", { name: "Hola, Jappy." }),
     ).toBeInTheDocument();
-    expect(screen.getByText("EVALUATOR_UNAVAILABLE")).toBeInTheDocument();
+    expect(screen.getByText("INVALID_EVALUATION_RESPONSE")).toBeInTheDocument();
+    expect(screen.getByText("Última vez")).toBeInTheDocument();
+    expect(screen.getByText("Diagnóstico reciente")).toBeInTheDocument();
+    expect(screen.getByText("decision_semantics")).toBeInTheDocument();
+    expect(
+      document.querySelector('time[datetime="2026-10-21T18:30:00.000Z"]'),
+    ).toHaveTextContent(/21 oct 2026/i);
     expect(screen.getByText("Quería comentar una cosa.")).toBeInTheDocument();
     expect(screen.getByText("persona@example.es")).toBeInTheDocument();
     expect(

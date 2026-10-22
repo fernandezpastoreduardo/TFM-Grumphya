@@ -22,9 +22,11 @@ const SUMMARY_ROW = {
   unpriced_usage_events: "2",
 };
 const ERROR_ROW = {
-  error_code: "EVALUATOR_UNAVAILABLE",
+  error_code: "INVALID_EVALUATION_RESPONSE",
   weekly_count: "2",
   total_count: "4",
+  last_occurred_at: new Date("2026-10-21T18:30:00.000Z"),
+  latest_diagnostic_code: "decision_semantics",
 };
 const TREND_ROWS = [
   {
@@ -88,6 +90,42 @@ const TREND_ROWS = [
 describe("PostgresAdminDashboardRepository", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("records a safe validation diagnostic", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await repository.recordApplicationError(
+      "INVALID_EVALUATION_RESPONSE",
+      503,
+      "decision_semantics",
+    );
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("diagnostic_code"),
+      ["INVALID_EVALUATION_RESPONSE", 503, "decision_semantics"],
+    );
+  });
+
+  it("does not persist arbitrary diagnostic text", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await repository.recordApplicationError(
+      "INVALID_EVALUATION_RESPONSE",
+      503,
+      "decision_semantics;idea text",
+    );
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("diagnostic_code"),
+      ["INVALID_EVALUATION_RESPONSE", 503, null],
+    );
+  });
+
   it("maps actor costs, account averages, and all eight weekly trend rows into the API snapshot", async () => {
     const query = vi
       .fn()
@@ -130,9 +168,17 @@ describe("PostgresAdminDashboardRepository", () => {
         unpricedUsageEvents: 2,
       },
       errors: [
-        { code: "EVALUATOR_UNAVAILABLE", weeklyCount: 2, totalCount: 4 },
+        {
+          code: "INVALID_EVALUATION_RESPONSE",
+          weeklyCount: 2,
+          totalCount: 4,
+          lastOccurredAt: "2026-10-21T18:30:00.000Z",
+          latestDiagnosticCode: "decision_semantics",
+        },
       ],
     });
+    expect(query.mock.calls[1]?.[0]).toContain("max(occurred_at)");
+    expect(query.mock.calls[1]?.[0]).toContain("diagnostic_code");
     expect(query).toHaveBeenCalledTimes(3);
   });
 

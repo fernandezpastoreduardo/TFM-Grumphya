@@ -18,6 +18,8 @@ export type AdminDashboardSnapshot = {
     code: string;
     weeklyCount: number;
     totalCount: number;
+    lastOccurredAt: string;
+    latestDiagnosticCode: string | null;
   }>;
 };
 
@@ -74,7 +76,11 @@ export interface AdminDashboardRepository {
     status: "sent" | "previewed" | "uncertain",
   ): Promise<void>;
   recordAiUsage(record: AiUsageRecord): Promise<void>;
-  recordApplicationError(errorCode: string, statusCode: number): Promise<void>;
+  recordApplicationError(
+    errorCode: string,
+    statusCode: number,
+    diagnosticCode?: string,
+  ): Promise<void>;
 }
 
 export const ADMIN_DASHBOARD_REPOSITORY = Symbol("ADMIN_DASHBOARD_REPOSITORY");

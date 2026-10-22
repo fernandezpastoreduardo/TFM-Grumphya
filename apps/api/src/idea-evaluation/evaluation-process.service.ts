@@ -12,6 +12,7 @@ import {
   renderHeadline,
   renderMessage,
   validateModelDecision,
+  type ModelDecisionValidationCode,
   type ModelDecision,
 } from "./evaluation-decision";
 import { EVALUATION_PORT, type EvaluationPort } from "./evaluation-port";
@@ -52,6 +53,15 @@ const EVALUATION_TIMEOUT_RESPONSE = {
   code: "EVALUATION_TIMEOUT",
   message: "La evaluación ha tardado demasiado. Inténtalo más tarde.",
 };
+
+class InvalidEvaluationResponseException extends ServiceUnavailableException {
+  readonly applicationErrorDiagnostic: string;
+
+  constructor(validationCode: ModelDecisionValidationCode) {
+    super(INVALID_EVALUATION_RESPONSE);
+    this.applicationErrorDiagnostic = validationCode;
+  }
+}
 
 class EvaluationTimeoutError extends Error {
   constructor() {
@@ -199,7 +209,7 @@ export class EvaluationProcessService {
         this.logger.error(
           `${INVALID_EVALUATION_RESPONSE.code} validation=${error.validationCode}`,
         );
-        throw new ServiceUnavailableException(INVALID_EVALUATION_RESPONSE);
+        throw new InvalidEvaluationResponseException(error.validationCode);
       }
       if (error instanceof OpenAiEvaluationFailure) {
         this.logger.error(error.code);

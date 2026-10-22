@@ -288,29 +288,38 @@ describe("OpenAiEvaluationPort", () => {
     expect(JSON.stringify(event)).not.toContain("session");
   });
 
-  it("normalizes quote-wrapped basis only when its contents occur literally", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(createOpenAiResponse(QUOTED_BASIS_DECISION));
-    vi.stubGlobal("fetch", fetchMock);
-    const port = new OpenAiEvaluationPort({
-      apiKey: API_KEY,
-      model: MODEL_NAME,
-    });
+  it.each([
+    ["straight double quotes", '"resultados actuales"'],
+    ["curly double quotes", "“resultados actuales”"],
+    ["Spanish guillemets", "«resultados actuales»"],
+  ])(
+    "normalizes %s around basis only when its contents occur literally",
+    async (_label, basis) => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          createOpenAiResponse({ ...QUOTED_BASIS_DECISION, basis }),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      const port = new OpenAiEvaluationPort({
+        apiKey: API_KEY,
+        model: MODEL_NAME,
+      });
 
-    const result = await port.evaluate({
-      ...createInput(),
-      ideaText: TIME_SENSITIVE_PROMISE_IDEA,
-    });
+      const result = await port.evaluate({
+        ...createInput(),
+        ideaText: TIME_SENSITIVE_PROMISE_IDEA,
+      });
 
-    expect(
-      validateModelDecision(result, TIME_SENSITIVE_PROMISE_IDEA),
-    ).toMatchObject({
-      status: "RECHAZADA",
-      stop_at: "C07",
-      basis: "resultados actuales",
-    });
-  });
+      expect(
+        validateModelDecision(result, TIME_SENSITIVE_PROMISE_IDEA),
+      ).toMatchObject({
+        status: "RECHAZADA",
+        stop_at: "C07",
+        basis: "resultados actuales",
+      });
+    },
+  );
 
   it("passes the evaluation cancellation signal to the provider request", async () => {
     const fetchMock = vi
