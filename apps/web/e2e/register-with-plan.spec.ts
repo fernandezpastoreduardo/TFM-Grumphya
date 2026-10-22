@@ -106,6 +106,22 @@ test("verifies the registration, activates the simulated purchase and deletes th
     page.getByRole("heading", { name: /tus últimas ideas aprobadas/i }),
   ).toBeVisible();
 
+  await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  await expect
+    .poll(() =>
+      page
+        .locator(".profile-renewal-note")
+        .evaluate((element) => getComputedStyle(element).color),
+    )
+    .toBe("rgb(23, 33, 35)");
+  await expect
+    .poll(() =>
+      page
+        .locator(".profile-delete-section")
+        .evaluate((element) => getComputedStyle(element).color),
+    )
+    .toBe("rgb(23, 33, 35)");
+
   await page.goto("/login");
   await expect(page).toHaveURL(/\/perfil$/);
   const logoutResponsePromise = page.waitForResponse("**/api/auth/logout");

@@ -2,6 +2,22 @@
   display: grid;
   gap: 18px;
 }
+
+.theme-dark .admin-dashboard {
+  color: #172123;
+}
+
+.theme-dark .admin-dashboard-tabs button {
+  color: #172123;
+}
+
+.theme-dark .admin-dashboard-tabs button[aria-selected="true"] {
+  color: #172123;
+}
+
+.theme-dark .admin-dashboard .admin-contact-reply-form textarea {
+  color: #172123;
+}
 .admin-dashboard-skeleton .loading-skeleton-content {
   gap: 18px;
 }
