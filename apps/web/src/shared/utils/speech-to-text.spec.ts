@@ -1,8 +1,9 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { startSpeechToText } from "./speech-to-text";
+import { isSpeechToTextSupported, startSpeechToText } from "./speech-to-text";
 
 const TRANSCRIPT_TEXT = "Una aplicación para compartir libros";
+const LOCAL_SPEECH_CAPABILITY = "processLocally";
 
 function installSpeechRecognitionMock() {
   const recognizer = {
@@ -23,6 +24,10 @@ function installSpeechRecognitionMock() {
     available: vi.fn().mockResolvedValue("available"),
     install: vi.fn().mockResolvedValue(true),
   });
+  Object.defineProperty(constructor.prototype, LOCAL_SPEECH_CAPABILITY, {
+    configurable: true,
+    value: false,
+  });
   Object.defineProperty(window, "SpeechRecognition", {
     configurable: true,
     value: constructor,
@@ -33,6 +38,44 @@ function installSpeechRecognitionMock() {
 afterEach(() => {
   Reflect.deleteProperty(window, "SpeechRecognition");
   Reflect.deleteProperty(window, "webkitSpeechRecognition");
+});
+
+describe("isSpeechToTextSupported", () => {
+  it("detects local recognition support without constructing a recognizer", () => {
+    const { constructor } = installSpeechRecognitionMock();
+
+    expect(isSpeechToTextSupported()).toBe(true);
+    expect(constructor).not.toHaveBeenCalled();
+  });
+
+  it("returns false when local recognition is not exposed on the prototype", () => {
+    const { constructor } = installSpeechRecognitionMock();
+    Reflect.deleteProperty(constructor.prototype, LOCAL_SPEECH_CAPABILITY);
+
+    expect(isSpeechToTextSupported()).toBe(false);
+  });
+
+  it.each(["available", "install"])(
+    "returns false when the browser lacks the local %s capability",
+    (missingCapability) => {
+      const { constructor } = installSpeechRecognitionMock();
+      Reflect.deleteProperty(constructor, missingCapability);
+
+      expect(isSpeechToTextSupported()).toBe(false);
+    },
+  );
+
+  it("supports the prefixed WebKit recognition constructor", () => {
+    const { constructor } = installSpeechRecognitionMock();
+    Reflect.deleteProperty(window, "SpeechRecognition");
+    Object.defineProperty(window, "webkitSpeechRecognition", {
+      configurable: true,
+      value: constructor,
+    });
+
+    expect(isSpeechToTextSupported()).toBe(true);
+    expect(constructor).not.toHaveBeenCalled();
+  });
 });
 
 describe("startSpeechToText", () => {

@@ -251,7 +251,15 @@ test("uses the section hero assets with transparent pixels", async ({
               weeklyTrend: [],
               unpricedUsageEvents: 0,
             },
-            errors: [],
+            errors: [
+              {
+                code: "INVALID_EVALUATION_RESPONSE",
+                weeklyCount: 1,
+                totalCount: 1,
+                lastOccurredAt: "2026-10-21T18:30:00.000Z",
+                latestDiagnosticCode: "decision_semantics",
+              },
+            ],
           }),
         }),
       );
@@ -289,6 +297,30 @@ test("uses the section hero assets with transparent pixels", async ({
         .locator(".admin-dashboard")
         .evaluate((element) => getComputedStyle(element).color);
       expect(dashboardTextColor).toBe("rgb(23, 33, 35)");
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(
+        page.getByRole("columnheader", { name: "Diagnóstico reciente" }),
+      ).toBeVisible();
+      const dashboardOverflow = await page.evaluate(() => {
+        const table = document.querySelector(".admin-table-scroll");
+        if (!table) return null;
+        return {
+          viewportWidth: document.documentElement.clientWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          tableClientWidth: table.clientWidth,
+          tableScrollWidth: table.scrollWidth,
+          tableOverflow: getComputedStyle(table).overflowX,
+        };
+      });
+      expect(dashboardOverflow).not.toBeNull();
+      expect(dashboardOverflow!.documentWidth).toBeLessThanOrEqual(
+        dashboardOverflow!.viewportWidth,
+      );
+      expect(dashboardOverflow!.tableScrollWidth).toBeGreaterThan(
+        dashboardOverflow!.tableClientWidth,
+      );
+      expect(dashboardOverflow!.tableOverflow).toBe("auto");
     }
   }
 });
