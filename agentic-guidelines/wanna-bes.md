@@ -2,6 +2,25 @@
 
 Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un roadmap. Una entrada aquí no significa que esté aprobada ni planificada: conserva el contexto para priorizarla más adelante.
 
+## Punto de continuación: publicación en IONOS (21 de octubre de 2026)
+
+**Estado:** pausado a petición de Eduardo. No se ha integrado nada en `main` ni activado el despliegue automático. Antes de publicar, pedirle una decisión expresa sobre activar el despliegue y fusionar el PR.
+
+- **Código preparado:** rama `feat/containerization-ci-cd`, PR borrador [#8](https://github.com/fernandezpastoreduardo/TFM-Grumphya/pull/8), último commit remoto `6c302e8`. La ejecución [GitHub Actions 39617262861](https://github.com/fernandezpastoreduardo/TFM-Grumphya/actions/runs/39617262861) terminó correctamente: pruebas, construcción y escaneos de seguridad pasaron. El trabajo local también pasó formato, lint, tipos, tests, build y 13 pruebas de navegador. La variable de GitHub `PRODUCTION_DEPLOY_ENABLED` sigue en `false`; el job de publicación se omitió.
+- **Web actual:** `https://grumphya.com` funciona con HTTPS y la versión anterior `34746934a12623fb9a1f4780ca1ceebb649fe93d`. Contenedores web, API, PostgreSQL/pgvector y proxy sanos al pausar. Probados con éxito desde fuera: registro, correo de confirmación, activación e inicio de sesión de usuario, acuse de Contacto y evaluación de una idea mediante OpenAI. La respuesta del administrador a un mensaje aún no se ha probado.
+- **Recuperación de contraseña:** en producción el enlace llevaba por error a la pantalla que solicita el correo. La causa se corrigió en la rama y tiene prueba de regresión, pero **todavía no está desplegada**. El enlace de recuperación compartido accidentalmente en el chat fue invalidado en la base; después de publicar hay que solicitar **uno nuevo** y probar el cambio de contraseña sin compartir enlace, token ni clave.
+- **Acceso de Jappy:** la cuenta existe y está activa. Se verificó sin revelar secretos que la contraseña guardada en el VPS coincide con su hash y que la API permite iniciar sesión como administrador con ella. Eduardo no pudo entrar con la contraseña que recordaba. Se instaló `/usr/local/sbin/grumphya-cambiar-clave-jappy` en el VPS para que él cambie **solo** esa contraseña desde la consola, escribiéndola dos veces sin mostrarla. **Aún no lo ha ejecutado.** Siguiente prueba: ejecutarlo como `root`, entrar en una pestaña privada con usuario `Jappy` y la nueva contraseña, responder al mensaje de prueba en Panel de control → Mensajes de contacto y comprobar que llega el correo. `contacto@grumphya.com` es el buzón SMTP, no el usuario administrador.
+- **Copias:** el VPS genera una copia cifrada semanal. La primera se descargó a Synology Drive y se comprobó una restauración desechable. La descarga del VPS al Mac/Synology es **manual** mediante `Descargar-y-comprobar-copias.command`; no presentar esta parte como automatizada. Falta verificar de manera independiente la sincronización final de Synology Drive y guardar una segunda copia segura de la llave privada de restauración, fuera de Git y del NAS.
+- **Al retomar:** confirmar primero el acceso de Jappy y la respuesta por correo. Revisar que el PR #8 sigue verde y actualizado. Con autorización expresa de Eduardo, activar `PRODUCTION_DEPLOY_ENABLED=true` y fusionar el PR en `main`; vigilar la ejecución de Actions y comprobar la revisión publicada, HTTPS, persistencia y el nuevo flujo de recuperación. Si falla un control, conservar la versión publicada y revisar el rollback antes de reintentar. Se retiró la llave SSH temporal de operador al pausar; si hace falta acceso técnico mañana, instalar otra llave temporal desde la consola de IONOS y retirarla al acabar.
+
+### Mostrar la contraseña escrita en el inicio de sesión
+
+**Estado:** mejora solicitada, pendiente de implementar. Añadir al campo de contraseña del login un control accesible para mostrar u ocultar los caracteres introducidos, con el estado inicial oculto. Comprobar su funcionamiento en móvil, teclado y lector de pantalla.
+
+### Ajustar el diseño responsive
+
+**Estado:** problema comunicado por Eduardo, pendiente de reproducir y corregir. En pantallas estrechas varios elementos superan el ancho disponible y provocan desbordamiento horizontal. Identificar las páginas y componentes afectados con tamaños de móvil habituales, corregir el ancho y comprobar que contenido y controles siguen siendo legibles y utilizables sin desplazamiento lateral.
+
 ## Rate limits compartidos entre procesos
 
 **Estado:** pendiente de priorización e incorporación al roadmap.
