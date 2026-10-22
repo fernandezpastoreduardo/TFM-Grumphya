@@ -21,7 +21,10 @@ const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
 
 type RateLimitBucket = { count: number; resetAt: number };
-type SecurityMiddlewareOptions = { sessionRefreshRequestLimit?: number };
+type SecurityMiddlewareOptions = {
+  apiRequestLimit?: number;
+  sessionRefreshRequestLimit?: number;
+};
 
 function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -43,6 +46,11 @@ function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
 export function createSecurityMiddleware(
   options: SecurityMiddlewareOptions = {},
 ): RequestHandler {
+  const apiRequestLimit =
+    Number.isSafeInteger(options.apiRequestLimit) &&
+    Number(options.apiRequestLimit) > 0
+      ? Number(options.apiRequestLimit)
+      : API_REQUEST_LIMIT;
   const sessionRefreshRequestLimit =
     Number.isSafeInteger(options.sessionRefreshRequestLimit) &&
     Number(options.sessionRefreshRequestLimit) > 0
@@ -193,32 +201,32 @@ export function createSecurityMiddleware(
                       : REGISTRATION_REQUEST_LIMIT;
     const limits: ReadonlyArray<readonly [string, number]> = isAdminRead
       ? [
-          ["api", API_REQUEST_LIMIT],
+          ["api", apiRequestLimit],
           ["admin-read", ADMIN_READ_REQUEST_LIMIT],
         ]
       : isEvaluation
         ? [
-            ["api", API_REQUEST_LIMIT],
+            ["api", apiRequestLimit],
             ["evaluation", EVALUATION_REQUEST_LIMIT],
           ]
         : isWorstIdeasRead
           ? [
-              ["api", API_REQUEST_LIMIT],
+              ["api", apiRequestLimit],
               ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT],
             ]
           : isWorstIdeasUserRead
             ? [
-                ["api", API_REQUEST_LIMIT],
+                ["api", apiRequestLimit],
                 ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
               ]
             : isRoastRankingRead
               ? [
-                  ["api", API_REQUEST_LIMIT],
+                  ["api", apiRequestLimit],
                   ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT],
                 ]
               : isBestUsersRead
                 ? [
-                    ["api", API_REQUEST_LIMIT],
+                    ["api", apiRequestLimit],
                     ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT],
                   ]
                 : isRegistrationPost ||
@@ -227,10 +235,10 @@ export function createSecurityMiddleware(
                     isAccountDelete ||
                     isContactMessagePost
                   ? [
-                      ["api", API_REQUEST_LIMIT],
+                      ["api", apiRequestLimit],
                       [registrationScope, registrationLimit],
                     ]
-                  : [["api", API_REQUEST_LIMIT]];
+                  : [["api", apiRequestLimit]];
 
     for (const [scope, limit] of limits) {
       const key = `${clientAddress}:${scope}`;
