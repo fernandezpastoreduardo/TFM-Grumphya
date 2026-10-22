@@ -224,6 +224,12 @@ Actualización del prompt de roast, 18 de octubre de 2026:
 - La prueba del adaptador comprueba que el prompt enviado al proveedor incluye esas reglas. Es una prueba contractual con el proveedor simulado: no demuestra que cada respuesta real cumpla semánticamente la instrucción. En producción, la validación automática comprueba el formato JSON, la longitud y la ausencia de expresiones explícitamente abusivas; la alusión concreta al contenido sigue dependiendo del modelo.
 - Verificación del cambio: prueba focal de roast 25/25; suite API 317/332, con 15 pruebas PostgreSQL omitidas por falta de configuración; web 128/128. `pnpm lint` y `pnpm typecheck` pasaron.
 
+Actualización de instrucciones de evaluación y roast, 22 de octubre de 2026:
+
+- La evaluación ahora instruye explícitamente que C10 no sea un motivo por defecto: primero deben valorarse los fallos concretos de C01–C09; tener alternativas o ser una función común no basta, y no se deben inventar defectos para diversificar respuestas. La variación esperada procede de aplicar los criterios a la mecánica de cada idea.
+- El roast pide una frase sencilla y cotidiana, de hasta 200 caracteres, vinculada a un detalle concreto e inocuo. El backend valida el formato, la longitud y el lenguaje explícitamente abusivo; la claridad y pertinencia siguen dependiendo del modelo.
+- La actualización es una instrucción de generación, no una garantía semántica. La claridad del roast y la selección equilibrada de criterios deben revisarse con casos sintéticos y evaluación humana.
+
 ## Páginas de error de la interfaz, 16 de octubre de 2026
 
 - Las rutas desconocidas muestran el 404; un error de renderizado React muestra el 500; el límite temporal `ANONYMOUS_PROFILE_RATE_LIMITED` muestra el 429 con su ventana `Retry-After`. Los errores recuperables de API en formularios siguen en contexto.
