@@ -4,6 +4,12 @@ import { renderHeadline, renderMessage } from "./evaluation-decision";
 
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+const SOFT_MESSAGE_PREFIX =
+  "¡Qué ilusión poder acompañarte con todo el cariño! ";
+const HARD_CLEAR_MESSAGE_PREFIX = "No hay motivo para celebrar todavía: ";
+const HARD_REJECTION_MESSAGE_PREFIX =
+  "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
+const SOFT_MESSAGE_PREFIX_WORD_COUNT = 8;
 const DECISION: ModelDecision = {
   status: "SIN_BLOQUEO_EVIDENTE",
   evaluated: [
@@ -30,8 +36,13 @@ const LONG_VALID_MESSAGE =
   "Con lo que cuentas todavía no veo contradicción alguna en tu planteamiento, aunque eso no demuestra que haya gente dispuesta a usarlo en condiciones reales.";
 
 describe("renderMessage", () => {
-  it("keeps the factual explanation separate from the tone-specific headline", () => {
-    expect(renderMessage(DECISION, "soft")).toBe(NEUTRAL_MESSAGE);
+  it("preserves the factual explanation while applying a distinct tone", () => {
+    expect(renderMessage(DECISION, "soft")).toBe(
+      `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+    );
+    expect(renderMessage(DECISION, "hard")).toBe(
+      `${HARD_CLEAR_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+    );
     expect(
       renderMessage(
         {
@@ -42,14 +53,24 @@ describe("renderMessage", () => {
         },
         "hard",
       ),
-    ).toBe(
-      "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
-    );
+    ).toBe(`${HARD_REJECTION_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`);
     expect(renderHeadline("RECHAZADA", "soft")).toBe(
-      "Vaya, justo falla donde más importa.",
+      "¡Un abrazo y confeti para esta pega importante!",
     );
     expect(renderHeadline("RECHAZADA", "hard")).toBe(
-      "Pues… no decepciona; no esperaba gran cosa.",
+      "La propuesta se ha estampado contra lo esencial.",
+    );
+    expect(renderHeadline("SIN_BLOQUEO_EVIDENTE", "soft")).toBe(
+      "¡Qué ilusión! Ha superado el primer repaso.",
+    );
+    expect(renderHeadline("SIN_BLOQUEO_EVIDENTE", "hard")).toBe(
+      "Sigue en pie. No es para celebrarlo.",
+    );
+    expect(renderHeadline("IDEA_INSUFICIENTE", "soft")).toBe(
+      "¡Con cariño y confeti, aún falta aterrizar la idea!",
+    );
+    expect(renderHeadline("IDEA_INSUFICIENTE", "hard")).toBe(
+      "Mucho tráiler; falta la película.",
     );
   });
 
@@ -65,8 +86,10 @@ describe("renderMessage", () => {
     const decision = { ...DECISION, message: LONG_VALID_MESSAGE };
     const rendered = renderMessage(decision, "soft");
 
-    expect(rendered.split(/\s+/u)).toHaveLength(25);
-    expect(rendered.length).toBeLessThanOrEqual(280);
+    expect(rendered.split(/\s+/u)).toHaveLength(
+      25 + SOFT_MESSAGE_PREFIX_WORD_COUNT,
+    );
+    expect(rendered.length).toBeLessThanOrEqual(360);
     expect(rendered.endsWith(".")).toBe(true);
   });
 

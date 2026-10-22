@@ -28,12 +28,12 @@ const TONE_OPTIONS: { tone: IdeaTone; label: string; description: string }[] = [
   {
     tone: "soft",
     label: "Tengo la piel fina",
-    description: "Con cuidado: también tengo sentimientos.",
+    description: "Con corazones, confeti y muchísimo cariño.",
   },
   {
     tone: "hard",
     label: "Dame tu mejor golpe",
-    description: "Sin filtros. Dime la verdad, aunque duela.",
+    description: "Sin azúcar: critico la idea, nunca a quien la propone.",
   },
 ];
 const EMPTY_IDEA_MESSAGE =

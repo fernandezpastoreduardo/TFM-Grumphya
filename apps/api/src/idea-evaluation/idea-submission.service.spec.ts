@@ -17,9 +17,9 @@ const SAFE_TITLE = "Coordinación sin salvaguardas verificables";
 const EVALUATION_RESULT = {
   status: "RECHAZADA" as const,
   score: 1.3,
-  headline: "Vaya, justo falla donde más importa.",
+  headline: "¡Un abrazo y confeti para esta pega importante!",
   message:
-    "Acceder sin permiso a datos convierte el servicio en una invasión directa de la privacidad de sus usuarios.",
+    "¡Qué ilusión poder acompañarte con todo el cariño! Acceder sin permiso a datos convierte el servicio en una invasión directa de la privacidad de sus usuarios.",
   safeTitle: SAFE_TITLE,
 };
 const PROMISING_EVALUATION_RESULT = {

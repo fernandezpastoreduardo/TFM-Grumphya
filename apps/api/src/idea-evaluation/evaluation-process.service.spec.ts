@@ -23,13 +23,16 @@ const REJECTION_MESSAGE =
   "Acceder sin autorización a datos personales convierte el servicio en una invasión directa de la privacidad de sus usuarios.";
 const HARD_SETUP = "un servicio que accede a datos personales sin permiso";
 const HARD_CONSEQUENCE = "los usuarios pierden el control de su información";
-const HARD_REJECTION_MESSAGE = REJECTION_MESSAGE;
+const SOFT_MESSAGE_PREFIX =
+  "¡Qué ilusión poder acompañarte con todo el cariño! ";
+const HARD_CLEAR_MESSAGE_PREFIX = "No hay motivo para celebrar todavía: ";
+const HARD_REJECTION_MESSAGE_PREFIX =
+  "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.13,
-  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
-  message:
-    "Por los pelos: aguanta la inspección. No te flipes; Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+  headline: "Sigue en pie. No es para celebrarlo.",
+  message: `${HARD_CLEAR_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
 };
 const UNAVAILABLE_RESPONSE = {
   code: "EVALUATOR_UNAVAILABLE",
@@ -166,8 +169,8 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual({
       status: "RECHAZADA",
       score: 1.3,
-      headline: "Vaya, justo falla donde más importa.",
-      message: REJECTION_MESSAGE,
+      headline: "¡Un abrazo y confeti para esta pega importante!",
+      message: `${SOFT_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
     });
   });
@@ -181,8 +184,8 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual({
       status: "RECHAZADA",
       score: 1.3,
-      headline: "Pues… no decepciona; no esperaba gran cosa.",
-      message: HARD_REJECTION_MESSAGE,
+      headline: "La propuesta se ha estampado contra lo esencial.",
+      message: `${HARD_REJECTION_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
     });
   });
@@ -281,8 +284,8 @@ describe("EvaluationProcessService", () => {
       expect(result).toEqual({
         status: "SIN_BLOQUEO_EVIDENTE",
         score: 6.77,
-        headline: "Bueno, de momento no se cae por lo más obvio.",
-        message: NEUTRAL_MESSAGE,
+        headline: "¡Qué ilusión! Ha superado el primer repaso.",
+        message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
       });
       expect(fake.calls).toHaveLength(1);
       expect(fake.calls[0]).toMatchObject({

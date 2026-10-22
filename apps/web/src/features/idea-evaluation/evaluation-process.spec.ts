@@ -11,10 +11,11 @@ const EVALUATION_PATH = "/api/evaluation-process";
 const EVALUATION_RESULT: EvaluationProcessResult = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
-  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
+  headline: "Sigue en pie. No es para celebrarlo.",
   message:
-    "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+    "No hay motivo para celebrar todavía: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
+const LONG_TONE_RENDERED_MESSAGE = `${"Una explicación clara. ".repeat(13)}Un cierre correcto.`;
 const SAFE_FAILURE_MESSAGE = /no se puede verificar/i;
 const IDEMPOTENCY_KEY = "8a4e1c42-e198-4db3-b4a8-910e25c8b6d1";
 
@@ -179,7 +180,7 @@ describe("evaluationProcess frontend adapter", () => {
     const publicResult = {
       status: "IDEA_INSUFICIENTE",
       score: null,
-      headline: "Esto aún no es una idea; es el tráiler sin película.",
+      headline: "Mucho tráiler; falta la película.",
       message: "Esto todavía no describe una propuesta evaluable.",
       basis: IDEA_TEXT,
     };
@@ -199,9 +200,29 @@ describe("evaluationProcess frontend adapter", () => {
     ).resolves.toEqual({
       status: "IDEA_INSUFICIENTE",
       score: null,
-      headline: "Esto aún no es una idea; es el tráiler sin película.",
+      headline: "Mucho tráiler; falta la película.",
       message: "Esto todavía no describe una propuesta evaluable.",
     });
+  });
+
+  it("accepts the longer public message after the server applies a tone", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: { ...EVALUATION_RESULT, message: LONG_TONE_RENDERED_MESSAGE },
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toMatchObject({ message: LONG_TONE_RENDERED_MESSAGE });
   });
 
   it("validates a similar rejected idea response and reuses the request key to continue", async () => {

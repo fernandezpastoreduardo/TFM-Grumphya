@@ -16,9 +16,9 @@ const LOADING_BUTTON_NAME = /evaluando/i;
 const EVALUATION_RESPONSE = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
-  headline: "Bueno, no se ha desmontado a la primera. No te emociones.",
+  headline: "Sigue en pie. No es para celebrarlo.",
   message:
-    "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+    "No hay motivo para celebrar todavía: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 const ANONYMOUS_USAGE_RESPONSE = {
   ideas: { limit: 3, used: 0, remaining: 3 },

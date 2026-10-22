@@ -72,6 +72,8 @@ const MAX_MESSAGE_WORDS = 40;
 const MAX_MESSAGE_LENGTH = 280;
 const MAX_REJECTION_MESSAGE_WORDS = 120;
 const MAX_REJECTION_MESSAGE_LENGTH = 900;
+const MAX_VISIBLE_MESSAGE_LENGTH = 360;
+const MAX_VISIBLE_REJECTION_MESSAGE_LENGTH = 1_000;
 const MIN_CONCEPTUAL_SCORE = 0;
 const MAX_CONCEPTUAL_SCORE = 79;
 const REJECTION_THRESHOLD = 15;
@@ -89,6 +91,12 @@ const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
 const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
 const HARD_COPY_MIN_LENGTH = 8;
 const HARD_COPY_MAX_LENGTH = 140;
+const SOFT_MESSAGE_PREFIX =
+  "¡Qué ilusión poder acompañarte con todo el cariño! ";
+const HARD_REJECTION_MESSAGE_PREFIX =
+  "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
+const HARD_CLEAR_MESSAGE_PREFIX = "No hay motivo para celebrar todavía: ";
+const HARD_INSUFFICIENT_MESSAGE_PREFIX = "Mucho tráiler, poca película: ";
 const INTERNAL_RUBRIC_ALIASES: Record<string, string> = {
   C01: "la privacidad y el acceso a datos",
   C02: "el riesgo de daño grave",
@@ -131,16 +139,16 @@ const RESULT_HEADLINES: Record<
   Record<EvaluationTone, string>
 > = {
   RECHAZADA: {
-    soft: "Vaya, justo falla donde más importa.",
-    hard: "Pues… no decepciona; no esperaba gran cosa.",
+    soft: "¡Un abrazo y confeti para esta pega importante!",
+    hard: "La propuesta se ha estampado contra lo esencial.",
   },
   SIN_BLOQUEO_EVIDENTE: {
-    soft: "Bueno, de momento no se cae por lo más obvio.",
-    hard: "Bueno, no se ha desmontado a la primera. No te emociones.",
+    soft: "¡Qué ilusión! Ha superado el primer repaso.",
+    hard: "Sigue en pie. No es para celebrarlo.",
   },
   IDEA_INSUFICIENTE: {
-    soft: "Por ahora solo hay una pista, no una propuesta.",
-    hard: "Esto aún no es una idea; es el tráiler sin película.",
+    soft: "¡Con cariño y confeti, aún falta aterrizar la idea!",
+    hard: "Mucho tráiler; falta la película.",
   },
 };
 
@@ -280,7 +288,7 @@ function renderHardRejectionMessage(decision: ModelDecision): string {
   if (!decision.hardSetup || !decision.hardConsequence) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
-  return decision.message;
+  return `${HARD_REJECTION_MESSAGE_PREFIX}${decision.message}`;
 }
 
 function removeInternalRubricAliases(message: string): string {
@@ -303,9 +311,9 @@ function renderHardMessage(decision: ModelDecision): string {
     return renderHardRejectionMessage(decision);
   }
   if (decision.status === "IDEA_INSUFICIENTE") {
-    return "Esto aún no es una idea; es el tráiler sin película. A ver si le damos una vuelta más a las cosas la próxima vez.";
+    return `${HARD_INSUFFICIENT_MESSAGE_PREFIX}${decision.message}`;
   }
-  return `Por los pelos: aguanta la inspección. No te flipes; ${decision.message}`;
+  return `${HARD_CLEAR_MESSAGE_PREFIX}${decision.message}`;
 }
 
 export function renderMessage(decision: unknown, tone: unknown): string {
@@ -321,13 +329,23 @@ export function renderMessage(decision: unknown, tone: unknown): string {
   }
   const parsedDecision = decision as unknown as ModelDecision;
   if (tone === "soft") {
-    return removeInternalRubricAliases(parsedDecision.message);
+    const softMessage = `${SOFT_MESSAGE_PREFIX}${parsedDecision.message}`;
+    if (
+      softMessage.length >
+        (parsedDecision.status === "RECHAZADA"
+          ? MAX_VISIBLE_REJECTION_MESSAGE_LENGTH
+          : MAX_VISIBLE_MESSAGE_LENGTH) ||
+      !softMessage.endsWith(".")
+    ) {
+      throw new Error(INVALID_VISIBLE_MESSAGE);
+    }
+    return removeInternalRubricAliases(softMessage);
   }
   const hardMessage = renderHardMessage(parsedDecision);
   const maxLength =
     parsedDecision.status === "RECHAZADA"
-      ? MAX_REJECTION_MESSAGE_LENGTH
-      : MAX_MESSAGE_LENGTH;
+      ? MAX_VISIBLE_REJECTION_MESSAGE_LENGTH
+      : MAX_VISIBLE_MESSAGE_LENGTH;
   if (hardMessage.length > maxLength || !hardMessage.endsWith(".")) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
