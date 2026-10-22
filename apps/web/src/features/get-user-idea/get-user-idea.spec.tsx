@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GetUserIdea } from "./get-user-idea";
 import { MAX_IDEA_LENGTH } from "./idea-input-rules";
 import * as speechToText from "../../shared/utils/speech-to-text";
@@ -20,6 +20,10 @@ async function continueToToneStep(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("GetUserIdea", () => {
+  beforeEach(() => {
+    vi.spyOn(speechToText, "isSpeechToTextAvailable").mockResolvedValue(true);
+  });
+
   it("shows the idea step first, validates it, and advances to tone selection", async () => {
     const user = userEvent.setup();
     render(<GetUserIdea onSubmit={vi.fn()} />);
@@ -201,7 +205,7 @@ describe("GetUserIdea", () => {
 
     await user.type(input, "Una aplicación para");
     await user.click(
-      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
     );
 
     expect(input).toHaveValue(
@@ -224,7 +228,7 @@ describe("GetUserIdea", () => {
     await user.paste("a".repeat(MAX_IDEA_LENGTH - 5));
 
     await user.click(
-      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
     );
 
     expect(input).toHaveValue(`${"a".repeat(MAX_IDEA_LENGTH - 5)} and `);
@@ -243,7 +247,7 @@ describe("GetUserIdea", () => {
     await user.type(input, "Una idea que ya estaba escrita");
 
     await user.click(
-      screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
     );
 
     expect(input).toHaveValue("Una idea que ya estaba escrita");
@@ -341,6 +345,7 @@ describe("GetUserIdea", () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     const { rerender } = render(<GetUserIdea onSubmit={onSubmit} />);
+    await screen.findByRole("button", { name: MICROPHONE_BUTTON_LABEL });
     const input = screen.getByRole("textbox", { name: INPUT_LABEL });
     await user.click(input);
     await user.type(input, VALID_IDEA);

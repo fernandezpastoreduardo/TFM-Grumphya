@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TranscriptUserIdea } from "./transcript-user-idea";
 import * as speechToText from "../../shared/utils/speech-to-text";
 
@@ -10,6 +10,10 @@ const PERMISSION_ERROR_MESSAGE = /permiso al micrófono/i;
 
 describe("TranscriptUserIdea", () => {
   afterEach(() => vi.restoreAllMocks());
+
+  beforeEach(() => {
+    vi.spyOn(speechToText, "isSpeechToTextAvailable").mockResolvedValue(true);
+  });
 
   it("starts dictation and sends recognized text to the input", async () => {
     const user = userEvent.setup();
@@ -24,7 +28,9 @@ describe("TranscriptUserIdea", () => {
     );
     render(<TranscriptUserIdea onTranscript={onTranscript} />);
 
-    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+    await user.click(
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON }),
+    );
 
     expect(onTranscript).toHaveBeenCalledWith(TRANSCRIBED_TEXT);
     expect(screen.getByRole("status")).toHaveTextContent(/escuchando/i);
@@ -40,7 +46,9 @@ describe("TranscriptUserIdea", () => {
     );
     render(<TranscriptUserIdea onTranscript={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+    await user.click(
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON }),
+    );
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       PERMISSION_ERROR_MESSAGE,
@@ -61,7 +69,9 @@ describe("TranscriptUserIdea", () => {
     );
     render(<TranscriptUserIdea onTranscript={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+    await user.click(
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON }),
+    );
 
     expect(screen.getByRole("status")).toHaveTextContent(
       /preparando el reconocimiento de voz local en español/i,
@@ -82,7 +92,9 @@ describe("TranscriptUserIdea", () => {
     );
     render(<TranscriptUserIdea onTranscript={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+    await user.click(
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON }),
+    );
 
     expect(screen.getByRole("alert")).toHaveTextContent(
       /paquete de voz local en español no está disponible/i,
@@ -103,7 +115,9 @@ describe("TranscriptUserIdea", () => {
     );
     render(<TranscriptUserIdea onTranscript={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+    await user.click(
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON }),
+    );
     expect(screen.getByRole("status")).toBeVisible();
     act(() => finishListening?.());
 
@@ -119,10 +133,25 @@ describe("TranscriptUserIdea", () => {
     vi.spyOn(speechToText, "startSpeechToText").mockReturnValue({ stop });
     const { unmount } = render(<TranscriptUserIdea onTranscript={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: MICROPHONE_BUTTON }));
+    await user.click(
+      await screen.findByRole("button", { name: MICROPHONE_BUTTON }),
+    );
 
     unmount();
 
     expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("hides the microphone when local transcription is unsupported", async () => {
+    vi.spyOn(speechToText, "isSpeechToTextAvailable").mockResolvedValue(false);
+    render(<TranscriptUserIdea onTranscript={vi.fn()} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByRole("button", { name: MICROPHONE_BUTTON }),
+    ).not.toBeInTheDocument();
   });
 });

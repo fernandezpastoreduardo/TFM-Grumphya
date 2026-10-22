@@ -55,6 +55,30 @@ const LOCAL_SPEECH_OPTIONS: SpeechRecognitionOptions = {
 };
 const PERMISSION_ERRORS = new Set(["not-allowed", "service-not-allowed"]);
 
+export async function isSpeechToTextAvailable(): Promise<boolean> {
+  const speechWindow = window as SpeechRecognitionWindow;
+  const Recognition =
+    speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+  if (
+    !Recognition ||
+    typeof Recognition.available !== "function" ||
+    typeof Recognition.install !== "function"
+  ) {
+    return false;
+  }
+
+  try {
+    if (!("processLocally" in new Recognition())) return false;
+    const availability = await Recognition.available(LOCAL_SPEECH_OPTIONS);
+    return (
+      isSpeechRecognitionAvailability(availability) &&
+      availability !== "unavailable"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
