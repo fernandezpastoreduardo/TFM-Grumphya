@@ -163,6 +163,17 @@ describe("OpenAiEvaluationPort", () => {
     );
     expect(request).toContain("C09 dependencia perfecta del happy path");
     expect(request).toContain("C10 diferenciación insuficiente");
+    expect(request).toContain("ni uses C10 como motivo por defecto");
+    expect(request).toContain(
+      "C10 solo puede suspender si la categoría es claramente madura y, además, la propuesta no da un motivo reconocible para elegirla",
+    );
+    expect(request).toContain(
+      "Que una función exista, sea común o tenga alternativas no demuestra por sí solo falta de diferenciación",
+    );
+    expect(request).toContain(
+      "Evalúa cada criterio por su propio problema concreto",
+    );
+    expect(request).toContain("No inventes defectos para variar el resultado");
     expect(request).toContain(
       "no son por sí mismos controles de fraude, seguridad o resolución de incidentes",
     );

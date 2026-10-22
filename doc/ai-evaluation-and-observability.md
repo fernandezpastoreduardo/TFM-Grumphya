@@ -2,7 +2,7 @@
 
 ## Banco de evaluación del evaluador
 
-El corpus sintético versionado vive en `apps/api/evaluation/evaluator-cases.json`. Cada caso incluye una idea creada para pruebas, los estados esperados y, cuando el motivo debe ser estable, los códigos de rechazo aceptables. Incluye una idea vaga, diferenciación ausente, contradicción económica, instrucciones maliciosas dentro de la idea, una interacción presencial de riesgo y un caso de privacidad.
+El corpus sintético versionado vive en `apps/api/evaluation/evaluator-cases.json`. Cada caso incluye una idea creada para pruebas, los estados esperados y, cuando el motivo debe ser estable, los códigos de rechazo aceptables. Incluye una idea vaga, diferenciación ausente, contradicción económica, instrucciones maliciosas dentro de la idea, una interacción presencial de riesgo y un caso de privacidad. La instrucción del evaluador exige valorar por separado los fallos C01–C09 antes de considerar C10; la mera existencia de alternativas no es suficiente. La variedad debe surgir de fallos reales distintos descritos por cada idea, no de introducir variación aleatoria ni inventar motivos para rechazar.
 
 Ejecuta la comparación desde la raíz con `pnpm --filter @grumphya/api benchmark:evaluator`. Requiere `OPENAI_API_KEY`; no consume cuotas de cuentas, porque el runner llama directamente al adaptador del proveedor. El modelo predeterminado es el mismo configurado por defecto para la API. Para comparar modelos y prompts:
 
@@ -15,6 +15,8 @@ pnpm --filter @grumphya/api run benchmark:evaluator -- \
 Cada fichero indicado con `--prompts` contiene las instrucciones del sistema que se comparan con las instrucciones actuales; solo se admiten ficheros regulares no vacíos dentro de `agentic-guidelines/prompts`, de hasta 64 KiB. Se rechazan rutas fuera del directorio, enlaces simbólicos que escapen de él y ficheros demasiado grandes o vacíos, para evitar leer archivos locales arbitrarios y enviarlos al proveedor. El adaptador conserva las instrucciones de título seguro y fidelidad de promesa. El runner valida la respuesta con el validador de producción y presenta acuerdo con las etiquetas, acuerdo entre variantes para estado y motivo, y número de casos. Un desacuerdo esperado devuelve código de salida 1. Revisa manualmente los fallos antes de cambiar la rúbrica o el prompt: el corpus es pequeño y sus etiquetas no sustituyen una evaluación humana ni demuestran calidad general. La comparación puede generar llamadas facturables al proveedor.
 
 El informe agregado omite ideas, explicaciones, títulos y salidas del modelo. El proveedor recibe las ideas sintéticas del corpus y los prompts indicados. No uses ideas reales de usuarios como corpus. No guardes informes crudos del proveedor.
+
+El roast pide al modelo una frase sencilla de hasta 200 caracteres, con palabras cotidianas y una broma comprensible ligada a un detalle inocuo del mensaje. La validación de servidor comprueba formato, longitud y lenguaje explícitamente abusivo; no puede garantizar automáticamente que el chiste sea claro o que aluda de forma pertinente al mensaje.
 
 ## Pruebas de seguridad de IA
 
