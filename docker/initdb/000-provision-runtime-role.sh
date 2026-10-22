@@ -2,19 +2,23 @@
 set -eu
 
 SECRETS_DIR=${GRUMPHYA_SECRETS_DIR:-/run/secrets}
-SETTINGS_FILE="$SECRETS_DIR/database_settings"
-if [ ! -r "$SETTINGS_FILE" ]; then
-  echo "Required database secret 'database_settings' is missing or unreadable in $SECRETS_DIR." >&2
-  exit 1
+APP_DATABASE=${APP_PGDATABASE:-}
+APP_USER=${APP_PGUSER:-}
+APP_PASSWORD=${APP_PG_PASSWORD:-}
+if [ -z "$APP_DATABASE" ] || [ -z "$APP_USER" ] || [ -z "$APP_PASSWORD" ]; then
+  SETTINGS_FILE="$SECRETS_DIR/database_settings"
+  if [ ! -r "$SETTINGS_FILE" ]; then
+    echo "Required database secret 'database_settings' is missing or unreadable in $SECRETS_DIR." >&2
+    exit 1
+  fi
+  while IFS= read -r settings_line || [ -n "$settings_line" ]; do
+    case "$settings_line" in
+      PGDATABASE=*) APP_DATABASE=${settings_line#*=} ;;
+      PGUSER=*) APP_USER=${settings_line#*=} ;;
+      GRUMPHYA_DB_PASSWORD=*) APP_PASSWORD=${settings_line#*=} ;;
+    esac
+  done < "$SETTINGS_FILE"
 fi
-
-while IFS= read -r settings_line || [ -n "$settings_line" ]; do
-  case "$settings_line" in
-    PGDATABASE=*) APP_DATABASE=${settings_line#*=} ;;
-    PGUSER=*) APP_USER=${settings_line#*=} ;;
-    GRUMPHYA_DB_PASSWORD=*) APP_PASSWORD=${settings_line#*=} ;;
-  esac
-done < "$SETTINGS_FILE"
 
 if [ -z "${APP_DATABASE:-}" ] || [ -z "${APP_USER:-}" ] || [ -z "${APP_PASSWORD:-}" ]; then
   echo "database_settings must define PGDATABASE, PGUSER, and GRUMPHYA_DB_PASSWORD." >&2

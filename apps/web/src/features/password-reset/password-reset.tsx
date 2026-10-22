@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
 
 const REQUEST_ENDPOINT = "/api/auth/password-reset/request";
@@ -13,7 +13,16 @@ const SUCCESS_NOTICE =
   "La contraseña se ha actualizado. Ya puedes iniciar sesión con la nueva contraseña.";
 
 export function PasswordReset() {
-  const [token] = useState(() => readResetToken());
+  const [token] = useState(readResetToken);
+  useEffect(() => {
+    if (token && window.location.hash === `#${token}`) {
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`,
+      );
+    }
+  }, [token]);
   const [notice, setNotice] = useState("");
   const [finished, setFinished] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -174,11 +183,6 @@ export function PasswordReset() {
 function readResetToken(): string | null {
   const token = window.location.hash.slice(1);
   if (!/^[a-f0-9]{64}$/u.test(token)) return null;
-  window.history.replaceState(
-    null,
-    "",
-    `${window.location.pathname}${window.location.search}`,
-  );
   return token;
 }
 

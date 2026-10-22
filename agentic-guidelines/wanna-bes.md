@@ -2,6 +2,25 @@
 
 Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un roadmap. Una entrada aquí no significa que esté aprobada ni planificada: conserva el contexto para priorizarla más adelante.
 
+## Punto de continuación: publicación en IONOS (22 de octubre de 2026)
+
+**Estado:** retomado. Las pruebas funcionales pendientes de Jappy y correo ya pasaron. No se ha integrado nada en `main` ni activado el despliegue automático. Antes de publicar, pedirle a Eduardo una decisión expresa sobre activar el despliegue y fusionar el PR.
+
+- **Código preparado:** rama `feat/containerization-ci-cd`, PR borrador [#8](https://github.com/fernandezpastoreduardo/TFM-Grumphya/pull/8). La ejecución [GitHub Actions 39738836696](https://github.com/fernandezpastoreduardo/TFM-Grumphya/actions/runs/39738836696) terminó correctamente para `3eb49d4`: pruebas, construcción y escaneos de seguridad pasaron. El trabajo local también pasó formato, lint, tipos, tests, build y 13 pruebas de navegador. La variable de GitHub `PRODUCTION_DEPLOY_ENABLED` sigue en `false`; el job de publicación se omitió.
+- **Web actual:** `https://grumphya.com` funciona con HTTPS y la versión anterior `34746934a12623fb9a1f4780ca1ceebb649fe93d`. Contenedores web, API, PostgreSQL/pgvector y proxy sanos en la última comprobación. Probados con éxito desde fuera: registro, correo de confirmación, activación e inicio de sesión de usuario, acuse de Contacto, evaluación mediante OpenAI, acceso de Jappy al panel y respuesta del administrador por correo.
+- **Recuperación de contraseña:** en producción el enlace llevaba por error a la pantalla que solicita el correo. La causa se corrigió en la rama y tiene prueba de regresión, pero **todavía no está desplegada**. El enlace de recuperación compartido accidentalmente en el chat fue invalidado en la base; después de publicar hay que solicitar **uno nuevo** y probar el cambio de contraseña sin compartir enlace, token ni clave.
+- **Acceso de Jappy:** Eduardo ejecutó `/usr/local/sbin/grumphya-cambiar-clave-jappy` desde la consola del VPS y confirmó el mensaje de éxito. Después entró como `Jappy`, abrió el panel, respondió al mensaje de prueba y confirmó que el correo llegó. `contacto@grumphya.com` es el buzón SMTP, no el usuario administrador.
+- **Copias:** el VPS genera una copia cifrada semanal. La primera se descargó a Synology Drive y se comprobó una restauración desechable. La descarga del VPS al Mac/Synology es **manual** mediante `Descargar-y-comprobar-copias.command`; no presentar esta parte como automatizada. Falta verificar de manera independiente la sincronización final de Synology Drive y guardar una segunda copia segura de la llave privada de restauración, fuera de Git y del NAS.
+- **Siguiente paso:** volver a comprobar que el PR #8 sigue verde tras esta actualización. Con autorización expresa de Eduardo, activar `PRODUCTION_DEPLOY_ENABLED=true` y fusionar el PR en `main`; vigilar la ejecución de Actions y comprobar la revisión publicada, HTTPS, persistencia y el nuevo flujo de recuperación. Si falla un control, conservar la versión publicada y revisar el rollback antes de reintentar. La llave SSH temporal de operador se retiró; si hace falta acceso técnico, instalar otra llave temporal desde la consola de IONOS y retirarla al acabar.
+
+### Mostrar la contraseña escrita en el inicio de sesión
+
+**Estado:** mejora solicitada, pendiente de implementar. Añadir al campo de contraseña del login un control accesible para mostrar u ocultar los caracteres introducidos, con el estado inicial oculto. Comprobar su funcionamiento en móvil, teclado y lector de pantalla.
+
+### Ajustar el diseño responsive
+
+**Estado:** problema comunicado por Eduardo, pendiente de reproducir y corregir. En pantallas estrechas varios elementos superan el ancho disponible y provocan desbordamiento horizontal. Identificar las páginas y componentes afectados con tamaños de móvil habituales, corregir el ancho y comprobar que contenido y controles siguen siendo legibles y utilizables sin desplazamiento lateral.
+
 ## Rate limits compartidos entre procesos
 
 **Estado:** pendiente de priorización e incorporación al roadmap.

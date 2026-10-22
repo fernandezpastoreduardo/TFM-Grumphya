@@ -25,4 +25,7 @@ export PGDATABASE PGUSER PGPASSWORD
 export PGHOST=${PGHOST:-db} PGPORT=${PGPORT:-5432}
 export NODE_ENV=${NODE_ENV:-production}
 export PGSSL_MODE=${PGSSL_MODE:-disable-internal}
+if [ "$(id -u)" -eq 0 ]; then
+  exec setpriv --reuid=node --regid=node --init-groups "$@"
+fi
 exec "$@"
