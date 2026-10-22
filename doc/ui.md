@@ -22,8 +22,10 @@ la lámina maestra está en
 - El formulario de Home avanza en dos pasos: primero muestra «1. Escribe, pega
   o dicta tu idea», el textarea y «Adelante»; después muestra la elección de
   tono y «Evaluar idea». «Cambiar idea» conserva el texto y el tono elegidos.
-  Tras recibir un resultado, la acción para volver a él dice «Volver a ver la
-  evaluación».
+  Al enviar la evaluación, el formulario vuelve al primer paso y conserva el
+  texto de la idea; al cerrar el diálogo del resultado, la persona puede
+  escribir o editar otra idea directamente. Tras recibir un resultado, la
+  acción para volver a él dice «Volver a ver la evaluación».
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - El favicon apunta directamente a `/assets/grumphya/mascot-isotype.svg`, el
@@ -140,7 +142,9 @@ la lámina maestra está en
 
 ## Navegación móvil y accesibilidad
 
-- El navbar es sticky y mantiene su separación del telón.
+- El navbar de Home es sticky, tiene el mismo fondo temático que la página y se
+  apila por encima del formulario al desplazarse, manteniendo la separación del
+  telón. Los diálogos globales conservan prioridad sobre toda la interfaz.
 - El menú móvil cambia entre icono de menú y X. Al abrirlo, aparece una capa que
   atenúa y bloquea el contenido de fondo; el panel permanece por encima de esa
   capa y puede recibir clics. Pulsar fuera cierra el menú sin activar el
