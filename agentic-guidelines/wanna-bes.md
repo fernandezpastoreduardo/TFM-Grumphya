@@ -19,7 +19,7 @@ Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un ro
 
 ### Ajustar el diseño responsive
 
-**Estado:** problema comunicado por Eduardo, pendiente de reproducir y corregir. En pantallas estrechas varios elementos superan el ancho disponible y provocan desbordamiento horizontal. Identificar las páginas y componentes afectados con tamaños de móvil habituales, corregir el ancho y comprobar que contenido y controles siguen siendo legibles y utilizables sin desplazamiento lateral.
+**Estado:** parcialmente resuelto. El panel `/panel-control` ajusta sus tarjetas al ancho disponible, apila los desgloses de coste y limita el desplazamiento horizontal de tablas a su contenedor; también se apilan los callouts ilustrados de Buenas prácticas y Humanos notables. Falta revisar el resto de páginas con tamaños móviles habituales y confirmar que contenido y controles siguen siendo legibles y utilizables sin desplazamiento lateral.
 
 ## Rate limits compartidos entre procesos
 
@@ -85,4 +85,4 @@ El formulario de Contacto autenticado guarda el asunto y el mensaje en PostgreSQ
 
 ## Retención de métricas del panel
 
-**Pendiente:** definir plazos de conservación y purga verificable para `application_error_events` y `admin_ai_usage_events`. La primera almacena solo códigos normalizados de errores de servidor 5xx, estado HTTP y fecha; las respuestas 4xx esperables no se registran. La segunda conserva operación, modelo, tokens, coste estimado, fecha y tipo de actor (`registered_user`, `admin` o `anonymous`); en usos autenticados también conserva el `user_id`, que se pone a nulo al borrar la cuenta mientras el tipo de actor mantiene la atribución agregada. No contiene prompts, ideas ni respuestas. No se guardan rutas ni payloads en estas tablas.
+**Pendiente:** definir plazos de conservación y purga verificable para `application_error_events` y `admin_ai_usage_events`. La primera almacena códigos normalizados de errores 5xx, estado HTTP, fecha y una categoría opcional y cerrada de diagnóstico para ciertos errores de validación; las filas históricas o no aplicables pueden tener `diagnostic_code` nulo. Las respuestas 4xx esperables no se registran. La segunda conserva operación, modelo, tokens, coste estimado, fecha y tipo de actor (`registered_user`, `admin` o `anonymous`); en usos autenticados también conserva el `user_id`, que se pone a nulo al borrar la cuenta mientras el tipo de actor mantiene la atribución agregada. Ninguna tabla contiene prompts, ideas, respuestas, rutas ni payloads.

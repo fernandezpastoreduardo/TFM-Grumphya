@@ -65,9 +65,18 @@ comandos de cada entorno.
   de retención para estos eventos todavía.
 - Errores: solo errores de servidor HTTP 5xx, agrupados por código seguro. Las
   respuestas 4xx esperables —por ejemplo 401, 403, 404 y 429— no se cuentan.
+  La tabla muestra conteo semanal y total, fecha de la última ocurrencia y el
+  diagnóstico seguro más reciente disponible por código de error. Ese
+  diagnóstico se limita a categorías cerradas de validación de evaluación;
+  los eventos históricos y los errores sin diagnóstico asociado muestran `—`.
   No se guardan rutas, payloads, ideas, mensajes de contacto, credenciales ni
-  identificadores. La retención y purga de esta tabla siguen pendientes en
+  mensajes de excepción. La migración `029` añade la categoría opcional; la
+  retención y purga siguen pendientes en
   [`wanna-bes.md`](../agentic-guidelines/wanna-bes.md).
+
+En pantallas estrechas, el panel reduce el relleno de las tarjetas y apila los
+desgloses de coste. Las tablas conservan un ancho mínimo y se desplazan dentro
+de su propio contenedor para evitar ensanchar la página.
 
 ## Pestañas de análisis
 

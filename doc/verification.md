@@ -186,7 +186,7 @@ Integración de `main` y diagnósticos seguros de validación, 13 de octubre de 
 
 Diagnóstico persistente de errores de evaluación y última ocurrencia, 22 de octubre de 2026:
 
-- El historial técnico explica una causa concreta ya reproducida: GPT envolvió `basis` en comillas aunque la idea no las contenía. El adaptador elimina comillas exteriores solo si el contenido interior coincide literalmente; ahora reconoce comillas rectas, tipográficas y españolas sin relajar esta comprobación. Las siete filas actuales de `INVALID_EVALUATION_RESPONSE` solo guardan código y estado HTTP, por lo que no se puede atribuirles una categoría retrospectiva con la información disponible en el repositorio.
+- El historial técnico explica una causa concreta ya reproducida: GPT envolvió `basis` en comillas aunque la idea no las contenía. El adaptador elimina comillas exteriores solo si el contenido interior coincide literalmente; ahora reconoce comillas rectas, tipográficas y españolas sin relajar esta comprobación. Los eventos registrados antes de la migración `029` no tienen `diagnostic_code` y quedan con `NULL`; por tanto, no se les puede atribuir una categoría retrospectiva.
 - La excepción de respuesta inválida conserva el código público genérico y transporta internamente la categoría cerrada del validador. El filtro global la persiste junto al evento, y el panel muestra el último diagnóstico disponible y la fecha/hora de la ocurrencia más reciente. La persistencia se espera antes de responder para que el fallo no se pierda como escritura en segundo plano.
 - La migración `029_application_error_diagnostics.sql` añade la columna opcional de diagnóstico; los eventos históricos quedan con `NULL`. No se almacena idea, salida del modelo ni mensaje de excepción.
 

@@ -81,6 +81,9 @@ la lámina maestra está en
   estados activos del nav usan el rosa de «Dame tu mejor golpe» con texto
   oscuro. En los errores, el código numérico conserva tinta oscura sobre el
   amarillo también en el tema oscuro.
+- En el panel de administración, los desgloses de coste se apilan en móvil y
+  las tablas con muchas columnas se desplazan dentro de su propio contenedor,
+  sin ampliar el ancho de la página.
 - Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
   distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
   para Planes, `ultrachachi-reality-check.png` para su popup, y
@@ -130,6 +133,8 @@ la lámina maestra está en
   contenido principal en móvil para evitar que compita con el titular.
   En la Home móvil, el copy del hero se alinea a la izquierda y el resultado de
   evaluación permanece centrado.
+  Los callouts ilustrados de Buenas prácticas y Humanos notables también se
+  apilan en móvil, con la mascota centrada sobre el texto.
   En la Home, el hero mantiene 20 px entre su copy y 40 px entre los bloques
   principales, tanto en móvil como en escritorio.
 

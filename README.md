@@ -6,7 +6,7 @@ Grumphya es una aplicación web responsive, en español de España, que ayuda a 
 
 ### Primera entrega
 
-- Entrada de idea por teclado, pegado o dictado por voz; el usuario revisa la transcripción antes de enviarla.
+- Entrada de idea por teclado o pegado, y dictado en navegadores que admiten reconocimiento local; el usuario revisa la transcripción antes de enviarla.
 - Evaluación según la rúbrica v1 documentada en [`agentic-guidelines/features.md`](agentic-guidelines/features.md).
 - Reutilización de una evaluación existente solo con similitud semántica estrictamente superior a `0,90`.
 - Tres usos anónimos de evaluación de ideas y tres de roast de por vida por perfil de navegador, sin historial personal anónimo.

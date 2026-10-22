@@ -198,9 +198,11 @@ La integración requiere `processLocally = true`, comprueba que el paquete local
 de español esté disponible y lo instala en el dispositivo si hace falta. No
 inicia reconocimiento remoto como alternativa. Pulsa «Dictar idea» para
 solicitar el permiso del navegador; la transcripción se añade al campo y queda
-editable antes de enviar. Si el navegador no expone la API local, no dispone del
-paquete de español o deniega el permiso, se muestra un mensaje y la escritura
-manual sigue disponible. Al desmontar el control se detiene la sesión activa.
+editable antes de enviar. Si el navegador no ofrece la API necesaria para
+reconocer voz localmente, el control no aparece. Si la API está presente pero
+no hay paquete local de español o se deniega el permiso, se muestra un mensaje
+y la escritura manual sigue disponible. Al desmontar el control se detiene la
+sesión activa.
 
 El audio no se envía al servidor de Grumphya ni a un servicio remoto de
 transcripción. La descarga inicial del paquete de idioma la gestiona el
