@@ -69,8 +69,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   },
   "/perfil": {
     title: "Tu cuenta. Tus planes. Tus intentos.",
-    intro:
-      "Aquí tienes el estado de tu contratación simulada y tus datos. La cuenta ya está activa; el correo todavía está pendiente de verificación.",
+    intro: "Aquí tienes tus planes, tu actividad y los datos de tu cuenta.",
     theme: "mint",
     mascot: "profile",
   },

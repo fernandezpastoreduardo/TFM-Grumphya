@@ -80,6 +80,34 @@ describe("GetUserIdea", () => {
       ideaText: VALID_IDEA,
       tone: "hard",
     });
+    expect(
+      screen.getByRole("radio", { name: /dame tu mejor golpe/i }),
+    ).toBeChecked();
+    expect(
+      screen.queryByRole("textbox", { name: INPUT_LABEL }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("returns to the idea step when the parent resets the step key", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <GetUserIdea onSubmit={vi.fn()} stepResetKey={0} />,
+    );
+    const ideaInput = screen.getByRole("textbox", { name: INPUT_LABEL });
+    await user.type(ideaInput, VALID_IDEA);
+    await continueToToneStep(user);
+    expect(
+      screen.getByRole("radio", { name: /tengo la piel fina/i }),
+    ).toBeVisible();
+
+    rerender(<GetUserIdea onSubmit={vi.fn()} stepResetKey={1} />);
+
+    expect(screen.getByRole("textbox", { name: INPUT_LABEL })).toHaveValue(
+      VALID_IDEA,
+    );
+    expect(
+      screen.queryByRole("radio", { name: /tengo la piel fina/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("sends trimmed text and the selected tone when submitted", async () => {

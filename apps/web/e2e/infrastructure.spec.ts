@@ -102,7 +102,7 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
     ),
   ).toBeLessThanOrEqual(1);
 
-  await page.getByRole("button", { name: /cambiar idea/i }).click();
+  await expect(ideaInput).toHaveValue(IDEA_TEXT_FIRST);
   await ideaInput.fill(IDEA_TEXT_SECOND);
   await page.getByRole("button", { name: /adelante/i }).click();
   await page.getByRole("radio", { name: /tengo la piel fina/i }).check();

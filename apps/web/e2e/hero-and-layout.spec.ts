@@ -150,6 +150,65 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   }
 });
 
+test("keeps the Home navigation opaque and above the idea form in both themes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: /antes de construirla/i }),
+  ).toBeVisible();
+
+  const readNavigationLayers = () =>
+    page.evaluate(() => {
+      const home = document.querySelector(".home-page");
+      const navigation = document.querySelector(".home-topbar");
+      const ideaWorkspace = document.querySelector(".home-workspace");
+      if (!home || !navigation || !ideaWorkspace) return null;
+      const themeBackgroundProbe = document.createElement("div");
+      themeBackgroundProbe.style.backgroundColor = getComputedStyle(home)
+        .getPropertyValue("--color-mint")
+        .trim();
+      document.body.append(themeBackgroundProbe);
+      const pageThemeBackground =
+        getComputedStyle(themeBackgroundProbe).backgroundColor;
+      themeBackgroundProbe.remove();
+      return {
+        pageThemeBackground,
+        isDarkTheme: home.classList.contains("theme-dark"),
+        navigationBackground: getComputedStyle(navigation).backgroundColor,
+        navigationZIndex: Number.parseInt(
+          getComputedStyle(navigation).zIndex,
+          10,
+        ),
+        ideaWorkspaceZIndex: Number.parseInt(
+          getComputedStyle(ideaWorkspace).zIndex,
+          10,
+        ),
+      };
+    });
+
+  const lightThemeLayers = await readNavigationLayers();
+  expect(lightThemeLayers).not.toBeNull();
+  expect(lightThemeLayers!.isDarkTheme).toBe(false);
+  expect(lightThemeLayers!.navigationBackground).toBe(
+    lightThemeLayers!.pageThemeBackground,
+  );
+  expect(lightThemeLayers!.navigationZIndex).toBeGreaterThan(
+    lightThemeLayers!.ideaWorkspaceZIndex,
+  );
+
+  await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  const darkThemeLayers = await readNavigationLayers();
+  expect(darkThemeLayers).not.toBeNull();
+  expect(darkThemeLayers!.isDarkTheme).toBe(true);
+  expect(darkThemeLayers!.navigationBackground).toBe(
+    darkThemeLayers!.pageThemeBackground,
+  );
+  expect(darkThemeLayers!.navigationZIndex).toBeGreaterThan(
+    darkThemeLayers!.ideaWorkspaceZIndex,
+  );
+});
+
 test("uses Grumphya's navigation logo as the site favicon", async ({
   page,
 }) => {

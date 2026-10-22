@@ -51,6 +51,19 @@ describe("SectionPage", () => {
     ).toBeVisible();
   });
 
+  it("shows current, neutral account copy without claiming email is unverified", async () => {
+    render(<SectionPage path="/perfil" />);
+
+    expect(
+      await screen.findByText(
+        "Aquí tienes tus planes, tu actividad y los datos de tu cuenta.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/el correo todavía está pendiente de verificación/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("loads the selected feature without rendering other section content", async () => {
     const { container } = render(<SectionPage path="/precios" />);
 

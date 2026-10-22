@@ -86,6 +86,7 @@ export function Home() {
   } | null>(null);
   const [evaluationError, setEvaluationError] = useState("");
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
+  const [ideaStepResetKey, setIdeaStepResetKey] = useState(0);
   const { theme, toggleTheme } = usePersistentTheme();
   const {
     isOpen: isMobileMenuOpen,
@@ -175,6 +176,11 @@ export function Home() {
       setIsEvaluating(false);
       await anonymousUsage.refresh();
     }
+  }
+
+  function handleEvaluationDialogClose() {
+    setIsEvaluationDialogOpen(false);
+    setIdeaStepResetKey((currentKey) => currentKey + 1);
   }
 
   function applySubmissionResult(
@@ -304,6 +310,7 @@ export function Home() {
             <section className="home-workspace" aria-label="Preparar una idea">
               <GetUserIdea
                 onSubmit={(request) => void handleEvaluation(request)}
+                stepResetKey={ideaStepResetKey}
                 onQuotaExhausted={
                   ideaQuotaKind === "anonymous"
                     ? () => setIsQuotaDialogOpen(true)
@@ -361,7 +368,7 @@ export function Home() {
         <EvaluationDialog
           open={isEvaluationDialogOpen}
           isEvaluating={isEvaluating}
-          onClose={() => setIsEvaluationDialogOpen(false)}
+          onClose={handleEvaluationDialogClose}
         >
           {!isEvaluating && evaluationError ? (
             <p className="home-result-error" role="alert">

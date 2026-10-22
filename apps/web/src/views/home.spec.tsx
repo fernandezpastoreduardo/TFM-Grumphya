@@ -486,6 +486,9 @@ describe("Home", () => {
 
     await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
     expect(dialog).not.toBeVisible();
+    expect(screen.getByRole("textbox", { name: IDEA_INPUT_NAME })).toHaveValue(
+      TEST_IDEA_TEXT,
+    );
     await user.click(
       screen.getByRole("button", { name: /volver a ver la evaluación/i }),
     );
@@ -538,7 +541,9 @@ describe("Home", () => {
     const errorAlert = await screen.findByRole("alert");
     expect(errorAlert).toHaveTextContent(/no se pudo completar el scoring/i);
     await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
-    await user.click(screen.getByRole("button", { name: /cambiar idea/i }));
+    expect(
+      screen.queryByRole("radio", { name: /tengo la piel fina/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: IDEA_INPUT_NAME })).toHaveValue(
       TEST_IDEA_TEXT,
     );

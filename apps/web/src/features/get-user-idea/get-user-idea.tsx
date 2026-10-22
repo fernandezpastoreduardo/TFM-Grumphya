@@ -17,6 +17,7 @@ type GetUserIdeaProps = {
   onSubmit: (request: GetUserIdeaRequest) => void;
   onQuotaExhausted?: () => void;
   onIdeaChange?: (ideaText: string) => void;
+  stepResetKey?: number;
   isSubmitting?: boolean;
   remainingAttempts?: number | null;
   quotaKind?: "anonymous" | "account";
@@ -65,6 +66,7 @@ export function GetUserIdea({
   onSubmit,
   onQuotaExhausted,
   onIdeaChange,
+  stepResetKey = 0,
   isSubmitting = false,
   remainingAttempts,
   quotaKind = "anonymous",
@@ -78,6 +80,14 @@ export function GetUserIdea({
   const ideaInputRef = useRef<HTMLTextAreaElement>(null);
   const firstToneOptionRef = useRef<HTMLInputElement>(null);
   const previousStep = useRef<"idea" | "tone" | null>(null);
+  const previousStepResetKey = useRef(stepResetKey);
+
+  useEffect(() => {
+    if (previousStepResetKey.current === stepResetKey) return;
+
+    previousStepResetKey.current = stepResetKey;
+    setStep("idea");
+  }, [stepResetKey]);
 
   useEffect(() => {
     if (previousStep.current === null) {
