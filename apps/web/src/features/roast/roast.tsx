@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../error-pages/error-pages";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
@@ -34,6 +34,7 @@ const SAMPLE_EXCHANGES = [
 ] as const;
 const FREE_ROAST_LIMIT = 3;
 export function Roast() {
+  const roastThreadRef = useRef<HTMLDivElement>(null);
   const [sentMessages, setSentMessages] = useState<
     Array<{ id: string; message: string; reply: string }>
   >([]);
@@ -61,6 +62,14 @@ export function Roast() {
   useEffect(() => {
     setAttemptsOverride(null);
   }, [availableAttempts]);
+  useLayoutEffect(() => {
+    if (sentMessages.length === 0) return;
+
+    const roastThread = roastThreadRef.current;
+    if (!roastThread) return;
+
+    roastThread.scrollTop = roastThread.scrollHeight;
+  }, [sentMessages.length]);
   useEffect(() => {
     const controller = new AbortController();
     setRankingState({ status: "loading" });
@@ -125,7 +134,7 @@ export function Roast() {
             de demostración
           </p>
         ) : null}
-        <div className="roast-thread">
+        <div className="roast-thread" ref={roastThreadRef}>
           {remainingAttempts === null && sentMessages.length === 0 ? (
             <LoadingSkeleton
               label="Consultando los mensajes de la conversación"
