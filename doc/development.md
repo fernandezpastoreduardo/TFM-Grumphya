@@ -243,16 +243,22 @@ No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.docker`, `.env.openai` y `.env`. El modelo y
 el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v8`
 aplica una lectura adversarial proporcional y exige una puntuación en toda idea
-funcional. Evalúa los fallos concretos C01–C09 antes de considerar C10; que una
-función ya exista o tenga alternativas no basta para rechazarla. C10 requiere
-una categoría claramente madura y que la propuesta no ofrezca un motivo
-reconocible para elegirla. No presupone honestidad ni buenas intenciones, analiza abuso,
-impacto, verificación, contención y reparación, especialmente en interacciones
-presenciales entre desconocidos. No convierte riesgos exóticos ni detalles
-rutinarios en vetos. Cada envío se evalúa por separado y no pide aclaraciones.
-La API envía la idea, el tono elegido y la versión de política a OpenAI. El tono
-solo debe modificar la redacción de `message`, nunca el veredicto o la
-puntuación. Las respuestas se solicitan con JSON Schema estricto y `store: false`,
+funcional. C07 también exige que la idea exprese un valor o motivo concreto para
+empezar y continuar usándola: una función que solo registra una acción sin
+explicar su resultado útil puede suspender, aunque sea novedosa. No se exige
+resolver un dolor ni demostrar demanda externa si expresa otra finalidad clara,
+como bienestar, aprendizaje, comodidad o entretenimiento. Evalúa los fallos
+concretos C01–C09 antes de considerar C10; que una función ya exista o tenga
+alternativas no basta para rechazarla. C10 requiere una categoría claramente
+madura y que la propuesta no ofrezca un motivo reconocible para elegirla. No
+presupone honestidad ni buenas intenciones, analiza abuso, impacto, verificación,
+contención y reparación, especialmente en interacciones presenciales entre
+desconocidos. No convierte riesgos exóticos ni detalles rutinarios en vetos.
+Cada envío se evalúa por separado y no pide aclaraciones. La interfaz envía la
+idea y el tono a la API; el adaptador no envía el tono al modelo. El servidor
+aplica el tono solo al redactar `headline` y `message`, nunca cambia el veredicto
+o la puntuación por el tono. Las respuestas se solicitan con JSON Schema estricto
+y `store: false`,
 pero esto **no equivale a Zero Data Retention**: según los controles vigentes de
 OpenAI, el uso ordinario de API puede generar logs de abuso que incluyan prompts
 y respuestas y conservarlos hasta 30 días. Revisa la [política de controles de
