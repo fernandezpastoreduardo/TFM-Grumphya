@@ -20,8 +20,12 @@ la lámina maestra está en
   columna funcional; la columna de la mascota conserva su escenario. El
   textarea usa un tono verde muy claro para distinguirse de la tarjeta.
 - El formulario de Home avanza en dos pasos: primero muestra «1. Escribe, pega
-  o dicta tu idea», el textarea y «Adelante»; después muestra la elección de
-  tono y «Evaluar idea». «Cambiar idea» conserva el texto y el tono elegidos.
+  o dicta tu idea» cuando el navegador admite reconocimiento local, y «1.
+  Escribe o pega tu idea» cuando no; después muestra el textarea y «Adelante»,
+  y a continuación la elección de tono y «Evaluar idea». El dictado no se
+  ofrece si no se puede comprobar el soporte local. El botón «Borrar idea»,
+  visible cuando hay texto, limpia el campo sin enviar nada. «Cambiar idea»
+  conserva el texto y el tono elegidos.
   Al enviar la evaluación, el formulario vuelve al primer paso y conserva el
   texto de la idea; al cerrar el diálogo del resultado, la persona puede
   escribir o editar otra idea directamente. Tras recibir un resultado, la
@@ -89,7 +93,9 @@ la lámina maestra está en
 - Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
   distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
   para Planes, `ultrachachi-reality-check.png` para su popup, y
-  `good-practices-checklist.png`/`good-practices-validate-idea.png`,
+  `good-practices-checklist.png`/`good-practices-validate-idea.png` y las dos
+  figuras decorativas `good-practices-companion-pink.png`/
+  `good-practices-companion-yellow.png`,
   `notable-humans-hero.png`/`notable-humans-callout.png`,
   `contact-hero-phone.png`/`contact-message-tube.png`,
   `descargate-boxing-bag.png`/`roast-plan-callout.png`,

@@ -60,7 +60,11 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    The goal is to help people avoid non-viable projects given the cost of AI,
    the time and technical knowledge required, and the issues around
    vibe-coding. This is the only part of the app whose copy avoids the
-   rude/sarcastic tone. Grumphya keeps the established
+   rude/sarcastic tone. Current content guides people to find the real
+   problem, check assumptions and build the smallest useful test; a note says
+   generative tools do not replace product judgment, technical review,
+   security or user testing, and each use has a cost. There is no editorial
+   review stamp. Grumphya keeps the established
    grumpy, skeptical face and recognizable proportions. A section-specific
    pose or accessory may signal practical support without making the mascot
    cheerful or changing its identity. The hero uses the transparent
@@ -95,7 +99,8 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    - Features
      - Login existing account (User / Password)
        - Access token de 10 minutos. Con «Recordarme», refresh token de hasta 30 días; sin marcarlo, cookie de sesión con vencimiento del servidor a las 24 horas. Logout revoca el refresh token. Los permisos del plan se verifican en servidor y caducan aunque el usuario siga autenticado.
-     - Create new account link
+     - No hay enlace de alta desde Login: el registro empieza al elegir Iluminado o Faltón en `/precios`. «He olvidado la contraseña» lleva a `/recuperar-contrasena`.
+     - El encabezado actual es «Aquí solo evaluamos ideas, no contraseñas.»; el copy existente bajo el formulario conserva el rechazo humorístico a otros métodos de acceso y explica la privacidad de las ideas aprobadas/rechazadas.
    - Must have copy text under submit login button in this way:
      "¿Quieres hacer login con Google, GitHub o la app del supermercado?"
      "Pues no se puede"

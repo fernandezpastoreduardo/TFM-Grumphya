@@ -6,4 +6,11 @@ Cada solicitud válida rota el token anterior. PostgreSQL guarda su hash SHA-256
 
 El enlace caduca en 20 minutos y solo se consume una vez. Al guardar la contraseña, el servidor aplica la misma política que el registro, guarda bcrypt cost 12 sobre un prehash SHA-256 hexadecimal (`bcrypt-sha256`) y revoca las sesiones activas dentro de la misma transacción. El flujo nunca crea una sesión nueva. Los correos de recuperación usan la plantilla Grumphya HTML y texto plano. Sin SMTP en desarrollo, se genera una vista previa local en memoria; no equivale a un envío. El envío es asíncrono: ante fallo SMTP se invalida el token y se registra solo un código de error, sin correo, token ni contraseña.
 
+Si el enlace falta, no tiene un formato válido o ya caducó/se consumió, la
+pantalla muestra el formulario para solicitar otro. Si el servidor detecta que
+el enlace dejó de ser válido al guardar, informa del problema y cambia también
+a ese formulario; los errores de política de contraseña conservan el formulario
+de cambio para corregirla. El fragmento con el token se elimina de la barra de
+direcciones al abrir la página.
+
 La suite cubre la lógica con transporte SMTP simulado. El test de integración del repositorio PostgreSQL usa un esquema aislado en la base indicada por `REGISTRATION_TEST_DATABASE_URL`, la misma que configura CI para los tests de registro; no apunta al esquema de aplicación.
