@@ -96,6 +96,33 @@ describe("SectionPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("routes the privacy policy and presents its publication warning and scope", async () => {
+    render(<SectionPage path="/politica-de-privacidad" />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Política de privacidad",
+      }),
+    ).toBeVisible();
+    const policy = await screen.findByRole("article", {
+      name: "Política de privacidad",
+    });
+    expect(
+      within(policy).getByText(/borrador, no publicar todavía/i),
+    ).toBeInTheDocument();
+    expect(
+      within(policy).getByRole("heading", {
+        name: /cuánto tiempo se conservan/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(policy).getByRole("heading", {
+        name: /cookies y almacenamiento local/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the 404 page for an unknown path", () => {
     render(<SectionPage path="/no-existe" />);
 
