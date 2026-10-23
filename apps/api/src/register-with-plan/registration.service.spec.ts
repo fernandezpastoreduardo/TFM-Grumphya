@@ -379,6 +379,25 @@ describe("register with plan", () => {
     });
   });
 
+  it("records and can revoke voluntary public ranking consent", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const intent = await service.createIntent("FALTON");
+    await registerAndConfirm(service, intent.token, validRegistration);
+    const ownerId = repository.users[0]!.id;
+
+    await expect(
+      service.setPublicRankingsOptIn(ownerId, true),
+    ).resolves.toMatchObject({
+      user: { publicRankingsOptIn: true },
+    });
+    await expect(
+      service.setPublicRankingsOptIn(ownerId, false),
+    ).resolves.toMatchObject({
+      user: { publicRankingsOptIn: false },
+    });
+  });
+
   it("rejects a malformed owner id before querying approved ideas", async () => {
     const repository = new InMemoryRegistrationRepository();
     const service = makeService(repository);

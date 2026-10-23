@@ -33,7 +33,8 @@ export class PostgresRoastRankingRepository implements RoastRankingRepository {
     const result = await this.pool.query<RoastRankingRow>(
       `SELECT username, roast_messages_sent, avatar_key
        FROM users
-       WHERE status = 'active' AND roast_messages_sent > 0
+       WHERE status = 'active' AND public_rankings_consent_at IS NOT NULL
+         AND roast_messages_sent > 0
        ORDER BY roast_messages_sent DESC, username ASC
        LIMIT ${MAX_RANKING_SIZE}`,
     );

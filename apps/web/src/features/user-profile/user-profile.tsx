@@ -29,6 +29,7 @@ type AccountProfile = {
     username: string;
     emailVerified: boolean;
     createdAt: string;
+    publicRankingsOptIn: boolean;
     avatarUrl?: string | null;
   };
   plans: AccountPlan[];
@@ -68,6 +69,8 @@ const PURCHASE_ERROR =
   "No se ha podido activar el plan. Comprueba la conexión e inténtalo de nuevo.";
 const AVATAR_UPLOAD_ERROR =
   "No se ha podido actualizar el avatar. Comprueba la imagen e inténtalo de nuevo.";
+const RANKING_PREFERENCE_ERROR =
+  "No se ha podido guardar tu preferencia de privacidad. Inténtalo de nuevo.";
 const PLAN_ALREADY_ACTIVE_ERROR =
   "Ese plan ya está activo; guárdate el café para más adelante.";
 const PLAN_STATUS_LABEL: Record<PlanStatus, string> = {
@@ -123,6 +126,7 @@ function isAccountProfile(value: unknown): value is AccountProfile {
     typeof value.user.username === "string" &&
     (value.user.role === "user" || value.user.role === "admin") &&
     typeof value.user.emailVerified === "boolean" &&
+    typeof value.user.publicRankingsOptIn === "boolean" &&
     typeof value.user.createdAt === "string" &&
     Number.isFinite(Date.parse(value.user.createdAt)) &&
     (value.user.avatarUrl === undefined ||
@@ -171,6 +175,8 @@ export function UserProfile() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const [avatarEditorOpen, setAvatarEditorOpen] = useState(false);
+  const [rankingPreferenceError, setRankingPreferenceError] = useState("");
+  const [rankingPreferenceSaving, setRankingPreferenceSaving] = useState(false);
   const purchaseKeyRef = useRef<string | null>(null);
 
   const loadProfile = useCallback(async () => {
@@ -301,6 +307,35 @@ export function UserProfile() {
     }
   }
 
+  async function updateRankingPreference(enabled: boolean) {
+    setRankingPreferenceSaving(true);
+    setRankingPreferenceError("");
+    try {
+      const response = await authenticatedFetch(
+        "/api/account/privacy/rankings",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        },
+      );
+      const body: unknown = await readJson(response);
+      if (!response.ok || !isAccountProfile(body)) {
+        setRankingPreferenceError(
+          response.status === 401
+            ? SESSION_REQUIRED_ERROR
+            : RANKING_PREFERENCE_ERROR,
+        );
+        return;
+      }
+      setProfile(body);
+    } catch {
+      setRankingPreferenceError(RANKING_PREFERENCE_ERROR);
+    } finally {
+      setRankingPreferenceSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <LoadingSkeleton
@@ -417,6 +452,29 @@ export function UserProfile() {
             </dd>
           </div>
         </dl>
+        <div className="profile-ranking-consent">
+          <label>
+            <input
+              type="checkbox"
+              checked={profile.user.publicRankingsOptIn}
+              disabled={rankingPreferenceSaving}
+              onChange={(event) =>
+                void updateRankingPreference(event.currentTarget.checked)
+              }
+            />
+            Quiero aparecer en los rankings públicos con mi alias, mis
+            cantidades y, si he elegido uno, mi avatar.
+          </label>
+          <p>
+            Es opcional. Puedes retirar esta autorización aquí cuando quieras.
+          </p>
+          {rankingPreferenceError ? (
+            <p role="alert">{rankingPreferenceError}</p>
+          ) : null}
+          {rankingPreferenceSaving ? (
+            <p role="status">Guardando tu preferencia…</p>
+          ) : null}
+        </div>
         {!profile.user.emailVerified ? (
           <p className="profile-verification-notice" role="status">
             <strong>Correo sin verificar.</strong> Añadiremos la verificación

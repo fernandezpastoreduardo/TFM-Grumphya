@@ -18,7 +18,7 @@ export default defineConfig({
           origin: `http://127.0.0.1:${WEB_TEST_PORT}`,
           localStorage: [
             {
-              name: "grumphya.cookie-notice.dismissed.v1",
+              name: "grumphya.privacy-notice.acknowledged.v1",
               value: "true",
             },
           ],

@@ -90,4 +90,21 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
       [REFRESH_HASH],
     );
   });
+
+  it("stores and can revoke a versioned public ranking consent", async () => {
+    query
+      .mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    await expect(
+      repository.setPublicRankingsOptIn(USER_ID, true),
+    ).resolves.toBeNull();
+
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("public_rankings_consent_policy_version"),
+      [USER_ID, true, "v2"],
+    );
+    expect(query.mock.calls[0]?.[0]).toContain("CASE WHEN $2 THEN now()");
+  });
 });

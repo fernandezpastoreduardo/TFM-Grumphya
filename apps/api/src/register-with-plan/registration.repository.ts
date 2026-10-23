@@ -76,6 +76,10 @@ export interface RegistrationRepository {
   ): Promise<SessionIdentity>;
   getProfile(refreshTokenHash: string): Promise<AccountProfile | null>;
   getProfileForUser(userId: string): Promise<AccountProfile | null>;
+  setPublicRankingsOptIn(
+    userId: string,
+    enabled: boolean,
+  ): Promise<AccountProfile | null>;
   listGoodIdeas(userId: string): Promise<UserGoodIdea[]>;
   saveGoodIdea(
     userId: string,

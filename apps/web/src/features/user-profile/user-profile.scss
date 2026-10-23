@@ -418,6 +418,38 @@
   margin: 22px 0 0;
 }
 
+.profile-ranking-consent {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-teal-dark) 20%, white);
+}
+
+.profile-ranking-consent label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 680px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.profile-ranking-consent input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  accent-color: var(--color-teal-dark);
+}
+
+.profile-ranking-consent p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .profile-details div {
   border-left: 3px solid var(--color-teal-dark);
   padding: 4px 0 4px 12px;

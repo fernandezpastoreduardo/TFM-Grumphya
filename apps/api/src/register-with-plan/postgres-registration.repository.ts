@@ -18,6 +18,8 @@ import type { RegistrationRepository } from "./registration.repository";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 
 const GOOD_IDEAS_LIMIT = 10;
+const PRIVACY_POLICY_VERSION = "v2";
+const PUBLIC_RANKINGS_CONSENT_POLICY_VERSION = "v2";
 const REGISTRATION_INTENT_CLEANUP_BATCH = 500;
 const AUTH_SESSION_CLEANUP_BATCH = 500;
 
@@ -82,13 +84,14 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       const username = input.username.trim().toLowerCase();
       const user = await client.query<{ id: string }>(
         `INSERT INTO users(email,email_normalized,username,username_normalized,password_hash,privacy_policy_version,privacy_policy_acknowledged_at,status)
-         VALUES($1,$2,$3,$4,$5,'v1',now(),'pending_email_verification') RETURNING id`,
+         VALUES($1,$2,$3,$4,$5,$6,now(),'pending_email_verification') RETURNING id`,
         [
           input.email.trim(),
           email,
           input.username.trim(),
           username,
           passwordHash,
+          PRIVACY_POLICY_VERSION,
         ],
       );
       const userId = user.rows[0]!.id;
@@ -162,7 +165,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       const user = await client.query<{ id: string }>(
         `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
           privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status)
-         VALUES($1,$2,$3,$4,$5,$6,'v1',now(),NULL,'active') RETURNING id`,
+         VALUES($1,$2,$3,$4,$5,$6,$7,now(),NULL,'active') RETURNING id`,
         [
           userId,
           input.email,
@@ -170,6 +173,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
           input.username,
           input.username.toLowerCase(),
           passwordHash,
+          PRIVACY_POLICY_VERSION,
         ],
       );
       const createdUserId = user.rows[0]?.id;
@@ -462,6 +466,21 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     return this.readProfileForUser(this.pool, userId);
   }
 
+  async setPublicRankingsOptIn(
+    userId: string,
+    enabled: boolean,
+  ): Promise<AccountProfile | null> {
+    await this.ensureSchema();
+    await this.pool.query(
+      `UPDATE users SET
+         public_rankings_consent_at = CASE WHEN $2 THEN now() ELSE NULL END,
+         public_rankings_consent_policy_version = CASE WHEN $2 THEN $3 ELSE NULL END
+       WHERE id=$1 AND status='active'`,
+      [userId, enabled, PUBLIC_RANKINGS_CONSENT_POLICY_VERSION],
+    );
+    return this.readProfileForUser(this.pool, userId);
+  }
+
   async listGoodIdeas(userId: string): Promise<UserGoodIdea[]> {
     await this.ensureSchema();
     const result = await this.pool.query<{
@@ -567,6 +586,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       roast_messages_sent: string;
       role: "user" | "admin";
       avatar_key: string | null;
+      public_rankings_opt_in: boolean;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -575,6 +595,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_roasts: number;
     }>(
       `SELECT u.id AS user_id,u.email,u.username,u.role,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
+         (u.public_rankings_consent_at IS NOT NULL) AS public_rankings_opt_in,
          u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
@@ -618,6 +639,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       roast_messages_sent: string;
       role: "user" | "admin";
       avatar_key: string | null;
+      public_rankings_opt_in: boolean;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -626,6 +648,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       remaining_roasts: number;
     }>(
       `SELECT u.id AS user_id,u.email,u.username,u.role,u.email_verified_at,u.created_at AS user_created_at,u.avatar_key,
+         (u.public_rankings_consent_at IS NOT NULL) AS public_rankings_opt_in,
          u.roast_messages_sent::text AS roast_messages_sent,p.code AS plan_code,
          CASE WHEN active_subscription.id IS NULL THEN 'inactive' ELSE 'active' END AS plan_status,
          active_subscription.starts_at,active_subscription.expires_at,
@@ -659,6 +682,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       roast_messages_sent: string;
       role: "user" | "admin";
       avatar_key: string | null;
+      public_rankings_opt_in: boolean;
       plan_code: PlanCode;
       plan_status: "active" | "inactive";
       starts_at: Date | null;
@@ -676,6 +700,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
         emailVerified: first.email_verified_at !== null,
         createdAt: first.user_created_at.toISOString(),
         roastMessagesSent: parseRoastMessagesSent(first.roast_messages_sent),
+        publicRankingsOptIn: first.public_rankings_opt_in,
         avatarUrl: first.avatar_key ? `/api/avatars/${first.avatar_key}` : null,
       },
       plans: rows.map((row): AccountPlanStatus => ({

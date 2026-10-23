@@ -1,23 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-const DISMISSED_STORAGE_KEY = "grumphya.cookie-notice.dismissed.v1";
+const NOTICE_ACKNOWLEDGED_KEY = "grumphya.privacy-notice.acknowledged.v1";
 const INITIAL_STORAGE_RESET_KEY = "e2e.cookie-notice.initial-storage-reset";
 
 test("keeps the cookie notice dismissed while navigating between sections", async ({
   page,
 }) => {
   await page.addInitScript(
-    ({ dismissedKey, resetKey }) => {
+    ({ acknowledgedKey, resetKey }) => {
       if (
         window.location.origin !== "null" &&
         sessionStorage.getItem(resetKey) !== "done"
       ) {
-        localStorage.removeItem(dismissedKey);
+        localStorage.removeItem(acknowledgedKey);
         sessionStorage.setItem(resetKey, "done");
       }
     },
     {
-      dismissedKey: DISMISSED_STORAGE_KEY,
+      acknowledgedKey: NOTICE_ACKNOWLEDGED_KEY,
       resetKey: INITIAL_STORAGE_RESET_KEY,
     },
   );
@@ -27,9 +27,7 @@ test("keeps the cookie notice dismissed while navigating between sections", asyn
     name: "Ni galletitas ni galletitos",
   });
   await expect(notice).toBeVisible();
-  await page
-    .getByRole("button", { name: "Denegar y continuar sin galletas" })
-    .click();
+  await page.getByRole("button", { name: "Entendido" }).click();
   await expect(notice).toHaveCount(0);
 
   await page.getByRole("link", { name: "Planes", exact: true }).click();
