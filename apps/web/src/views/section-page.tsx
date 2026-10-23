@@ -102,7 +102,7 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   "/politica-de-privacidad": {
     title: "Política de privacidad",
     intro:
-      "La información de privacidad se completará antes de abrir el registro al público.",
+      "Qué datos trata Grumphya, para qué los usa y qué información falta por confirmar.",
     theme: "calm",
   },
   "/terminos-y-condiciones": {
