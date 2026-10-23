@@ -16,6 +16,8 @@ Cada fichero indicado con `--prompts` contiene las instrucciones del sistema que
 
 El informe agregado omite ideas, explicaciones, títulos y salidas del modelo. El proveedor recibe las ideas sintéticas del corpus y los prompts indicados. No uses ideas reales de usuarios como corpus. No guardes informes crudos del proveedor.
 
+Los límites del prompt deben coincidir con el validador de `message`: una respuesta sin rechazo admite 8–40 palabras y 280 caracteres; una respuesta rechazada admite 8–120 palabras y 900 caracteres. Dar al modelo el límite de 900 caracteres en todos los estados puede hacer que una explicación válida según el prompt supere el tope de 280 y termine como `INVALID_EVALUATION_RESPONSE` (`visible_message`).
+
 El roast pide al modelo una frase sencilla de hasta 200 caracteres, con palabras cotidianas y una broma comprensible ligada a un detalle inocuo del mensaje. La validación de servidor comprueba formato, longitud y lenguaje explícitamente abusivo; no puede garantizar automáticamente que el chiste sea claro o que aluda de forma pertinente al mensaje.
 
 ## Pruebas de seguridad de IA

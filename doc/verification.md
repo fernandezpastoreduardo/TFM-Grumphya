@@ -230,6 +230,12 @@ Actualización de instrucciones de evaluación y roast, 22 de octubre de 2026:
 - El roast pide una frase sencilla y cotidiana, de hasta 200 caracteres, vinculada a un detalle concreto e inocuo. El backend valida el formato, la longitud y el lenguaje explícitamente abusivo; la claridad y pertinencia siguen dependiendo del modelo.
 - La actualización es una instrucción de generación, no una garantía semántica. La claridad del roast y la selección equilibrada de criterios deben revisarse con casos sintéticos y evaluación humana.
 
+Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
+
+- Se reprodujo el fallo con una idea de carga de camiones. OpenAI devolvió `SIN_BLOQUEO_EVIDENTE` y los diez criterios, pero `validateModelDecision` rechazó la respuesta con `visible_message` porque `message` excedía el máximo neutral de 280 caracteres. Una reproducción emitió 287 caracteres.
+- La causa era un límite contradictorio: el prompt permitía hasta 900 caracteres para cualquier respuesta, aunque el validador permite hasta 900 solo para `RECHAZADA`; los otros estados admiten 280 para que el mensaje quepa tras la introducción de tono.
+- Se corrigió el prompt para aplicar por estado los mismos límites que el validador. No se almacenó el texto de la idea ni la respuesta completa.
+
 ## Páginas de error de la interfaz, 16 de octubre de 2026
 
 - Las rutas desconocidas muestran el 404; un error de renderizado React muestra el 500; el límite temporal `ANONYMOUS_PROFILE_RATE_LIMITED` muestra el 429 con su ventana `Retry-After`. Los errores recuperables de API en formularios siguen en contexto.
