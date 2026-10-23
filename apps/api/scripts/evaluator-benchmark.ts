@@ -9,7 +9,7 @@ import {
 
 const API_KEY_ENV = "OPENAI_API_KEY";
 const DEFAULT_MODEL = "gpt-5.4-mini";
-const POLICY_VERSION = "grumphya-concept-v7";
+const POLICY_VERSION = "grumphya-concept-v8";
 const CASES_PATH = resolve(__dirname, "../evaluation/evaluator-cases.json");
 const USAGE_MESSAGE =
   "Uso: pnpm --filter @grumphya/api benchmark:evaluator [--models modelo-a,modelo-b] [--prompts nombre=archivo,nombre=archivo]";

@@ -141,6 +141,10 @@ describe("renderMessage", () => {
     ],
     ["CONFLICTO_ESTRUCTURAL", "conflicto sin una forma de resolverlo"],
     ["UTILIDAD_ANULADA", "función que no cumple su promesa"],
+    [
+      "VALOR_USUARIO_NO_DEFINIDO",
+      "falta de un motivo concreto para usar la aplicación",
+    ],
     ["ECONOMIA_INCOMPATIBLE", "incompatibilidad entre ingresos y costes"],
     ["HAPPY_PATH_ESTRUCTURAL", "falta de una alternativa cuando algo falla"],
     ["DIFERENCIACION_AUSENTE", "diferencia frente a otras aplicaciones"],
