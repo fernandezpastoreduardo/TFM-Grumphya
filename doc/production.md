@@ -208,6 +208,8 @@ docker compose --project-name grumphya --env-file .env.production -f compose.pro
 
 GPG pide una frase de cifrado de forma interactiva; guárdala aparte de las copias. Comprueba que ambos archivos `.gpg` existen y se pueden descifrar antes de copiar solo esos archivos cifrados fuera del VPS.
 
+Conserva cada copia externa solo mientras sea necesaria para prestar el servicio y recuperar datos ante incidencias. Cuando ya no sea necesaria para ese fin ni exista una obligación de conservación, elimina los archivos cifrados y sus copias. La rotación no está automatizada en este procedimiento: el operador debe revisar y retirar periódicamente las copias antiguas. Si restauras una copia que contiene datos ya vencidos o eliminados, el servicio de retención de la API los purgará en la siguiente ejecución; deja que termine y comprueba el estado antes de reabrir tráfico.
+
 Para restaurar, detén API y proxy, confirma que tienes copias verificadas y recrea la base vacía antes de cargar el dump. Estos comandos eliminan los datos actuales de esa base; úsalos solo como parte de una restauración deliberada. No mezcles un dump antiguo con avatares de una fecha distinta:
 
 ```sh

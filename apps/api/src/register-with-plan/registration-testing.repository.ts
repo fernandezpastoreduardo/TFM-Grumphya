@@ -21,6 +21,7 @@ type TestUser = {
   username: string;
   passwordHash: string;
   emailVerified: boolean;
+  publicRankingsOptIn?: boolean;
   status: "pending_email_verification" | "email_verified" | "active";
 };
 type TestRegistration = {
@@ -420,6 +421,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
         emailVerified: user.emailVerified,
         createdAt: new Date().toISOString(),
         roastMessagesSent: 0,
+        publicRankingsOptIn: user.publicRankingsOptIn ?? false,
       },
       plans: (["ILUMINADO", "FALTON"] as const).map((plan) => {
         const active = this.subscriptions.some(
@@ -450,6 +452,16 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
       (item) => item.userId === userId && item.expiresAt.getTime() > Date.now(),
     );
     return session ? this.getProfile(session.refreshHash) : null;
+  }
+
+  async setPublicRankingsOptIn(
+    userId: string,
+    enabled: boolean,
+  ): Promise<AccountProfile | null> {
+    const user = this.users.find((item) => item.id === userId);
+    if (!user) return null;
+    user.publicRankingsOptIn = enabled;
+    return this.getProfileForUser(userId);
   }
 
   async listGoodIdeas(userId: string): Promise<UserGoodIdea[]> {

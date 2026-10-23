@@ -33,17 +33,23 @@ El límite secundario de creación de perfiles anónimos —20 por IP en 24 hora
 
 **Mejora a valorar:** mover los contadores por minuto a un almacén compartido, como Redis, o a un gateway que aplique el límite antes de distribuir las solicitudes. Definir la estrategia al preparar el despliegue con varias réplicas y comprobar límites simultáneos y recuperación ante reinicios.
 
-## Privacidad de rankings públicos antes de apertura
+## Consentimiento para rankings públicos
 
-**Estado:** pendiente; requisito previo a abrir el servicio a usuarios reales.
+**Estado:** implementado con adhesión voluntaria.
 
-`GET /api/roast-ranking` publica el alias y el contador acumulado de envíos de roast, y `GET /api/best-users` publica el alias y el número de ideas aprobadas de hasta diez cuentas activas. Un alias elegido por una persona puede contener datos personales o servir como dato de contacto. El borrador de `/politica-de-privacidad` explica estas publicaciones, pero siguen pendientes la base, el plazo, la opción de exclusión y la revisión del riesgo de identificación o contacto mediante alias. Resolver esos puntos antes de la apertura pública. Este requisito sigue siendo una condición de preparación para producción; los rankings no deben interpretarse como autorización para publicar el servicio.
+La migración `030_public_rankings_consent.sql` añade el registro de fecha y versión del consentimiento en `users`; las cuentas existentes quedan fuera de los rankings por defecto. `POST /api/account/privacy/rankings` permite activar y retirar la preferencia con una sesión autenticada. El perfil presenta una casilla inicialmente desmarcada que explica que se publicarán alias, cantidades y el avatar elegido. `GET /api/roast-ranking` y `GET /api/best-users` filtran por consentimiento activo, de modo que retirar la autorización quita la cuenta de ambos resultados.
+
+## Purga periódica de datos vencidos
+
+**Estado:** implementado en la API; confirmar ejecución en producción.
+
+`DataRetentionService` elimina por lotes, al iniciar la API y después cada hora, perfiles anónimos inactivos tras 400 días, cachés vencidas, ideas rechazadas sin actividad durante 24 meses, mensajes de contacto y métricas de uso con 12 meses, y eventos de error con 30 días. El proceso usa `FOR UPDATE SKIP LOCKED` para permitir varias réplicas y reintenta en la siguiente hora si una ejecución falla. Los logs de la aplicación no incluyen el contenido borrado. La rotación de copias externas debe seguir el criterio aprobado de conservarlas solo mientras sean necesarias para prestar el servicio y recuperar datos; validar el ciclo real configurado en IONOS.
 
 ## Verificación de correo en las nuevas altas
 
-**Estado:** implementado; queda la purga de datos pendientes históricos.
+**Estado:** implementado; la tarea periódica también purga registros pendientes vencidos. Verificar ejecución en producción.
 
-Las altas nuevas permanecen pendientes hasta verificar el correo con un token aleatorio de un solo uso (24 horas) y confirmar explícitamente la contratación simulada dentro de 15 minutos. Los hashes de tokens se guardan en PostgreSQL; no se crea plan, sesión ni cuota antes de confirmar. El correo usa SMTP configurado en servidor; la vista previa local de desarrollo no se envía. Se conserva compatibilidad con filas históricas pendientes, pero no existe purga automática de registros vencidos. Definir plazo y job de purga verificable antes de producción.
+Las altas nuevas permanecen pendientes hasta verificar el correo con un token aleatorio de un solo uso (24 horas) y confirmar explícitamente la contratación simulada dentro de 15 minutos. Los hashes de tokens se guardan en PostgreSQL; no se crea plan, sesión ni cuota antes de confirmar. El correo usa SMTP configurado en servidor; la vista previa local de desarrollo no se envía. Se conserva compatibilidad con filas históricas pendientes, y la tarea periódica elimina los registros vencidos. Confirmar su ejecución efectiva en producción.
 
 ## Autenticación de dos factores
 
@@ -71,7 +77,7 @@ Las filas de `pending_registrations` con enlaces caducados pueden permanecer en 
 
 **Estado:** pendiente de definir e implementar una política de purga física garantizada.
 
-`account_plan_usage_requests.response_json` conserva durante un TTL lógico de 24 horas el cuerpo íntegro de las respuestas de evaluación o roast para responder reintentos sin volver a consumir. El cuerpo puede contener salida generada derivada de la solicitud. La tabla no guarda el payload fuente en campos propios, pero la expiración lógica no garantiza el borrado físico a las 24 horas: las filas se eliminan oportunistamente, hasta 500 por reserva posterior, y no existe un job periódico. Valorar una purga con plazo físico verificable y la minimización o cifrado en reposo del contenido cacheado.
+`account_plan_usage_requests.response_json` conserva durante un TTL lógico de 24 horas el cuerpo íntegro de las respuestas de evaluación o roast para responder reintentos sin volver a consumir. El cuerpo puede contener salida generada derivada de la solicitud. La tabla no guarda el payload fuente en campos propios, pero `DataRetentionService` elimina las filas vencidas por lotes al arrancar la API y cada hora; el borrado físico puede ocurrir hasta una hora después del TTL. Mantener la minimización del contenido cacheado y revisar el cifrado en reposo.
 
 ## Retención, privacidad y atención de mensajes de contacto
 
@@ -81,8 +87,8 @@ El formulario de Contacto autenticado guarda el asunto y el mensaje en PostgreSQ
 
 ## Correo de contacto
 
-**Implementado con límites operativos:** el registro autenticado del mensaje envía una confirmación mediante el SMTP compartido, con asunto genérico, fecha y referencia; no incluye el texto enviado. Si falla la entrega, el mensaje permanece guardado y la UI permite hasta tres intentos totales de confirmación. Jappy puede responder desde la bandeja del panel: el destinatario se obtiene de PostgreSQL, el correo usa el remitente y Reply-To configurados, y solo una sesión con rol admin activo en PostgreSQL puede iniciar el envío. El estado y la fecha del intento se guardan, no el cuerpo de la respuesta. Para evitar duplicados, el primer envío se reclama atómicamente y, si la entrega queda incierta, el panel requiere confirmar que se revisó el webmail antes de permitir un segundo intento. El usuario responde al buzón SMTP configurado y el equipo lee esas respuestas en el webmail correspondiente; no hay lectura IMAP en la aplicación. Los mensajes no tienen aún política de purga y los estados de entrega no prueban recepción por el destinatario.
+**Implementado con límites operativos:** el registro autenticado del mensaje envía una confirmación mediante el SMTP compartido, con asunto genérico, fecha y referencia; no incluye el texto enviado. Si falla la entrega, el mensaje permanece guardado y la UI permite hasta tres intentos totales de confirmación. Jappy puede responder desde la bandeja del panel: el destinatario se obtiene de PostgreSQL, el correo usa el remitente y Reply-To configurados, y solo una sesión con rol admin activo en PostgreSQL puede iniciar el envío. El estado y la fecha del intento se guardan, no el cuerpo de la respuesta. Para evitar duplicados, el primer envío se reclama atómicamente y, si la entrega queda incierta, el panel requiere confirmar que se revisó el webmail antes de permitir un segundo intento. El usuario responde al buzón SMTP configurado y el equipo lee esas respuestas en el webmail correspondiente; no hay lectura IMAP en la aplicación. Los mensajes se purgan a los 12 meses; los estados de entrega no prueban recepción por el destinatario.
 
 ## Retención de métricas del panel
 
-**Pendiente:** definir plazos de conservación y purga verificable para `application_error_events` y `admin_ai_usage_events`. La primera almacena códigos normalizados de errores 5xx, estado HTTP, fecha y una categoría opcional y cerrada de diagnóstico para ciertos errores de validación; las filas históricas o no aplicables pueden tener `diagnostic_code` nulo. Las respuestas 4xx esperables no se registran. La segunda conserva operación, modelo, tokens, coste estimado, fecha y tipo de actor (`registered_user`, `admin` o `anonymous`); en usos autenticados también conserva el `user_id`, que se pone a nulo al borrar la cuenta mientras el tipo de actor mantiene la atribución agregada. Ninguna tabla contiene prompts, ideas, respuestas, rutas ni payloads.
+**Retención implementada:** `application_error_events` se purga a los 30 días y `admin_ai_usage_events` a los 12 meses. Confirmar ejecución efectiva en producción. La primera almacena códigos normalizados de errores 5xx, estado HTTP, fecha y una categoría opcional y cerrada de diagnóstico para ciertos errores de validación; las filas históricas o no aplicables pueden tener `diagnostic_code` nulo. Las respuestas 4xx esperables no se registran. La segunda conserva operación, modelo, tokens, coste estimado, fecha y tipo de actor (`registered_user`, `admin` o `anonymous`); en usos autenticados también conserva el `user_id`, que se pone a nulo al borrar la cuenta mientras el tipo de actor mantiene la atribución agregada. Ninguna tabla contiene prompts, ideas, respuestas, rutas ni payloads.

@@ -32,6 +32,7 @@ export class PostgresBestUsersRepository implements BestUsersRepository {
        FROM users
        JOIN approved_ideas AS approved ON approved.user_id = users.id
        WHERE users.status = 'active'
+         AND users.public_rankings_consent_at IS NOT NULL
        GROUP BY users.id, users.username
        ORDER BY approved_ideas_count DESC, users.username ASC
        LIMIT ${MAX_BEST_USERS}`,

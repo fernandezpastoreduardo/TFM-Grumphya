@@ -11,6 +11,7 @@ import { IdeaSubmissionService } from "./idea-evaluation/idea-submission.service
 import { OpenAiTextEmbeddingPort } from "./infrastructure/ai/openai-text-embedding.port";
 import { TEXT_EMBEDDING_PORT } from "./infrastructure/ai/text-embedding.tokens";
 import { createPostgresPool } from "./infrastructure/database/postgres-pool";
+import { DataRetentionService } from "./infrastructure/data-retention/data-retention.service";
 import { RegistrationModule } from "./register-with-plan/registration.module";
 import {
   REGISTRATION_REPOSITORY,
@@ -173,6 +174,10 @@ function createIdeaSubmissionService(
     GetBestListBestUsersController,
   ],
   providers: [
+    {
+      provide: DataRetentionService,
+      useFactory: () => new DataRetentionService(createPostgresPool()),
+    },
     EvaluationProcessService,
     {
       provide: EVALUATION_PORT,

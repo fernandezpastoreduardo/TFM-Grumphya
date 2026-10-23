@@ -26,9 +26,9 @@ Formularios accesibles. Los errores de autenticación deben ser genéricos y nun
 
 `CreateAccountForm` solicita email, alias, contraseña y una casilla inicialmente desmarcada con el texto «He leído la política de privacidad», enlazado a `/politica-de-privacidad`. La casilla obligatoria se envía como `privacyPolicyAcknowledged` y tiene error asociado y anuncio accesible. Un texto auxiliar cercano permite consultar `/terminos-y-condiciones`; no añade una aceptación separada. Email sintácticamente inválido puede dar mensaje específico; conflictos de email/alias comparten el mismo mensaje y respuesta genérica. El formulario distingue los estados de carga, error y alta pendiente, e informa que la cuenta no se activará hasta verificar el correo y confirmar el plan. Los enlaces llevan el token en el fragmento URL, que la página elimina antes de enviar la verificación. Sin SMTP en desarrollo se genera una vista previa local de correo, no un envío.
 
-La vista `/politica-de-privacidad` provisional muestra un título y los estilos del sitio e indica que el contenido está pendiente de completar. No debe aparentar ofrecer información legal completa.
+La vista `/politica-de-privacidad` publica la versión 2, fechada el 23 de octubre de 2026. El consentimiento opcional para rankings se gestiona desde el perfil y es independiente de la casilla de lectura del alta.
 
-`/terminos-y-condiciones` muestra el resumen sobre el tratamiento de las ideas y los dictados que antes aparecía en Home. No sustituye el borrador detallado de `/politica-de-privacidad`, que continúa pendiente de validación y aprobación antes de ofrecer el servicio al público.
+`/terminos-y-condiciones` muestra el resumen sobre el tratamiento de las ideas y los dictados que antes aparecía en Home. No sustituye la versión 2 de `/politica-de-privacidad`.
 
 ### ErrorPages
 

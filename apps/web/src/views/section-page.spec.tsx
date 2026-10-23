@@ -96,7 +96,7 @@ describe("SectionPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("routes the privacy policy and presents its publication warning and scope", async () => {
+  it("routes the current privacy policy and presents its scope", async () => {
     render(<SectionPage path="/politica-de-privacidad" />);
 
     expect(
@@ -108,8 +108,9 @@ describe("SectionPage", () => {
     const policy = await screen.findByRole("article", {
       name: "Política de privacidad",
     });
+    expect(within(policy).queryByText(/borrador/i)).not.toBeInTheDocument();
     expect(
-      within(policy).getByText(/borrador, no publicar todavía/i),
+      within(policy).getByText(/Avenida de América 46, 4.º A/i),
     ).toBeInTheDocument();
     expect(
       within(policy).getByRole("heading", {

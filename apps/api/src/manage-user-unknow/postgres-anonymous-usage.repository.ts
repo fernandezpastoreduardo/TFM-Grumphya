@@ -248,7 +248,7 @@ export class PostgresAnonymousUsageRepository implements AnonymousUsageRepositor
     tokenHash: string,
   ): Promise<string> {
     const result = await client.query<{ id: string }>(
-      "SELECT id FROM anonymous_visitors WHERE token_hash = $1 FOR UPDATE",
+      "UPDATE anonymous_visitors SET last_seen_at=now()\n       WHERE token_hash = $1 RETURNING id",
       [tokenHash],
     );
     const id = result.rows[0]?.id;

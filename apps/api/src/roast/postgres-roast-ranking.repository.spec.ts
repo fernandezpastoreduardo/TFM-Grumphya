@@ -38,6 +38,7 @@ describe("PostgresRoastRankingRepository", () => {
     expect(String(sql)).toContain("ORDER BY roast_messages_sent DESC");
     expect(String(sql)).toContain("LIMIT 10");
     expect(String(sql)).toContain("status = 'active'");
+    expect(String(sql)).toContain("public_rankings_consent_at IS NOT NULL");
     expect(String(sql)).not.toContain("email");
     expect(String(sql)).not.toContain("user_id");
   });

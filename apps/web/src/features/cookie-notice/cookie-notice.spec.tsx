@@ -3,28 +3,36 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CookieNotice } from "./cookie-notice";
 
-const ACCEPT_BUTTON_NAME = "Aceptar y continuar sin galletas";
-const DENY_BUTTON_NAME = "Denegar y continuar sin galletas";
-const DISMISSED_STORAGE_KEY = "grumphya.cookie-notice.dismissed.v1";
+const NOTICE_BUTTON_NAME = "Entendido";
+const PRIVACY_LINK_NAME = "Leer la política de privacidad";
+const NOTICE_ACKNOWLEDGED_KEY = "grumphya.privacy-notice.acknowledged.v1";
 
 describe("CookieNotice", () => {
   beforeEach(() => {
-    window.localStorage.removeItem(DISMISSED_STORAGE_KEY);
+    window.localStorage.removeItem(NOTICE_ACKNOWLEDGED_KEY);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("explains that only necessary cookies are used", () => {
+  it("explains the first-party storage and links to the full policy", () => {
     render(<CookieNotice />);
 
     expect(
       screen.getByRole("dialog", { name: "Ni galletitas ni galletitos" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/NO usamos cookies de terceros/i),
+      screen.getByText(
+        /No usamos publicidad, analítica ni cookies de terceros/i,
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/almacenamiento local del navegador/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: PRIVACY_LINK_NAME }),
+    ).toHaveAttribute("href", "/politica-de-privacidad");
     expect(
       screen.getByRole("img", {
         name: "Grumphya le da una patada a una galleta",
@@ -32,17 +40,14 @@ describe("CookieNotice", () => {
     ).toBeInTheDocument();
   });
 
-  it.each([ACCEPT_BUTTON_NAME, DENY_BUTTON_NAME])(
-    "closes when the user selects %s",
-    async (buttonName) => {
-      const user = userEvent.setup();
-      render(<CookieNotice />);
+  it("closes when the user acknowledges the notice", async () => {
+    const user = userEvent.setup();
+    render(<CookieNotice />);
 
-      await user.click(screen.getByRole("button", { name: buttonName }));
+    await user.click(screen.getByRole("button", { name: NOTICE_BUTTON_NAME }));
 
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    },
-  );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 
   it("moves focus into the notice and restores it when closed", async () => {
     const user = userEvent.setup();
@@ -52,48 +57,43 @@ describe("CookieNotice", () => {
     opener.focus();
     render(<CookieNotice />);
 
-    const acceptButton = screen.getByRole("button", {
-      name: ACCEPT_BUTTON_NAME,
+    const noticeButton = screen.getByRole("button", {
+      name: NOTICE_BUTTON_NAME,
     });
-    expect(acceptButton).toHaveFocus();
+    expect(noticeButton).toHaveFocus();
 
-    await user.click(acceptButton);
+    await user.click(noticeButton);
 
     expect(opener).toHaveFocus();
     opener.remove();
   });
 
-  it("closes with Escape and traps keyboard focus between its buttons", async () => {
+  it("closes with Escape and traps keyboard focus between the link and button", async () => {
     const user = userEvent.setup();
     render(<CookieNotice />);
 
-    const acceptButton = screen.getByRole("button", {
-      name: ACCEPT_BUTTON_NAME,
+    const noticeButton = screen.getByRole("button", {
+      name: NOTICE_BUTTON_NAME,
     });
-    const denyButton = screen.getByRole("button", { name: DENY_BUTTON_NAME });
+    const privacyLink = screen.getByRole("link", { name: PRIVACY_LINK_NAME });
 
-    expect(acceptButton).toHaveFocus();
+    expect(noticeButton).toHaveFocus();
     await user.tab({ shift: true });
-    expect(denyButton).toHaveFocus();
+    expect(privacyLink).toHaveFocus();
     await user.tab();
-    expect(acceptButton).toHaveFocus();
+    expect(noticeButton).toHaveFocus();
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(window.localStorage.getItem(DISMISSED_STORAGE_KEY)).toBe("true");
   });
 
-  it("persists dismissal in this browser and keeps it dismissed after remount", async () => {
+  it("stores only that the information notice was acknowledged", async () => {
     const user = userEvent.setup();
-    const startingCookie = document.cookie;
-    const { unmount } = render(<CookieNotice />);
-
-    await user.click(screen.getByRole("button", { name: DENY_BUTTON_NAME }));
-    expect(window.localStorage.getItem(DISMISSED_STORAGE_KEY)).toBe("true");
-    unmount();
     render(<CookieNotice />);
 
-    expect(document.cookie).toBe(startingCookie);
+    await user.click(screen.getByRole("button", { name: NOTICE_BUTTON_NAME }));
+
+    expect(window.localStorage.getItem(NOTICE_ACKNOWLEDGED_KEY)).toBe("true");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe("CookieNotice", () => {
     });
     render(<CookieNotice />);
 
-    await user.click(screen.getByRole("button", { name: DENY_BUTTON_NAME }));
+    await user.click(screen.getByRole("button", { name: NOTICE_BUTTON_NAME }));
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });

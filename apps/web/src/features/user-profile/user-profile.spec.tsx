@@ -15,6 +15,7 @@ const ACCOUNT_PROFILE = {
     username: "persona-lista",
     emailVerified: false,
     createdAt: "2026-10-16T12:00:00.000Z",
+    publicRankingsOptIn: false,
     avatarUrl: null,
   },
   plans: [
@@ -108,6 +109,11 @@ describe("UserProfile", () => {
     expect(fetch).toHaveBeenCalledWith("/api/account/profile", undefined);
     expect(fetch).toHaveBeenCalledWith("/api/account/good-ideas", undefined);
     expect(
+      screen.getByRole("checkbox", {
+        name: /quiero aparecer en los rankings públicos/i,
+      }),
+    ).not.toBeChecked();
+    expect(
       screen.getByRole("row", {
         name: /agenda compartida para equipos pequeños/i,
       }),
@@ -138,6 +144,36 @@ describe("UserProfile", () => {
       "/api/admin/contact-messages",
       undefined,
     );
+  });
+
+  it("records optional consent before including the account in public rankings", async () => {
+    const optedInProfile = {
+      ...ACCOUNT_PROFILE,
+      user: { ...ACCOUNT_PROFILE.user, publicRankingsOptIn: true },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === "/api/account/good-ideas")
+          return jsonResponse(GOOD_IDEAS);
+        if (String(input) === "/api/account/privacy/rankings") {
+          expect(init?.method).toBe("POST");
+          expect(init?.body).toBe(JSON.stringify({ enabled: true }));
+          return jsonResponse(optedInProfile);
+        }
+        return jsonResponse(ACCOUNT_PROFILE);
+      }),
+    );
+    const user = userEvent.setup();
+    render(<UserProfile />);
+
+    const rankingConsent = await screen.findByRole("checkbox", {
+      name: /quiero aparecer en los rankings públicos/i,
+    });
+    expect(rankingConsent).not.toBeChecked();
+    await user.click(rankingConsent);
+
+    expect(await screen.findByRole("checkbox")).toBeChecked();
   });
 
   it("shows an empty state instead of a sample table when there are no approved ideas", async () => {

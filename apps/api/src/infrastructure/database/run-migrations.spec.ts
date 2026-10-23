@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(29);
+    ).toHaveLength(30);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
