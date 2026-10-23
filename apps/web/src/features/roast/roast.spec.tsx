@@ -230,7 +230,7 @@ describe("Roast", () => {
     expect(screen.queryByText(FIRST_SAMPLE_ROAST)).not.toBeInTheDocument();
   });
 
-  it("replaces the demo with the user's submitted exchange for this session", async () => {
+  it("replaces the demo with the user's submitted exchange and scrolls it into view", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(
       async () =>
@@ -240,7 +240,13 @@ describe("Roast", () => {
         }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    render(<Roast />);
+    const { container } = render(<Roast />);
+    const thread = container.querySelector(".roast-thread");
+    if (!thread) throw new Error("Roast thread was not rendered");
+    Object.defineProperty(thread, "scrollHeight", {
+      configurable: true,
+      value: 640,
+    });
 
     expect(screen.getByText(FIRST_SAMPLE_ROAST)).toBeInTheDocument();
 
@@ -255,6 +261,7 @@ describe("Roast", () => {
     });
     expect(screen.getByText(SUBMITTED_ROAST)).toBeInTheDocument();
     expect(screen.getByText(SERVER_ROAST_REPLY)).toBeInTheDocument();
+    expect(thread.scrollTop).toBe(640);
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
