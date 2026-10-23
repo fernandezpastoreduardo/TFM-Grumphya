@@ -465,6 +465,32 @@ export class RegistrationService {
     return profile;
   }
 
+  async setPublicRankingsOptIn(
+    userId: string,
+    value: unknown,
+  ): Promise<AccountProfile> {
+    if (!isUuid(userId))
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Inicia sesión para cambiar esta preferencia.",
+      );
+    if (typeof value !== "boolean")
+      throw new RegistrationError(
+        400,
+        "INVALID_RANKING_PREFERENCE",
+        "La preferencia del ranking no es válida.",
+      );
+    const profile = await this.repository.setPublicRankingsOptIn(userId, value);
+    if (!profile)
+      throw new RegistrationError(
+        401,
+        "SESSION_REQUIRED",
+        "Tu sesión ha caducado. Inicia sesión para continuar.",
+      );
+    return profile;
+  }
+
   async purchasePlanForUser(
     userId: string,
     value: unknown,

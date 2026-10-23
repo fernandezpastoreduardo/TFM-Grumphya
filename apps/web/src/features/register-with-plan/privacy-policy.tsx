@@ -15,16 +15,14 @@ export function PrivacyPolicy() {
       aria-labelledby="privacy-policy-title"
     >
       <header className="privacy-policy-header">
-        <span className="eyebrow">Borrador pendiente de validación</span>
+        <span className="eyebrow">Privacidad</span>
         <h2 id="privacy-policy-title">Política de privacidad</h2>
         <p>
-          Este texto describe el funcionamiento que se ha podido comprobar en el
-          repositorio. No está listo para publicarse: los datos entre corchetes
-          y los puntos indicados como pendientes deben confirmarse antes de
-          abrir el servicio a usuarios reales.
+          Aquí explicamos qué datos usamos para prestar Grumphya, con quién se
+          comparten y durante cuánto tiempo los conservamos.
         </p>
         <p className="privacy-policy-version">
-          Versión de trabajo · 23 de octubre de 2026
+          Versión 2 · 23 de octubre de 2026
         </p>
       </header>
 
@@ -33,8 +31,9 @@ export function PrivacyPolicy() {
         <p>
           El responsable del tratamiento es{" "}
           <strong>Eduardo Fernández Pastor</strong>, con domicilio en{" "}
-          <strong>[PENDIENTE: domicilio postal]</strong>. Puedes contactar para
-          cuestiones de privacidad o para ejercer tus derechos en{" "}
+          <strong>Avenida de América 46, 4.º A, 50007 Zaragoza, España</strong>.
+          Puedes contactar para cuestiones de privacidad o para ejercer tus
+          derechos en{" "}
           <a href="mailto:contacto@grumphya.com">contacto@grumphya.com</a>.
         </p>
         <p>No se ha designado delegado o delegada de protección de datos.</p>
@@ -55,11 +54,13 @@ export function PrivacyPolicy() {
             generada. La aplicación necesita el texto para atender esa petición.
           </li>
           <li>
-            <strong>Uso anónimo:</strong> una cookie opaca de navegador permite
-            recordar por separado los intentos gratuitos de ideas y roast. En la
-            base de datos se conserva el hash de esa cookie, no su valor. Se usa
-            además un HMAC temporal de la IP como defensa contra la creación
-            repetida de perfiles; no se guarda la IP en claro en ese contador.
+            <strong>Uso sin cuenta:</strong> una cookie opaca mantiene un perfil
+            seudónimo del navegador y recuerda por separado los intentos
+            gratuitos de ideas y roast; no identifica por sí sola a una persona.
+            En la base de datos se conserva el hash de esa cookie, no su valor.
+            También se usa durante 24 horas un HMAC de la IP como defensa frente
+            a la creación repetida de perfiles; no se guarda la IP en claro en
+            ese contador.
           </li>
           <li>
             <strong>Ideas aprobadas y rechazadas:</strong> para una cuenta, se
@@ -89,18 +90,18 @@ export function PrivacyPolicy() {
             perfil.
           </li>
           <li>
-            <strong>Preferencias del navegador:</strong> el tema visual y el
-            cierre del aviso de cookies se guardan en el almacenamiento local
-            del navegador. La sesión de acceso se mantiene en memoria en la
-            página; la renovación usa una cookie protegida.
+            <strong>Preferencias del navegador:</strong> el tema visual, la
+            confirmación de lectura de este aviso y una señal aleatoria de
+            sincronización entre pestañas pueden guardarse en el almacenamiento
+            local del navegador. La sesión de acceso se mantiene en memoria en
+            la página; la renovación usa una cookie protegida.
           </li>
           <li>
             <strong>Datos técnicos:</strong> pueden tratarse datos de conexión
-            necesarios para prestar y proteger el servicio.{" "}
-            <strong>
-              [PENDIENTE: confirmar el inventario efectivo de registros del
-              proxy, alojamiento y otros sistemas operativos.]
-            </strong>
+            necesarios para prestar y proteger el servicio. IONOS puede tratar
+            metadatos técnicos de conexión y operación como proveedor de
+            alojamiento, conforme a la configuración y los registros del
+            servicio.
           </li>
         </ul>
         <p>
@@ -113,13 +114,12 @@ export function PrivacyPolicy() {
       <section aria-labelledby="privacy-audience-title">
         <h3 id="privacy-audience-title">A quién se dirige el servicio</h3>
         <p>
-          Grumphya se ofrece en España. El responsable indica que no ha fijado
-          una edad mínima y que permite el uso a personas menores de edad.{" "}
-          <strong>
-            [PENDIENTE: revisar las bases jurídicas y definir las medidas para
-            informar y obtener o verificar la autorización de padres o tutores
-            cuando sea necesaria.]
-          </strong>
+          Grumphya se ofrece en España y no establece una edad mínima. Cuando
+          una operación se base en el consentimiento y la persona tenga menos de
+          14 años, debe prestarlo quien ejerza la patria potestad o tutela. Si
+          una función requiere capacidad para asumir obligaciones, la persona
+          menor debe contar con la intervención de su representante legal cuando
+          corresponda.
         </p>
       </section>
 
@@ -161,15 +161,14 @@ export function PrivacyPolicy() {
           equivale a una venta de datos.
         </p>
         <p>
-          <strong>
-            [PENDIENTE: el responsable debe asignar y documentar la base
-            jurídica aplicable a cada finalidad.]
-          </strong>{" "}
-          El repositorio no permite decidir por sí solo si corresponde ejecución
-          de un contrato, medidas precontractuales, interés legítimo,
-          consentimiento u otra base. Si un dato es necesario para una función,
-          se indicará en el propio formulario; los campos opcionales y sus
-          consecuencias también deben identificarse antes de publicar.
+          La base jurídica depende de cada finalidad. La ejecución de las
+          funciones que solicitas y la gestión de la cuenta se basan en la
+          prestación del servicio; la seguridad, la prevención del abuso y las
+          métricas técnicas necesarias se basan en el interés legítimo del
+          responsable en mantener un servicio seguro y fiable. La participación
+          en rankings públicos requiere tu autorización expresa y voluntaria,
+          que puedes retirar desde tu perfil. Los campos opcionales se
+          identifican en la función correspondiente.
         </p>
       </section>
 
@@ -185,18 +184,22 @@ export function PrivacyPolicy() {
           configuración de evaluación indica que las solicitudes usan
           <code>store: false</code>; esto no permite afirmar por sí solo cuánto
           tiempo conserva el proveedor los datos o qué condiciones contractuales
-          resultan aplicables.
+          resultan aplicables. Según la documentación vigente de OpenAI, la API
+          no usa por defecto las entradas y salidas para entrenar modelos. Los
+          registros de supervisión de abuso pueden contener parte del contenido
+          y conservarse hasta 30 días con la configuración estándar; puede haber
+          excepciones legales o de seguridad. Algunas funciones aprobadas de
+          retención reducida cambian ese plazo.{" "}
+          <a href="https://developers.openai.com/api/docs/guides/your-data">
+            Consulta los controles de datos de la API de OpenAI.
+          </a>
         </p>
         <p>
-          La evaluación se refiere a la viabilidad de la idea que has escrito.
-          En el flujo revisado no se ha identificado una decisión sobre tu
-          persona con efectos jurídicos o consecuencias similares
-          significativas. La respuesta es una valoración automatizada del
-          concepto y puede equivocarse; no sustituye una decisión profesional.{" "}
-          <strong>
-            [PENDIENTE: confirmar este análisis para todos los usos, modelos y
-            datos que se admitan.]
-          </strong>
+          La evaluación valora la idea que has escrito, no tu idoneidad como
+          persona. El resultado puede equivocarse y no sustituye una decisión
+          profesional. No se usa para tomar decisiones automatizadas sobre ti
+          que produzcan efectos jurídicos o te afecten significativamente de
+          forma similar.
         </p>
       </section>
 
@@ -205,24 +208,36 @@ export function PrivacyPolicy() {
         <p>
           OpenAI interviene como proveedor técnico de las funciones de IA: puede
           recibir el texto de ideas o mensajes para generar respuestas y la
-          imagen procesada cuando se solicita moderar un avatar. También
-          intervienen servicios técnicos de correo, alojamiento, base de datos,
-          copias de seguridad y entrega de la web. El proveedor SMTP efectivo y
-          los proveedores activos en producción deben confirmarse.
+          imagen procesada cuando se solicita moderar un avatar. El código se
+          conecta a la API global de OpenAI y no fija un endpoint regional
+          europeo. El despliegue documentado usa un VPS de IONOS para la web,
+          API y base de datos. IONOS también presta el servicio SMTP. Las copias
+          se conservan solo el tiempo estrictamente necesario para atender el
+          servicio y recuperar datos ante incidencias.
         </p>
         <p>
-          <strong>
-            [PENDIENTE: confirmar el rol y contrato de cada proveedor,
-            subencargados, países de tratamiento/acceso y mecanismo válido para
-            cualquier transferencia fuera del Espacio Económico Europeo.]
-          </strong>
-          No se afirmará que los datos permanecen en una región concreta hasta
-          verificar la configuración real.
+          La información contractual de OpenAI para clientes del Espacio
+          Económico Europeo identifica a OpenAI Ireland Ltd. como entidad
+          contratante y contempla transferencias posteriores con garantías
+          aplicables, como cláusulas contractuales tipo o decisiones de
+          adecuación. La API puede usar subencargados.{" "}
+          <a href="https://openai.com/en-GB/policies/data-processing-addendum/">
+            Consulta el anexo de tratamiento de datos de OpenAI
+          </a>{" "}
+          y su{" "}
+          <a href="https://openai.com/policies/sub-processor-list/">
+            lista de subencargados
+          </a>
+          . La aplicación usa el endpoint global y no acredita una región de
+          tratamiento determinada. La ubicación y configuración del proyecto y
+          las condiciones de los proveedores de alojamiento y correo deben
+          verificarse.
         </p>
         <p>
           El sistema envía correos de verificación, recuperación de contraseña y
-          confirmación de contacto. El proveedor SMTP efectivo y las condiciones
-          de tratamiento deben confirmarse antes de publicar.
+          confirmación de contacto mediante SMTP de IONOS. Sus condiciones de
+          tratamiento y las ubicaciones de almacenamiento o acceso dependen de
+          la configuración y el contrato del servicio.
         </p>
       </section>
 
@@ -230,67 +245,70 @@ export function PrivacyPolicy() {
         <h3 id="privacy-retention-title">6. Cuánto tiempo se conservan</h3>
         <ul>
           <li>
-            La cookie de perfil anónimo se configura para durar hasta 400 días.
-            La identidad y el contador asociados en la base de datos no caducan
-            automáticamente mientras el diseño conserve el límite de por vida.
+            El perfil sin cuenta y sus contadores se conservan hasta 400 días
+            desde el último uso. La cookie del perfil también dura hasta 400
+            días.
           </li>
           <li>
             El HMAC de IP para limitar la creación repetida de perfiles tiene
             una ventana de 24 horas. Las respuestas idempotentes tienen una
-            caducidad lógica de 24 horas, pero su eliminación física depende de
-            actividad posterior; no hay una purga periódica independiente.
+            caducidad de 24 horas; un proceso periódico elimina las respuestas
+            caducadas.
           </li>
           <li>
             El registro conserva los datos de cuenta mientras exista la cuenta.
             La baja elimina en la base de datos la cuenta, los datos
-            dependientes, los mensajes asociados y el archivo de avatar; no se
-            ha confirmado cuánto tardan en desaparecer las copias de seguridad.
-            Por ello, todavía no se puede afirmar que un clic elimine
-            permanentemente todos los datos de cualquier copia o sistema
-            externo.
+            dependientes, los mensajes asociados y el archivo de avatar. Las
+            copias de seguridad se conservan solo durante el tiempo
+            estrictamente necesario para atender el servicio y recuperar datos
+            ante incidencias; los datos eliminados pueden permanecer en ellas
+            hasta que se sobrescriban o eliminen conforme a ese ciclo.
           </li>
           <li>
             El texto original de ideas rechazadas no queda en el registro de
-            rechazo; su título seguro y vector tienen una exclusión lógica tras
-            24 meses documentada, pero la purga física automática está
-            pendiente.
+            rechazo; su título seguro y vector se conservan hasta 24 meses desde
+            la última vez que se recibió esa idea. Un proceso periódico elimina
+            los registros vencidos.
           </li>
           <li>
-            Los plazos de conservación de mensajes de contacto, datos de uso de
-            IA asociados a una cuenta, registros técnicos, correo y copias de
-            seguridad requieren una decisión y verificación operativa.
+            Los mensajes de contacto y las métricas técnicas y de uso de IA se
+            conservan hasta 12 meses; los eventos de error de la aplicación,
+            hasta 30 días. Los correos pueden seguir disponibles en los buzones
+            según sus propias reglas de conservación.
           </li>
         </ul>
         <p>
-          <strong>
-            [PENDIENTE: aprobar plazos efectivos por categoría y un
-            procedimiento verificable de eliminación de copias y datos
-            derivados.]
-          </strong>
+          Cuando exista una obligación legal de conservar información, se
+          mantendrá bloqueada durante el plazo exigido y después se eliminará.
         </p>
       </section>
 
       <section aria-labelledby="privacy-cookies-title">
         <h3 id="privacy-cookies-title">7. Cookies y almacenamiento local</h3>
         <p>
-          El código revisado utiliza una cookie propia para el perfil anónimo y
-          cookies protegidas para las funciones de cuenta y registro. También
-          guarda en el almacenamiento local del navegador la preferencia de
-          tema, el cierre del aviso informativo y, como alternativa de
-          sincronización entre pestañas, una señal de cambio de sesión. No es
-          una cookie.
+          El código utiliza una cookie propia para el perfil sin cuenta, dos
+          cookies temporales durante el alta y una cookie protegida para la
+          sesión. La cookie del perfil dura hasta 400 días; la intención de alta
+          y la confirmación del plan caducan a los 15 minutos. La cookie de
+          sesión dura hasta 30 días si eliges «Recordarme» y, si no, es de
+          sesión, con caducidad máxima de 24 horas en el servidor. Todas son
+          cookies propias <code>HttpOnly</code>, <code>SameSite=Strict</code> y
+          <code>Secure</code> en producción. También se guarda en{" "}
+          <code>localStorage</code> el tema visual y la confirmación de lectura
+          del aviso; si el navegador no admite <code>BroadcastChannel</code>, se
+          guarda una señal aleatoria para sincronizar cambios de sesión entre
+          pestañas.
         </p>
         <p>
           Según el responsable, no se utilizan cookies de terceros ni analítica.
           El código revisado usa cookies propias y almacenamiento local del
-          navegador.{" "}
-          <strong>
-            [PENDIENTE: verificar el despliegue real, confirmar duración y
-            finalidad de cada tecnología, y publicar un inventario/política de
-            cookies coherente con la LSSI y la guía vigente de la AEPD.]
-          </strong>
-          La presencia de una cookie en el código no determina por sí sola si
-          está exenta de consentimiento.
+          navegador. El botón «Entendido» registra únicamente que se ha cerrado
+          el aviso informativo; no solicita consentimiento para otros fines.{" "}
+          Estas tecnologías se utilizan para prestar funciones solicitadas,
+          mantener la sesión y recordar preferencias; el aviso informativo no
+          sustituye a un consentimiento cuando la normativa lo exige. La
+          presencia de una cookie en el código no determina por sí sola si está
+          exenta de consentimiento.
         </p>
       </section>
 
@@ -339,12 +357,10 @@ export function PrivacyPolicy() {
           El navegador ofrece dictado solo cuando admite reconocimiento local y
           la aplicación solicita procesarlo en el dispositivo. La disponibilidad
           depende del navegador y del dispositivo; puedes escribir o pegar el
-          texto en su lugar.{" "}
-          <strong>
-            [PENDIENTE: verificar el comportamiento en cada navegador admitido y
-            confirmar si algún sistema operativo descarga componentes o realiza
-            comunicaciones propias.]
-          </strong>
+          texto en su lugar. El navegador o el sistema operativo puede aplicar
+          sus propias condiciones al reconocimiento de voz; consulta la
+          información del proveedor de tu dispositivo. Si no quieres usar el
+          dictado, puedes escribir o pegar el texto.
         </p>
       </section>
 
@@ -357,17 +373,6 @@ export function PrivacyPolicy() {
           corresponda.
         </p>
       </section>
-
-      <footer className="privacy-policy-pending" role="note">
-        <strong>Borrador, no publicar todavía.</strong>
-        <span>
-          La matriz de tratamientos, las evidencias del repositorio y los
-          bloqueos previos a publicación están en{" "}
-          <code>doc/privacy-policy-assessment.md</code>. Requiere completar los
-          campos pendientes y revisión del responsable y profesional de
-          privacidad.
-        </span>
-      </footer>
     </article>
   );
 }

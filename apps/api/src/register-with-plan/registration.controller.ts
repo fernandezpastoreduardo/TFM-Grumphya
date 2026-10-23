@@ -176,6 +176,22 @@ export class RegistrationController {
     return this.service.getUserGoodIdeas(requireUserId(request));
   }
 
+  @Post("account/privacy/rankings")
+  @UseGuards(AccessTokenGuard)
+  async setPublicRankingsOptIn(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    if (!hasOnlyKeys(body, ["enabled"]))
+      throw new RegistrationError(
+        400,
+        "INVALID_RANKING_PREFERENCE",
+        "La preferencia del ranking no es válida.",
+      );
+    const enabled = isRecord(body) ? body.enabled : undefined;
+    return this.service.setPublicRankingsOptIn(requireUserId(request), enabled);
+  }
+
   @Post("account/subscriptions/purchase")
   @UseGuards(AccessTokenGuard)
   async purchasePlan(

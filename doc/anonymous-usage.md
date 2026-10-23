@@ -6,7 +6,7 @@ Cada perfil de navegador dispone de **3 evaluaciones de ideas y 3 envíos de roa
 
 La identidad se transporta mediante una cookie opaca, aleatoria y persistente (`HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`). La API guarda el hash del token, nunca el valor de la cookie. La identidad y sus contadores no caducan automáticamente. El navegador puede eliminar la cookie o el usuario puede cambiar de dispositivo, con lo que se crea otro perfil: este mecanismo no ofrece identificación permanente de personas.
 
-El perfil anónimo no genera historial. Las tablas no conservan el texto original de la idea o el insulto como payload fuente; la caché idempotente conserva el cuerpo final de respuesta, que puede contener salida generada derivada de la petición. El TTL lógico de esa respuesta es de 24 horas: pasado ese plazo deja de estar disponible para reintentos, pero el borrado físico es oportunista al procesar reservas posteriores, sin garantía de eliminar la fila exactamente a las 24 horas ni un job periódico de purga.
+El perfil anónimo no genera historial. Las tablas no conservan el texto original de la idea o el insulto como payload fuente; la caché idempotente conserva el cuerpo final de respuesta, que puede contener salida generada derivada de la petición. El TTL lógico de esa respuesta es de 24 horas: pasado ese plazo deja de estar disponible para reintentos. `DataRetentionService` elimina las filas vencidas por lotes al arrancar la API y cada hora; el borrado físico puede ocurrir hasta una hora después del TTL.
 
 ## Consumo y reintentos
 
@@ -31,7 +31,7 @@ No se aplica fingerprinting del navegador ni detección de automatización en es
 - `POST /api/roast` recibe y valida el texto, usa la cuota diaria de Faltón si está activo y, en caso contrario, el cupo gratuito del perfil de navegador.
 - El frontend muestra valores de servidor y no habilita un fallback local si la API no está disponible. El mensaje de cupo agotado invita a consultar los planes; no sugiere que se recupere mañana.
 
-La nota de privacidad debe explicar la cookie persistente necesaria para recordar el cupo y el uso antiabuso de la IP. Un HMAC de IP sigue siendo una señal seudónima; limitar su retención no equivale a anonimización. Las respuestas idempotentes y señales expiradas se borran al procesar solicitudes posteriores; aún no existe tarea periódica de purga independiente del tráfico.
+La nota de privacidad debe explicar la cookie persistente necesaria para recordar el cupo y el uso antiabuso de la IP. Un HMAC de IP sigue siendo una señal seudónima; limitar su retención no equivale a anonimización. Las respuestas idempotentes y señales expiradas se eliminan por lotes al arrancar la API y cada hora mediante `DataRetentionService`; el borrado físico de cachés puede ocurrir hasta una hora después del TTL.
 
 ## Plan de pruebas
 

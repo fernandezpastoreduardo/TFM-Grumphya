@@ -96,6 +96,34 @@ describe("SectionPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("routes the current privacy policy and presents its scope", async () => {
+    render(<SectionPage path="/politica-de-privacidad" />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Política de privacidad",
+      }),
+    ).toBeVisible();
+    const policy = await screen.findByRole("article", {
+      name: "Política de privacidad",
+    });
+    expect(within(policy).queryByText(/borrador/i)).not.toBeInTheDocument();
+    expect(
+      within(policy).getByText(/Avenida de América 46, 4.º A/i),
+    ).toBeInTheDocument();
+    expect(
+      within(policy).getByRole("heading", {
+        name: /cuánto tiempo se conservan/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(policy).getByRole("heading", {
+        name: /cookies y almacenamiento local/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the 404 page for an unknown path", () => {
     render(<SectionPage path="/no-existe" />);
 

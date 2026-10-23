@@ -113,8 +113,8 @@ moderación, almacenamiento y actualización de cuenta se devuelven como `503`
 genérico; carga multipart inválida devuelve `400` y exceso de tamaño `413`, sin
 filtrar detalles internos. La moderación automática no garantiza que una imagen
 sea apta ni detecta todo contenido; tampoco sustituye una revisión humana. La
-política de privacidad sigue provisional y debe completarse antes de abrir
-registros o avatares al público. No subas contenido conocido o sospechoso de
+política de privacidad versión 2 en `/politica-de-privacidad`. La configuración
+real de proveedores, copias y logs debe verificarse antes de producción. No subas contenido conocido o sospechoso de
 abuso sexual infantil: esta moderación no está diseñada para detectarlo.
 
 ### Arranque mixto con Node y base en Docker

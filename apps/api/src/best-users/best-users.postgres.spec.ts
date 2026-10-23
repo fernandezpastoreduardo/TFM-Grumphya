@@ -35,7 +35,7 @@ describe.skipIf(!DATABASE_URL)("best users ranking persistence", () => {
 
   it("ranks active users by approved ideas and returns at most ten", async () => {
     for (let index = 1; index <= 12; index += 1) {
-      const userId = await createUser(testPool, index);
+      const userId = await createUser(testPool, index, "active", true);
       for (let idea = 0; idea < index; idea += 1) {
         await testPool.query(
           "INSERT INTO approved_ideas (user_id, title) VALUES ($1, $2)",
@@ -48,6 +48,11 @@ describe.skipIf(!DATABASE_URL)("best users ranking persistence", () => {
       "INSERT INTO approved_ideas (user_id, title) VALUES ($1, $2)",
       [inactiveUserId, "Idea de cuenta inactiva"],
     );
+    const optedOutUserId = await createUser(testPool, 14);
+    await testPool.query(
+      "INSERT INTO approved_ideas (user_id, title) VALUES ($1, $2)",
+      [optedOutUserId, "Idea de cuenta sin adhesión al ranking"],
+    );
 
     const users = await repository.getBestListBestUsers();
 
@@ -55,6 +60,7 @@ describe.skipIf(!DATABASE_URL)("best users ranking persistence", () => {
     expect(users[0]).toEqual({ username: "user-12", approvedIdeasCount: 12 });
     expect(users.at(-1)).toEqual({ username: "user-3", approvedIdeasCount: 3 });
     expect(users.some((user) => user.username === "user-13")).toBe(false);
+    expect(users.some((user) => user.username === "user-14")).toBe(false);
     expect(Object.keys(users[0] ?? {}).sort()).toEqual([
       "approvedIdeasCount",
       "username",
@@ -66,16 +72,23 @@ async function createUser(
   pool: Pool,
   index: number,
   status = "active",
+  publicRankingsOptIn = false,
 ): Promise<string> {
   const email = `best-user-${index}-${randomUUID()}@example.es`;
   const username = `user-${index}`;
   const result = await pool.query<{ id: string }>(
     `INSERT INTO users (
        email, email_normalized, username, username_normalized, password_hash,
-       privacy_policy_version, privacy_policy_acknowledged_at, status
-     ) VALUES ($1, $1, $2, $2, 'test-hash', 'test-v1', now(), $3)
+       privacy_policy_version, privacy_policy_acknowledged_at,
+       public_rankings_consent_at, public_rankings_consent_policy_version, status
+     ) VALUES (
+       $1, $1, $2, $2, 'test-hash', 'test-v1', now(),
+       CASE WHEN $3 THEN now() END,
+       CASE WHEN $3 THEN 'v2' END,
+       $4
+     )
      RETURNING id`,
-    [email, username, status],
+    [email, username, publicRankingsOptIn, status],
   );
   const userId = result.rows[0]?.id;
   if (!userId) throw new Error("Test user insert returned no id.");

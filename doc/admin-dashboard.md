@@ -70,9 +70,7 @@ comandos de cada entorno.
   diagnóstico se limita a categorías cerradas de validación de evaluación;
   los eventos históricos y los errores sin diagnóstico asociado muestran `—`.
   No se guardan rutas, payloads, ideas, mensajes de contacto, credenciales ni
-  mensajes de excepción. La migración `029` añade la categoría opcional; la
-  retención y purga siguen pendientes en
-  [`wanna-bes.md`](../agentic-guidelines/wanna-bes.md).
+  mensajes de excepción. La migración `029` añade la categoría opcional. Los eventos se purgan a los 30 días y las métricas de IA a los 12 meses mediante `DataRetentionService`; el ciclo efectivo debe verificarse en producción.
 
 En pantallas estrechas, el panel reduce el relleno de las tarjetas y apila los
 desgloses de coste. Las tablas conservan un ancho mínimo y se desplazan dentro

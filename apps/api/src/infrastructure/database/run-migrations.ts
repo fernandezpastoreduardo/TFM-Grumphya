@@ -92,6 +92,10 @@ const MIGRATIONS = [
     version: "029_application_error_diagnostics",
     file: "029_application_error_diagnostics.sql",
   },
+  {
+    version: "030_public_rankings_consent",
+    file: "030_public_rankings_consent.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

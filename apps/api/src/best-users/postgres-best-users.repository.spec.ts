@@ -37,6 +37,7 @@ describe("PostgresBestUsersRepository", () => {
     const [sql] = vi.mocked(pool.query).mock.calls[0] ?? [];
     expect(String(sql)).toContain("COUNT(DISTINCT approved.id)");
     expect(String(sql)).toContain("status = 'active'");
+    expect(String(sql)).toContain("public_rankings_consent_at IS NOT NULL");
     expect(String(sql)).toContain("ORDER BY approved_ideas_count DESC");
     expect(String(sql)).toContain("LIMIT 10");
     expect(String(sql)).not.toContain("approved.title");

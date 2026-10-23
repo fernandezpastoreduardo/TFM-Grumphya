@@ -58,6 +58,12 @@
   gap: 10px;
 }
 
+.cookie-notice-details {
+  display: inline-block;
+  margin: -8px 0 18px;
+  font-weight: 700;
+}
+
 .cookie-notice-button {
   min-height: 48px;
   padding: 11px 16px;
@@ -80,11 +86,6 @@
   color: var(--color-ink);
 }
 
-.cookie-notice-button-secondary {
-  background: var(--color-mint);
-  color: var(--color-ink);
-}
-
 .cookie-notice-button:focus-visible {
   outline: 3px solid var(--color-pink);
   outline-offset: 3px;
@@ -103,10 +104,6 @@
 
 #root:has(.theme-dark) .cookie-notice-button-primary {
   background: #64d5d2;
-}
-
-#root:has(.theme-dark) .cookie-notice-button-secondary {
-  background: #b8efd6;
 }
 
 @media (max-width: 480px) {
