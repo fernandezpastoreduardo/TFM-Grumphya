@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
+import "./password-reset.scss";
 
 const REQUEST_ENDPOINT = "/api/auth/password-reset/request";
 const COMPLETE_ENDPOINT = "/api/auth/password-reset/complete";
@@ -25,6 +26,7 @@ export function PasswordReset() {
   }, [token]);
   const [notice, setNotice] = useState("");
   const [finished, setFinished] = useState(false);
+  const [isResetLinkInvalid, setIsResetLinkInvalid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   async function requestReset(event: FormEvent<HTMLFormElement>) {
@@ -69,10 +71,12 @@ export function PasswordReset() {
       });
       if (!response.ok) {
         const body: unknown = await response.json().catch(() => null);
+        const isPasswordPolicyError = hasErrorCode(body, "INVALID_PASSWORD");
+        if (hasErrorCode(body, "INVALID_RESET_LINK")) {
+          setIsResetLinkInvalid(true);
+        }
         setNotice(
-          hasErrorCode(body, "INVALID_PASSWORD")
-            ? PASSWORD_POLICY_NOTICE
-            : INVALID_LINK_NOTICE,
+          isPasswordPolicyError ? PASSWORD_POLICY_NOTICE : INVALID_LINK_NOTICE,
         );
         return;
       }
@@ -97,7 +101,7 @@ export function PasswordReset() {
               Volver a iniciar sesión
             </a>
           </>
-        ) : token ? (
+        ) : token && !isResetLinkInvalid ? (
           <>
             <h2>Elige una nueva contraseña</h2>
             <p>El enlace solo se puede usar una vez y caduca en 20 minutos.</p>
@@ -142,16 +146,21 @@ export function PasswordReset() {
               Te enviaremos un enlace si el correo corresponde a una cuenta
               activa.
             </p>
-            <form onSubmit={requestReset}>
-              <label htmlFor="reset-email">Correo electrónico</label>
-              <input
-                id="reset-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                maxLength={254}
-              />
+            <form
+              className="password-reset-request-form"
+              onSubmit={requestReset}
+            >
+              <label htmlFor="reset-email">
+                Correo electrónico
+                <input
+                  id="reset-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  maxLength={254}
+                />
+              </label>
               <button
                 className="button-primary"
                 type="submit"

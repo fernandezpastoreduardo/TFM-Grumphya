@@ -184,6 +184,17 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
           getComputedStyle(ideaWorkspace).zIndex,
           10,
         ),
+        curtainZIndex: Number.parseInt(
+          getComputedStyle(home, "::before").zIndex,
+          10,
+        ),
+        audienceZIndex: Number.parseInt(
+          getComputedStyle(home, "::after").zIndex,
+          10,
+        ),
+        characterCounterPosition: getComputedStyle(
+          document.querySelector(".idea-input-meta")!,
+        ).position,
       };
     });
 
@@ -196,6 +207,10 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(lightThemeLayers!.navigationZIndex).toBeGreaterThan(
     lightThemeLayers!.ideaWorkspaceZIndex,
   );
+  expect(lightThemeLayers!.curtainZIndex).toBe(
+    lightThemeLayers!.audienceZIndex,
+  );
+  expect(lightThemeLayers!.characterCounterPosition).toBe("static");
 
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
   const darkThemeLayers = await readNavigationLayers();
@@ -207,6 +222,105 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(darkThemeLayers!.navigationZIndex).toBeGreaterThan(
     darkThemeLayers!.ideaWorkspaceZIndex,
   );
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileCharacterCounterPosition = await page
+    .locator(".idea-input-meta")
+    .evaluate((element) => getComputedStyle(element).position);
+  const mobileNavigationTop = await page
+    .locator(".home-topbar")
+    .evaluate((element) => Number.parseFloat(getComputedStyle(element).top));
+  expect(mobileCharacterCounterPosition).toBe("absolute");
+  expect(mobileNavigationTop).toBeLessThan(35);
+});
+
+test("matches section navigation to the theme and layers curtain over content", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/precios");
+  await expect(page.getByRole("heading", { name: /once usos/i })).toBeVisible();
+
+  const readSectionLayers = () =>
+    page.evaluate(() => {
+      const appPage = document.querySelector(".app-page");
+      const header = document.querySelector(".site-header");
+      const contentFrame = document.querySelector(".app-frame");
+      if (!appPage || !header || !contentFrame) return null;
+      const themeColor = document.createElement("div");
+      themeColor.style.backgroundColor = getComputedStyle(appPage)
+        .getPropertyValue("--color-mint")
+        .trim();
+      document.body.append(themeColor);
+      const normalizedThemeColor = getComputedStyle(themeColor).backgroundColor;
+      themeColor.remove();
+      return {
+        isDarkTheme: appPage.classList.contains("theme-dark"),
+        headerBackground: getComputedStyle(header).backgroundColor,
+        themeBackground: normalizedThemeColor,
+        curtainZIndex: Number.parseInt(
+          getComputedStyle(appPage, "::before").zIndex,
+          10,
+        ),
+        audienceZIndex: Number.parseInt(
+          getComputedStyle(appPage, "::after").zIndex,
+          10,
+        ),
+        contentZIndex: Number.parseInt(
+          getComputedStyle(contentFrame).zIndex,
+          10,
+        ),
+        headerTop: Number.parseFloat(getComputedStyle(header).top),
+      };
+    });
+
+  const lightLayers = await readSectionLayers();
+  expect(lightLayers).not.toBeNull();
+  expect(lightLayers!.isDarkTheme).toBe(false);
+  expect(lightLayers!.headerBackground).toBe(lightLayers!.themeBackground);
+  expect(lightLayers!.curtainZIndex).toBe(lightLayers!.audienceZIndex);
+  expect(lightLayers!.curtainZIndex).toBeGreaterThan(
+    lightLayers!.contentZIndex,
+  );
+  expect(lightLayers!.headerTop).toBeLessThan(35);
+
+  await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  const darkLayers = await readSectionLayers();
+  expect(darkLayers).not.toBeNull();
+  expect(darkLayers!.isDarkTheme).toBe(true);
+  expect(darkLayers!.headerBackground).toBe(darkLayers!.themeBackground);
+  expect(darkLayers!.curtainZIndex).toBe(darkLayers!.audienceZIndex);
+});
+
+test("styles the email request form shown for an expired password link", async ({
+  page,
+}) => {
+  await page.goto("/restablecer-contrasena");
+  await expect(
+    page.getByRole("heading", { name: /recupera el acceso/i }),
+  ).toBeVisible();
+
+  const formStyles = await page.evaluate(() => {
+    const form = document.querySelector(".password-reset-request-form");
+    const input = form?.querySelector("input");
+    const button = form?.querySelector("button");
+    if (!form || !input || !button) return null;
+    return {
+      formGap: getComputedStyle(form).rowGap,
+      inputHeight: input.getBoundingClientRect().height,
+      inputBorderRadius: getComputedStyle(input).borderRadius,
+      inputWidth: input.getBoundingClientRect().width,
+      buttonHeight: button.getBoundingClientRect().height,
+      buttonWidth: button.getBoundingClientRect().width,
+    };
+  });
+
+  expect(formStyles).not.toBeNull();
+  expect(formStyles!.formGap).toBe("16px");
+  expect(formStyles!.inputHeight).toBeGreaterThanOrEqual(50);
+  expect(formStyles!.inputBorderRadius).toBe("14px");
+  expect(formStyles!.buttonHeight).toBeGreaterThanOrEqual(50);
+  expect(formStyles!.buttonWidth).toBe(formStyles!.inputWidth);
 });
 
 test("uses Grumphya's navigation logo as the site favicon", async ({
@@ -416,9 +530,20 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
     ),
     headerTop: document.querySelector(".site-header")!.getBoundingClientRect()
       .top,
+    headerZIndex: Number.parseInt(
+      getComputedStyle(document.querySelector(".site-header")!).zIndex,
+      10,
+    ),
+    curtainZIndex: Number.parseInt(
+      getComputedStyle(document.querySelector(".app-page")!, "::before").zIndex,
+      10,
+    ),
   }));
-  expect(curtainAndHeader.headerTop).toBeGreaterThanOrEqual(
+  expect(curtainAndHeader.headerTop).toBeLessThan(
     curtainAndHeader.curtainHeight,
+  );
+  expect(curtainAndHeader.curtainZIndex).toBeGreaterThan(
+    curtainAndHeader.headerZIndex,
   );
 
   await page.goto("/");

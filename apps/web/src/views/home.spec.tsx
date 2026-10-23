@@ -9,7 +9,7 @@ import {
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
-const IDEA_INPUT_NAME = /escribe, pega o dicta tu idea/i;
+const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
 const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
 const LOADING_BUTTON_NAME = /evaluando/i;

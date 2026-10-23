@@ -3091,7 +3091,7 @@
 }
 
 .home-page::before {
-  z-index: 0;
+  z-index: 20;
 }
 
 .home-shell {
@@ -3102,7 +3102,7 @@
 .home-page {
   --curtain-height: clamp(40px, 5vw, 72px);
   --header-start: clamp(82px, calc(6vw + 10px), 96px);
-  --header-start-mobile: clamp(38px, calc(8vw + 8px), 52px);
+  --header-start-mobile: clamp(28px, calc(8vw - 2px), 42px);
 }
 
 @media (max-width: 979px) {

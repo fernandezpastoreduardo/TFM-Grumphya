@@ -9,6 +9,7 @@ const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
 const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
 const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
 const INPUT_LABEL = /escribe, pega o dicta tu idea/i;
+const INPUT_LABEL_WITHOUT_DICTATION = /escribe o pega tu idea/i;
 const NEXT_STEP_LABEL = /^adelante$/i;
 const BACK_TO_IDEA_LABEL = /cambiar idea/i;
 const SUBMIT_LABEL = /^evaluar idea/i;
@@ -56,6 +57,24 @@ describe("GetUserIdea", () => {
     expect(
       screen.queryByRole("textbox", { name: INPUT_LABEL }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses the no-dictation label and clears text with the close button", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(speechToText, "isSpeechToTextSupported").mockReturnValue(false);
+    render(<GetUserIdea onSubmit={vi.fn()} />);
+
+    const ideaInput = screen.getByRole("textbox", {
+      name: INPUT_LABEL_WITHOUT_DICTATION,
+    });
+    expect(
+      screen.queryByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
+    ).not.toBeInTheDocument();
+
+    await user.type(ideaInput, VALID_IDEA);
+    await user.click(screen.getByRole("button", { name: /borrar idea/i }));
+
+    expect(ideaInput).toHaveValue("");
   });
 
   it("returns to the idea step without losing text or the selected tone", async () => {
@@ -381,6 +400,8 @@ describe("GetUserIdea", () => {
     expect(
       screen.getByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
     ).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: /borrar idea/i })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: NEXT_STEP_LABEL })).toHaveFocus();
     await user.keyboard("{Enter}");

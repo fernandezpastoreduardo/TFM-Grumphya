@@ -1109,9 +1109,82 @@
   font-size: 1rem;
 }
 
+@media (min-width: 641px) {
+  .idea-input-textarea {
+    margin-bottom: 0;
+    padding-right: 102px;
+  }
+
+  .idea-input-meta {
+    position: static;
+    justify-content: flex-end;
+    margin-top: -2px;
+    padding-inline: 4px;
+  }
+}
+
+.idea-input-tools {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.idea-input-tools > .idea-dictation {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+}
+
+.idea-clear-button {
+  display: grid;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  place-items: center;
+  border: 1px solid #087887;
+  border-radius: 50%;
+  padding: 0;
+  color: #078b96;
+  background: #fffefa;
+  cursor: pointer;
+}
+
+.idea-clear-button svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+
+.idea-clear-button:focus-visible {
+  outline: 3px solid var(--color-teal-dark);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .idea-input-textarea {
+    padding-right: 88px;
+  }
+
+  .idea-clear-button {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+  }
+}
+
 @media (min-width: 980px) {
   .idea-input-textarea {
-    margin-bottom: 20px;
+    margin-bottom: 0;
   }
 
   .idea-tone-options legend {

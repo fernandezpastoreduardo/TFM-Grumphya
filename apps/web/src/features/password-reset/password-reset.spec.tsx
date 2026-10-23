@@ -68,6 +68,47 @@ describe("PasswordReset", () => {
     );
   });
 
+  it("shows the styled email form again when the reset link has expired", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, hash: `#${"d".repeat(64)}` },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ code: "INVALID_RESET_LINK" }, 400)),
+    );
+    render(<PasswordReset />);
+
+    await user.type(
+      screen.getByLabelText("Nueva contraseña"),
+      "NuevaClaveSegura42!",
+    );
+    await user.type(
+      screen.getByLabelText("Repite la contraseña"),
+      "NuevaClaveSegura42!",
+    );
+    await user.click(
+      screen.getByRole("button", { name: /guardar contraseña/i }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /enlace no es válido o ha caducado/i,
+    );
+    expect(
+      screen.getByRole("heading", { name: /recupera el acceso/i }),
+    ).toBeVisible();
+    expect(
+      document.querySelector("form.password-reset-request-form"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/correo electrónico/i)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /enviar instrucciones/i }),
+    ).toBeVisible();
+  });
+
   it("changes the password with a token and shows an accessible final screen", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "location", {
