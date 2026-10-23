@@ -60,6 +60,31 @@ describe("AuthenticationPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("reveals the password with an accessible keyboard-operable control", async () => {
+    const user = userEvent.setup();
+    render(<AuthenticationPage />);
+
+    const password = screen.getByLabelText("Contraseña");
+    expect(password).toHaveAttribute("type", "password");
+    await user.type(password, PASSWORD);
+
+    await user.tab();
+
+    const revealButton = screen.getByRole("button", {
+      name: "Mostrar contraseña",
+    });
+    expect(revealButton).toHaveAttribute("aria-controls", "login-password");
+    await user.keyboard("{Enter}");
+
+    expect(password).toHaveAttribute("type", "text");
+    expect(password).toHaveValue(PASSWORD);
+    expect(
+      screen.getByRole("button", { name: "Ocultar contraseña" }),
+    ).toHaveAttribute("aria-controls", "login-password");
+    await user.keyboard("{Enter}");
+    expect(password).toHaveAttribute("type", "password");
+  });
+
   it("submits credentials and opens the profile for regular users", async () => {
     const user = userEvent.setup();
     const assign = vi.fn();

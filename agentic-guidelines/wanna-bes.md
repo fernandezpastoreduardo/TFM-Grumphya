@@ -15,7 +15,7 @@ Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un ro
 
 ### Mostrar la contraseña escrita en el inicio de sesión
 
-**Estado:** mejora solicitada, pendiente de implementar. Añadir al campo de contraseña del login un control accesible para mostrar u ocultar los caracteres introducidos, con el estado inicial oculto. Comprobar su funcionamiento en móvil, teclado y lector de pantalla.
+**Estado:** implementado y probado. El campo de contraseña del login incorpora un control accesible para mostrar u ocultar los caracteres introducidos, con el estado inicial oculto. La prueba comprueba el cambio mediante teclado y que el control anuncia su acción y el campo asociado a tecnologías de asistencia. El campo y el control se mantienen en una fila adaptable en móvil.
 
 ### Ajustar el diseño responsive
 

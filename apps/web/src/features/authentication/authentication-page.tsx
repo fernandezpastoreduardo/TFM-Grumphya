@@ -9,6 +9,10 @@ import {
 const LOGIN_ENDPOINT = "/api/auth/login";
 const LOGIN_ERROR =
   "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.";
+const PASSWORD_VISIBILITY_LABEL = {
+  SHOW: "Mostrar contraseña",
+  HIDE: "Ocultar contraseña",
+} as const;
 
 type LoginRole = "user" | "admin";
 
@@ -35,6 +39,7 @@ function isLoginResponse(
 export function AuthenticationPage() {
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,14 +92,30 @@ export function AuthenticationPage() {
             placeholder="Tu alias o correo"
           />
           <label htmlFor="login-password">Contraseña</label>
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            placeholder="Tu contraseña"
-          />
+          <div className="authentication-password-field">
+            <input
+              className="authentication-password-input"
+              id="login-password"
+              name="password"
+              type={passwordVisible ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              placeholder="Tu contraseña"
+            />
+            <button
+              className="authentication-password-toggle"
+              type="button"
+              aria-controls="login-password"
+              aria-label={
+                passwordVisible
+                  ? PASSWORD_VISIBILITY_LABEL.HIDE
+                  : PASSWORD_VISIBILITY_LABEL.SHOW
+              }
+              onClick={() => setPasswordVisible((visible) => !visible)}
+            >
+              {passwordVisible ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
           <label className="remember-option" htmlFor="login-remember">
             <input id="login-remember" type="checkbox" name="remember" />{" "}
             Recordarme en este dispositivo

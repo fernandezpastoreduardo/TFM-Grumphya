@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const DESKTOP_VIEWPORT = { width: 1200, height: 1000 };
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const HERO_ASSETS = [
   {
     path: "/humanos-notables",
@@ -210,6 +211,36 @@ test("aligns login content and keeps Good Practices editorial content in flow", 
     expect(response.headers()["content-type"]).toContain("image/png");
     expect(await assetHasTransparentPixels(page, companion.asset)).toBe(true);
   }
+});
+
+test("keeps the password visibility control usable on a mobile login", async ({
+  page,
+}) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.goto("/login");
+
+  const password = page.getByLabel("Contraseña", { exact: true });
+  const revealButton = page.getByRole("button", {
+    name: "Mostrar contraseña",
+  });
+  await expect(password).toHaveAttribute("type", "password");
+  await expect(revealButton).toBeVisible();
+
+  const controlBounds = await page
+    .locator(".authentication-password-field")
+    .evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return { left: bounds.left, right: bounds.right };
+    });
+  expect(controlBounds.left).toBeGreaterThanOrEqual(0);
+  expect(controlBounds.right).toBeLessThanOrEqual(MOBILE_VIEWPORT.width);
+
+  await revealButton.focus();
+  await page.keyboard.press("Enter");
+  await expect(password).toHaveAttribute("type", "text");
+  await expect(
+    page.getByRole("button", { name: "Ocultar contraseña" }),
+  ).toBeVisible();
 });
 
 test("keeps the Home navigation opaque and above the idea form in both themes", async ({

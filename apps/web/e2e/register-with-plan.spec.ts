@@ -18,7 +18,7 @@ test("verifies the registration, activates the simulated purchase and deletes th
 
   await page.getByLabel("Correo electrónico").fill(EMAIL);
   await page.getByLabel("Nombre de usuario").fill(USERNAME);
-  await page.getByLabel("Contraseña").fill(PASSWORD);
+  await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: REGISTER_BUTTON_NAME }).click();
   await expect(page.getByRole("alert")).toContainText(
     /debes confirmar que has leído/i,
@@ -144,7 +144,7 @@ test("verifies the registration, activates the simulated purchase and deletes th
   expect(protectedProfileStatus).toBe(401);
 
   await page.getByLabel("Usuario o correo").fill(USERNAME);
-  await page.getByLabel("Contraseña").fill(PASSWORD);
+  await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: /^entrar/i }).click();
   await expect(page).toHaveURL(/\/perfil$/);
   await expect(page.getByRole("heading", { name: USERNAME })).toBeVisible();
