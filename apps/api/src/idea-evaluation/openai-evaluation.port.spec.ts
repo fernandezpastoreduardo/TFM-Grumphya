@@ -10,7 +10,7 @@ const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
-const POLICY_VERSION = "grumphya-concept-v7";
+const POLICY_VERSION = "grumphya-concept-v8";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
@@ -182,6 +182,13 @@ describe("OpenAiEvaluationPort", () => {
     );
     expect(request).toContain("No preguntes al usuario cómo resolverlo");
     expect(request).toContain("Deduce quién tendría que usar el producto");
+    expect(request).toContain(
+      "Una función que solo registra o cuenta una acción, sin explicar qué problema resuelve o qué resultado útil obtiene alguien, debe suspender C07",
+    );
+    expect(request).toContain("VALOR_USUARIO_NO_DEFINIDO");
+    expect(request).toContain(
+      "No afirmes que nadie lo usará ni inventes demanda: evalúa solo si la propia idea expresa un motivo para empezar y continuar usándola",
+    );
     expect(request).toContain("el tono solo afecta la presentación posterior");
     expect(request).toContain("español sencillo");
     expect(request).toContain(

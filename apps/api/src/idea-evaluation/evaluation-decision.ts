@@ -23,6 +23,7 @@ export type EvaluationReasonCode =
   | "HONESTIDAD_ESTRUCTURAL"
   | "CONFLICTO_ESTRUCTURAL"
   | "UTILIDAD_ANULADA"
+  | "VALOR_USUARIO_NO_DEFINIDO"
   | "ECONOMIA_INCOMPATIBLE"
   | "HAPPY_PATH_ESTRUCTURAL"
   | "DIFERENCIACION_AUSENTE";
@@ -51,20 +52,20 @@ export type ModelDecision = {
   hardConsequence: string | null;
 };
 
-const REASON_CODE_BY_CRITERION: Record<
+const REASON_CODES_BY_CRITERION: Record<
   EvaluationCriterionId,
-  EvaluationReasonCode
+  readonly EvaluationReasonCode[]
 > = {
-  C01: "PRIVACIDAD_ESTRUCTURAL",
-  C02: "PELIGRO_ESTRUCTURAL",
-  C03: "ETICA_ESTRUCTURAL",
-  C04: "CONTRADICCION_NUCLEO",
-  C05: "HONESTIDAD_ESTRUCTURAL",
-  C06: "CONFLICTO_ESTRUCTURAL",
-  C07: "UTILIDAD_ANULADA",
-  C08: "ECONOMIA_INCOMPATIBLE",
-  C09: "HAPPY_PATH_ESTRUCTURAL",
-  C10: "DIFERENCIACION_AUSENTE",
+  C01: ["PRIVACIDAD_ESTRUCTURAL"],
+  C02: ["PELIGRO_ESTRUCTURAL"],
+  C03: ["ETICA_ESTRUCTURAL"],
+  C04: ["CONTRADICCION_NUCLEO"],
+  C05: ["HONESTIDAD_ESTRUCTURAL"],
+  C06: ["CONFLICTO_ESTRUCTURAL"],
+  C07: ["UTILIDAD_ANULADA", "VALOR_USUARIO_NO_DEFINIDO"],
+  C08: ["ECONOMIA_INCOMPATIBLE"],
+  C09: ["HAPPY_PATH_ESTRUCTURAL"],
+  C10: ["DIFERENCIACION_AUSENTE"],
 };
 const INVALID_DECISION_MESSAGE = "Respuesta del evaluador no válida.";
 const MIN_MESSAGE_WORDS = 8;
@@ -117,12 +118,14 @@ const INTERNAL_RUBRIC_ALIASES: Record<string, string> = {
     "la confianza en afirmaciones que no se pueden verificar",
   CONFLICTO_ESTRUCTURAL: "el conflicto sin una forma de resolverlo",
   UTILIDAD_ANULADA: "la función que no cumple su promesa",
+  VALOR_USUARIO_NO_DEFINIDO:
+    "la falta de un motivo concreto para usar la aplicación",
   ECONOMIA_INCOMPATIBLE: "la incompatibilidad entre ingresos y costes",
   HAPPY_PATH_ESTRUCTURAL: "la falta de una alternativa cuando algo falla",
   DIFERENCIACION_AUSENTE: "la diferencia frente a otras aplicaciones",
 };
 const INTERNAL_RUBRIC_ALIAS_SOURCE =
-  "C(?:0[1-9]|10)|PRIVACIDAD_ESTRUCTURAL|PELIGRO_ESTRUCTURAL|ETICA_ESTRUCTURAL|CONTRADICCION_NUCLEO|HONESTIDAD_ESTRUCTURAL|CONFLICTO_ESTRUCTURAL|UTILIDAD_ANULADA|ECONOMIA_INCOMPATIBLE|HAPPY_PATH_ESTRUCTURAL|DIFERENCIACION_AUSENTE";
+  "C(?:0[1-9]|10)|PRIVACIDAD_ESTRUCTURAL|PELIGRO_ESTRUCTURAL|ETICA_ESTRUCTURAL|CONTRADICCION_NUCLEO|HONESTIDAD_ESTRUCTURAL|CONFLICTO_ESTRUCTURAL|UTILIDAD_ANULADA|VALOR_USUARIO_NO_DEFINIDO|ECONOMIA_INCOMPATIBLE|HAPPY_PATH_ESTRUCTURAL|DIFERENCIACION_AUSENTE";
 const INTERNAL_RUBRIC_ALIAS_PATTERN = new RegExp(
   `\\b(?:${INTERNAL_RUBRIC_ALIAS_SOURCE})\\b`,
   "giu",
@@ -178,8 +181,17 @@ function isDecisionStatus(value: unknown): value is EvaluationDecisionStatus {
 }
 
 function isReasonCode(value: unknown): value is EvaluationReasonCode {
-  return Object.values(REASON_CODE_BY_CRITERION).some(
-    (reasonCode) => reasonCode === value,
+  return Object.values(REASON_CODES_BY_CRITERION).some((reasonCodes) =>
+    reasonCodes.some((reasonCode) => reasonCode === value),
+  );
+}
+
+function isReasonCodeForCriterion(
+  criterionId: EvaluationCriterionId,
+  reasonCode: unknown,
+): boolean {
+  return REASON_CODES_BY_CRITERION[criterionId].some(
+    (allowedReasonCode) => allowedReasonCode === reasonCode,
   );
 }
 
@@ -402,7 +414,7 @@ function validateRejectedDecision(
     decision.evaluated.at(-1)?.state !== "PUNTUADO" ||
     !firstFailure ||
     decision.stop_at !== firstFailure.id ||
-    decision.reason_code !== REASON_CODE_BY_CRITERION[firstFailure.id] ||
+    !isReasonCodeForCriterion(firstFailure.id, decision.reason_code) ||
     decision.basis === null ||
     !ideaText.includes(decision.basis)
   ) {

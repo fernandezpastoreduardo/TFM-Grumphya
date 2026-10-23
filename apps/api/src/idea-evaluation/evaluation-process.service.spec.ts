@@ -16,7 +16,11 @@ import { EvaluationProcessService } from "./evaluation-process.service";
 const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const REJECTED_IDEA =
   "Accedemos sin autorización a datos personales para ofrecer una app de coordinación.";
-const POLICY_VERSION = "grumphya-concept-v7";
+const LOW_VALUE_METRIC_IDEA =
+  "Una app para contar cuántas veces alguien se ata los cordones.";
+const LOW_VALUE_METRIC_BASIS =
+  "contar cuántas veces alguien se ata los cordones";
+const POLICY_VERSION = "grumphya-concept-v8";
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
@@ -97,6 +101,32 @@ function createRejectedDecision(): ModelDecision {
   };
 }
 
+function createUndefinedUserValueDecision(): ModelDecision {
+  return {
+    status: "RECHAZADA",
+    evaluated: [
+      { id: "C01", state: "PUNTUADO", score: 60 },
+      { id: "C02", state: "PUNTUADO", score: 60 },
+      { id: "C03", state: "PUNTUADO", score: 60 },
+      { id: "C04", state: "PUNTUADO", score: 60 },
+      { id: "C05", state: "PUNTUADO", score: 60 },
+      { id: "C06", state: "PUNTUADO", score: 60 },
+      { id: "C07", state: "PUNTUADO", score: 10 },
+      { id: "C08", state: "PUNTUADO", score: 60 },
+      { id: "C09", state: "PUNTUADO", score: 60 },
+      { id: "C10", state: "PUNTUADO", score: 79 },
+    ],
+    stop_at: "C07",
+    reason_code: "VALOR_USUARIO_NO_DEFINIDO",
+    basis: LOW_VALUE_METRIC_BASIS,
+    safeTitle: "Contador sin beneficio para quien lo usa",
+    message:
+      "La idea solo cuenta una acción, pero no define qué problema resuelve ni qué resultado obtiene alguien, así que no ofrece un motivo concreto para empezar o seguir usando la aplicación.",
+    hardSetup: "una app que cuenta una acción sin explicar para qué sirve",
+    hardConsequence: "el usuario no obtiene un resultado que le importe",
+  };
+}
+
 function createInsufficientDecision(): ModelDecision {
   return {
     status: "IDEA_INSUFICIENTE",
@@ -173,6 +203,15 @@ describe("EvaluationProcessService", () => {
       message: `${SOFT_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
     });
+  });
+
+  it("keeps a high novelty score from compensating for undefined user value", async () => {
+    const port = createPort(createUndefinedUserValueDecision());
+    const service = new EvaluationProcessService(port);
+
+    await expect(
+      service.evaluate({ ideaText: LOW_VALUE_METRIC_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({ status: "RECHAZADA", score: 1 });
   });
 
   it("renders the hard-tone message from validated mechanism and consequence fields", async () => {

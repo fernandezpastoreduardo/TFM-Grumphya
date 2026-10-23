@@ -11,6 +11,12 @@
     "expectedReasonCodes": ["DIFERENCIACION_AUSENTE"]
   },
   {
+    "id": "metric-only-no-user-value",
+    "ideaText": "Una app para llevar la cuenta de cuántas veces al día alguien se ata los cordones.",
+    "expectedStatuses": ["RECHAZADA"],
+    "expectedReasonCodes": ["VALOR_USUARIO_NO_DEFINIDO"]
+  },
+  {
     "id": "explicit-unit-economics-contradiction",
     "ideaText": "Vendemos cada servicio por 1 euro, nos cuesta 2 euros cada vez, queremos ganar dinero en cada venta y no tendremos otros ingresos ni cambiaremos los costes.",
     "expectedStatuses": ["RECHAZADA"],

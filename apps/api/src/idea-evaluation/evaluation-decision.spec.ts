@@ -9,6 +9,12 @@ const IDEA_TEXT =
   "Pagamos cualquier declaración sin comprobarla para obtener ingresos recurrentes.";
 const GENERIC_TRAINING_LOG_IDEA =
   "Una app que sirva para registrar entrenamientos";
+const LOW_VALUE_METRIC_IDEA =
+  "Una app para contar cuántas veces alguien se ata los cordones.";
+const LOW_VALUE_METRIC_BASIS =
+  "contar cuántas veces alguien se ata los cordones";
+const LOW_VALUE_METRIC_MESSAGE =
+  "La idea solo cuenta una acción, pero no define qué problema resuelve ni qué resultado obtiene alguien, así que no ofrece un motivo concreto para empezar o seguir usando la aplicación.";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
@@ -125,6 +131,24 @@ function createGenericTrainingLogRejection() {
   };
 }
 
+function createUndefinedUserValueRejection() {
+  return {
+    status: "RECHAZADA",
+    evaluated: CRITERION_IDS.map((id) => ({
+      id,
+      state: "PUNTUADO",
+      score: id === "C07" ? 10 : 60,
+    })),
+    stop_at: "C07",
+    reason_code: "VALOR_USUARIO_NO_DEFINIDO",
+    basis: LOW_VALUE_METRIC_BASIS,
+    safeTitle: "Contador sin beneficio para quien lo usa",
+    message: LOW_VALUE_METRIC_MESSAGE,
+    hardSetup: "una app que cuenta una acción sin explicar para qué sirve",
+    hardConsequence: "el usuario no obtiene un resultado que le importe",
+  };
+}
+
 function createCorePromiseRejection() {
   return {
     status: "RECHAZADA",
@@ -165,6 +189,34 @@ describe("validateModelDecision", () => {
       reason_code: "DIFERENCIACION_AUSENTE",
       safeTitle: "Registro deportivo sin propuesta propia",
     });
+  });
+
+  it("rejects a metric-only idea without an identifiable user need or outcome", () => {
+    const result = validateModelDecision(
+      createUndefinedUserValueRejection(),
+      LOW_VALUE_METRIC_IDEA,
+    );
+
+    expect(result).toMatchObject({
+      status: "RECHAZADA",
+      stop_at: "C07",
+      reason_code: "VALOR_USUARIO_NO_DEFINIDO",
+    });
+  });
+
+  it("does not allow the missing-user-value reason code on another criterion", () => {
+    const decision = createUndefinedUserValueRejection();
+    decision.stop_at = "C10";
+    decision.reason_code = "VALOR_USUARIO_NO_DEFINIDO";
+    decision.evaluated = decision.evaluated.map((criterion) => {
+      if (criterion.id === "C07") return { ...criterion, score: 50 };
+      if (criterion.id === "C10") return { ...criterion, score: 10 };
+      return criterion;
+    });
+
+    expect(() =>
+      validateModelDecision(decision, LOW_VALUE_METRIC_IDEA),
+    ).toThrow(InvalidModelDecisionError);
   });
 
   it("requires a numeric C10 score on complete functional ideas", () => {
