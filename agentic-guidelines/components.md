@@ -20,7 +20,7 @@ Explica que no quedan intentos y ofrece la acción que corresponda sin revelar r
 
 ### LoginForm / CreateAccountForm
 
-Formularios accesibles. Los errores de autenticación deben ser genéricos y nunca confirmar si un usuario existe.
+Formularios accesibles. Los errores de autenticación deben ser genéricos y nunca confirmar si un usuario existe. En Login, el campo de contraseña empieza oculto y un botón accesible «Mostrar/Ocultar» permite cambiar su visibilidad.
 
 `RegisterWithPlan` es el contenedor de `features/register-with-plan/`: consulta la intención del plan al cargar `/crear-cuenta` y crea una cuenta pendiente, sin sesión ni plan. Después de verificar un enlace enviado por correo, presenta la confirmación explícita de la contratación simulada; al confirmar, el servidor activa cuenta, plan y sesión y la UI navega a `/perfil`. El CTA ofrece un mes de plan y usa el copy «Dáme de alta un mes y te pago el café». El panel lateral aclara que el plan no se renueva automáticamente y que para otro mes hay que volver a contratar. No obtiene el plan de query params ni concede permisos en cliente.
 
@@ -67,7 +67,7 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 ### Roast
 
 - El contenedor `Roast` presenta la conversación siguiendo el formato de mensajería del prototipo y conecta el envío con la feature `submitRoast`.
-- Los intercambios de muestra solo aparecen si no consta ningún envío previo. La UI detecta actividad comparando el cupo disponible con su valor inicial y, en cuentas, consultando además el contador acumulado de roast, que persiste aunque se reinicie la cuota diaria. Los mensajes enviados se muestran durante la sesión actual, pero no existe historial de texto para reconstruirlos al volver.
+- Los intercambios de muestra solo aparecen si no consta ningún envío previo. La UI detecta actividad comparando el cupo disponible con su valor inicial y, en cuentas, consultando además el contador acumulado de roast, que persiste aunque se reinicie la cuota diaria. Los mensajes enviados se muestran durante la sesión actual, el hilo se desplaza para mantener visible el intercambio más reciente, y no existe historial de texto para reconstruirlos al volver.
 - El panel lateral «¿Te has quedado con ganas?» solo aparece a visitantes sin sesión o cuentas sin Faltón activo; las cuentas con Faltón activo no lo ven, aunque hayan agotado su cuota diaria.
 - `RoastInput` permite escribir y enviar el mensaje, muestra el estado de envío y los errores, evita el doble envío y comunica los intentos restantes devueltos o confirmados por el servidor.
 - `RoastInput` tiene etiqueta accesible, contador de caracteres, feedback anunciado por lectores de pantalla y contraste legible en los modos claro y oscuro.
@@ -87,7 +87,7 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 ### SubmitContactMessage
 
 - Contenedor local a la feature `submit-contact-message`; gestiona estado, envío y feedback del formulario autenticado en `/contacto`.
-- No envía correos: confirma que el mensaje quedó registrado en PostgreSQL y deja claro que aún no hay envío automático. La API no ofrece bandeja ni lectura; los mensajes persisten hasta borrado operativo o baja física de cuenta, y no tienen cifrado a nivel de aplicación. El copy debe evitar prometer que se borrarán al atenderse e indicar que no se incluyan contraseñas ni datos de pago.
+- Tras guardar, la API intenta enviar una confirmación SMTP genérica; la UI distingue envío, vista previa local y fallo. Jappy puede leer los mensajes desde el panel y responder desde el buzón SMTP; la aplicación no usa IMAP. Los mensajes se purgan a los 12 meses mediante `DataRetentionService` y la baja física de la cuenta también los elimina por cascada. El asunto y cuerpo se guardan como texto claro, sin cifrado a nivel de aplicación; indicar que no se incluyan contraseñas ni datos de pago.
 
 ### ContactMessageForm
 

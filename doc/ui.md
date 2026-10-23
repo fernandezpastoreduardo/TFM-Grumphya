@@ -120,7 +120,7 @@ la lámina maestra está en
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
-  privacidad provisional. Las mascotas de hero flotan suavemente, los bloques
+  privacidad versión 2. Las mascotas de hero flotan suavemente, los bloques
   entran al desplazarse y los controles responden al hover; las animaciones se
   desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
@@ -282,7 +282,7 @@ se comparten entre réplicas.
 ## Ranking de roast «Faltón máximo»
 
 La sección `/descargate` obtiene `GET /api/roast-ranking` y presenta hasta diez
-cuentas activas con mensajes de roast contabilizados. Destaca el primer puesto
+cuentas activas con consentimiento de ranking vigente y mensajes de roast contabilizados. Destaca el primer puesto
 como ganador y coloca los puestos 2–10 en una tabla. Solo muestra el alias y el
 contador acumulado; el endpoint no expone IDs, correos ni mensajes enviados.
 En escritorio, el ranking ocupa la columna derecha junto al chat; en pantallas
@@ -297,7 +297,7 @@ La sección `/humanos-notables` mantiene la clasificación visual del prototipo:
 puesto, inicial del alias, nombre y cantidad de ideas aprobadas, con el primer
 puesto destacado. `BestUsers` presenta los datos que obtiene el contenedor
 `NotableHumans` desde `GET /api/best-users`; la API limita la lista a diez
-cuentas activas y solo devuelve alias y cantidad de aprobaciones. Incluye estados
+cuentas activas con consentimiento de ranking vigente y solo devuelve alias y cantidad de aprobaciones. Incluye estados
 de carga, error con reintento y lista vacía; no muestra ideas aprobadas ni usa
 datos de demostración.
 El endpoint tiene un límite dedicado de 30 solicitudes por minuto y dirección IP,

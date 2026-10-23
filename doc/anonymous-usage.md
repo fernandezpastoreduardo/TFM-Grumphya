@@ -2,9 +2,9 @@
 
 ## Alcance
 
-Cada perfil de navegador dispone de **3 evaluaciones de ideas y 3 envíos de roast de por vida** en contadores independientes, administrados por la API y PostgreSQL. El cupo se aplica a visitantes sin cuenta y también a cuentas autenticadas cuando no tienen activo el plan correspondiente. Por ejemplo, una cuenta con Iluminado usa la cuota de Iluminado para ideas y conserva los intentos gratuitos de roast hasta contratar Faltón. Usar un plan no relacionado no consume ni elimina los intentos gratuitos del otro ámbito. Cerrar la pestaña o el navegador no reinicia el cupo.
+Cada perfil de navegador dispone de **3 evaluaciones de ideas y 3 envíos de roast** en contadores independientes, administrados por la API y PostgreSQL. El perfil y sus contadores se eliminan tras 400 días sin actividad; por tanto, la cuota no es estrictamente vitalicia y puede volver a empezar si se crea otro perfil tras ese periodo. El cupo se aplica a visitantes sin cuenta y también a cuentas autenticadas cuando no tienen activo el plan correspondiente. Por ejemplo, una cuenta con Iluminado usa la cuota de Iluminado para ideas y conserva los intentos gratuitos de roast hasta contratar Faltón. Usar un plan no relacionado no consume ni elimina los intentos gratuitos del otro ámbito. Cerrar la pestaña o el navegador no reinicia el cupo.
 
-La identidad se transporta mediante una cookie opaca, aleatoria y persistente (`HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`). La API guarda el hash del token, nunca el valor de la cookie. La identidad y sus contadores no caducan automáticamente. El navegador puede eliminar la cookie o el usuario puede cambiar de dispositivo, con lo que se crea otro perfil: este mecanismo no ofrece identificación permanente de personas.
+La identidad se transporta mediante una cookie opaca, aleatoria y persistente (`HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`). La API guarda el hash del token, nunca el valor de la cookie, y purga los perfiles que llevan 400 días sin actividad. La cookie se renueva al consultar el uso anónimo y dura como máximo 400 días desde su emisión. El navegador puede eliminar la cookie o el usuario puede cambiar de dispositivo, con lo que se crea otro perfil: este mecanismo no ofrece identificación permanente de personas.
 
 El perfil anónimo no genera historial. Las tablas no conservan el texto original de la idea o el insulto como payload fuente; la caché idempotente conserva el cuerpo final de respuesta, que puede contener salida generada derivada de la petición. El TTL lógico de esa respuesta es de 24 horas: pasado ese plazo deja de estar disponible para reintentos. `DataRetentionService` elimina las filas vencidas por lotes al arrancar la API y cada hora; el borrado físico puede ocurrir hasta una hora después del TTL.
 
@@ -14,7 +14,7 @@ El perfil anónimo no genera historial. Las tablas no conservan el texto origina
 - Idea con coincidencia: la búsqueda y el aviso no consumen la cuota de evaluación. «Evaluar igualmente» reserva un uso antes de llamar al evaluador. Si se rechaza otra vez, el mismo envío lógico no suma una segunda unidad ni vuelve a incrementar Worst Ideas.
 - Roast: validar y reservar en servidor; confirmar cuando el proveedor OpenAI devuelve una respuesta válida que supera la validación de salida. La llamada tiene un timeout abortable de 10 segundos. Si vence, falla el proveedor o la validación, liberar la reserva.
 - Cada envío lógico usa una clave idempotente ligada por hash al payload. Una repetición de la misma clave y contenido recupera el resultado temporal; una clave con otro contenido se rechaza. Una transacción bloquea el contador para que solicitudes concurrentes no gasten el mismo último uso.
-- Cuando el cupo gratuito permanente se agota, la API devuelve `429` con un código estable, el ámbito y `remaining: 0`. No envía `Retry-After`: no existe un momento de reinicio. Una cuenta sin el plan de ese ámbito usa este cupo; un plan activo aplica su cuota diaria y deja intacto el cupo gratuito.
+- Cuando se agota el cupo gratuito del perfil, la API devuelve `429` con un código estable, el ámbito y `remaining: 0`. No envía `Retry-After`: no existe un momento de reinicio. Una cuenta sin el plan de ese ámbito usa este cupo; un plan activo aplica su cuota diaria y deja intacto el cupo gratuito.
 
 ## IP y abuso
 
@@ -45,4 +45,4 @@ La prueba de persistencia crea un esquema PostgreSQL aleatorio y lo elimina al t
 
 ## Preparación para producción
 
-La identidad y el contador ilimitados en el tiempo son una decisión de retención: no deben borrarse si el producto quiere conservar el límite de por vida. El HMAC de IP sí tiene retención corta. Antes de habilitar tráfico real, documentar ambos tratamientos y confirmar configuración de secretos, proxies confiables, rate limiting compartido y operación de las purgas.
+La retención aprobada para perfiles y cuotas sin cuenta es de 400 días desde el último uso. `DataRetentionService` los elimina al arrancar y cada hora por lotes; confirmar que el proceso funciona en producción. El HMAC de IP tiene una retención separada de 24 horas. Antes de habilitar tráfico real, confirmar la configuración de secretos, proxies confiables, rate limiting compartido y operación de las purgas.

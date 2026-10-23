@@ -110,10 +110,10 @@ benchmarks, escaneos ni pruebas desde el navegador.
   respuesta no se persiste. El remitente y Reply-To usan la dirección SMTP
   configurada. Los logs omiten el contenido de la respuesta y el destinatario.
   Un envío con estado incierto requiere revisar el webmail de la cuenta SMTP
-  configurada antes de un único reintento. No hay lectura IMAP ni
-  retención/purga automática; la baja física del usuario elimina sus mensajes
-  por cascada. Estos pendientes están descritos en
-  [`wanna-bes.md`](../agentic-guidelines/wanna-bes.md).
+  configurada antes de un único reintento. No hay lectura IMAP en la aplicación. Los mensajes se purgan a los 12 meses
+  mediante `DataRetentionService`; la baja física también los elimina por
+  cascada. Verificar la ejecución de la tarea y la rotación de backups en
+  producción.
 
 ## Sesiones y separación de cuentas
 
