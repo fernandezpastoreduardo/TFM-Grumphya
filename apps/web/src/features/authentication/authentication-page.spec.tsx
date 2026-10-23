@@ -44,6 +44,22 @@ describe("AuthenticationPage", () => {
       Object.defineProperty(window, "location", LOCATION_DESCRIPTOR);
   });
 
+  it("uses Grumphya copy and aligns the privacy panel with the form", () => {
+    const { container } = render(<AuthenticationPage />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Aquí solo evaluamos ideas, no contraseñas.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Tu historial no es público." }),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".authentication-layout"),
+    ).toBeInTheDocument();
+  });
+
   it("submits credentials and opens the profile for regular users", async () => {
     const user = userEvent.setup();
     const assign = vi.fn();

@@ -17,8 +17,6 @@
   gap: 22px;
 }
 .practices-intro {
-  position: sticky;
-  top: 24px;
   padding: 12px 4px;
 }
 .practices-intro h2 {
@@ -50,10 +48,10 @@
   filter: drop-shadow(2px 5px 0 #226b7022);
 }
 .practice-companion-pink {
-  background-image: url("/assets/grumphya/mascot-help-pink.svg");
+  background-image: url("/assets/grumphya/good-practices-companion-pink.png");
 }
 .practice-companion-yellow {
-  background-image: url("/assets/grumphya/mascot-help-yellow.svg");
+  background-image: url("/assets/grumphya/good-practices-companion-yellow.png");
 }
 .practice-steps {
   display: grid;

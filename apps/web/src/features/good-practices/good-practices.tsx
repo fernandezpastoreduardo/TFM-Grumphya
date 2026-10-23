@@ -67,7 +67,6 @@ export function GoodPractices() {
           </p>
         </div>
       </aside>
-      <p className="prototype-stamp">Contenido editorial en revisión.</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import "../../shared/styles/account.scss";
+import "./authentication-page.scss";
 import {
   notifySessionChanged,
   setAccessToken,
@@ -70,10 +71,10 @@ export function AuthenticationPage() {
   }
 
   return (
-    <div className="auth-layout">
+    <div className="auth-layout authentication-layout">
       <section className="content-card auth-card">
         <span className="eyebrow">Acceso con usuario y contraseña</span>
-        <h2>No, no tenemos login con el súper</h2>
+        <h2>Aquí solo evaluamos ideas, no contraseñas.</h2>
         <form onSubmit={submitAuth}>
           <label htmlFor="login-identifier">Usuario o correo</label>
           <input

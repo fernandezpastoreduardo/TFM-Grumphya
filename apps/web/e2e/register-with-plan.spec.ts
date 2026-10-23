@@ -133,7 +133,9 @@ test("verifies the registration, activates the simulated purchase and deletes th
   await page.goto("/perfil");
   await expect(page).toHaveURL(/\/login$/);
   await expect(
-    page.getByRole("heading", { name: /no, no tenemos login/i }),
+    page.getByRole("heading", {
+      name: "Aquí solo evaluamos ideas, no contraseñas.",
+    }),
   ).toBeVisible();
   const protectedProfileStatus = await page.evaluate(async () => {
     const response = await fetch("/api/account/profile");

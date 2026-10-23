@@ -150,6 +150,68 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   }
 });
 
+test("aligns login content and keeps Good Practices editorial content in flow", async ({
+  page,
+}) => {
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.goto("/login");
+  await expect(
+    page.getByRole("heading", {
+      name: "Aquí solo evaluamos ideas, no contraseñas.",
+    }),
+  ).toBeVisible();
+
+  const loginAlignment = await page
+    .locator(".authentication-layout")
+    .evaluate((element) => getComputedStyle(element).alignItems);
+  expect(loginAlignment).toBe("start");
+  await expect(
+    page.getByRole("heading", { name: "Tu historial no es público." }),
+  ).toBeVisible();
+
+  await page.goto("/buenas-practicas");
+  await expect(
+    page.getByRole("heading", {
+      name: "Prototipar rápido está bien. Validar antes está mejor.",
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/contenido editorial en revisión/i)).toHaveCount(
+    0,
+  );
+  const introPosition = await page
+    .locator(".practices-intro")
+    .evaluate((element) => getComputedStyle(element).position);
+  expect(introPosition).toBe("static");
+
+  const mascotPath = "/assets/grumphya/good-practices-validate-idea.png";
+  await expect(page.locator(".calm-mascot")).toHaveAttribute("src", mascotPath);
+  const mascotResponse = await page.request.get(mascotPath);
+  expect(mascotResponse.ok()).toBe(true);
+  expect(mascotResponse.headers()["content-type"]).toContain("image/png");
+  expect(await assetHasTransparentPixels(page, mascotPath)).toBe(true);
+
+  const companionAssets = [
+    {
+      selector: ".practice-companion-pink",
+      asset: "/assets/grumphya/good-practices-companion-pink.png",
+    },
+    {
+      selector: ".practice-companion-yellow",
+      asset: "/assets/grumphya/good-practices-companion-yellow.png",
+    },
+  ] as const;
+  for (const companion of companionAssets) {
+    const background = await page
+      .locator(companion.selector)
+      .evaluate((element) => getComputedStyle(element).backgroundImage);
+    expect(background).toContain(companion.asset);
+    const response = await page.request.get(companion.asset);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]).toContain("image/png");
+    expect(await assetHasTransparentPixels(page, companion.asset)).toBe(true);
+  }
+});
+
 test("keeps the Home navigation opaque and above the idea form in both themes", async ({
   page,
 }) => {
