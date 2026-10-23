@@ -28,7 +28,7 @@ Formularios accesibles. Los errores de autenticación deben ser genéricos y nun
 
 La vista `/politica-de-privacidad` provisional muestra un título y los estilos del sitio e indica que el contenido está pendiente de completar. No debe aparentar ofrecer información legal completa.
 
-`/terminos-y-condiciones` muestra el resumen sobre el tratamiento de las ideas y los dictados que antes aparecía en Home. No sustituye una política de privacidad completa; esta continúa provisional.
+`/terminos-y-condiciones` muestra el resumen sobre el tratamiento de las ideas y los dictados que antes aparecía en Home. No sustituye el borrador detallado de `/politica-de-privacidad`, que continúa pendiente de validación y aprobación antes de ofrecer el servicio al público.
 
 ### ErrorPages
 

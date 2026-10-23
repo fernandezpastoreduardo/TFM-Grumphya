@@ -1,8 +1,8 @@
 # Evaluación y borrador de privacidad de Grumphya
 
 **Estado: borrador de trabajo, no publicar.** Revisión del repositorio en la rama
-`feat/ui`, commit `1c4bd00` (`feat: refine login and good practices UI`), a fecha
-de 23 de octubre de 2026. Este documento separa evidencia técnica de decisiones
+`main`, tras integrar la política de privacidad de trabajo (`d3d8259`) y esta
+evaluación (`ad33fd5`), a fecha de 23 de octubre de 2026. Este documento separa evidencia técnica de decisiones
 que debe tomar el responsable. No constituye una conclusión de cumplimiento ni
 sustituye la revisión jurídica.
 
@@ -23,7 +23,7 @@ sustituye la revisión jurídica.
 
 ## B. Borrador incorporado en la aplicación
 
-El texto visible se mantiene en [`privacy-policy.tsx`](../apps/web/src/features/register-with-plan/privacy-policy.tsx). Incluye los datos y propósitos observables, derechos, cookies y almacenamiento local, proveedores, transferencias, conservación, seguridad, IA, dictado, reclamación ante la AEPD y cambios. Los campos por confirmar están marcados explícitamente. No sustituye a esta matriz ni a la revisión jurídica.
+El texto visible se mantiene en [`privacy-policy.tsx`](../apps/web/src/features/register-with-plan/privacy-policy.tsx), en la ruta `/politica-de-privacidad`. Es un borrador completo de trabajo: describe datos y finalidades observables, derechos, cookies y almacenamiento local, proveedores, transferencias, conservación, seguridad, IA, dictado, reclamación ante la AEPD y cambios. Identifica al responsable y el canal de contacto facilitados por este, y mantiene marcados el domicilio y las demás decisiones o verificaciones pendientes. La ruta es accesible desde el formulario de alta. El acuse de lectura de la política registra versión y fecha; no es un consentimiento genérico ni resuelve las bases jurídicas pendientes. El aviso visible impide tratarlo como política lista para usuarios reales. No sustituye a esta matriz ni a la revisión jurídica.
 
 ## C. Bloqueos antes de publicar
 

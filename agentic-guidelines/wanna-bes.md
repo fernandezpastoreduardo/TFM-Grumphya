@@ -37,7 +37,7 @@ El límite secundario de creación de perfiles anónimos —20 por IP en 24 hora
 
 **Estado:** pendiente; requisito previo a abrir el servicio a usuarios reales.
 
-`GET /api/roast-ranking` publica el alias y el contador acumulado de envíos de roast, y `GET /api/best-users` publica el alias y el número de ideas aprobadas de hasta diez cuentas activas. Un alias elegido por una persona puede contener datos personales o servir como dato de contacto. Completar la política de privacidad para explicar con claridad qué datos se publican, con qué finalidad y durante cuánto tiempo; revisar el riesgo de que los alias elegidos identifiquen o contacten a la persona, y decidir cómo tratarlo antes de la apertura pública. La política actual es provisional e incompleta. Este punto sigue siendo una condición de preparación para producción; los rankings no deben interpretarse como autorización para publicar el servicio.
+`GET /api/roast-ranking` publica el alias y el contador acumulado de envíos de roast, y `GET /api/best-users` publica el alias y el número de ideas aprobadas de hasta diez cuentas activas. Un alias elegido por una persona puede contener datos personales o servir como dato de contacto. El borrador de `/politica-de-privacidad` explica estas publicaciones, pero siguen pendientes la base, el plazo, la opción de exclusión y la revisión del riesgo de identificación o contacto mediante alias. Resolver esos puntos antes de la apertura pública. Este requisito sigue siendo una condición de preparación para producción; los rankings no deben interpretarse como autorización para publicar el servicio.
 
 ## Verificación de correo en las nuevas altas
 
