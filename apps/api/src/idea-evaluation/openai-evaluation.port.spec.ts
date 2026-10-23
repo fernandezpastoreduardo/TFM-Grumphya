@@ -200,6 +200,15 @@ describe("OpenAiEvaluationPort", () => {
     expect(request).toContain(
       "Si hay rechazo, explica todos los criterios con puntuación inferior a 15",
     );
+    expect(request).toContain(
+      "Si status es RECHAZADA, usa de 8 a 120 palabras y máximo 900 caracteres",
+    );
+    expect(request).toContain(
+      "Para SIN_BLOQUEO_EVIDENTE e IDEA_INSUFICIENTE, usa de 8 a 40 palabras y máximo 280 caracteres",
+    );
+    expect(request).toContain(
+      "el mensaje se completa con una introducción de tono en el servidor",
+    );
     expect(request).toContain("hardSetup");
     expect(request).toContain("hardConsequence");
     expect(request).toContain("tono neutral");

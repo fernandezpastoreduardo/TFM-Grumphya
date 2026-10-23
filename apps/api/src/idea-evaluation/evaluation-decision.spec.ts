@@ -19,6 +19,8 @@ const HARD_REJECTION_MESSAGE_PREFIX =
   "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
 const INSUFFICIENT_MESSAGE =
   "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.";
+const MAX_NEUTRAL_MESSAGE = `${"amable ".repeat(39)}limpio.`;
+const MAX_REJECTION_MESSAGE = `${"idea ".repeat(119)}${"x".repeat(304)}.`;
 const CRITERION_IDS = [
   "C01",
   "C02",
@@ -397,6 +399,36 @@ describe("validateModelDecision", () => {
         IDEA_TEXT,
       ),
     ).toThrow(/respuesta del evaluador no válida/i);
+  });
+
+  it.each([
+    ["complete", createCompleteDecision],
+    ["insufficient", createInsufficientDecision],
+  ] as const)(
+    "accepts a %s message at the 280-character and 40-word limits",
+    (_label, createDecision) => {
+      expect(MAX_NEUTRAL_MESSAGE).toHaveLength(280);
+      expect(MAX_NEUTRAL_MESSAGE.split(/\s+/u)).toHaveLength(40);
+
+      const result = validateModelDecision(
+        { ...createDecision(), message: MAX_NEUTRAL_MESSAGE },
+        IDEA_TEXT,
+      );
+
+      expect(result.message).toBe(MAX_NEUTRAL_MESSAGE);
+    },
+  );
+
+  it("accepts a rejection message at the 900-character and 120-word limits", () => {
+    expect(MAX_REJECTION_MESSAGE).toHaveLength(900);
+    expect(MAX_REJECTION_MESSAGE.split(/\s+/u)).toHaveLength(120);
+
+    const result = validateModelDecision(
+      { ...createRejectedDecision(), message: MAX_REJECTION_MESSAGE },
+      IDEA_TEXT,
+    );
+
+    expect(result.message).toBe(MAX_REJECTION_MESSAGE);
   });
 
   it("drops unrecognized fields and does not mutate the provider result", () => {

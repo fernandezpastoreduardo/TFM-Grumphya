@@ -109,6 +109,61 @@ describe("PasswordReset", () => {
     ).toBeVisible();
   });
 
+  it("keeps the password form available when the server rejects password policy", async () => {
+    const user = userEvent.setup();
+    const token = "e".repeat(64);
+    const initialPassword = "NuevaClaveSegura42!";
+    const replacementPassword = "OtraClaveSegura42!";
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, hash: `#${token}` },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ code: "INVALID_PASSWORD" }, 400))
+      .mockResolvedValueOnce(jsonResponse({ message: "ok" }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PasswordReset />);
+
+    await user.type(screen.getByLabelText("Nueva contraseña"), initialPassword);
+    await user.type(
+      screen.getByLabelText("Repite la contraseña"),
+      initialPassword,
+    );
+    await user.click(
+      screen.getByRole("button", { name: /guardar contraseña/i }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /usa entre 12 y 128 caracteres/i,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Elige una nueva contraseña" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: /recupera el acceso/i }),
+    ).toBeNull();
+
+    await user.clear(screen.getByLabelText("Nueva contraseña"));
+    await user.type(
+      screen.getByLabelText("Nueva contraseña"),
+      replacementPassword,
+    );
+    await user.clear(screen.getByLabelText("Repite la contraseña"));
+    await user.type(
+      screen.getByLabelText("Repite la contraseña"),
+      replacementPassword,
+    );
+    await user.click(
+      screen.getByRole("button", { name: /guardar contraseña/i }),
+    );
+
+    expect(
+      await screen.findByRole("link", { name: /volver a iniciar sesión/i }),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("changes the password with a token and shows an accessible final screen", async () => {
     const user = userEvent.setup();
     Object.defineProperty(window, "location", {
