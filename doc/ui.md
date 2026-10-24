@@ -187,9 +187,10 @@ móvil en tablet; el espacio entre hero y contenido usa un valor fluido y menor.
 La revisión estática de los breakpoints confirma que la navegación se sustituye
 por un menú móvil hasta 979 px y que los layouts de sección se apilan. El E2E
 comprueba algunas posiciones y tamaños en viewport de 390 × 844 px, incluido el
-apilado de la mascota de sección y el tamaño mínimo de los campos. Estas
-aserciones de layout no sustituyen la revisión visual manual en ese viewport,
-que sigue pendiente.
+apilado de la mascota de sección y el tamaño mínimo de los campos. También
+comprueba la posición de la navegación a ambos lados del breakpoint (979 y
+980 px) y en escritorio a 1280 px. Estas aserciones de layout no sustituyen la
+revisión visual manual en esos viewports, que sigue pendiente.
 
 En la actualización del 24 de octubre se añadieron comprobaciones del viewport
 móvil de 390 px: el perfil, sus tarjetas y el documento no deben desbordar el
