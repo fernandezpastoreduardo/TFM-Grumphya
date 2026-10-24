@@ -115,7 +115,10 @@ services:
     networks: [edge]
 
   proxy:
-    image: ${PROXY_IMAGE:-caddy:2.11.7-alpine}
+    image: ${PROXY_IMAGE:-grumphya-proxy:production}
+    build:
+      context: .
+      dockerfile: docker/Caddy.Dockerfile
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:?Define DOMAIN without scheme or path}
