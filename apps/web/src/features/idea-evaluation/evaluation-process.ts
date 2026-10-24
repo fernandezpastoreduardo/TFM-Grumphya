@@ -12,6 +12,7 @@ export type EvaluationProcessResult = {
   headline: string;
   message: string;
   safeTitle?: string;
+  existingProductExample?: string;
 };
 
 export type SimilarIdeaMatchResult = {
@@ -50,6 +51,14 @@ const MAX_PUBLIC_MESSAGE_LENGTH = 360;
 const MAX_PUBLIC_REJECTION_MESSAGE_LENGTH = 1_000;
 const MAX_PUBLIC_SAFE_TITLE_LENGTH = 160;
 const MIN_PUBLIC_SAFE_TITLE_LENGTH = 8;
+const MIN_PUBLIC_PRODUCT_EXAMPLE_LENGTH = 2;
+const MAX_PUBLIC_PRODUCT_EXAMPLE_LENGTH = 80;
+const SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN =
+  /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
+const PUBLIC_EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
+const PUBLIC_URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
+const PUBLIC_PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
+const PUBLIC_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
 
 export class EvaluationProcessError extends Error {
   constructor(
@@ -88,6 +97,7 @@ function parseEvaluationResponse(
 ): EvaluationProcessResult | null {
   if (!isRecord(input)) return null;
   const { status, score, headline, message } = input;
+  const existingProductExample = input.existingProductExample;
   if (
     !isEvaluationStatus(status) ||
     !isValidPublicScore(score) ||
@@ -101,7 +111,21 @@ function parseEvaluationResponse(
         ? MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
         : MAX_PUBLIC_MESSAGE_LENGTH) ||
     (status === "IDEA_INSUFICIENTE" && score !== null) ||
-    (status !== "IDEA_INSUFICIENTE" && score === null)
+    (status !== "IDEA_INSUFICIENTE" && score === null) ||
+    (existingProductExample !== undefined &&
+      existingProductExample !== null &&
+      status !== "RECHAZADA") ||
+    (existingProductExample !== undefined &&
+      existingProductExample !== null &&
+      (typeof existingProductExample !== "string" ||
+        existingProductExample.trim() !== existingProductExample ||
+        existingProductExample.length < MIN_PUBLIC_PRODUCT_EXAMPLE_LENGTH ||
+        existingProductExample.length > MAX_PUBLIC_PRODUCT_EXAMPLE_LENGTH ||
+        !SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN.test(existingProductExample) ||
+        PUBLIC_EMAIL_PATTERN.test(existingProductExample) ||
+        PUBLIC_URL_PATTERN.test(existingProductExample) ||
+        PUBLIC_PHONE_PATTERN.test(existingProductExample) ||
+        PUBLIC_CONTROL_PATTERN.test(existingProductExample)))
   ) {
     return null;
   }
@@ -124,6 +148,9 @@ function parseEvaluationResponse(
     headline,
     message,
     ...(safeTitle ? { safeTitle } : {}),
+    ...(typeof existingProductExample === "string"
+      ? { existingProductExample }
+      : {}),
   };
 }
 

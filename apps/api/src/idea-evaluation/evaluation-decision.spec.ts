@@ -64,6 +64,7 @@ function createCompleteDecision() {
     reason_code: null,
     basis: null,
     safeTitle: null,
+    existingProductExample: null,
     message: VALID_MESSAGE,
     hardSetup: null,
     hardConsequence: null,
@@ -89,6 +90,7 @@ function createRejectedDecision() {
     reason_code: CRITERION_REASON_CODES.C05,
     basis: "Pagamos cualquier declaración sin comprobarla",
     safeTitle: "Cobrar por promesas sin verificar",
+    existingProductExample: null,
     message: REJECTION_MESSAGE,
     hardSetup: "un negocio que paga por declaraciones sin comprobarlas",
     hardConsequence: "nadie sabe si esas declaraciones son ciertas",
@@ -103,6 +105,7 @@ function createInsufficientDecision() {
     reason_code: null,
     basis: null,
     safeTitle: null,
+    existingProductExample: null,
     message: INSUFFICIENT_MESSAGE,
     hardSetup: null,
     hardConsequence: null,
@@ -124,6 +127,7 @@ function createGenericTrainingLogRejection() {
     reason_code: CRITERION_REASON_CODES.C10,
     basis: "registrar entrenamientos",
     safeTitle: "Registro deportivo sin propuesta propia",
+    existingProductExample: null,
     message:
       "Registrar entrenamientos es una función común y la idea no explica por qué alguien dejaría las opciones habituales para usar esta aplicación.",
     hardSetup: "una app de entrenamientos que no aporta nada distinto",
@@ -143,6 +147,7 @@ function createUndefinedUserValueRejection() {
     reason_code: "VALOR_USUARIO_NO_DEFINIDO",
     basis: LOW_VALUE_METRIC_BASIS,
     safeTitle: "Contador sin beneficio para quien lo usa",
+    existingProductExample: null,
     message: LOW_VALUE_METRIC_MESSAGE,
     hardSetup: "una app que cuenta una acción sin explicar para qué sirve",
     hardConsequence: "el usuario no obtiene un resultado que le importe",
@@ -168,6 +173,7 @@ function createCorePromiseRejection() {
     reason_code: CRITERION_REASON_CODES.C07,
     basis: "resultados actuales",
     safeTitle: "Promesas sin respaldo verificable",
+    existingProductExample: null,
     message:
       "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
     hardSetup:
@@ -190,6 +196,56 @@ describe("validateModelDecision", () => {
       safeTitle: "Registro deportivo sin propuesta propia",
     });
   });
+
+  it("preserves a known product example only for a failed C10 comparison", () => {
+    const decision = {
+      ...createGenericTrainingLogRejection(),
+      existingProductExample: "Strava",
+    };
+
+    expect(
+      validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
+    ).toMatchObject({ existingProductExample: "Strava" });
+  });
+
+  it("rejects an existing product example when C10 does not fail", () => {
+    const decision = {
+      ...createCompleteDecision(),
+      existingProductExample: "Strava",
+    };
+
+    expect(() =>
+      validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
+    ).toThrowError(new InvalidModelDecisionError("decision_semantics"));
+  });
+
+  it("does not show a C10 example when an earlier criterion is the rejection reason", () => {
+    const decision = {
+      ...createRejectedDecision(),
+      evaluated: createRejectedDecision().evaluated.map((criterion) =>
+        criterion.id === "C10" ? { ...criterion, score: 10 } : criterion,
+      ),
+      existingProductExample: "Strava",
+    };
+
+    expect(() =>
+      validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
+    ).toThrowError(new InvalidModelDecisionError("decision_semantics"));
+  });
+
+  it.each(["https://example.com", "App <script>", "App\nName"])(
+    "rejects unsafe existing product example names: %s",
+    (existingProductExample) => {
+      const decision = {
+        ...createGenericTrainingLogRejection(),
+        existingProductExample,
+      };
+
+      expect(() =>
+        validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
+      ).toThrowError(new InvalidModelDecisionError("decision_fields"));
+    },
+  );
 
   it("rejects a metric-only idea without an identifiable user need or outcome", () => {
     const result = validateModelDecision(

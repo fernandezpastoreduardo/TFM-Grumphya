@@ -28,9 +28,10 @@ export type EvaluationProcessResponse = {
   headline: string;
   message: string;
   safeTitle?: string;
+  existingProductExample?: string;
 };
 
-const POLICY_VERSION = "grumphya-concept-v8";
+const POLICY_VERSION = "grumphya-concept-v9";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
@@ -129,6 +130,9 @@ function toPublicResponse(
   };
   if (decision.status === "RECHAZADA" && decision.safeTitle) {
     response.safeTitle = decision.safeTitle;
+  }
+  if (decision.existingProductExample !== null) {
+    response.existingProductExample = decision.existingProductExample;
   }
   return response;
 }

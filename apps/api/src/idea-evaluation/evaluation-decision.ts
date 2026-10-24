@@ -47,6 +47,7 @@ export type ModelDecision = {
   reason_code: EvaluationReasonCode | null;
   basis: string | null;
   safeTitle: string | null;
+  existingProductExample: string | null;
   message: string;
   hardSetup: string | null;
   hardConsequence: string | null;
@@ -83,6 +84,9 @@ const DISALLOWED_RESULT_LABEL = /\bbloque(?:o|os|ante|antes)\b/iu;
 const MIN_SAFE_TITLE_LENGTH = 8;
 const MAX_SAFE_TITLE_LENGTH = 72;
 const SAFE_TITLE_WORD_PATTERN = /^[\p{L}\p{N}]+(?:[ '\u2019-][\p{L}\p{N}]+)*$/u;
+const SAFE_PRODUCT_EXAMPLE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
+const MIN_PRODUCT_EXAMPLE_LENGTH = 2;
+const MAX_PRODUCT_EXAMPLE_LENGTH = 80;
 const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
@@ -456,10 +460,38 @@ function isSafeTitle(value: unknown, ideaText: string): value is string {
   return true;
 }
 
+function isValidExistingProductExample(value: unknown): value is string | null {
+  if (value === null) return true;
+  return (
+    typeof value === "string" &&
+    value.trim() === value &&
+    value.length >= MIN_PRODUCT_EXAMPLE_LENGTH &&
+    value.length <= MAX_PRODUCT_EXAMPLE_LENGTH &&
+    SAFE_PRODUCT_EXAMPLE_PATTERN.test(value) &&
+    !EMAIL_PATTERN.test(value) &&
+    !URL_PATTERN.test(value) &&
+    !PHONE_PATTERN.test(value) &&
+    !CONTROL_PATTERN.test(value)
+  );
+}
+
 function isValidDecisionStatus(
   decision: ModelDecision,
   ideaText: string,
 ): boolean {
+  if (decision.existingProductExample !== null) {
+    const c10Criterion = decision.evaluated.at(-1);
+    if (
+      decision.status !== "RECHAZADA" ||
+      decision.stop_at !== "C10" ||
+      decision.reason_code !== "DIFERENCIACION_AUSENTE" ||
+      c10Criterion?.id !== "C10" ||
+      c10Criterion.state !== "PUNTUADO" ||
+      c10Criterion.score >= REJECTION_THRESHOLD
+    ) {
+      return false;
+    }
+  }
   if (decision.status === "RECHAZADA") {
     return (
       isSafeTitle(decision.safeTitle, ideaText) &&
@@ -506,6 +538,9 @@ export function validateModelDecision(
   if (safeTitle !== null && typeof safeTitle !== "string") {
     throw new InvalidModelDecisionError("decision_fields");
   }
+  if (!isValidExistingProductExample(input.existingProductExample)) {
+    throw new InvalidModelDecisionError("decision_fields");
+  }
   if (!isValidDecisionMessage(input.message, input.status)) {
     throw new InvalidModelDecisionError("visible_message");
   }
@@ -534,6 +569,7 @@ export function validateModelDecision(
     evaluated,
     ...fields,
     safeTitle,
+    existingProductExample: input.existingProductExample,
     message: input.message,
     hardSetup,
     hardConsequence,
