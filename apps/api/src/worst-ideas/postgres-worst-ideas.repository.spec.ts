@@ -23,6 +23,8 @@ class FakePgClient {
   continuationClaimed = false;
   idempotencyExists = true;
   submissionType: "match" | "new_rejection" = "match";
+  continuationExpired = false;
+  continuationRequestHash = REQUEST_HASH;
 
   async query<Row extends QueryResultRow = QueryResultRow>(
     sql: string,
@@ -51,6 +53,24 @@ class FakePgClient {
     }
     if (sql.includes("UPDATE rejected_idea_idempotency")) {
       if (sql.includes("continue_started_at")) {
+        if (sql.includes("SET continue_started_at = NULL")) {
+          const [idempotencyHash, requestHash] = values ?? [];
+          const canRelease =
+            this.continuationClaimed &&
+            this.idempotencyExists &&
+            this.submissionType === "match" &&
+            !this.continuationExpired &&
+            idempotencyHash === IDEMPOTENCY_HASH &&
+            requestHash === this.continuationRequestHash;
+          if (canRelease) this.continuationClaimed = false;
+          return {
+            rows: [],
+            rowCount: canRelease ? 1 : 0,
+            command: "UPDATE",
+            oid: 0,
+            fields: [],
+          } as unknown as QueryResult<Row>;
+        }
         if (
           !this.idempotencyExists ||
           this.continuationClaimed ||
@@ -438,6 +458,48 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(claims[0]?.sql).toContain("requests.submission_type = 'match'");
     expect(claims[0]?.sql).toContain("requests.expires_at > now()");
     expect(claims[0]?.sql).toContain("continue_started_at IS NULL");
+  });
+
+  it("releases a failed live continuation claim", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+    await repository.claimIdempotentContinuation(
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+
+    await expect(
+      repository.releaseIdempotentContinuation(IDEMPOTENCY_HASH, REQUEST_HASH),
+    ).resolves.toBeUndefined();
+    await expect(
+      repository.claimIdempotentContinuation(IDEMPOTENCY_HASH, REQUEST_HASH),
+    ).resolves.toBe(true);
+
+    const release = pool.client.queries.find(({ sql }) =>
+      sql.includes("SET continue_started_at = NULL"),
+    );
+    expect(release?.sql).toContain("submission_type = 'match'");
+    expect(release?.sql).toContain("request_hash = $2");
+    expect(release?.sql).toContain("expires_at > now()");
+  });
+
+  it("does not release a continuation claim for a different request hash", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+    await repository.claimIdempotentContinuation(
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+
+    await expect(
+      repository.releaseIdempotentContinuation(
+        IDEMPOTENCY_HASH,
+        "hmac:different-request-hash",
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      repository.claimIdempotentContinuation(IDEMPOTENCY_HASH, REQUEST_HASH),
+    ).resolves.toBe(false);
   });
 
   it("does not claim continuation for non-match or missing idempotency hashes", async () => {

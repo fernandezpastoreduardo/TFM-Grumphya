@@ -1,4 +1,7 @@
-import type { EvaluationProcessResult } from "../evaluation-process";
+import {
+  getPublicExistingProductExample,
+  type EvaluationProcessResult,
+} from "../evaluation-process";
 import "../idea-evaluation.scss";
 
 type EvaluationResultProps = {
@@ -24,6 +27,10 @@ function formatPublicScore(score: number | null): string {
 }
 
 export function EvaluationResult({ result }: EvaluationResultProps) {
+  const existingProductExample = getPublicExistingProductExample(
+    result.existingProductExample,
+    result.status,
+  );
   return (
     <article
       className={`evaluation-result-card evaluation-result-card--${result.status.toLowerCase()}`}
@@ -39,10 +46,10 @@ export function EvaluationResult({ result }: EvaluationResultProps) {
       </div>
       <h2>{result.headline}</h2>
       <p className="evaluation-result-message">{result.message}</p>
-      {result.status === "RECHAZADA" && result.existingProductExample && (
+      {existingProductExample && (
         <p className="evaluation-result-example">
           <span>{EXISTING_PRODUCT_EXAMPLE_LABEL}</span>{" "}
-          <strong>{result.existingProductExample}</strong>
+          <strong>{existingProductExample}</strong>
         </p>
       )}
     </article>

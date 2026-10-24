@@ -72,7 +72,7 @@ describe("evaluationProcess frontend adapter", () => {
     ).resolves.toMatchObject({ existingProductExample: "Strava" });
   });
 
-  it("rejects an existing product example on an evaluation without rejection", async () => {
+  it("omits an existing product example on an evaluation without rejection", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -92,7 +92,7 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).resolves.toMatchObject({ status: "SIN_BLOQUEO_EVIDENTE" });
   });
 
   it("rejects malformed API results without exposing response data", async () => {
@@ -119,30 +119,35 @@ describe("evaluationProcess frontend adapter", () => {
     ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
   });
 
-  it("rejects an unsafe known product example from the API", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          status: "evaluated",
-          result: {
-            ...EVALUATION_RESULT,
-            existingProductExample: "https://example.com",
-          },
+  it.each(["https://example.com", "null", "NULL", "undefined"])(
+    "omits an unsafe or empty known product example from the API: %s",
+    async (existingProductExample) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            status: "evaluated",
+            result: {
+              ...EVALUATION_RESULT,
+              status: "RECHAZADA",
+              safeTitle: "Título seguro y genérico",
+              existingProductExample,
+            },
+          }),
         }),
-      }),
-    );
+      );
 
-    await expect(
-      evaluationProcess(
-        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
-        IDEMPOTENCY_KEY,
-      ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
-  });
+      await expect(
+        evaluationProcess(
+          { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+          IDEMPOTENCY_KEY,
+        ),
+      ).resolves.not.toHaveProperty("existingProductExample");
+    },
+  );
 
-  it("rejects a phone number returned as a known product example", async () => {
+  it("omits a phone number returned as a known product example", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -164,7 +169,7 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).resolves.not.toHaveProperty("existingProductExample");
   });
 
   it("rejects a completed functional result without a numeric score", async () => {
@@ -219,6 +224,28 @@ describe("evaluationProcess frontend adapter", () => {
     ).rejects.toThrow(
       "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.",
     );
+  });
+
+  it("keeps invalid scoring responses retryable with a clear safe message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({ code: "INVALID_EVALUATION_RESPONSE" }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toMatchObject({
+      code: "INVALID_EVALUATION_RESPONSE",
+      message:
+        "No se ha podido validar esta evaluación. Puedes volver a intentarlo.",
+    });
   });
 
   it("shows the exhausted lifetime quota message returned by the API", async () => {

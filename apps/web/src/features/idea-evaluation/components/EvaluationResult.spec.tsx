@@ -60,6 +60,22 @@ describe("EvaluationResult", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("does not show the literal null sentinel as a product name", () => {
+    render(
+      <EvaluationResult
+        result={{
+          ...SCORED_RESULT,
+          existingProductExample: "null",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Ejemplo conocido con funciones similares:"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/^null$/i)).not.toBeInTheDocument();
+  });
+
   it("shows no numeric score for an insufficient idea and renders message as text", () => {
     const untrustedMessage = '<img src=x onerror="alert(1)">';
     const untrustedHeadline = '<svg onload="alert(1)">';
