@@ -129,9 +129,12 @@ export class RegistrationController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const session = await this.service.refresh(
-      readCookie(request, REFRESH_COOKIE),
-    );
+    const refreshToken = readCookie(request, REFRESH_COOKIE);
+    if (!refreshToken) {
+      response.status(204);
+      return;
+    }
+    const session = await this.service.refresh(refreshToken);
     response.cookie(
       REFRESH_COOKIE,
       session.refreshToken,
