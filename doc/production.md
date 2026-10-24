@@ -51,7 +51,7 @@ docker compose --project-name grumphya --env-file .env.production -f compose.pro
 docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml ps
 ```
 
-Compose construye la web estática y la API, espera a PostgreSQL, ejecuta las migraciones y solo entonces inicia la API. Si la migración falla, la API permanece detenida y Compose informa que su dependencia no completó. Revisa el estado con:
+Este arranque manual construye la web estática, la API y el proxy desde sus Dockerfiles; Caddy usa `docker/Caddy.Dockerfile`, que recompila la versión fijada con parches de Go y actualiza los paquetes Alpine de la imagen final. Espera a PostgreSQL, ejecuta las migraciones y solo entonces inicia la API. Si la migración falla, la API permanece detenida y Compose informa que su dependencia no completó. Revisa el estado con:
 
 ```sh
 docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml logs --tail=100 db migrate api proxy
@@ -137,7 +137,7 @@ La clave de host se fija en `known_hosts` y SSH usa `StrictHostKeyChecking=yes`,
 
 ### Qué ocurre en cada push a `main`
 
-El job `supply-chain` construye API, web estática, PostgreSQL/pgvector y Caddy con tags derivados de `github.sha`, escanea cada imagen y empaqueta esas mismas imágenes solo después de que todos los escaneos pasen. Se comparte un artefacto temporal del mismo run de Actions. El VPS carga ese paquete; no reconstruye imágenes ni descarga tags mutables. Se elige el artefacto de Actions para evitar configurar un registry, credenciales de publicación o facturación de almacenamiento de imágenes. El artefacto caduca en siete días y no contiene secretos.
+El job `supply-chain` construye API, web estática, PostgreSQL/pgvector y Caddy con tags derivados de `github.sha`, escanea cada imagen y empaqueta esas mismas imágenes solo después de que todos los escaneos pasen. Se comparte un artefacto temporal del mismo run de Actions. El VPS carga ese paquete; no reconstruye imágenes ni descarga tags mutables. En Compose, `PROXY_IMAGE` selecciona la imagen etiquetada de ese paquete y el helper arranca las releases con `--no-build`; así la publicación utiliza la misma imagen Caddy escaneada. El arranque manual sin `PROXY_IMAGE` usa `grumphya-proxy:production` y construye el proxy desde `docker/Caddy.Dockerfile`. Se elige el artefacto de Actions para evitar configurar un registry, credenciales de publicación o facturación de almacenamiento de imágenes. El artefacto caduca en siete días y no contiene secretos.
 
 `deploy-production` depende de ambos jobs, solo se evalúa para `push` a `main` y requiere `PRODUCTION_DEPLOY_ENABLED=true`. `pull_request`, otras ramas, fallos y variable ausente/desactivada no acceden a secretos SSH. La concurrencia no cancela un run en curso; además, el helper del VPS usa un lock para excluir ejecuciones simultáneas.
 

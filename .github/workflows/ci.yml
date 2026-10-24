@@ -60,6 +60,7 @@ jobs:
       - name: Test the VPS deployment gate and automatic rollback
         run: |
           node scripts/test-deploy-policy.mjs
+          node scripts/test-container-security-policy.mjs
           bash -n docker/vps-deploy.sh scripts/test-vps-deploy.sh
           bash scripts/test-vps-deploy.sh
       - run: pnpm --filter @grumphya/web exec playwright install --with-deps chromium

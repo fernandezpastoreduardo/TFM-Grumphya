@@ -8,4 +8,5 @@ RUN go get golang.org/x/net@v0.60.0 \
   && CGO_ENABLED=0 go build -trimpath -o /caddy .
 
 FROM caddy:2.11.7-alpine
+RUN apk upgrade --no-cache
 COPY --from=caddy-build /caddy /usr/bin/caddy
