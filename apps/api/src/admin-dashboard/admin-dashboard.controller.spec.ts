@@ -1,9 +1,19 @@
+import "reflect-metadata";
+import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { describe, expect, it, vi } from "vitest";
+import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
+import { AdminRoleGuard } from "./admin-role.guard";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import { AdminContactMessageReply } from "./admin-contact-message-reply.service";
 
 describe("AdminDashboardController", () => {
+  it("protects diagnostic details with session and administrator guards", () => {
+    expect(
+      Reflect.getMetadata(GUARDS_METADATA, AdminDashboardController),
+    ).toEqual([AccessTokenGuard, AdminRoleGuard]);
+  });
+
   it("returns the dashboard snapshot from its injected service", async () => {
     const snapshot = { revenue: { total: 0 }, commonErrors: [] };
     const service = {

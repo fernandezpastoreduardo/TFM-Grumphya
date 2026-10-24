@@ -53,11 +53,23 @@ describe("AdminDashboardService", () => {
     const service = new AdminDashboardService(repository);
 
     await expect(service.getApplicationError("42")).resolves.toEqual(detail);
-    await expect(service.getApplicationError("0")).rejects.toMatchObject({
-      status: 400,
-    });
     expect(repository.getApplicationError).toHaveBeenCalledOnce();
   });
+
+  it.each(["0", "01", "-1", "not-an-id", "9223372036854775808"])(
+    "rejects invalid or out-of-range error event id %s",
+    async (id) => {
+      const repository = {
+        getApplicationError: vi.fn(),
+      } as unknown as AdminDashboardRepository;
+      const service = new AdminDashboardService(repository);
+
+      await expect(service.getApplicationError(id)).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(repository.getApplicationError).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns not found for an expired or unknown diagnostic event", async () => {
     const repository = {

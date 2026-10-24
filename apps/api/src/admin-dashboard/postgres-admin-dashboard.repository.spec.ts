@@ -251,6 +251,21 @@ describe("PostgresAdminDashboardRepository", () => {
     });
   });
 
+  it("returns null when the requested error event no longer exists", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getApplicationError("42")).resolves.toBeNull();
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "FROM application_error_events WHERE id=$1::bigint",
+      ),
+      ["42"],
+    );
+  });
+
   it("maps actor costs, account averages, and all eight weekly trend rows into the API snapshot", async () => {
     const query = vi
       .fn()

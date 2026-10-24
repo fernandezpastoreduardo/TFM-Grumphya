@@ -15,6 +15,14 @@ describe("parseApplicationErrorContext", () => {
     ).toEqual({ useCase: "idea_evaluation", inputText: IDEA_TEXT });
   });
 
+  it("accepts an idea at the stored text size limit", () => {
+    const inputText = "x".repeat(MAX_STORED_IDEA_TEXT_LENGTH);
+
+    expect(
+      parseApplicationErrorContext({ useCase: "idea_evaluation", inputText }),
+    ).toEqual({ useCase: "idea_evaluation", inputText });
+  });
+
   it.each([
     null,
     [],

@@ -35,6 +35,29 @@ describe("controlled database migrations", () => {
     expect(client.release).toHaveBeenCalledOnce();
   });
 
+  it("applies the bounded diagnostic context migration", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes("ADD COLUMN IF NOT EXISTS context_json jsonb"),
+    )?.[0];
+    expect(migrationSql).toContain(
+      "length(context_json->>'inputText') <= 2000",
+    );
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["031_application_error_context"],
+    );
+  });
+
   it("rolls back the migration transaction and releases the client on failure", async () => {
     let pendingMigration = false;
     const query = vi.fn(async (sql: string) => {
