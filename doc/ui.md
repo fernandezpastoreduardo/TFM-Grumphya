@@ -151,6 +151,8 @@ la lámina maestra está en
 - El navbar de Home es sticky, tiene el mismo fondo temático que la página y se
   apila por encima del formulario al desplazarse, manteniendo la separación del
   telón. Los diálogos globales conservan prioridad sobre toda la interfaz.
+- En escritorio (desde 980 px), la navegación de Home y de las páginas de
+  sección se coloca 16 px más arriba. En móvil se conserva la posición actual.
 - El menú móvil cambia entre icono de menú y X. Al abrirlo, aparece una capa que
   atenúa y bloquea el contenido de fondo; el panel permanece por encima de esa
   capa y puede recibir clics. Pulsar fuera cierra el menú sin activar el
