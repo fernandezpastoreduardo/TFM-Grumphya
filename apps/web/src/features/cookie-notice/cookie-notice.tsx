@@ -85,7 +85,7 @@ export function CookieNotice() {
         alt="Grumphya le da una patada a una galleta"
         className="cookie-notice-mascot"
         height="190"
-        src="/assets/grumphya/cookie-kick.png"
+        src="/assets/grumphya/cookie-kick.webp"
         width="285"
       />
       <h2 id="cookie-notice-title">{COOKIE_NOTICE_TITLE}</h2>
