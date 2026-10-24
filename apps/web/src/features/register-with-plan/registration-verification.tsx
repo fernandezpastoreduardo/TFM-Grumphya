@@ -10,6 +10,8 @@ type VerificationResponse = { status: "email_verified"; plan: Plan };
 type ConfirmationResponse = { status: "active"; plan: Plan };
 type VerificationStatus =
   | "checking"
+  | "ready"
+  | "verifying"
   | "verified"
   | "confirming"
   | "confirmation_error"
@@ -62,45 +64,51 @@ function isConfirmationResponse(value: unknown): value is ConfirmationResponse {
 export function RegistrationVerification() {
   const [status, setStatus] = useState<VerificationStatus>("checking");
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [verificationToken, setVerificationToken] = useState("");
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
-  const verificationStarted = useRef(false);
+  const verificationTokenRead = useRef(false);
 
   useEffect(() => {
-    if (verificationStarted.current) return;
-    verificationStarted.current = true;
-    async function verifyEmail() {
-      const token = window.location.hash.slice(1);
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname + window.location.search,
-      );
-      if (!token) {
+    if (verificationTokenRead.current) return;
+    verificationTokenRead.current = true;
+    const token = window.location.hash.slice(1);
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + window.location.search,
+    );
+    if (!token) {
+      setStatus("verification_error");
+      return;
+    }
+    setVerificationToken(token);
+    setStatus("ready");
+  }, []);
+
+  async function verifyEmail() {
+    if (!verificationToken || status === "verifying") return;
+    setStatus("verifying");
+    try {
+      const response = await fetch("/api/registrations/verify", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: verificationToken }),
+      });
+      const body: unknown = await readJson(response);
+      if (!response.ok || !isVerificationResponse(body)) {
         setStatus("verification_error");
         return;
       }
-      try {
-        const response = await fetch("/api/registrations/verify", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
-        const body: unknown = await readJson(response);
-        if (!response.ok || !isVerificationResponse(body)) {
-          setStatus("verification_error");
-          return;
-        }
-        setPlan(body.plan);
-        setStatus("verified");
-      } catch {
-        setStatus("verification_error");
-      }
+      setPlan(body.plan);
+      setVerificationToken("");
+      setStatus("verified");
+    } catch {
+      setStatus("verification_error");
     }
-    void verifyEmail();
-  }, []);
+  }
 
   async function resendVerification() {
     if (resending) return;
@@ -172,6 +180,26 @@ export function RegistrationVerification() {
           <SkeletonBlock className="skeleton-registration-button" />
         </div>
       </LoadingSkeleton>
+    );
+  }
+  if (status === "ready" || status === "verifying") {
+    return (
+      <section
+        className="content-card registration-pending"
+        aria-labelledby="verify-email-title"
+      >
+        <span className="eyebrow">Un último paso</span>
+        <h2 id="verify-email-title">Confirma tu correo</h2>
+        <p>Confirma que has solicitado crear esta cuenta para continuar.</p>
+        <button
+          className="button-primary"
+          type="button"
+          onClick={() => void verifyEmail()}
+          disabled={status === "verifying"}
+        >
+          {status === "verifying" ? "Verificando…" : "Confirmar correo"}
+        </button>
+      </section>
     );
   }
   if (status === "verification_error") {

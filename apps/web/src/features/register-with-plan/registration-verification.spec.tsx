@@ -20,7 +20,7 @@ describe("RegistrationVerification", () => {
     );
   });
 
-  it("verifies the email and waits for explicit confirmation of the simulated plan", async () => {
+  it("waits for an explicit email confirmation before consuming the token", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -38,6 +38,14 @@ describe("RegistrationVerification", () => {
       </StrictMode>,
     );
 
+    expect(
+      await screen.findByRole("heading", { name: /confirma tu correo/i }),
+    ).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: /confirmar correo/i }));
     expect(
       await screen.findByRole("heading", { name: /correo verificado/i }),
     ).toBeInTheDocument();
@@ -77,10 +85,42 @@ describe("RegistrationVerification", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 400)));
     render(<RegistrationVerification />);
 
+    await userEvent
+      .setup()
+      .click(await screen.findByRole("button", { name: /confirmar correo/i }));
+
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /no se ha podido verificar/i,
     );
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("prevents duplicate verification requests while the first request is pending", async () => {
+    let resolveVerification!: (response: Response) => void;
+    const pendingVerification = new Promise<Response>((resolve) => {
+      resolveVerification = resolve;
+    });
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(pendingVerification));
+    const user = userEvent.setup();
+    render(<RegistrationVerification />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /confirmar correo/i }),
+    );
+    const verifyingButton = await screen.findByRole("button", {
+      name: /verificando/i,
+    });
+
+    expect(verifyingButton).toBeDisabled();
+    await user.click(verifyingButton);
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    resolveVerification(
+      jsonResponse({ status: "email_verified", plan: "FALTON" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /correo verificado/i }),
+    ).toBeInTheDocument();
   });
 
   it("offers a generic resend from an expired or invalid verification link", async () => {
@@ -95,6 +135,10 @@ describe("RegistrationVerification", () => {
     );
     const user = userEvent.setup();
     render(<RegistrationVerification />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /confirmar correo/i }),
+    );
 
     await user.type(
       await screen.findByLabelText(/correo electrónico usado en el alta/i),
@@ -128,6 +172,10 @@ describe("RegistrationVerification", () => {
     );
     const user = userEvent.setup();
     render(<RegistrationVerification />);
+
+    await user.click(
+      await screen.findByRole("button", { name: /confirmar correo/i }),
+    );
 
     await user.click(
       await screen.findByRole("button", {
