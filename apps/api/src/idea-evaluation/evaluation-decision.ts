@@ -475,23 +475,22 @@ function isValidExistingProductExample(value: unknown): value is string | null {
   );
 }
 
+function shouldExposeExistingProductExample(decision: ModelDecision): boolean {
+  const c10Criterion = decision.evaluated.at(-1);
+  return (
+    decision.status === "RECHAZADA" &&
+    decision.stop_at === "C10" &&
+    decision.reason_code === "DIFERENCIACION_AUSENTE" &&
+    c10Criterion?.id === "C10" &&
+    c10Criterion.state === "PUNTUADO" &&
+    c10Criterion.score < REJECTION_THRESHOLD
+  );
+}
+
 function isValidDecisionStatus(
   decision: ModelDecision,
   ideaText: string,
 ): boolean {
-  if (decision.existingProductExample !== null) {
-    const c10Criterion = decision.evaluated.at(-1);
-    if (
-      decision.status !== "RECHAZADA" ||
-      decision.stop_at !== "C10" ||
-      decision.reason_code !== "DIFERENCIACION_AUSENTE" ||
-      c10Criterion?.id !== "C10" ||
-      c10Criterion.state !== "PUNTUADO" ||
-      c10Criterion.score >= REJECTION_THRESHOLD
-    ) {
-      return false;
-    }
-  }
   if (decision.status === "RECHAZADA") {
     return (
       isSafeTitle(decision.safeTitle, ideaText) &&
@@ -538,9 +537,6 @@ export function validateModelDecision(
   if (safeTitle !== null && typeof safeTitle !== "string") {
     throw new InvalidModelDecisionError("decision_fields");
   }
-  if (!isValidExistingProductExample(input.existingProductExample)) {
-    throw new InvalidModelDecisionError("decision_fields");
-  }
   if (!isValidDecisionMessage(input.message, input.status)) {
     throw new InvalidModelDecisionError("visible_message");
   }
@@ -569,11 +565,21 @@ export function validateModelDecision(
     evaluated,
     ...fields,
     safeTitle,
-    existingProductExample: input.existingProductExample,
+    existingProductExample:
+      isValidExistingProductExample(input.existingProductExample) &&
+      typeof input.existingProductExample === "string"
+        ? input.existingProductExample
+        : null,
     message: input.message,
     hardSetup,
     hardConsequence,
   };
+  if (
+    decision.existingProductExample !== null &&
+    !shouldExposeExistingProductExample(decision)
+  ) {
+    decision.existingProductExample = null;
+  }
   if (!isValidDecisionStatus(decision, ideaText)) {
     throw new InvalidModelDecisionError("decision_semantics");
   }

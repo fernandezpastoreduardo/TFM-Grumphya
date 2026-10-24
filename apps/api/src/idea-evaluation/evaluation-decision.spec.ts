@@ -16,6 +16,11 @@ const LOW_VALUE_METRIC_BASIS =
 const LOW_VALUE_METRIC_MESSAGE =
   "La idea solo cuenta una acción, pero no define qué problema resuelve ni qué resultado obtiene alguien, así que no ofrece un motivo concreto para empezar o seguir usando la aplicación.";
 const PHONE_LIKE_PRODUCT_EXAMPLE = "+34 600 123 456";
+const MALFORMED_PRODUCT_EXAMPLE_VALUES: unknown[] = [
+  undefined,
+  123,
+  { name: "Strava" },
+];
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
@@ -209,29 +214,37 @@ describe("validateModelDecision", () => {
     ).toMatchObject({ existingProductExample: "Strava" });
   });
 
-  it("rejects an existing product example when C10 does not fail", () => {
+  it("omits an existing product example when C10 does not fail", () => {
     const decision = {
       ...createCompleteDecision(),
       existingProductExample: "Strava",
     };
 
-    expect(() =>
+    expect(
       validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
-    ).toThrowError(new InvalidModelDecisionError("decision_semantics"));
+    ).toMatchObject({
+      status: "SIN_BLOQUEO_EVIDENTE",
+      existingProductExample: null,
+    });
   });
 
-  it("does not show a C10 example when an earlier criterion vetoes and C10 also fails", () => {
+  it("omits a C10 example when an earlier criterion vetoes and C10 also fails", () => {
     const decision = {
-      ...createRejectedDecision(),
-      evaluated: createRejectedDecision().evaluated.map((criterion) =>
-        criterion.id === "C10" ? { ...criterion, score: 10 } : criterion,
+      ...createUndefinedUserValueRejection(),
+      evaluated: createUndefinedUserValueRejection().evaluated.map(
+        (criterion) =>
+          criterion.id === "C10" ? { ...criterion, score: 10 } : criterion,
       ),
       existingProductExample: "Strava",
     };
 
-    expect(() =>
-      validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
-    ).toThrowError(new InvalidModelDecisionError("decision_semantics"));
+    expect(
+      validateModelDecision(decision, LOW_VALUE_METRIC_IDEA),
+    ).toMatchObject({
+      status: "RECHAZADA",
+      stop_at: "C07",
+      existingProductExample: null,
+    });
   });
 
   it.each([
@@ -240,16 +253,36 @@ describe("validateModelDecision", () => {
     "App\nName",
     PHONE_LIKE_PRODUCT_EXAMPLE,
   ])(
-    "rejects unsafe existing product example names: %s",
+    "omits unsafe existing product example names: %s",
     (existingProductExample) => {
       const decision = {
         ...createGenericTrainingLogRejection(),
         existingProductExample,
       };
 
-      expect(() =>
+      expect(
         validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
-      ).toThrowError(new InvalidModelDecisionError("decision_fields"));
+      ).toMatchObject({
+        status: "RECHAZADA",
+        existingProductExample: null,
+      });
+    },
+  );
+
+  it.each(MALFORMED_PRODUCT_EXAMPLE_VALUES)(
+    "omits a missing or non-string known product example: %s",
+    (existingProductExample) => {
+      const decision = {
+        ...createGenericTrainingLogRejection(),
+        existingProductExample,
+      };
+
+      expect(
+        validateModelDecision(decision, GENERIC_TRAINING_LOG_IDEA),
+      ).toMatchObject({
+        status: "RECHAZADA",
+        existingProductExample: null,
+      });
     },
   );
 
