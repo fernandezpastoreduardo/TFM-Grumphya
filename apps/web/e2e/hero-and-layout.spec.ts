@@ -274,8 +274,10 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
           10,
         ),
         navigationTop: Number.parseFloat(getComputedStyle(navigation).top),
-        expectedDesktopNavigationTop:
-          Math.min(96, Math.max(82, window.innerWidth * 0.06 + 10)) - 16,
+        expectedNavigationTop:
+          window.innerWidth < 980
+            ? Math.min(42, Math.max(28, window.innerWidth * 0.08 - 2))
+            : Math.min(96, Math.max(82, window.innerWidth * 0.06 + 10)) - 16,
         ideaWorkspaceZIndex: Number.parseInt(
           getComputedStyle(ideaWorkspace).zIndex,
           10,
@@ -304,7 +306,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
     lightThemeLayers!.ideaWorkspaceZIndex,
   );
   expect(lightThemeLayers!.navigationTop).toBe(
-    lightThemeLayers!.expectedDesktopNavigationTop,
+    lightThemeLayers!.expectedNavigationTop,
   );
   expect(lightThemeLayers!.curtainZIndex).toBe(
     lightThemeLayers!.audienceZIndex,
@@ -322,6 +324,14 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
     darkThemeLayers!.ideaWorkspaceZIndex,
   );
 
+  await page.setViewportSize({ width: 979, height: 844 });
+  const homeAt979 = await readNavigationLayers();
+  expect(homeAt979!.navigationTop).toBe(homeAt979!.expectedNavigationTop);
+
+  await page.setViewportSize({ width: 980, height: 844 });
+  const homeAt980 = await readNavigationLayers();
+  expect(homeAt980!.navigationTop).toBe(homeAt980!.expectedNavigationTop);
+
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileCharacterCounterPosition = await page
     .locator(".idea-input-meta")
@@ -330,7 +340,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
     .locator(".home-topbar")
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).top));
   expect(mobileCharacterCounterPosition).toBe("absolute");
-  expect(mobileNavigationTop).toBeLessThan(35);
+  expect(mobileNavigationTop).toBe(Math.min(42, Math.max(28, 390 * 0.08 - 2)));
 
   await page.locator("#idea-text").fill("Una idea para vaciar el campo.");
   const clearButton = page.getByRole("button", { name: /borrar idea/i });
@@ -383,8 +393,10 @@ test("matches section navigation to the theme and layers curtain over content", 
           10,
         ),
         headerTop: Number.parseFloat(getComputedStyle(header).top),
-        expectedDesktopNavigationTop:
-          Math.min(96, Math.max(82, window.innerWidth * 0.06 + 10)) - 16,
+        expectedNavigationTop:
+          window.innerWidth < 980
+            ? Math.min(42, Math.max(28, window.innerWidth * 0.08 - 2))
+            : Math.min(96, Math.max(82, window.innerWidth * 0.06 + 10)) - 16,
       };
     });
 
@@ -396,14 +408,20 @@ test("matches section navigation to the theme and layers curtain over content", 
   expect(lightLayers!.curtainZIndex).toBeGreaterThan(
     lightLayers!.contentZIndex,
   );
-  expect(lightLayers!.headerTop).toBeLessThan(35);
+  expect(lightLayers!.headerTop).toBe(lightLayers!.expectedNavigationTop);
+
+  await page.setViewportSize({ width: 979, height: 844 });
+  const sectionAt979 = await readSectionLayers();
+  expect(sectionAt979!.headerTop).toBe(sectionAt979!.expectedNavigationTop);
+
+  await page.setViewportSize({ width: 980, height: 844 });
+  const sectionAt980 = await readSectionLayers();
+  expect(sectionAt980!.headerTop).toBe(sectionAt980!.expectedNavigationTop);
 
   await page.setViewportSize({ width: 1280, height: 900 });
   const desktopLayers = await readSectionLayers();
   expect(desktopLayers).not.toBeNull();
-  expect(desktopLayers!.headerTop).toBe(
-    desktopLayers!.expectedDesktopNavigationTop,
-  );
+  expect(desktopLayers!.headerTop).toBe(desktopLayers!.expectedNavigationTop);
 
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
   const darkLayers = await readSectionLayers();
