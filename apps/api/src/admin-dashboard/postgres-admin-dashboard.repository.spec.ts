@@ -22,6 +22,7 @@ const SUMMARY_ROW = {
   unpriced_usage_events: "2",
 };
 const ERROR_ROW = {
+  latest_event_id: "42",
   error_code: "INVALID_EVALUATION_RESPONSE",
   weekly_count: "2",
   total_count: "4",
@@ -103,8 +104,8 @@ describe("PostgresAdminDashboardRepository", () => {
     );
 
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("diagnostic_code"),
-      ["INVALID_EVALUATION_RESPONSE", 503, "decision_semantics"],
+      expect.stringContaining("context_json"),
+      ["INVALID_EVALUATION_RESPONSE", 503, "decision_semantics", null],
     );
   });
 
@@ -121,8 +122,147 @@ describe("PostgresAdminDashboardRepository", () => {
     );
 
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("diagnostic_code"),
-      ["INVALID_EVALUATION_RESPONSE", 503, null],
+      expect.stringContaining("context_json"),
+      ["INVALID_EVALUATION_RESPONSE", 503, null, null],
+    );
+  });
+
+  it("stores only the supplied evaluation context for admin diagnostics", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+    const context = {
+      useCase: "idea_evaluation" as const,
+      inputText: "Una app para ordenar cajas en un camión",
+    };
+
+    await repository.recordApplicationError(
+      "INVALID_EVALUATION_RESPONSE",
+      503,
+      "decision_semantics",
+      context,
+    );
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("context_json"),
+      [
+        "INVALID_EVALUATION_RESPONSE",
+        503,
+        "decision_semantics",
+        JSON.stringify(context),
+      ],
+    );
+  });
+
+  it.each([
+    {
+      errorCode: "HTTP_500",
+      statusCode: 503,
+      diagnosticCode: "decision_semantics",
+    },
+    {
+      errorCode: "INVALID_EVALUATION_RESPONSE",
+      statusCode: 500,
+      diagnosticCode: "decision_semantics",
+    },
+    {
+      errorCode: "INVALID_EVALUATION_RESPONSE",
+      statusCode: 503,
+      diagnosticCode: undefined,
+    },
+  ])(
+    "does not persist idea context without a classified evaluation failure: %o",
+    async ({ errorCode, statusCode, diagnosticCode }) => {
+      const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+      const repository = new PostgresAdminDashboardRepository({
+        query,
+      } as unknown as Pool);
+
+      await repository.recordApplicationError(
+        errorCode,
+        statusCode,
+        diagnosticCode,
+        { useCase: "idea_evaluation", inputText: "private idea" },
+      );
+
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining("context_json"),
+        [errorCode, statusCode, diagnosticCode ?? null, null],
+      );
+    },
+  );
+
+  it("returns a single admin error event with its safe context", async () => {
+    const occurredAt = new Date("2026-10-24T10:30:00.000Z");
+    const context = {
+      useCase: "idea_evaluation",
+      inputText: "Una app para ordenar cajas en un camión",
+    };
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: "42",
+          error_code: "INVALID_EVALUATION_RESPONSE",
+          status_code: 503,
+          occurred_at: occurredAt,
+          diagnostic_code: "decision_semantics",
+          context_json: context,
+        },
+      ],
+    });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getApplicationError("42")).resolves.toEqual({
+      id: "42",
+      code: "INVALID_EVALUATION_RESPONSE",
+      statusCode: 503,
+      occurredAt: occurredAt.toISOString(),
+      diagnosticCode: "decision_semantics",
+      context,
+    });
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("context_json"),
+      ["42"],
+    );
+  });
+
+  it("omits malformed stored context rather than returning it to the admin UI", async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: "42",
+          error_code: "INVALID_EVALUATION_RESPONSE",
+          status_code: 503,
+          occurred_at: new Date("2026-10-24T10:30:00.000Z"),
+          diagnostic_code: "decision_semantics",
+          context_json: { useCase: "idea_evaluation", inputText: 42 },
+        },
+      ],
+    });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getApplicationError("42")).resolves.toMatchObject({
+      context: null,
+    });
+  });
+
+  it("returns null when the requested error event no longer exists", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getApplicationError("42")).resolves.toBeNull();
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "FROM application_error_events WHERE id=$1::bigint",
+      ),
+      ["42"],
     );
   });
 
@@ -169,6 +309,7 @@ describe("PostgresAdminDashboardRepository", () => {
       },
       errors: [
         {
+          latestEventId: "42",
           code: "INVALID_EVALUATION_RESPONSE",
           weeklyCount: 2,
           totalCount: 4,

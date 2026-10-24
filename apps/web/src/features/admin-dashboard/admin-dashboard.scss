@@ -250,6 +250,25 @@
   padding: 14px;
   background: color-mix(in srgb, var(--color-teal-dark) 8%, white);
 }
+.admin-error-detail dl {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+}
+.admin-error-detail dl > div {
+  min-width: 0;
+}
+.admin-error-detail dt {
+  color: var(--color-ink-muted, #4b5860);
+  font-size: 0.85rem;
+}
+.admin-error-detail dd {
+  margin: 3px 0 0;
+  font-weight: 600;
+}
+.admin-error-input {
+  white-space: pre-wrap;
+}
 .admin-dashboard th,
 .admin-dashboard td {
   padding: 12px;

@@ -1,9 +1,19 @@
+import "reflect-metadata";
+import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { describe, expect, it, vi } from "vitest";
+import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
+import { AdminRoleGuard } from "./admin-role.guard";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import { AdminContactMessageReply } from "./admin-contact-message-reply.service";
 
 describe("AdminDashboardController", () => {
+  it("protects diagnostic details with session and administrator guards", () => {
+    expect(
+      Reflect.getMetadata(GUARDS_METADATA, AdminDashboardController),
+    ).toEqual([AccessTokenGuard, AdminRoleGuard]);
+  });
+
   it("returns the dashboard snapshot from its injected service", async () => {
     const snapshot = { revenue: { total: 0 }, commonErrors: [] };
     const service = {
@@ -28,6 +38,18 @@ describe("AdminDashboardController", () => {
 
     await expect(controller.listContactMessages()).resolves.toBe(messages);
     expect(service.listContactMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the requested error detail from its injected service", async () => {
+    const detail = { id: "42", code: "INVALID_EVALUATION_RESPONSE" };
+    const service = {
+      getApplicationError: vi.fn().mockResolvedValue(detail),
+    } as unknown as AdminDashboardService;
+    const reply = { execute: vi.fn() } as unknown as AdminContactMessageReply;
+    const controller = new AdminDashboardController(service, reply);
+
+    await expect(controller.getApplicationError("42")).resolves.toBe(detail);
+    expect(service.getApplicationError).toHaveBeenCalledWith("42");
   });
 
   it("forwards the authenticated admin and message body to the reply use case", async () => {

@@ -7,11 +7,16 @@ import {
   type AiUsageRecord,
 } from "../infrastructure/ai/ai-usage";
 import type {
+  AdminApplicationErrorDetail,
   AdminContactMessage,
   ContactMessageReplyClaim,
   AdminDashboardRepository,
   AdminDashboardSnapshot,
 } from "./admin-dashboard.models";
+import {
+  parseApplicationErrorContext,
+  type ApplicationErrorContext,
+} from "../infrastructure/observability/application-error-context";
 
 const CONTACT_MESSAGE_LIMIT = 100;
 const MAX_ERROR_CODE_LENGTH = 100;
@@ -98,6 +103,7 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         FROM revenue CROSS JOIN costs CROSS JOIN account_counts
       `),
       this.pool.query<{
+        latest_event_id: string;
         error_code: string;
         weekly_count: string;
         total_count: string;
@@ -112,10 +118,10 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
           count(*) FILTER (WHERE occurred_at >= boundaries.week_start)::text AS weekly_count,
           count(*)::text AS total_count,
           max(occurred_at) AS last_occurred_at,
-          (array_agg(diagnostic_code ORDER BY occurred_at DESC)
-            FILTER (WHERE diagnostic_code IS NOT NULL))[1] AS latest_diagnostic_code
+          (array_agg(id::text ORDER BY occurred_at DESC, id DESC))[1] AS latest_event_id,
+          diagnostic_code AS latest_diagnostic_code
         FROM application_error_events CROSS JOIN boundaries
-        GROUP BY error_code
+        GROUP BY error_code, diagnostic_code
         ORDER BY count(*) DESC, error_code ASC
         LIMIT 10
       `),
@@ -207,12 +213,42 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         unpricedUsageEvents: Number(row.unpriced_usage_events),
       },
       errors: errorRows.rows.map((error) => ({
+        latestEventId: error.latest_event_id,
         code: error.error_code,
         weeklyCount: Number(error.weekly_count),
         totalCount: Number(error.total_count),
         lastOccurredAt: error.last_occurred_at.toISOString(),
         latestDiagnosticCode: error.latest_diagnostic_code,
       })),
+    };
+  }
+
+  async getApplicationError(
+    id: string,
+  ): Promise<AdminApplicationErrorDetail | null> {
+    await this.ensureSchema();
+    const result = await this.pool.query<{
+      id: string;
+      error_code: string;
+      status_code: number;
+      occurred_at: Date;
+      diagnostic_code: string | null;
+      context_json: unknown;
+    }>(
+      `SELECT id::text, error_code, status_code, occurred_at,
+          diagnostic_code, context_json
+       FROM application_error_events WHERE id=$1::bigint`,
+      [id],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      code: row.error_code,
+      statusCode: row.status_code,
+      occurredAt: row.occurred_at.toISOString(),
+      diagnosticCode: row.diagnostic_code,
+      context: parseApplicationErrorContext(row.context_json),
     };
   }
 
@@ -367,6 +403,7 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
     errorCode: string,
     statusCode: number,
     diagnosticCode?: string,
+    context?: ApplicationErrorContext,
   ): Promise<void> {
     await this.ensureSchema();
     const normalizedCode = /^[A-Z0-9_]{1,100}$/u.test(errorCode)
@@ -378,10 +415,24 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         : null;
     if (!Number.isInteger(statusCode) || statusCode < 400 || statusCode > 599)
       return;
+    const applicationErrorContext =
+      normalizedCode === "INVALID_EVALUATION_RESPONSE" &&
+      statusCode === 503 &&
+      normalizedDiagnosticCode !== null
+        ? parseApplicationErrorContext(context)
+        : null;
     await this.pool.query(
       `INSERT INTO application_error_events
-         (error_code,status_code,diagnostic_code) VALUES($1,$2,$3)`,
-      [normalizedCode, statusCode, normalizedDiagnosticCode],
+         (error_code,status_code,diagnostic_code,context_json)
+       VALUES($1,$2,$3,$4::jsonb)`,
+      [
+        normalizedCode,
+        statusCode,
+        normalizedDiagnosticCode,
+        applicationErrorContext
+          ? JSON.stringify(applicationErrorContext)
+          : null,
+      ],
     );
   }
 

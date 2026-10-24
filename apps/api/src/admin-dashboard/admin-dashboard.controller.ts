@@ -37,6 +37,11 @@ export class AdminDashboardController {
     return this.dashboard.getSnapshot();
   }
 
+  @Get("application-errors/:eventId")
+  getApplicationError(@Param("eventId") eventId: string) {
+    return this.dashboard.getApplicationError(eventId);
+  }
+
   @Get("contact-messages")
   listContactMessages() {
     return this.dashboard.listContactMessages();

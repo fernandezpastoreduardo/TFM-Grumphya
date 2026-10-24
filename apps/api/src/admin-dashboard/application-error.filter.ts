@@ -10,6 +10,7 @@ import {
   ADMIN_DASHBOARD_REPOSITORY,
   type AdminDashboardRepository,
 } from "./admin-dashboard.models";
+import { parseApplicationErrorContext } from "../infrastructure/observability/application-error-context";
 
 const SAFE_ERROR_CODE_PATTERN = /^[A-Z0-9_]{1,100}$/u;
 const SAFE_DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
@@ -33,11 +34,13 @@ export class ApplicationErrorFilter extends BaseExceptionFilter {
     if (statusCode >= FIRST_PERSISTED_ERROR_STATUS) {
       const errorCode = readErrorCode(exception, statusCode);
       const diagnosticCode = readDiagnosticCode(exception);
+      const context = readApplicationErrorContext(exception);
       try {
         await this.repository.recordApplicationError(
           errorCode,
           statusCode,
           diagnosticCode,
+          context ?? undefined,
         );
       } catch {
         this.logger.error("APPLICATION_ERROR_PERSISTENCE_FAILED");
@@ -45,6 +48,12 @@ export class ApplicationErrorFilter extends BaseExceptionFilter {
     }
     super.catch(exception, host);
   }
+}
+
+function readApplicationErrorContext(exception: unknown) {
+  if (typeof exception !== "object" || exception === null) return null;
+  if (!("applicationErrorContext" in exception)) return null;
+  return parseApplicationErrorContext(exception.applicationErrorContext);
 }
 
 function readDiagnosticCode(exception: unknown): string | undefined {

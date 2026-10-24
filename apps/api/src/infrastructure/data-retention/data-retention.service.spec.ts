@@ -31,6 +31,13 @@ describe("DataRetentionService", () => {
           String(sql).includes("interval '24 months'"),
         ),
     ).toBe(true);
+    const applicationErrorCleanup = vi
+      .mocked(pool.query)
+      .mock.calls.find(([sql]) =>
+        String(sql).includes("DELETE FROM application_error_events"),
+      )?.[0];
+    expect(applicationErrorCleanup).toContain("interval '30 days'");
+    expect(applicationErrorCleanup).toContain("LIMIT 500");
 
     await service.onApplicationShutdown();
 

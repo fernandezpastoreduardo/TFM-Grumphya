@@ -57,10 +57,15 @@ const EVALUATION_TIMEOUT_RESPONSE = {
 
 class InvalidEvaluationResponseException extends ServiceUnavailableException {
   readonly applicationErrorDiagnostic: string;
+  readonly applicationErrorContext: {
+    useCase: "idea_evaluation";
+    inputText: string;
+  };
 
-  constructor(validationCode: ModelDecisionValidationCode) {
+  constructor(validationCode: ModelDecisionValidationCode, inputText: string) {
     super(INVALID_EVALUATION_RESPONSE);
     this.applicationErrorDiagnostic = validationCode;
+    this.applicationErrorContext = { useCase: "idea_evaluation", inputText };
   }
 }
 
@@ -213,7 +218,10 @@ export class EvaluationProcessService {
         this.logger.error(
           `${INVALID_EVALUATION_RESPONSE.code} validation=${error.validationCode}`,
         );
-        throw new InvalidEvaluationResponseException(error.validationCode);
+        throw new InvalidEvaluationResponseException(
+          error.validationCode,
+          request.ideaText,
+        );
       }
       if (error instanceof OpenAiEvaluationFailure) {
         this.logger.error(error.code);

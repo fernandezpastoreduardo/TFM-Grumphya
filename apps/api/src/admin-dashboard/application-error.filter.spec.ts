@@ -51,6 +51,7 @@ describe("ApplicationErrorFilter", () => {
       "ADMIN_DASHBOARD_UNAVAILABLE",
       503,
       undefined,
+      undefined,
     );
   });
 
@@ -61,7 +62,13 @@ describe("ApplicationErrorFilter", () => {
         { code: "INVALID_EVALUATION_RESPONSE", message: "generic" },
         503,
       ),
-      { applicationErrorDiagnostic: "decision_semantics" },
+      {
+        applicationErrorDiagnostic: "decision_semantics",
+        applicationErrorContext: {
+          useCase: "idea_evaluation",
+          inputText: "Una app para probar una idea",
+        },
+      },
     );
 
     await filter.catch(exception, host);
@@ -70,6 +77,27 @@ describe("ApplicationErrorFilter", () => {
       "INVALID_EVALUATION_RESPONSE",
       503,
       "decision_semantics",
+      {
+        useCase: "idea_evaluation",
+        inputText: "Una app para probar una idea",
+      },
+    );
+  });
+
+  it("does not capture request bodies without a trusted evaluation context", async () => {
+    const { filter, host, repository } = createFilter();
+    const exception = new HttpException(
+      { code: "ADMIN_DASHBOARD_UNAVAILABLE", message: "generic" },
+      503,
+    );
+
+    await filter.catch(exception, host);
+
+    expect(repository.recordApplicationError).toHaveBeenCalledWith(
+      "ADMIN_DASHBOARD_UNAVAILABLE",
+      503,
+      undefined,
+      undefined,
     );
   });
 });

@@ -590,6 +590,7 @@ test("uses the section hero assets with transparent pixels", async ({
             errors: [
               {
                 code: "INVALID_EVALUATION_RESPONSE",
+                latestEventId: "42",
                 weeklyCount: 1,
                 totalCount: 1,
                 lastOccurredAt: "2026-10-21T18:30:00.000Z",
@@ -636,7 +637,7 @@ test("uses the section hero assets with transparent pixels", async ({
 
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(
-        page.getByRole("columnheader", { name: "Diagnóstico reciente" }),
+        page.getByRole("columnheader", { name: "Error y diagnóstico" }),
       ).toBeVisible();
       const dashboardOverflow = await page.evaluate(() => {
         const table = document.querySelector(".admin-table-scroll");

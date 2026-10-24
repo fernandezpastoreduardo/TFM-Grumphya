@@ -15,7 +15,8 @@ abre directamente `/panel-control` va a `/login`, y una cuenta normal va a
 `/perfil`. El enlace «Mi cuenta» conserva `/perfil` y muestra los datos
 personales también para Jappy.
 
-La API protege `GET /api/admin/dashboard` y
+La API protege `GET /api/admin/dashboard`,
+`GET /api/admin/application-errors/:eventId` y
 `GET /api/admin/contact-messages` con access token y una comprobación del rol
 vigente en PostgreSQL en cada solicitud. Sin sesión responden 401 y una cuenta
 sin rol admin recibe 403. Ocultar la ruta o el enlace en el frontend no sustituye
@@ -63,14 +64,23 @@ comandos de cada entorno.
   datos para atribuirlos retrospectivamente. Los modelos sin tarifa registrada
   aparecen como usos sin precio y no suman al importe estimado. No hay política
   de retención para estos eventos todavía.
-- Errores: solo errores de servidor HTTP 5xx, agrupados por código seguro. Las
-  respuestas 4xx esperables —por ejemplo 401, 403, 404 y 429— no se cuentan.
-  La tabla muestra conteo semanal y total, fecha de la última ocurrencia y el
-  diagnóstico seguro más reciente disponible por código de error. Ese
-  diagnóstico se limita a categorías cerradas de validación de evaluación;
-  los eventos históricos y los errores sin diagnóstico asociado muestran `—`.
-  No se guardan rutas, payloads, ideas, mensajes de contacto, credenciales ni
-  mensajes de excepción. La migración `029` añade la categoría opcional. Los eventos se purgan a los 30 días y las métricas de IA a los 12 meses mediante `DataRetentionService`; el ciclo efectivo debe verificarse en producción.
+- Errores: solo errores de servidor HTTP 5xx, agrupados por código y diagnóstico
+  seguro. Las respuestas 4xx esperables —por ejemplo 401, 403, 404 y 429— no se
+  cuentan. La tabla muestra conteo semanal y total, fecha de la última
+  ocurrencia y el diagnóstico específico. Cada denominación enlaza al evento
+  más reciente del grupo y abre el detalle en otra pestaña. El detalle muestra
+  estado HTTP, fecha, caso de uso y diagnóstico; eventos históricos sin
+  contexto indican que no se guardó información de entrada.
+- Solo los errores `INVALID_EVALUATION_RESPONSE` guardan el texto enviado al
+  evaluador (máximo 2.000 caracteres) en `context_json`, para diagnosticar las
+  validaciones que rechazaron la respuesta. El detalle solo está disponible
+  tras autenticación y comprobación del rol admin. El texto no se incluye en
+  logs ni se comparte con la vista agregada; se elimina con el evento a los 30
+  días. El resto de errores no guarda payloads, rutas, credenciales ni mensajes
+  de excepción, y nunca se persiste la respuesta cruda del proveedor. La
+  migración `029` añade la categoría opcional y `031` el contexto acotado. Los
+  eventos se purgan a los 30 días y las métricas de IA a los 12 meses mediante
+  `DataRetentionService`; verificar la ejecución efectiva en producción.
 
 En pantallas estrechas, el panel reduce el relleno de las tarjetas y apila los
 desgloses de coste. Las tablas conservan un ancho mínimo y se desplazan dentro
