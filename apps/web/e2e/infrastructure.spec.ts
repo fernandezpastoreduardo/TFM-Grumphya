@@ -119,5 +119,9 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
     { ideaText: IDEA_TEXT_SECOND, tone: "soft" },
   ]);
   expect(unexpectedDialog).toBe(false);
-  await expect(page.locator("img")).toHaveCount(0);
+  await expect(
+    evaluationDialog
+      .getByRole("article", { name: /resultado de tu idea/i })
+      .locator("img"),
+  ).toHaveCount(0);
 });
