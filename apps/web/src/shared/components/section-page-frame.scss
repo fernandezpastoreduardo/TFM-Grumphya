@@ -1697,3 +1697,9 @@
     margin: -8px auto 0;
   }
 }
+
+@media (min-width: 980px) {
+  .app-page .site-header {
+    top: calc(var(--header-start) - 16px);
+  }
+}

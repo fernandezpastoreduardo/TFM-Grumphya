@@ -3161,3 +3161,9 @@
     text-align: center;
   }
 }
+
+@media (min-width: 980px) {
+  .home-page .home-topbar {
+    top: calc(var(--header-start) - 16px);
+  }
+}

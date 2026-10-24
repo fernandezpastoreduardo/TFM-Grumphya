@@ -273,6 +273,9 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
           getComputedStyle(navigation).zIndex,
           10,
         ),
+        navigationTop: Number.parseFloat(getComputedStyle(navigation).top),
+        expectedDesktopNavigationTop:
+          Math.min(96, Math.max(82, window.innerWidth * 0.06 + 10)) - 16,
         ideaWorkspaceZIndex: Number.parseInt(
           getComputedStyle(ideaWorkspace).zIndex,
           10,
@@ -299,6 +302,9 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   );
   expect(lightThemeLayers!.navigationZIndex).toBeGreaterThan(
     lightThemeLayers!.ideaWorkspaceZIndex,
+  );
+  expect(lightThemeLayers!.navigationTop).toBe(
+    lightThemeLayers!.expectedDesktopNavigationTop,
   );
   expect(lightThemeLayers!.curtainZIndex).toBe(
     lightThemeLayers!.audienceZIndex,
@@ -377,6 +383,8 @@ test("matches section navigation to the theme and layers curtain over content", 
           10,
         ),
         headerTop: Number.parseFloat(getComputedStyle(header).top),
+        expectedDesktopNavigationTop:
+          Math.min(96, Math.max(82, window.innerWidth * 0.06 + 10)) - 16,
       };
     });
 
@@ -389,6 +397,13 @@ test("matches section navigation to the theme and layers curtain over content", 
     lightLayers!.contentZIndex,
   );
   expect(lightLayers!.headerTop).toBeLessThan(35);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const desktopLayers = await readSectionLayers();
+  expect(desktopLayers).not.toBeNull();
+  expect(desktopLayers!.headerTop).toBe(
+    desktopLayers!.expectedDesktopNavigationTop,
+  );
 
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
   const darkLayers = await readSectionLayers();
