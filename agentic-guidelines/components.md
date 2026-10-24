@@ -105,3 +105,7 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 - Mientras consulta los endpoints protegidos, presenta un esqueleto de carga accesible con `role="status"`, etiqueta y `aria-busy`; los bloques visuales se muestran tras un breve retraso para evitar parpadeos.
 - La pestaña Resumen muestra ingresos y costes agregados, tendencia de ocho semanas, errores 5xx y mensajes recientes. Otras pestañas describen el benchmark, la telemetría sin ideas ni identificadores de sesión y las pruebas de seguridad; son informativas y no ejecutan tareas desde el navegador. Las métricas validan las respuestas antes de representarlas.
 - El desglose de costes separa usuarios registrados, Jappy/admin y visitantes sin cuenta. Conserva atribución tras la baja física; los promedios incluyen gasto histórico de cuentas eliminadas en el numerador, pero estas ya no forman parte del denominador de cuentas activas.
+
+### AdminErrorDetail
+
+Vista local al panel de administración que carga un evento de error por ID desde la API protegida. Valida la respuesta antes de mostrarla; incluye estado HTTP, fecha, caso de uso y diagnóstico. Solo puede mostrar el texto de idea acotado que se conservó en eventos `INVALID_EVALUATION_RESPONSE`; los eventos sin contexto informan que no hay entrada guardada. El servidor exige sesión y rol admin.
