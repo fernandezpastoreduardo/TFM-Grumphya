@@ -98,6 +98,96 @@ describe("useSessionStatus", () => {
     expect(result.current.accountAttempts?.ideas).toBe(10);
   });
 
+  it("does not restore an expired session from a refresh already in flight", async () => {
+    const { result } = renderHook(() => useSessionStatus());
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    let resolveProfile: ((response: Response) => void) | undefined;
+    const pendingProfile = new Promise<Response>((resolve) => {
+      resolveProfile = resolve;
+    });
+    authenticatedFetch.mockReturnValueOnce(pendingProfile);
+    let pendingRefresh: Promise<AccountAttempts | null> | undefined;
+    act(() => {
+      pendingRefresh = result.current.refresh();
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event("session-expired"));
+    });
+    resolveProfile?.(
+      new Response(
+        JSON.stringify({
+          user: { role: "user", roastMessagesSent: 0, avatarUrl: null },
+          plans: [
+            {
+              plan: "ILUMINADO",
+              status: "active",
+              attemptsRemaining: { ideas: 9, roasts: 0 },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await act(async () => pendingRefresh);
+
+    expect(result.current).toMatchObject({
+      isAuthenticated: false,
+      accountAttempts: null,
+      avatarUrl: null,
+    });
+  });
+
+  it("does not restore a signed-out account from a refresh already in flight", async () => {
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, assign },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 201 })),
+    );
+    const { result } = renderHook(() => useSessionStatus());
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    let resolveProfile: ((response: Response) => void) | undefined;
+    const pendingProfile = new Promise<Response>((resolve) => {
+      resolveProfile = resolve;
+    });
+    authenticatedFetch.mockReturnValueOnce(pendingProfile);
+    let pendingRefresh: Promise<AccountAttempts | null> | undefined;
+    act(() => {
+      pendingRefresh = result.current.refresh();
+    });
+
+    await act(async () => result.current.signOut());
+    resolveProfile?.(
+      new Response(
+        JSON.stringify({
+          user: { role: "user", roastMessagesSent: 0, avatarUrl: null },
+          plans: [
+            {
+              plan: "ILUMINADO",
+              status: "active",
+              attemptsRemaining: { ideas: 9, roasts: 0 },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await act(async () => pendingRefresh);
+
+    expect(result.current).toMatchObject({
+      isAuthenticated: false,
+      accountAttempts: null,
+      avatarUrl: null,
+    });
+    expect(assign).toHaveBeenCalledWith("/");
+  });
+
   it("logs out locally, notifies other tabs, and redirects after the API request", async () => {
     const assign = vi.fn();
     Object.defineProperty(window, "location", {

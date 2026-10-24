@@ -59,6 +59,7 @@ export function useSessionStatus() {
   useEffect(() => {
     isMountedRef.current = true;
     const markSessionExpired = () => {
+      refreshRequestIdRef.current += 1;
       setIsAuthenticated(false);
       setAccountAttempts(null);
       setAvatarUrl(null);
@@ -82,6 +83,7 @@ export function useSessionStatus() {
 
   async function signOut() {
     if (isSigningOut) return;
+    refreshRequestIdRef.current += 1;
     setIsSigningOut(true);
     try {
       await fetch("/api/auth/logout", {
