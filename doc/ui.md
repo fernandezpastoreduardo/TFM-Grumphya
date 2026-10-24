@@ -189,6 +189,14 @@ apilado de la mascota de sección y el tamaño mínimo de los campos. Estas
 aserciones de layout no sustituyen la revisión visual manual en ese viewport,
 que sigue pendiente.
 
+En la actualización del 24 de octubre se añadieron comprobaciones del viewport
+móvil de 390 px: el perfil, sus tarjetas y el documento no deben desbordar el
+ancho disponible; el callout de roast pasa a una columna y «Borrar idea» mide
+40 × 40 px, igual que el control de dictado cuando está disponible. Son
+comprobaciones automatizadas de layout, no una revisión visual manual en un
+dispositivo real. El dictado permanece oculto en Android aunque se detecte la
+API de voz; la entrada escrita sigue disponible.
+
 El menú móvil se comporta como diálogo modal: al abrir, enfoca el primer enlace;
 Tab y Mayús+Tab recorren sus opciones sin salir del menú; Escape lo cierra y
 devuelve el foco al disparador. El fondo de cierre no añade una parada de

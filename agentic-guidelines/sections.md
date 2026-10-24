@@ -148,7 +148,7 @@ La primera entrega incluye Home con dictado por voz, evaluación y similitud, tr
 ## Home acceptance criteria
 
 - Empty input cannot call the evaluation API.
-- Cuando el navegador ofrece reconocimiento local, el dictado solicita permiso y su resultado se puede revisar y editar antes de enviar. Una denegación o error no borra lo que ya se escribió; si no hay soporte local detectable, no aparece el control.
+- Cuando una plataforma compatible ofrece reconocimiento local, el dictado solicita permiso y su resultado se puede revisar y editar antes de enviar. Android no muestra el control; tampoco aparece si no hay soporte local detectable. Una denegación o error no borra lo que ya se escribió.
 - Input is limited to 2,000 characters and sanitized at the API boundary.
 - A valid submission consumes exactly one available attempt.
 - `searchSimilarIdea` está conectado a firma semántica, embeddings, pgvector y comparación semántica. La búsqueda va antes de evaluación, obtiene hasta 20 candidatas ordenadas por cercanía sin corte coseno fijo y confirma identidad por finalidad y público/objeto; no consulta evaluaciones. Una coincidencia incrementa el contador agregado una sola vez y presenta título seguro y contador total, con acción explícita para evaluar; si continuar termina en rechazo, no se suma otra unidad. Solo esa acción consume intento. Sin coincidencia se evalúa y solo un `reject` nuevo se agrega al corpus con título seguro y embedding. No se persiste el texto original ni la firma efímera.

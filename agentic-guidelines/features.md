@@ -36,7 +36,7 @@ Forma parte de la primera entrega. Solicita permiso de micrófono, transcribe te
 
 - El contenedor `TranscriptUserIdea` vive en `features/transcript-user-idea/`; el adaptador `shared/utils/speech-to-text.ts` es compartido porque la transcripción de roast también lo utilizará.
 - La transcripción se concatena al texto editable, respetando el límite de 2.000 caracteres. No se envía ni se persiste desde este flujo.
-- Solo se usa reconocimiento en el dispositivo (`processLocally = true`) en `es-ES`. La aplicación comprueba la disponibilidad del modelo local y puede instalar el paquete de idioma en el dispositivo; nunca recurre al reconocimiento remoto. Si el navegador no expone la API local necesaria, se oculta el control y la escritura manual sigue disponible. Si la API existe, pero el paquete local no está disponible o se deniega el permiso, se muestra un error sin borrar el texto y no se inicia el dictado.
+- Solo se usa reconocimiento en el dispositivo (`processLocally = true`) en `es-ES`. La aplicación comprueba la disponibilidad del modelo local y puede instalar el paquete de idioma en el dispositivo; nunca recurre al reconocimiento remoto. El control se oculta en Android, donde no se considera suficiente la presencia de la API para garantizar el modo local. Si el navegador no expone la API local necesaria, se oculta el control y la escritura manual sigue disponible. Si la API existe, pero el paquete local no está disponible o se deniega el permiso, se muestra un error sin borrar el texto y no se inicia el dictado.
 - Los errores se reducen a categorías seguras (`unsupported`, `local-unavailable`, `permission-denied`, `no-speech`, `failed`); no se muestran mensajes crudos del navegador.
 
 ## getIdeaListWorstAll

@@ -202,7 +202,8 @@ editable antes de enviar. Si el navegador no ofrece la API necesaria para
 reconocer voz localmente, el control no aparece. Si la API está presente pero
 no hay paquete local de español o se deniega el permiso, se muestra un mensaje
 y la escritura manual sigue disponible. Al desmontar el control se detiene la
-sesión activa.
+sesión activa. La función se oculta en Android: no se considera suficiente la
+presencia de la API para garantizar el modo local en esos navegadores.
 
 El audio no se envía al servidor de Grumphya ni a un servicio remoto de
 transcripción. La descarga inicial del paquete de idioma la gestiona el
