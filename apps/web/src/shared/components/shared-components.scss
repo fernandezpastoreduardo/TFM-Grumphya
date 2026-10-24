@@ -173,6 +173,29 @@
   color: #f3fff3;
   background: #1b2b2b;
 }
+.usage-limit-dialog {
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.usage-limit-dialog[open] {
+  display: grid;
+}
+.usage-limit-dialog > img {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+}
+.usage-limit-dialog h2,
+.usage-limit-dialog p {
+  margin: 0;
+}
+.usage-limit-dialog p {
+  max-width: 42ch;
+}
+.usage-limit-dialog .button-primary {
+  margin-top: 8px;
+}
 @media (max-width: 640px) {
   .content-card {
     border-radius: 21px;

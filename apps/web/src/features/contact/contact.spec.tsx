@@ -35,6 +35,7 @@ beforeEach(() => {
     accountAttempts: null,
     avatarUrl: null,
     isSigningOut: false,
+    refresh: vi.fn(async () => null),
     signOut: vi.fn(),
   });
 });
@@ -221,6 +222,7 @@ describe("Contact", () => {
       accountAttempts: null,
       avatarUrl: null,
       isSigningOut: false,
+      refresh: vi.fn(async () => null),
       signOut: vi.fn(),
     });
     render(<Contact />);
@@ -238,6 +240,7 @@ describe("Contact", () => {
       accountAttempts: null,
       avatarUrl: null,
       isSigningOut: false,
+      refresh: vi.fn(async () => null),
       signOut: vi.fn(),
     });
     render(<Contact />);

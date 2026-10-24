@@ -3,11 +3,15 @@ import {
   authenticatedFetch,
   getAccessToken,
 } from "../../../infrastructure/auth/session";
+import type { AccountAttempts } from "../../../infrastructure/auth/use-session-status";
 import { SkeletonBlock } from "../../../shared/components/loading-skeleton";
 
 const ROAST_ENDPOINT = "/api/roast";
 const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo.";
 const MESSAGE_MAX_LENGTH = 400;
+const QUOTA_EXHAUSTED_STATUS = 429;
+const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
+const ROAST_QUOTA_SCOPE = "roasts";
 
 type RoastInputProps = {
   remainingAttempts: number | null;
@@ -15,6 +19,8 @@ type RoastInputProps = {
   quotaDescription: string;
   onSubmitted: (message: string, reply: string) => void;
   onUsageRefresh: () => Promise<void>;
+  onAccountUsageRefresh?: () => Promise<AccountAttempts | null>;
+  onDailyQuotaExhausted?: () => void;
 };
 
 export function RoastInput({
@@ -23,6 +29,8 @@ export function RoastInput({
   quotaDescription,
   onSubmitted,
   onUsageRefresh,
+  onAccountUsageRefresh,
+  onDailyQuotaExhausted,
 }: RoastInputProps) {
   const [message, setMessage] = useState("");
   const [displayRemaining, setDisplayRemaining] = useState<number | null>(
@@ -60,7 +68,23 @@ export function RoastInput({
       const response = accessToken
         ? await authenticatedFetch(ROAST_ENDPOINT, init)
         : await fetch(ROAST_ENDPOINT, init);
-      if (!response.ok) throw new Error(await readErrorMessage(response));
+      if (!response.ok) {
+        const failure = await readErrorDetails(response);
+        if (
+          response.status === QUOTA_EXHAUSTED_STATUS &&
+          failure.code === PLAN_QUOTA_EXHAUSTED_CODE &&
+          failure.scope === ROAST_QUOTA_SCOPE
+        ) {
+          onDailyQuotaExhausted?.();
+          setError("");
+          await Promise.all([
+            onUsageRefresh(),
+            onAccountUsageRefresh?.() ?? Promise.resolve(null),
+          ]);
+          return;
+        }
+        throw new Error(failure.message ?? ROAST_ERROR_MESSAGE);
+      }
 
       const payload: unknown = await response.json();
       if (!isRoastReply(payload)) throw new Error(ROAST_ERROR_MESSAGE);
@@ -69,7 +93,13 @@ export function RoastInput({
       setDisplayRemaining((current) =>
         current === null ? null : Math.max(0, current - 1),
       );
-      await onUsageRefresh();
+      const [, accountAttempts] = await Promise.all([
+        onUsageRefresh(),
+        onAccountUsageRefresh?.() ?? Promise.resolve(null),
+      ]);
+      if (accountAttempts?.roastsPlanActive && accountAttempts.roasts === 0) {
+        onDailyQuotaExhausted?.();
+      }
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : ROAST_ERROR_MESSAGE);
     } finally {
@@ -149,19 +179,23 @@ function isRoastReply(value: unknown): value is { reply: string } {
   );
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readErrorDetails(
+  response: Response,
+): Promise<{ code: unknown; scope: unknown; message: string | null }> {
   try {
     const payload: unknown = await response.json();
-    if (
-      typeof payload === "object" &&
-      payload !== null &&
-      "message" in payload &&
-      typeof payload.message === "string"
-    ) {
-      return payload.message;
+    if (typeof payload !== "object" || payload === null) {
+      return { code: null, scope: null, message: null };
     }
+    return {
+      code: "code" in payload ? payload.code : null,
+      scope: "scope" in payload ? payload.scope : null,
+      message:
+        "message" in payload && typeof payload.message === "string"
+          ? payload.message
+          : null,
+    };
   } catch {
-    return ROAST_ERROR_MESSAGE;
+    return { code: null, scope: null, message: null };
   }
-  return ROAST_ERROR_MESSAGE;
 }

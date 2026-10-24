@@ -20,6 +20,10 @@ const EVALUATION_RESPONSE = {
   message:
     "No hay motivo para celebrar todavía: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
+const INITIAL_IDEA_QUOTA_COPY =
+  "Te quedan 3 de 3 evaluaciones gratuitas en este navegador.";
+const REDUCED_IDEA_QUOTA_COPY =
+  "Te quedan 2 de 3 evaluaciones gratuitas en este navegador.";
 const ANONYMOUS_USAGE_RESPONSE = {
   ideas: { limit: 3, used: 0, remaining: 3 },
   roasts: { limit: 3, used: 0, remaining: 3 },
@@ -364,9 +368,7 @@ describe("Home", () => {
     render(<Home />);
 
     expect(
-      await screen.findByText(
-        "Te quedan 2 de 3 evaluaciones gratuitas en este navegador.",
-      ),
+      await screen.findByText(REDUCED_IDEA_QUOTA_COPY),
     ).toBeInTheDocument();
   });
 
@@ -389,6 +391,203 @@ describe("Home", () => {
 
     expect(heroHeading).toBeInTheDocument();
     expect(heroDescription).toBeInTheDocument();
+  });
+
+  it("refreshes the browser quota after each evaluation request", async () => {
+    const user = userEvent.setup();
+    let usageRequestCount = 0;
+    const evaluationResponses = [
+      {
+        status: "similar_idea_match",
+        safeTitle: "Una red social para mascotas",
+        submissionCount: 4,
+      },
+      { status: "evaluated", result: EVALUATION_RESPONSE },
+    ];
+    const fetchMock = vi.fn((url: unknown) => {
+      if (url === "/api/auth/refresh") {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: async () => null,
+        });
+      }
+      if (url === "/api/anonymous-usage") {
+        usageRequestCount += 1;
+        const usage =
+          usageRequestCount === 1
+            ? ANONYMOUS_USAGE_RESPONSE
+            : {
+                ideas: { limit: 3, used: 1, remaining: 2 },
+                roasts: { limit: 3, used: 0, remaining: 3 },
+              };
+        return Promise.resolve({ ok: true, json: async () => usage });
+      }
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => evaluationResponses.shift(),
+        });
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    expect(
+      await screen.findByText(INITIAL_IDEA_QUOTA_COPY),
+    ).toBeInTheDocument();
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    expect(
+      await screen.findByRole("heading", { name: /esta idea ya nos suena/i }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(usageRequestCount).toBe(2));
+    expect(screen.getByText(REDUCED_IDEA_QUOTA_COPY)).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /evaluar igualmente/i }),
+    );
+    expect(await screen.findByText("7,15/10")).toBeInTheDocument();
+    await waitFor(() => expect(usageRequestCount).toBe(3));
+    expect(
+      await screen.findByText(REDUCED_IDEA_QUOTA_COPY),
+    ).toBeInTheDocument();
+    expect(usageRequestCount).toBe(3);
+  });
+
+  it("shows the shared daily quota dialog when the idea plan rejects an exhausted evaluation", async () => {
+    const user = userEvent.setup();
+    setAccessToken("test-illuminado-token");
+    const fetchMock = vi.fn((url: unknown) => {
+      if (url === "/api/account/profile") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              user: { role: "user" },
+              plans: [
+                {
+                  plan: "ILUMINADO",
+                  status: "active",
+                  attemptsRemaining: { ideas: 1, roasts: 0 },
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      if (url === "/api/anonymous-usage") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ANONYMOUS_USAGE_RESPONSE,
+        });
+      }
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              code: "PLAN_QUOTA_EXHAUSTED",
+              scope: "ideas",
+            }),
+            { status: 429, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    expect(
+      await screen.findByText(
+        "Te quedan 1 de 11 evaluaciones disponibles hoy en Iluminado.",
+      ),
+    ).toBeInTheDocument();
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const quotaDialog = await screen.findByRole("dialog", {
+      name: /se acabaron los intentos/i,
+    });
+    expect(quotaDialog).toHaveTextContent(
+      /11 evaluaciones de hoy en iluminado/i,
+    );
+    expect(quotaDialog).toHaveTextContent(/vuelve mañana/i);
+  });
+
+  it("shows the shared quota dialog after refreshing the final Iluminado attempt", async () => {
+    const user = userEvent.setup();
+    let profileRequestCount = 0;
+    setAccessToken("test-illuminado-token");
+    const fetchMock = vi.fn((url: unknown) => {
+      if (url === "/api/account/profile") {
+        profileRequestCount += 1;
+        const ideasRemaining = profileRequestCount === 1 ? 1 : 0;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              user: { role: "user" },
+              plans: [
+                {
+                  plan: "ILUMINADO",
+                  status: "active",
+                  attemptsRemaining: { ideas: ideasRemaining, roasts: 0 },
+                },
+              ],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      }
+      if (url === "/api/anonymous-usage") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ANONYMOUS_USAGE_RESPONSE,
+        });
+      }
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "evaluated",
+            result: EVALUATION_RESPONSE,
+          }),
+        });
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    expect(
+      await screen.findByText(
+        "Te quedan 1 de 11 evaluaciones disponibles hoy en Iluminado.",
+      ),
+    ).toBeInTheDocument();
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const quotaDialog = await screen.findByRole("dialog", {
+      name: /se acabaron los intentos/i,
+    });
+    expect(quotaDialog).toHaveTextContent(
+      /11 evaluaciones de hoy en iluminado/i,
+    );
+    await waitFor(() => expect(profileRequestCount).toBe(2));
   });
 
   it("links to separate section pages and account routes", () => {
@@ -520,19 +719,17 @@ describe("Home", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(/hay aire/i);
   });
 
-  it("shows a safe inline error and keeps the idea available for retry", async () => {
+  it("shows an uncertain outcome after a transport failure", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url: unknown) => {
-        const usageResponse = respondToUsageInitialization(url);
-        if (usageResponse) return usageResponse;
-        if (url === "/api/evaluation-process") {
-          return Promise.reject(new Error(TEST_IDEA_TEXT));
-        }
-        return new Promise(() => undefined);
-      }),
-    );
+    const fetchMock = vi.fn((url: unknown) => {
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
+      if (url === "/api/evaluation-process") {
+        return Promise.reject(new Error(TEST_IDEA_TEXT));
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
     await user.type(
       screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
@@ -542,7 +739,16 @@ describe("Home", () => {
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     const errorAlert = await screen.findByRole("alert");
-    expect(errorAlert).toHaveTextContent(/no se pudo completar el scoring/i);
+    expect(errorAlert).toHaveTextContent(
+      /no hemos podido confirmar si la evaluación terminó/i,
+    );
+    expect(errorAlert).not.toHaveTextContent(/descontado/i);
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === "/api/anonymous-usage"),
+      ).toHaveLength(2);
+    });
+    expect(screen.getByText(INITIAL_IDEA_QUOTA_COPY)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
     expect(
       screen.queryByRole("radio", { name: /tengo la piel fina/i }),
@@ -554,6 +760,45 @@ describe("Home", () => {
       screen.getByRole("button", { name: NEXT_STEP_BUTTON_NAME }),
     ).toBeEnabled();
     expect(errorAlert.textContent).not.toContain(TEST_IDEA_TEXT);
+  });
+
+  it("explains that a confirmed server failure did not consume an attempt", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn((url: unknown) => {
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve(
+          new Response(JSON.stringify({ message: TEST_IDEA_TEXT }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const errorAlert = await screen.findByRole("alert");
+    expect(errorAlert).toHaveTextContent(/la evaluación se ha torcido/i);
+    expect(errorAlert).toHaveTextContent(
+      /no se te ha descontado este intento/i,
+    );
+    expect(errorAlert.textContent).not.toContain(TEST_IDEA_TEXT);
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.filter(([url]) => url === "/api/anonymous-usage"),
+      ).toHaveLength(2);
+    });
+    expect(screen.getByText(INITIAL_IDEA_QUOTA_COPY)).toBeInTheDocument();
   });
 
   it("explains when the evaluator exceeded its time limit", async () => {
@@ -585,7 +830,7 @@ describe("Home", () => {
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/está tardando más de lo previsto/i);
+    expect(alert).toHaveTextContent(/no se te ha descontado este intento/i);
     expect(alert.textContent).not.toContain(TEST_IDEA_TEXT);
   });
 

@@ -40,6 +40,7 @@ More examples of copy directly in spanish:
 - Idea no evaluable: “Aclárate primero y luego me cuentas.”
 - Idea repetida: reconocer la repetición y mostrar el contador sin exponer datos de otros usuarios.
 - Límite agotado: tono breve, claro y sin prometer una evaluación que no se va a ejecutar.
+- Error técnico al evaluar: para una respuesta HTTP que confirma el fallo y la liberación de la reserva, usar «La evaluación se ha torcido. Ni Grumphya puede arreglarlo con café. No se te ha descontado este intento. Prueba otra vez en un rato.» Ante un fallo de transporte, una respuesta incompleta o inválida cuyo resultado o consumo no pueda confirmarse, mostrar un mensaje neutro que no asegure si se descontó el intento; consultar el contador o recuperar el resultado idempotente antes de recomendar un nuevo envío.
 - Error 500: la criatura aparece tranquila mientras algo arde; explicar que no se ha guardado una evaluación incompleta.
 - Error 404: «Por aquí no hay ninguna sección. La dirección se ha inventado el destino.» Ofrecer volver al inicio y, si hay historial, volver atrás.
 - Error 429 temporal: usar el copy de `UI-aestethics.md`, explicar el tiempo devuelto por `Retry-After` y no inventar una hora de reinicio.

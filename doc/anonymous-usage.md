@@ -29,7 +29,7 @@ No se aplica fingerprinting del navegador ni detección de automatización en es
 - `POST /api/anonymous-usage` exige `Origin` permitido y el cuerpo JSON vacío `{}`, crea la identidad si hace falta y responde los límites, usados y restantes para `ideas` y `roasts`; establece o renueva la cookie.
 - `POST /api/evaluation-process` obtiene la identidad de la cookie y delega reserva/confirmación a la feature de cuotas. Nunca acepta contadores, tipo de plan o identidad desde el body.
 - `POST /api/roast` recibe y valida el texto, usa la cuota diaria de Faltón si está activo y, en caso contrario, el cupo gratuito del perfil de navegador.
-- El frontend muestra valores de servidor y no habilita un fallback local si la API no está disponible. El mensaje de cupo agotado invita a consultar los planes; no sugiere que se recupere mañana.
+- El frontend muestra valores de servidor y no habilita un fallback local si la API no está disponible. El aviso del cupo gratuito invita a consultar los planes y no sugiere que se recupere mañana, porque ese cupo no tiene reinicio diario. La cuota diaria de un plan activo tiene un diálogo independiente cuando se agota.
 
 La nota de privacidad debe explicar la cookie persistente necesaria para recordar el cupo y el uso antiabuso de la IP. Un HMAC de IP sigue siendo una señal seudónima; limitar su retención no equivale a anonimización. Las respuestas idempotentes y señales expiradas se eliminan por lotes al arrancar la API y cada hora mediante `DataRetentionService`; el borrado físico de cachés puede ocurrir hasta una hora después del TTL.
 

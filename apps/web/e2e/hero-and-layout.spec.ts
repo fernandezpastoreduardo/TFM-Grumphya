@@ -63,6 +63,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   await expect(
     page.getByRole("heading", { name: /antes de construirla/i }),
   ).toBeVisible();
+  await expect(page.locator(".home-topbar .theme-switch-thumb")).toBeEmpty();
 
   const desktopSpacing = await page.evaluate(() => {
     const heading = document.querySelector(".home-heading");
@@ -314,6 +315,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(lightThemeLayers!.characterCounterPosition).toBe("static");
 
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  await expect(page.locator(".home-topbar .theme-switch-thumb")).toBeEmpty();
   const darkThemeLayers = await readNavigationLayers();
   expect(darkThemeLayers).not.toBeNull();
   expect(darkThemeLayers!.isDarkTheme).toBe(true);
@@ -333,6 +335,13 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(homeAt980!.navigationTop).toBe(homeAt980!.expectedNavigationTop);
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".home-topbar .theme-switch-thumb")).toBeEmpty();
+  const mobileThemeToggle = page.getByRole("switch", {
+    name: "Activar modo claro",
+  });
+  await expect(mobileThemeToggle).toBeVisible();
+  await mobileThemeToggle.click();
+  await expect(page.locator(".home-topbar .theme-switch-thumb")).toBeEmpty();
   const mobileCharacterCounterPosition = await page
     .locator(".idea-input-meta")
     .evaluate((element) => getComputedStyle(element).position);
@@ -362,6 +371,7 @@ test("matches section navigation to the theme and layers curtain over content", 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/precios");
   await expect(page.getByRole("heading", { name: /once usos/i })).toBeVisible();
+  await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
 
   const readSectionLayers = () =>
     page.evaluate(() => {
@@ -429,6 +439,12 @@ test("matches section navigation to the theme and layers curtain over content", 
   expect(darkLayers!.isDarkTheme).toBe(true);
   expect(darkLayers!.headerBackground).toBe(darkLayers!.themeBackground);
   expect(darkLayers!.curtainZIndex).toBe(darkLayers!.audienceZIndex);
+  await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
+  await page.getByRole("switch", { name: "Activar modo claro" }).click();
+  await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
 });
 
 test("styles the email request form shown for an expired password link", async ({
