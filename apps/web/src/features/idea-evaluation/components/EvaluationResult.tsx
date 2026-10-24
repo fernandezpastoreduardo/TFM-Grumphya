@@ -15,6 +15,8 @@ const SPANISH_SCORE_FORMAT = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: 2,
 });
 const NO_SCORE_LABEL = "Sin puntuación";
+const EXISTING_PRODUCT_EXAMPLE_LABEL =
+  "Ejemplo conocido con funciones similares:";
 
 function formatPublicScore(score: number | null): string {
   if (score === null) return NO_SCORE_LABEL;
@@ -37,6 +39,12 @@ export function EvaluationResult({ result }: EvaluationResultProps) {
       </div>
       <h2>{result.headline}</h2>
       <p className="evaluation-result-message">{result.message}</p>
+      {result.status === "RECHAZADA" && result.existingProductExample && (
+        <p className="evaluation-result-example">
+          <span>{EXISTING_PRODUCT_EXAMPLE_LABEL}</span>{" "}
+          <strong>{result.existingProductExample}</strong>
+        </p>
+      )}
     </article>
   );
 }

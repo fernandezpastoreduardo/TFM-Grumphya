@@ -20,7 +20,9 @@ const LOW_VALUE_METRIC_IDEA =
   "Una app para contar cuántas veces alguien se ata los cordones.";
 const LOW_VALUE_METRIC_BASIS =
   "contar cuántas veces alguien se ata los cordones";
-const POLICY_VERSION = "grumphya-concept-v8";
+const GENERIC_TRAINING_LOG_IDEA =
+  "Una app que sirva para registrar entrenamientos";
+const POLICY_VERSION = "grumphya-concept-v9";
 const NEUTRAL_MESSAGE =
   "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
 const REJECTION_MESSAGE =
@@ -70,6 +72,7 @@ function createCompleteDecision(): ModelDecision {
     reason_code: null,
     basis: null,
     safeTitle: null,
+    existingProductExample: null,
     message: NEUTRAL_MESSAGE,
     hardSetup: null,
     hardConsequence: null,
@@ -95,9 +98,33 @@ function createRejectedDecision(): ModelDecision {
     reason_code: "PRIVACIDAD_ESTRUCTURAL",
     basis: "sin autorización",
     safeTitle: "Riesgo de privacidad sin mitigaciones",
+    existingProductExample: null,
     message: REJECTION_MESSAGE,
     hardSetup: HARD_SETUP,
     hardConsequence: HARD_CONSEQUENCE,
+  };
+}
+
+function createExistingProductDecision(): ModelDecision {
+  return {
+    ...createCompleteDecision(),
+    status: "RECHAZADA",
+    evaluated: createCompleteDecision().evaluated.map((criterion) =>
+      criterion.id === "C10"
+        ? { id: "C10", state: "PUNTUADO", score: 10 }
+        : criterion,
+    ),
+    stop_at: "C10",
+    reason_code: "DIFERENCIACION_AUSENTE",
+    basis: "registrar entrenamientos",
+    safeTitle: "Registro deportivo sin propuesta propia",
+    existingProductExample: "Strava",
+    message:
+      "Registrar entrenamientos ya es una función habitual y la idea no ofrece un motivo concreto para elegirla frente a las opciones conocidas.",
+    hardSetup:
+      "una app que solo registra entrenamientos sin aportar algo propio",
+    hardConsequence:
+      "el usuario no obtiene un motivo para cambiar de aplicación",
   };
 }
 
@@ -120,6 +147,7 @@ function createUndefinedUserValueDecision(): ModelDecision {
     reason_code: "VALOR_USUARIO_NO_DEFINIDO",
     basis: LOW_VALUE_METRIC_BASIS,
     safeTitle: "Contador sin beneficio para quien lo usa",
+    existingProductExample: null,
     message:
       "La idea solo cuenta una acción, pero no define qué problema resuelve ni qué resultado obtiene alguien, así que no ofrece un motivo concreto para empezar o seguir usando la aplicación.",
     hardSetup: "una app que cuenta una acción sin explicar para qué sirve",
@@ -135,6 +163,7 @@ function createInsufficientDecision(): ModelDecision {
     reason_code: null,
     basis: null,
     safeTitle: null,
+    existingProductExample: null,
     message:
       "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.",
     hardSetup: null,
@@ -212,6 +241,18 @@ describe("EvaluationProcessService", () => {
     await expect(
       service.evaluate({ ideaText: LOW_VALUE_METRIC_IDEA, tone: "hard" }),
     ).resolves.toMatchObject({ status: "RECHAZADA", score: 1 });
+  });
+
+  it("returns a confidently identified existing product example", async () => {
+    const port = createPort(createExistingProductDecision());
+    const service = new EvaluationProcessService(port);
+
+    await expect(
+      service.evaluate({ ideaText: GENERIC_TRAINING_LOG_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({
+      status: "RECHAZADA",
+      existingProductExample: "Strava",
+    });
   });
 
   it("renders the hard-tone message from validated mechanism and consequence fields", async () => {

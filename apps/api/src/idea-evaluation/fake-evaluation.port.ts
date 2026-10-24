@@ -22,6 +22,7 @@ function createFakeDecision() {
     reason_code: null,
     basis: null,
     safeTitle: null,
+    existingProductExample: null,
     message: FAKE_MESSAGE,
     hardSetup: null,
     hardConsequence: null,

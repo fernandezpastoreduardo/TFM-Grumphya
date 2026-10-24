@@ -10,7 +10,7 @@ const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
-const POLICY_VERSION = "grumphya-concept-v8";
+const POLICY_VERSION = "grumphya-concept-v9";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
@@ -19,6 +19,7 @@ const MODEL_DECISION = {
   reason_code: null,
   basis: null,
   safeTitle: null,
+  existingProductExample: null,
   message:
     "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.",
   hardSetup: null,
@@ -42,6 +43,7 @@ const QUOTED_BASIS_DECISION = {
   reason_code: "UTILIDAD_ANULADA",
   basis: '"resultados actuales"',
   safeTitle: "Promesas sin respaldo verificable",
+  existingProductExample: null,
   message:
     "Prometer resultados actuales sin mantenerlos fiables deja al usuario pagando por información caducada.",
   hardSetup: "un servicio que ofrece información actual sin mantenerla al día",
@@ -127,6 +129,10 @@ describe("OpenAiEvaluationPort", () => {
     const request = JSON.stringify(requestBody);
     expect(request).not.toContain('"tone":"hard"');
     expect(request).toContain("ideaText");
+    expect(request).toContain("existingProductExample");
+    expect(request).toContain(
+      '"existingProductExample":{"anyOf":[{"type":"string"},{"type":"null"}]}',
+    );
   });
 
   it("applies pessimistic threat modeling without inventing exotic risks", async () => {
@@ -174,6 +180,12 @@ describe("OpenAiEvaluationPort", () => {
       "Evalúa cada criterio por su propio problema concreto",
     );
     expect(request).toContain("No inventes defectos para variar el resultado");
+    expect(request).toContain(
+      "existingProductExample es obligatorio y debe ser null salvo que C10 suspenda",
+    );
+    expect(request).toContain(
+      "No busques en la web, no inventes marcas ni uses un mero competidor de la categoría como ejemplo",
+    );
     expect(request).toContain(
       "no son por sí mismos controles de fraude, seguridad o resolución de incidentes",
     );

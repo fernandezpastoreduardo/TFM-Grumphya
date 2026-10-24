@@ -48,6 +48,52 @@ describe("evaluationProcess frontend adapter", () => {
     );
   });
 
+  it("preserves an optional known product example from the API", async () => {
+    const resultWithExample = {
+      ...EVALUATION_RESULT,
+      status: "RECHAZADA" as const,
+      safeTitle: "Registro deportivo sin propuesta propia",
+      existingProductExample: "Strava",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: "evaluated", result: resultWithExample }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toMatchObject({ existingProductExample: "Strava" });
+  });
+
+  it("rejects an existing product example on an evaluation without rejection", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: {
+            ...EVALUATION_RESULT,
+            existingProductExample: "Strava",
+          },
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+  });
+
   it("rejects malformed API results without exposing response data", async () => {
     vi.stubGlobal(
       "fetch",
@@ -59,6 +105,29 @@ describe("evaluationProcess frontend adapter", () => {
             ...EVALUATION_RESULT,
             score: 101,
             privateProviderData: IDEA_TEXT,
+          },
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+  });
+
+  it("rejects an unsafe known product example from the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: {
+            ...EVALUATION_RESULT,
+            existingProductExample: "https://example.com",
           },
         }),
       }),

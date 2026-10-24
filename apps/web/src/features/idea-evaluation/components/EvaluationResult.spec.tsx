@@ -10,6 +10,7 @@ const SCORED_RESULT: EvaluationProcessResult = {
   message:
     "Ignorar el consentimiento no es una estrategia, aunque el formulario te deje intentarlo.",
 };
+const EXISTING_PRODUCT_EXAMPLE = "Strava";
 
 describe("EvaluationResult", () => {
   it("shows the app-style headline, score in Spanish notation, and specific findings", () => {
@@ -22,6 +23,41 @@ describe("EvaluationResult", () => {
     expect(screen.getByText("1,30/10")).toBeInTheDocument();
     expect(screen.getByText(SCORED_RESULT.message)).toBeInTheDocument();
     expect(screen.getAllByText(SCORED_RESULT.message)).toHaveLength(1);
+  });
+
+  it("shows a known similar product when the evaluator identifies one", () => {
+    render(
+      <EvaluationResult
+        result={{
+          ...SCORED_RESULT,
+          existingProductExample: EXISTING_PRODUCT_EXAMPLE,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Ejemplo conocido con funciones similares:"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(EXISTING_PRODUCT_EXAMPLE)).toBeInTheDocument();
+  });
+
+  it("does not show a known product example for a non-rejected result", () => {
+    render(
+      <EvaluationResult
+        result={{
+          ...SCORED_RESULT,
+          status: "SIN_BLOQUEO_EVIDENTE",
+          existingProductExample: EXISTING_PRODUCT_EXAMPLE,
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByText("Ejemplo conocido con funciones similares:"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(EXISTING_PRODUCT_EXAMPLE),
+    ).not.toBeInTheDocument();
   });
 
   it("shows no numeric score for an insufficient idea and renders message as text", () => {

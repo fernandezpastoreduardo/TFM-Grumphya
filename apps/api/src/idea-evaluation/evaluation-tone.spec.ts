@@ -28,6 +28,7 @@ const DECISION: ModelDecision = {
   reason_code: null,
   basis: null,
   safeTitle: null,
+  existingProductExample: null,
   message: NEUTRAL_MESSAGE,
   hardSetup: "un grillo usando un móvil o un ordenador",
   hardConsequence: "sin esa interacción, nadie llega a encontrarse",
