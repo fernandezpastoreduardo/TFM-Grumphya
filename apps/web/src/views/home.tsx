@@ -13,6 +13,7 @@ import { usePersistentTheme } from "../shared/hooks/use-persistent-theme";
 import { useMobileMenu } from "../shared/hooks/use-mobile-menu";
 import { useSessionStatus } from "../infrastructure/auth/use-session-status";
 import { AccountActions } from "../shared/components/account-actions";
+import { UsageLimitDialog } from "../shared/components/usage-limit-dialog";
 import {
   evaluationProcess,
   EvaluationProcessError,
@@ -22,7 +23,7 @@ import {
 } from "../features/idea-evaluation/evaluation-process";
 
 const EVALUATION_FAILURE_MESSAGE =
-  "No se pudo completar el scoring. La idea sigue en el formulario; inténtalo otra vez.";
+  "La evaluación se ha torcido. Ni Grumphya puede arreglarlo con café. No se te ha descontado este intento. Prueba otra vez en un rato.";
 const THEME_LABEL = {
   LIGHT: "Activar modo oscuro",
   DARK: "Activar modo claro",
@@ -96,6 +97,7 @@ export function Home() {
     menuRef: mobileMenuRef,
   } = useMobileMenu();
   const [isQuotaDialogOpen, setIsQuotaDialogOpen] = useState(false);
+  const [isDailyQuotaDialogOpen, setIsDailyQuotaDialogOpen] = useState(false);
   const quotaDialogRef = useRef<HTMLDialogElement>(null);
   const isEvaluationSubmittingRef = useRef(false);
   const anonymousUsage = useAnonymousUsage();
@@ -136,15 +138,11 @@ export function Home() {
       const result = await evaluationProcess(request, idempotencyKey);
       applySubmissionResult(result, request, idempotencyKey);
     } catch (error: unknown) {
-      setEvaluationError(
-        error instanceof EvaluationProcessError
-          ? error.message
-          : EVALUATION_FAILURE_MESSAGE,
-      );
+      handleEvaluationError(error);
     } finally {
       isEvaluationSubmittingRef.current = false;
       setIsEvaluating(false);
-      await anonymousUsage.refresh();
+      await refreshUsage();
     }
   }
 
@@ -166,15 +164,48 @@ export function Home() {
         pendingEvaluation.idempotencyKey,
       );
     } catch (error: unknown) {
-      setEvaluationError(
-        error instanceof EvaluationProcessError
-          ? error.message
-          : EVALUATION_FAILURE_MESSAGE,
-      );
+      handleEvaluationError(error);
     } finally {
       isEvaluationSubmittingRef.current = false;
       setIsEvaluating(false);
-      await anonymousUsage.refresh();
+      await refreshUsage();
+    }
+  }
+
+  function handleEvaluationError(error: unknown) {
+    if (error instanceof EvaluationProcessError) {
+      if (error.code === "ANONYMOUS_QUOTA_EXHAUSTED") {
+        setIsEvaluationDialogOpen(false);
+        setIsQuotaDialogOpen(true);
+        return;
+      }
+      if (error.code === "PLAN_QUOTA_EXHAUSTED") {
+        setIsEvaluationDialogOpen(false);
+        setIsDailyQuotaDialogOpen(true);
+        return;
+      }
+      if (error.code === "ACTIVE_PLAN_REQUIRED") {
+        setEvaluationError(error.message);
+        return;
+      }
+      if (error.code === "EVALUATION_OUTCOME_UNKNOWN") {
+        setEvaluationError(error.message);
+        return;
+      }
+    }
+    setEvaluationError(EVALUATION_FAILURE_MESSAGE);
+  }
+
+  async function refreshUsage() {
+    const refreshResults = await Promise.all([
+      anonymousUsage.refresh(),
+      session.isAuthenticated === false
+        ? Promise.resolve(null)
+        : session.refresh(),
+    ]);
+    const attempts = refreshResults[1];
+    if (attempts?.ideasPlanActive && attempts.ideas === 0) {
+      setIsDailyQuotaDialogOpen(true);
     }
   }
 
@@ -418,6 +449,11 @@ export function Home() {
             </a>
           </dialog>
         ) : null}
+        <UsageLimitDialog
+          open={isDailyQuotaDialogOpen}
+          scope="ideas"
+          onClose={() => setIsDailyQuotaDialogOpen(false)}
+        />
 
         <section className="home-marketing" aria-label="Por qué usar Grumphya">
           <div>

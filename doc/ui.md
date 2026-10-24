@@ -81,6 +81,17 @@ la lámina maestra está en
 - En modo oscuro, los controles y superficies claras conservan texto oscuro;
   los diálogos y paneles oscuros conservan texto claro. Se comprueba también
   la combinación de colores de popups, avisos y botones secundarios.
+- Home refresca desde el servidor los intentos de la cuenta al finalizar cada
+  evaluación; Roast los actualiza al completar un envío válido o detectar que
+  se agotó la cuota. Cuando el contador diario del plan activo llega a cero,
+  ambas secciones muestran un diálogo compartido y específico para ideas o
+  roast, con acceso a Planes y el aviso de que los intentos vuelven mañana. La
+  cuota gratuita conserva su aviso propio.
+- Los errores de evaluación distinguen una respuesta HTTP que confirma que la
+  operación falló de un fallo de transporte o una respuesta incompleta. Solo
+  cuando el servidor confirma que liberó la reserva se informa que no se
+  descontó el intento; en los casos inciertos, el mensaje no afirma qué ocurrió
+  con la cuota.
 - La revisión de contraste cubre Home (incluidos radio, notas y errores), los
   códigos de las páginas de error, la navegación y las vistas de Planes,
   Contacto, Buenas prácticas, Humanos notables, Descárgate, Peores ideas y

@@ -24,6 +24,7 @@ beforeEach(() => {
     accountAttempts: null,
     avatarUrl: null,
     isSigningOut: false,
+    refresh: vi.fn(async () => null),
     signOut: vi.fn(),
   });
 });
@@ -103,6 +104,7 @@ describe("Pricing registration intent", () => {
         accountAttempts: null,
         avatarUrl: null,
         isSigningOut: false,
+        refresh: vi.fn(async () => null),
         signOut: vi.fn(),
       });
       const fetchMock = vi.fn();

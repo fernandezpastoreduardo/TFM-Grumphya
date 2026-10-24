@@ -16,7 +16,11 @@ const EVALUATION_RESULT: EvaluationProcessResult = {
     "No hay motivo para celebrar todavía: Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
 };
 const LONG_TONE_RENDERED_MESSAGE = `${"Una explicación clara. ".repeat(13)}Un cierre correcto.`;
-const SAFE_FAILURE_MESSAGE = /no se puede verificar/i;
+const OUTCOME_UNKNOWN_ERROR = {
+  code: "EVALUATION_OUTCOME_UNKNOWN",
+  message:
+    "No hemos podido confirmar si la evaluación terminó. Espera a comprobar el resultado antes de volver a gastar un intento.",
+};
 const IDEMPOTENCY_KEY = "8a4e1c42-e198-4db3-b4a8-910e25c8b6d1";
 const PHONE_LIKE_PRODUCT_EXAMPLE = "+34 600 123 456";
 
@@ -92,7 +96,7 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
   });
 
   it("rejects malformed API results without exposing response data", async () => {
@@ -116,7 +120,7 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
   });
 
   it("rejects an unsafe known product example from the API", async () => {
@@ -139,7 +143,7 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
   });
 
   it("rejects a phone number returned as a known product example", async () => {
@@ -164,7 +168,7 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
   });
 
   it("rejects a completed functional result without a numeric score", async () => {
@@ -184,10 +188,10 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
   });
 
-  it("uses a safe error when the API request fails", async () => {
+  it("marks a transport failure as an unknown evaluation outcome", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error(IDEA_TEXT)));
 
     await expect(
@@ -195,7 +199,46 @@ describe("evaluationProcess frontend adapter", () => {
         { ideaText: IDEA_TEXT, tone: IDEA_TONE },
         IDEMPOTENCY_KEY,
       ),
-    ).rejects.toThrow(/no se pudo obtener el scoring/i);
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
+  });
+
+  it("replaces a confirmed HTTP failure body with a generic safe error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ message: IDEA_TEXT }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toThrow(
+      "No se pudo obtener el scoring. La idea sigue en el formulario; inténtalo otra vez.",
+    );
+  });
+
+  it("marks an unreadable successful response as an unknown evaluation outcome", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new Error(IDEA_TEXT);
+        },
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
   });
 
   it("shows a specific safe message when the evaluator reaches its timeout", async () => {

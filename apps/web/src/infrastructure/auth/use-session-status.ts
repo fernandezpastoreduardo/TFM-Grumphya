@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   authenticatedFetch,
   clearAccessToken,
@@ -23,9 +23,41 @@ export function useSessionStatus() {
     useState<AccountAttempts | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const isMountedRef = useRef(false);
+  const refreshRequestIdRef = useRef(0);
+
+  const refresh = useCallback(async (): Promise<AccountAttempts | null> => {
+    const requestId = ++refreshRequestIdRef.current;
+    try {
+      const response = await authenticatedFetch("/api/account/profile");
+      if (!isMountedRef.current || requestId !== refreshRequestIdRef.current)
+        return null;
+      setIsAuthenticated(response.ok);
+      if (!response.ok) {
+        setAccountAttempts(null);
+        setAvatarUrl(null);
+        return null;
+      }
+
+      const profile: unknown = await response.json();
+      if (!isMountedRef.current || requestId !== refreshRequestIdRef.current)
+        return null;
+      const attempts = readActivePlanAttempts(profile);
+      setAccountAttempts(attempts);
+      setAvatarUrl(readAvatarUrl(profile));
+      return attempts;
+    } catch {
+      if (isMountedRef.current && requestId === refreshRequestIdRef.current) {
+        setIsAuthenticated(false);
+        setAccountAttempts(null);
+        setAvatarUrl(null);
+      }
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
     const markSessionExpired = () => {
       setIsAuthenticated(false);
       setAccountAttempts(null);
@@ -39,28 +71,14 @@ export function useSessionStatus() {
     };
     window.addEventListener(SESSION_EXPIRED_EVENT, markSessionExpired);
     window.addEventListener(USER_AVATAR_UPDATED_EVENT, markAvatarUpdated);
-    authenticatedFetch("/api/account/profile")
-      .then(async (response) => {
-        if (isMounted) setIsAuthenticated(response.ok);
-        if (!response.ok) return;
-        const profile: unknown = await response.json();
-        const attempts = readActivePlanAttempts(profile);
-        if (isMounted) setAccountAttempts(attempts);
-        if (isMounted) setAvatarUrl(readAvatarUrl(profile));
-      })
-      .catch(() => {
-        if (isMounted) {
-          setIsAuthenticated(false);
-          setAccountAttempts(null);
-          setAvatarUrl(null);
-        }
-      });
+    void refresh();
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
+      refreshRequestIdRef.current += 1;
       window.removeEventListener(SESSION_EXPIRED_EVENT, markSessionExpired);
       window.removeEventListener(USER_AVATAR_UPDATED_EVENT, markAvatarUpdated);
     };
-  }, []);
+  }, [refresh]);
 
   async function signOut() {
     if (isSigningOut) return;
@@ -85,7 +103,14 @@ export function useSessionStatus() {
     }
   }
 
-  return { isAuthenticated, accountAttempts, avatarUrl, isSigningOut, signOut };
+  return {
+    isAuthenticated,
+    accountAttempts,
+    avatarUrl,
+    isSigningOut,
+    refresh,
+    signOut,
+  };
 }
 
 function readAvatarUrl(value: unknown): string | null {
