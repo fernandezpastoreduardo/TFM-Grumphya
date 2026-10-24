@@ -9,7 +9,7 @@
 
 Esta revisión incorpora los cuatro requisitos: entrada conceptual, integración como feature, evaluación de todos los criterios aunque haya suspensos y especificación implementable mediante TDD, adaptándose al repositorio real.
 
-**Estado de implementación (23 de octubre de 2026):** la rúbrica `grumphya-concept-v8` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea y las instrucciones de política, no el tono; el servidor compone el titular y aplica el tono al redactar el mensaje. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
+**Estado de implementación (24 de octubre de 2026):** la rúbrica `grumphya-concept-v9` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea y las instrucciones de política, no el tono; el servidor compone el titular y aplica el tono al redactar el mensaje. Si C10 suspende, la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
 
 **Orden de lectura para Luna:** resumen y alcance (secciones 1–3), rúbrica (4), contrato (8), prompt (9) y plan TDD (12). La sección 12 fija las decisiones de implementación; los ejemplos conceptuales de la sección 10 no sustituyen sus pruebas deterministas.
 
@@ -221,8 +221,10 @@ La detección de ideas rechazadas repetidas pertenece a la feature independiente
 y no utiliza resultados ni notas de evaluación. C10 tiene otro propósito:
 valora si una propuesta funcional se limita a una función común de una categoría
 madura sin describir una razón para elegirla. Puede usar conocimiento general
-de alta confianza, pero no búsquedas, cifras, cuota de mercado ni nombres de
-competidores. No rechaza solo porque existan alternativas.
+de alta confianza, pero no búsquedas, cifras ni cuota de mercado. Si C10 es el
+motivo principal, el campo opcional `existingProductExample` puede nombrar un
+producto que cubra las mismas funciones esenciales; no se deben nombrar meros
+competidores de categoría. No rechaza solo porque existan alternativas.
 
 ### 4.3 Adopción y dinero
 
@@ -476,8 +478,13 @@ relación. Solo si no hay otro veto, la categoría es claramente madura y la
 propuesta no da un motivo reconocible para elegirla frente a alternativas
 habituales, puntúa C10 por DIFERENCIACION_AUSENTE. Una aplicación genérica para
 registrar entrenamientos sin un motivo para elegirla es un ejemplo guía, no un
-motivo automático para rechazar. No afirmes que el mercado está saturado ni
-cites competidores o cifras.
+motivo automático para rechazar. Si C10 suspende y conoces con alta confianza
+un producto que cubre las mismas funciones esenciales, puedes devolver su
+nombre en `existingProductExample`; no uses un mero competidor de categoría.
+No consultes fuentes externas, no afirmes disponibilidad actual ni añadas
+detalles sin verificar. Si no hay una coincidencia funcional clara, devuelve
+`null`. El ejemplo solo aporta contexto y no modifica la nota ni el veredicto.
+No afirmes que el mercado está saturado ni inventes competidores o cifras.
 No otorgues garantías por las palabras "IA", "seguro" o "blockchain".
 
 Para cada criterio visitado:
@@ -491,8 +498,10 @@ PUNTUADO para que una idea funcional siempre reciba una nota numérica.
 Eso no significa viable, original, legal o rentable.
 
 Devuelve solo el JSON del contrato:
-status, evaluated, stop_at, reason_code, basis, safeTitle, message,
-hardSetup y hardConsequence. `safeTitle` es null salvo en RECHAZADA;
+status, evaluated, stop_at, reason_code, basis, safeTitle,
+existingProductExample, message, hardSetup y hardConsequence.
+`existingProductExample` es obligatorio y null salvo la excepción descrita para
+C10; `safeTitle` es null salvo en RECHAZADA;
 `hardSetup` y `hardConsequence` solo tienen valor en RECHAZADA.
 evaluated debe ser un prefijo continuo de C01 a C10, sin saltos ni repetición.
 En RECHAZADA contiene los diez criterios y C10 queda puntuado; en SIN_BLOQUEO_EVIDENTE contiene los diez criterios sin suspensos; en IDEA_INSUFICIENTE es un array vacío.
@@ -661,6 +670,7 @@ interface ModelDecision {
   reason_code: ReasonCode | null;
   basis: string | null;
   safeTitle: string | null;
+  existingProductExample: string | null; // Nombre conocido solo si C10 suspende; no afecta al veredicto.
   message: string; // Mensaje base validado.
   hardSetup: string | null; // Copy auxiliar requerido en rechazos.
   hardConsequence: string | null; // Consecuencia auxiliar validada en rechazos.
@@ -671,6 +681,7 @@ interface EvaluationResponse {
   score: number | null; // Sin bloqueo: media de puntuados / 10; insuficiente: null.
   headline: string; // Titular de Grumphya generado según estado y tono.
   message: string; // Hallazgos y defecto decisivo; texto plano validado.
+  existingProductExample?: string; // Contexto opcional cuando C10 suspende y hay coincidencia funcional conocida.
 }
 
 interface EvaluationPort {
@@ -687,29 +698,29 @@ Las uniones de estado, nullabilidad y rango se refuerzan en el validador. No es 
 
 Si ya existe un resultado externo con otra estructura, adaptar en el borde del backend y preservar el contrato público acordado; no propagar formatos del proveedor por la UI.
 
-### 12.4 Decisiones verificadas en la implementación actual (22 de octubre de 2026)
+### 12.4 Decisiones verificadas en la implementación actual (24 de octubre de 2026)
 
-| Tema                       | Decisión                                                                                                                                  |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Normalización              | `ideaText.trim()`; no modificar el interior del texto                                                                                     |
-| Longitud                   | 10–2.000 unidades UTF-16 tras trim; conservar el mínimo actual y ampliar el máximo, igual en UI y API                                     |
-| Tono                       | Se conserva para el renderer del servidor; no se envía al proveedor. `soft` añade una frase afectuosa y `hard` un prefijo fijo por estado |
-| Entrada vacía              | Error de validación sin llamada LLM; no simular un veredicto                                                                              |
-| Texto breve/vago no vacío  | Lo interpreta el modelo; puede devolver IDEA_INSUFICIENTE                                                                                 |
-| Ruta HTTP                  | Reutilizar `POST /api/evaluation-process` y el campo existente `ideaText`; añadir `tone` sin cambiar el prefijo                           |
-| Política                   | Constante versionada `grumphya-concept-v8`; no modificable desde el textarea                                                              |
-| Herramientas del proveedor | Desactivadas para esta llamada                                                                                                            |
-| Payload del proveedor      | Idea + instrucciones/política; no incluye el tono ni historial                                                                            |
-| Salida                     | OpenAI Responses API con esquema JSON estricto, validación semántica local y máximo de 6.000 tokens de salida                             |
-| Timeout                    | `EVALUATION_TIMEOUT_MS`: 120.000 ms por defecto y máximo; al vencer se aborta la señal si el adaptador la soporta                         |
-| Reintentos de evaluación   | 0 por defecto; no lanzar otra evaluación para arreglar JSON                                                                               |
-| Score visible              | Rechazo: nota de veto / 10; sin bloqueo: media de puntuados / 10, dos decimales; insuficiente: `null`                                     |
-| Respuesta de éxito         | Status, score, headline y message; `safeTitle` solo en rechazos; no expone basis, notas por criterio ni datos internos                    |
-| Error de proveedor         | 503 y código estable según el convenio del proyecto                                                                                       |
-| Timeout                    | 504 y código estable según el convenio del proyecto                                                                                       |
-| Entrada inválida           | 400; no llamar al proveedor                                                                                                               |
-| Datos sensibles            | No loguear textarea, fragmento basis, prompt con la idea ni salida cruda                                                                  |
-| Exposición de secretos     | Cliente y credenciales LLM solo en backend                                                                                                |
+| Tema                       | Decisión                                                                                                                                                                                                             |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Normalización              | `ideaText.trim()`; no modificar el interior del texto                                                                                                                                                                |
+| Longitud                   | 10–2.000 unidades UTF-16 tras trim; conservar el mínimo actual y ampliar el máximo, igual en UI y API                                                                                                                |
+| Tono                       | Se conserva para el renderer del servidor; no se envía al proveedor. `soft` añade una frase afectuosa y `hard` un prefijo fijo por estado                                                                            |
+| Entrada vacía              | Error de validación sin llamada LLM; no simular un veredicto                                                                                                                                                         |
+| Texto breve/vago no vacío  | Lo interpreta el modelo; puede devolver IDEA_INSUFICIENTE                                                                                                                                                            |
+| Ruta HTTP                  | Reutilizar `POST /api/evaluation-process` y el campo existente `ideaText`; añadir `tone` sin cambiar el prefijo                                                                                                      |
+| Política                   | Constante versionada `grumphya-concept-v9`; no modificable desde el textarea                                                                                                                                         |
+| Herramientas del proveedor | Desactivadas para esta llamada                                                                                                                                                                                       |
+| Payload del proveedor      | Idea + instrucciones/política; no incluye el tono ni historial                                                                                                                                                       |
+| Salida                     | OpenAI Responses API con esquema JSON estricto, validación semántica local y máximo de 6.000 tokens de salida                                                                                                        |
+| Timeout                    | `EVALUATION_TIMEOUT_MS`: 120.000 ms por defecto y máximo; al vencer se aborta la señal si el adaptador la soporta                                                                                                    |
+| Reintentos de evaluación   | 0 por defecto; no lanzar otra evaluación para arreglar JSON                                                                                                                                                          |
+| Score visible              | Rechazo: nota de veto / 10; sin bloqueo: media de puntuados / 10, dos decimales; insuficiente: `null`                                                                                                                |
+| Respuesta de éxito         | Status, score, headline y message; `safeTitle` solo en rechazos; `existingProductExample` opcional cuando C10 suspende y se conoce una coincidencia funcional; no expone basis, notas por criterio ni datos internos |
+| Error de proveedor         | 503 y código estable según el convenio del proyecto                                                                                                                                                                  |
+| Timeout                    | 504 y código estable según el convenio del proyecto                                                                                                                                                                  |
+| Entrada inválida           | 400; no llamar al proveedor                                                                                                                                                                                          |
+| Datos sensibles            | No loguear textarea, fragmento basis, prompt con la idea ni salida cruda                                                                                                                                             |
+| Exposición de secretos     | Cliente y credenciales LLM solo en backend                                                                                                                                                                           |
 
 Una entrada excesiva se rechaza antes de evaluar; no se recorta. Una respuesta truncada o inválida es error de servicio. Un timer sin cancelación puede dejar al proveedor trabajando: utilizar su cancelación cuando exista y no prometer que elimina cargos.
 

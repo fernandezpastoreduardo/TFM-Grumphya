@@ -345,3 +345,11 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 
 - Tras el fallo de `supply-chain` en CI, se corrigieron los avisos de severidad alta de `body-parser` anterior a `2.4.0` y `multer` anterior a `2.5.0`: `pnpm-workspace.yaml` fija los overrides de ambas dependencias en `2.4.0` y `2.5.0`, respectivamente, y `apps/api/package.json` declara `multer` directamente como `^2.5.0`.
 - `pnpm audit --audit-level moderate` terminó sin vulnerabilidades conocidas en el árbol auditado.
+
+## Ejemplos de productos conocidos en evaluación, 24 de octubre de 2026
+
+- `grumphya-concept-v9` permite que un rechazo cuyo motivo principal sea C10 muestre un nombre de producto solo cuando el evaluador reconoce con alta confianza una coincidencia de funciones esenciales. Un competidor de categoría no basta. El campo es contexto orientativo: no se buscan datos externos, no se afirma disponibilidad actual y no cambia nota ni veredicto.
+- El backend valida el nombre como texto plano, exige que C10 sea el motivo principal y descarta URLs, correos, teléfonos, controles y contenido fuera del patrón permitido. La API y la interfaz tratan el campo como opcional para mantener compatibilidad con resultados previos.
+- La interfaz rechaza u omite `existingProductExample` si la decisión no es `RECHAZADA`, para no mostrar el ejemplo fuera de un rechazo.
+- TDD: se cubren nombre válido, campo en casos no aplicables, coincidencia cuando C10 suspende, rechazo de nombres inseguros y renderizado del nombre en el resultado.
+- Verificación: `pnpm format:check`, `pnpm lint` y `pnpm typecheck` pasan. La API completa pasó 489 pruebas y omitió 20 por no tener configurada la base PostgreSQL. La suite web completa pasó 245/245 al ejecutarse sola; la ejecución paralela anterior tuvo 3 timeouts en pruebas ajenas a evaluación. Las suites enfocadas pasaron API 97/97 y web 17/17. `pnpm build` pasó. No se realizó una llamada real al proveedor.
