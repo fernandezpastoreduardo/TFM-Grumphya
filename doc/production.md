@@ -13,6 +13,12 @@ Esta caja prepara Grumphya para un único VPS IONOS M+ con Docker Compose e incl
 - PostgreSQL mantiene separado el usuario bootstrap `postgres`, cuya contraseña está en `postgres_admin_settings` y solo se monta en `db`, del usuario de runtime configurado en `database_settings`. La inicialización crea el usuario de runtime como propietario de la base, sin privilegios de superusuario; API, migrador y aprovisionador Jappy usan solo este rol limitado. La contraseña bootstrap no se entrega a la API.
 - Los archivos de secretos permanecen `root:root` con modo `0600` en el VPS. Los entrypoints de API y migraciones los leen al arrancar como root y bajan inmediatamente al usuario `node` antes de ejecutar la aplicación. El entrypoint de PostgreSQL lee los secretos antes de ceder el proceso a `postgres`; el script inicial recibe solo los datos que necesita. No amplíes los permisos de los archivos para resolver errores de lectura.
 
+Nginx publica la web desde `docker/nginx-spa.conf`: `/index.html` usa
+`Cache-Control: no-cache`; los bundles JavaScript y CSS con nombre versionado
+por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
+usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
+404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
+
 La red interna confía en el proxy Caddy por su dirección privada fija. Express usa `TRUST_PROXY=172.31.0.254/32`, la IP de Caddy en la red `backend`; Caddy determina la dirección remota del socket y la API no está expuesta a Internet. Si cambias las subredes o la IP de Caddy en Compose, actualiza esta allowlist. No configures `trust proxy=true` ni confíes en cabeceras reenviadas desde clientes.
 
 Compose selecciona `PGSSL_MODE=disable-internal` únicamente con `PGHOST=db`; el pool rechaza ese modo para cualquier otro host. Las ejecuciones de producción que conecten a una base externa usan `verify-full` por defecto y exigen certificado válido.
