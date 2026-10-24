@@ -353,3 +353,9 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - La interfaz rechaza u omite `existingProductExample` si la decisión no es `RECHAZADA`, para no mostrar el ejemplo fuera de un rechazo.
 - TDD: se cubren nombre válido, campo en casos no aplicables, coincidencia cuando C10 es el primer veto (`stop_at: C10`), omisión de nombres inseguros y renderizado del nombre en el resultado.
 - Verificación: `pnpm format:check`, `pnpm lint` y `pnpm typecheck` pasan. La primera ejecución de la suite completa dentro del sandbox falló porque las pruebas HTTP no pudieron abrir sockets (`listen EPERM`); al repetirla fuera del aislamiento, la API pasó 491 pruebas y omitió 20 por no tener configurada la base PostgreSQL, y la web pasó 246/246. Las suites enfocadas pasaron API 97/97 y web 17/17. `pnpm build` pasó. No se realizó una llamada real al proveedor.
+
+## Correcciones tras errores intermitentes de scoring, 24 de octubre de 2026
+
+- `existingProductExample` ya no puede mostrar los marcadores literales `"null"` o `"undefined"`. La API y el adaptador web omiten esos valores y cualquier ejemplo inseguro/no aplicable sin invalidar una evaluación válida.
+- Si falla una evaluación que continuaba un aviso de similitud, el servidor libera la reserva de uso y también el claim de continuación. El usuario puede reintentar la misma solicitud con su clave de idempotencia; una continuación simultánea sigue estando limitada a una.
+- Las pruebas cubren el marcador `null`, ejemplos inválidos, resultado de scoring conservado y reintento de continuación. Falta confirmar la causa concreta de un `INVALID_EVALUATION_RESPONSE` observado en producción: se necesita el campo agregado `latestDiagnosticCode` (`visible_message`, `decision_semantics`, etc.). No se envían ideas ni salidas del modelo a los logs.
