@@ -61,7 +61,7 @@ margin.
   físicos, ropa, anatomía, expresiones alegres ni personalidad nueva. Cada
   escena debe parecer la misma mascota dibujada por el mismo equipo, no un
   personaje inspirado en ella.
-  Excepción autorizada para el hero de Home: `home-grumpy-judge.png` puede
+  Excepción autorizada para el hero de Home: `home-grumpy-judge.webp` puede
   representar a Grumphya sentada como jueza con toga, peluca judicial y mazo,
   porque estos elementos expresan la idea de evaluar. Esta excepción se limita
   a esa escena y no relaja la regla de vestuario para otros assets.

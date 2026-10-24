@@ -30,12 +30,12 @@ const EVALUATION_UNAVAILABLE_MESSAGE =
 const EVALUATION_TIMEOUT_MESSAGE =
   "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.";
 const EVALUATION_TIMEOUT_CODE = "EVALUATION_TIMEOUT";
-const INVALID_EVALUATION_RESPONSE_CODE = "INVALID_EVALUATION_RESPONSE";
-const INVALID_EVALUATION_RETRY_MESSAGE =
-  "No se ha podido validar esta evaluación. Puedes volver a intentarlo.";
 const EVALUATION_OUTCOME_UNKNOWN_CODE = "EVALUATION_OUTCOME_UNKNOWN";
 const EVALUATION_OUTCOME_UNKNOWN_MESSAGE =
   "No hemos podido confirmar si la evaluación terminó. Espera a comprobar el resultado antes de volver a gastar un intento.";
+const INVALID_EVALUATION_RESPONSE_CODE = "INVALID_EVALUATION_RESPONSE";
+const INVALID_EVALUATION_RETRY_MESSAGE =
+  "No se ha podido validar esta evaluación. Puedes volver a intentarlo.";
 const ANONYMOUS_QUOTA_EXHAUSTED_CODE = "ANONYMOUS_QUOTA_EXHAUSTED";
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
 const ACTIVE_PLAN_REQUIRED_CODE = "ACTIVE_PLAN_REQUIRED";

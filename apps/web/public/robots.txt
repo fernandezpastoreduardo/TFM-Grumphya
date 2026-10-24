@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /login
+Disallow: /crear-cuenta
+Disallow: /perfil
+Disallow: /panel-control

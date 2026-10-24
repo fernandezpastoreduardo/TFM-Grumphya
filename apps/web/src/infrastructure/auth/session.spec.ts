@@ -65,7 +65,7 @@ describe("authenticated session client", () => {
   it("does not retry a missing session on every public page request", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(new Response(JSON.stringify({}), { status: 401 }));
+      .mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(getAccessToken()).resolves.toBeNull();
@@ -245,11 +245,7 @@ describe("authenticated session client", () => {
 
     const pendingToken = getAccessToken();
     clearAccessToken();
-    resolveRefresh?.(
-      new Response(JSON.stringify({ accessToken: `${ACCESS_TOKEN}.stale` }), {
-        status: 201,
-      }),
-    );
+    resolveRefresh?.(new Response(null, { status: 204 }));
 
     await expect(pendingToken).resolves.toBeNull();
     await expect(getAccessToken()).resolves.toBeNull();

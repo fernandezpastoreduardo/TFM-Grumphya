@@ -79,6 +79,13 @@ describe("registration HTTP flow", () => {
     delete process.env.ACCESS_TOKEN_SECRET;
   });
 
+  it("returns no content when a public visitor has no refresh session", async () => {
+    const response = await post("/auth/refresh", {});
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe("");
+  });
+
   it("keeps registration pending until verification and simulated plan confirmation", async () => {
     const intentResponse = await post("/registration-intents", {
       plan: "FALTON",

@@ -186,7 +186,7 @@
   width: 140px;
   height: 190px;
   flex: 0 0 140px;
-  background: url("/assets/grumphya/home-grumpy-judge.png") center / contain
+  background: url("/assets/grumphya/home-grumpy-judge.webp") center / contain
     no-repeat;
   filter: drop-shadow(2px 3px 0 #286b7730);
   transform: scaleX(-1) rotate(3deg);
@@ -848,7 +848,7 @@
   bottom: -26px;
   left: -10px;
   height: clamp(72px, 8vw, 112px);
-  background: url("/assets/grumphya/audience-rounded.png") center bottom /
+  background: url("/assets/grumphya/audience-rounded.webp") center bottom /
     max(100%, 1160px) auto no-repeat;
 }
 
@@ -1050,7 +1050,7 @@
   bottom: 12px;
   width: min(56%, 195px);
   height: 77%;
-  background: url("/assets/grumphya/home-grumpy-judge.png") center bottom / auto
+  background: url("/assets/grumphya/home-grumpy-judge.webp") center bottom / auto
     100% no-repeat;
   filter: drop-shadow(2px 3px 0 #17212324);
   transform: translateX(50%) scaleX(-1);

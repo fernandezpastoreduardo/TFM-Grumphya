@@ -140,8 +140,9 @@ async function refreshAccessToken(): Promise<string | null> {
       headers: { "Content-Type": JSON_CONTENT_TYPE },
       body: "{}",
     });
-    const body: unknown = await response.json();
     if (generation !== sessionGeneration) return accessToken;
+    if (response.status === 204) return null;
+    const body: unknown = await response.json();
     if (!response.ok || !isAuthResponse(body)) return null;
     accessToken = body.accessToken;
     refreshAttempted = false;

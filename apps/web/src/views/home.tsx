@@ -449,11 +449,13 @@ export function Home() {
             </a>
           </dialog>
         ) : null}
-        <UsageLimitDialog
-          open={isDailyQuotaDialogOpen}
-          scope="ideas"
-          onClose={() => setIsDailyQuotaDialogOpen(false)}
-        />
+        {isDailyQuotaDialogOpen ? (
+          <UsageLimitDialog
+            open
+            scope="ideas"
+            onClose={() => setIsDailyQuotaDialogOpen(false)}
+          />
+        ) : null}
 
         <section className="home-marketing" aria-label="Por qué usar Grumphya">
           <div>

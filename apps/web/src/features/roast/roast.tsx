@@ -249,11 +249,13 @@ export function Roast() {
           </aside>
         ) : null}
       </div>
-      <UsageLimitDialog
-        open={isDailyQuotaDialogOpen}
-        scope="roasts"
-        onClose={() => setIsDailyQuotaDialogOpen(false)}
-      />
+      {isDailyQuotaDialogOpen ? (
+        <UsageLimitDialog
+          open
+          scope="roasts"
+          onClose={() => setIsDailyQuotaDialogOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

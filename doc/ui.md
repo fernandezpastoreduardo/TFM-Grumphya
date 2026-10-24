@@ -57,10 +57,10 @@ la lámina maestra está en
   del PNG; CSS no aplica opacidad ni filtro al público.
 - Los assets SVG revisados se guardan en
   `ideas-and-designs/revision-vectorial/revisados/`. Se colocan según la lámina
-  maestra; no se autotracean ni se reinterpretan. El marco común usa los PNG
-  transparentes `stage-curtain-v2.png` y `audience-rounded.png`; el haz de luz
-  de Home se dibuja con CSS. Las capas de profundidad y adornos se resuelven
-  con CSS.
+  maestra; no se autotracean ni se reinterpretan. El marco común usa el PNG
+  transparente `stage-curtain-v2.png` y el WebP transparente
+  `audience-rounded.webp`; el haz de luz de Home se dibuja con CSS. Las capas
+  de profundidad y adornos se resuelven con CSS.
 - Los rayos y formas de color rodean hero y acciones como paréntesis visuales,
   conservan aire respecto a los controles y no se solapan con ellos.
 
@@ -102,7 +102,7 @@ la lámina maestra está en
 - En el panel de administración, los desgloses de coste se apilan en móvil y
   las tablas con muchas columnas se desplazan dentro de su propio contenedor,
   sin ampliar el ancho de la página.
-- Las secciones tienen ilustraciones PNG transparentes propias de Grumphya,
+- Las secciones tienen ilustraciones raster transparentes propias de Grumphya,
   distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
   para Planes, `ultrachachi-reality-check.png` para su popup, y
   `good-practices-checklist.png`/`good-practices-validate-idea.png` y las dos
@@ -120,7 +120,7 @@ la lámina maestra está en
   blanco desde CSS; la ilustración mantiene su transparencia. Todas estas
   ilustraciones conservan el fondo transparente y no incluyen copy incrustado;
   la UI mantiene el contenido legible en HTML. Las escenas de error existentes
-  siguen siendo sus propios assets. Home usa `home-grumpy-judge.png`: Grumphya
+  siguen siendo sus propios assets. Home usa `home-grumpy-judge.webp`: Grumphya
   aparece sentada como jueza con un mazo y sin bombilla tachada. Este asset
   reemplaza `home-idea-review.png`; el vestuario judicial es una excepción
   específica autorizada para esta escena y no modifica la regla general de
@@ -219,6 +219,13 @@ teclado. El contraste de los pares base inspeccionados osciló entre 5,14:1 y
 15,14:1. No se revisó cada combinación sobre ilustraciones, fondos con gradiente
 ni estados interactivos.
 
+## SEO básico
+
+El HTML inicial incluye una descripción en español de Grumphya. `robots.txt`
+permite el rastreo general y excluye `/login`, `/crear-cuenta`, `/perfil` y
+`/panel-control`; estas reglas orientan a los rastreadores y no protegen esas
+rutas ni sustituyen la autenticación del servidor.
+
 Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
 No se midieron LCP, CLS ni INP, por lo
@@ -232,20 +239,25 @@ de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
 887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` es la cenefa
-azul oscuro transparente, de menor altura y sin desenfoque; pesa 277.218 B.
-`audience-rounded.png` representa la platea como una multitud de Grumphyas
+azul oscuro transparente, de menor altura y sin desenfoque; pesa 103.564 B.
+`audience-rounded.webp` representa la platea como una multitud de Grumphyas
 pequeñas, vistas desde atrás y sin rasgos faciales. Conserva el lienzo y la
 proporción del original; sus cabezas redondeadas incluyen las orejas de la
 mascota y la curva sube ligeramente en los extremos. Las figuras están en
-sombra, sin iluminación. Pesa 407.216 B; conserva la transparencia y el borde
-superior suavizado dentro del PNG. Ambos assets del marco conservan
-transparencia. CSS escala el público manteniendo su proporción y reserva una
-franja suficiente para que no se corten ni se aplasten las cabezas.
-Los nuevos `home-grumpy-judge.png` y `admin-dashboard-audit.png` son PNG
-transparentes de 900 × 900 px. Pesan 901.242 B (aprox. 880 KiB) y 787.615 B
-(aprox. 769 KiB), respectivamente; 1.688.857 B en conjunto (aprox. 1,69 MB /
-1,61 MiB). Ambos respetan el límite de 900 px. Se incluirán en las mediciones
-Lighthouse pendientes para cuantificar su efecto en la carga móvil.
+sombra, sin iluminación. Mide 2172 × 724 px y pesa 232.424 B; conserva la
+transparencia y el borde superior suavizado dentro del WebP. El otro asset del
+marco, `stage-curtain-v2.png`, también conserva transparencia. CSS escala el
+público manteniendo su proporción y reserva una franja suficiente para que no
+se corten ni se aplasten las cabezas.
+`home-grumpy-judge.webp` mide 400 × 400 px y pesa 130.500 B. `admin-dashboard-audit.png`
+sigue siendo un PNG transparente de 900 × 900 px y 787.615 B (aprox. 769 KiB).
+En conjunto pesan 918.115 B (aprox. 0,92 MB / 0,88 MiB). No se obtuvo una
+medición Lighthouse posterior a estas optimizaciones.
+`cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
+97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
+`cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de
+645.212 B a 460.094 B (185.118 B, aproximadamente un 28,7 %); no se ha medido
+un cambio de puntuación Lighthouse.
 La nueva ilustración de Descárgate y los dos assets de las tarjetas de tono
 suman 1.095.690 B (aprox. 1,10 MB / 1,04 MiB), una reducción de 2.040.647 B
 (aprox. 65,1 %) frente a sus versiones anteriores. `descargate-boxing-bag.png`

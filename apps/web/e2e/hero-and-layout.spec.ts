@@ -106,7 +106,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
       };
     });
   expect(homeHero.backgroundImage).toContain(
-    "/assets/grumphya/home-grumpy-judge.png",
+    "/assets/grumphya/home-grumpy-judge.webp",
   );
   expect(homeHero.backgroundSize).toBe("contain");
   expect(homeHero.backgroundPosition).toBe("50% 100%");
@@ -118,10 +118,10 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   expect(homeMascotBox).not.toBeNull();
   expect(homeStageBox).not.toBeNull();
   expect(homeMascotBox!.width / homeStageBox!.width).toBeGreaterThan(0.8);
-  const homeAssetPath = "/assets/grumphya/home-grumpy-judge.png";
+  const homeAssetPath = "/assets/grumphya/home-grumpy-judge.webp";
   const homeAssetResponse = await page.request.get(homeAssetPath);
   expect(homeAssetResponse.ok()).toBe(true);
-  expect(homeAssetResponse.headers()["content-type"]).toContain("image/png");
+  expect(homeAssetResponse.headers()["content-type"]).toContain("image/webp");
   expect(await assetHasTransparentPixels(page, homeAssetPath)).toBe(true);
 
   const toneIllustrations = [
@@ -150,6 +150,70 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
       true,
     );
   }
+});
+
+test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".home-page")).toBeVisible();
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    "Grumphya evalúa ideas de apps con mirada crítica, detecta riesgos y te ayuda a decidir qué merece la pena desarrollar.",
+  );
+
+  const robotsResponse = await page.request.get("/robots.txt");
+  expect(robotsResponse.ok()).toBe(true);
+  expect(robotsResponse.headers()["content-type"]).toContain("text/plain");
+  const robotsRules = await robotsResponse.text();
+  expect(robotsRules).toContain("Allow: /");
+  for (const privatePath of [
+    "/login",
+    "/crear-cuenta",
+    "/perfil",
+    "/panel-control",
+  ]) {
+    expect(robotsRules).toContain(`Disallow: ${privatePath}`);
+  }
+
+  const webpAssets = [
+    "/assets/grumphya/home-grumpy-judge.webp",
+    "/assets/grumphya/audience-rounded.webp",
+    "/assets/grumphya/cookie-kick.webp",
+  ];
+  for (const assetPath of webpAssets) {
+    const response = await page.request.get(assetPath);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]).toContain("image/webp");
+    expect(await assetHasTransparentPixels(page, assetPath)).toBe(true);
+  }
+
+  const homeAudienceBackground = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector(".home-page")!, "::after")
+        .backgroundImage,
+  );
+  expect(homeAudienceBackground).toContain(
+    "/assets/grumphya/audience-rounded.webp",
+  );
+
+  await page.evaluate(() =>
+    localStorage.removeItem("grumphya.privacy-notice.acknowledged.v1"),
+  );
+  await page.reload();
+  await expect(page.locator(".cookie-notice-mascot")).toHaveAttribute(
+    "src",
+    "/assets/grumphya/cookie-kick.webp",
+  );
+
+  await page.goto("/precios");
+  await expect(page.locator(".app-page")).toBeVisible();
+  const sectionAudienceBackground = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector(".app-page")!, "::after")
+        .backgroundImage,
+  );
+  expect(sectionAudienceBackground).toContain(
+    "/assets/grumphya/audience-rounded.webp",
+  );
 });
 
 test("aligns login content and keeps Good Practices editorial content in flow", async ({
