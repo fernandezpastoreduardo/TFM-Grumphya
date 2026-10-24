@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
       roastMessagesSent?: number;
       isAdmin?: boolean;
     } | null,
+    refresh: vi.fn(async () => null),
   },
   usage: {
     usage: {
@@ -61,6 +62,7 @@ describe("Roast", () => {
     mocks.getRoastRanking.mockResolvedValue([]);
     mocks.session.isAuthenticated = false;
     mocks.session.accountAttempts = null;
+    mocks.session.refresh.mockResolvedValue(null);
     mocks.usage.usage = {
       ideas: { limit: 3, used: 0, remaining: 3 },
       roasts: { limit: 3, used: 0, remaining: 3 },
@@ -138,6 +140,51 @@ describe("Roast", () => {
     expect(
       screen.queryByRole("heading", { name: ROAST_PLAN_CALLOUT_HEADING }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the shared daily quota dialog when Faltón rejects an exhausted roast", async () => {
+    const user = userEvent.setup();
+    mocks.session.isAuthenticated = true;
+    mocks.session.accountAttempts = {
+      ideas: 0,
+      roasts: 1,
+      ideasPlanActive: false,
+      roastsPlanActive: true,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: "PLAN_QUOTA_EXHAUSTED",
+              scope: "roasts",
+            }),
+            {
+              status: 429,
+              headers: { "Content-Type": "application/json" },
+            },
+          ),
+      ),
+    );
+    render(<Roast />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+      SUBMITTED_ROAST,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL }));
+
+    const quotaDialog = await screen.findByRole("dialog", {
+      name: /se acabaron los intentos/i,
+    });
+    expect(quotaDialog).toHaveTextContent(/11 envíos de hoy en faltón/i);
+    expect(quotaDialog).toHaveTextContent(/vuelve mañana/i);
+    await waitFor(() => {
+      expect(mocks.usage.refresh).toHaveBeenCalledOnce();
+      expect(mocks.session.refresh).toHaveBeenCalledOnce();
+    });
+    expect(screen.queryByText(SUBMITTED_ROAST)).not.toBeInTheDocument();
   });
 
   it("keeps three free roasts for an authenticated user with only Iluminado", () => {

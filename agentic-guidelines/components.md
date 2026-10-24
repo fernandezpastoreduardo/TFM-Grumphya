@@ -18,6 +18,10 @@ Informa de que la idea es semánticamente similar a otra, muestra el título pú
 
 Explica que no quedan intentos y ofrece la acción que corresponda sin revelar reglas internas.
 
+### UsageLimitDialog
+
+Componente compartido por Home y Roast para informar que se ha agotado la cuota diaria de un plan. Recibe el ámbito (`ideas` o `roasts`), muestra el aviso correspondiente y ofrece ir a Planes. Se abre tras la respuesta autoritativa del servidor o cuando la actualización del perfil confirma que el contador del plan activo ha llegado a cero; la cuota gratuita por perfil de navegador mantiene su aviso independiente.
+
 ### LoginForm / CreateAccountForm
 
 Formularios accesibles. Los errores de autenticación deben ser genéricos y nunca confirmar si un usuario existe. En Login, el campo de contraseña empieza oculto y un botón accesible «Mostrar/Ocultar» permite cambiar su visibilidad.

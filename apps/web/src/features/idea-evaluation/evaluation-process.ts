@@ -25,13 +25,14 @@ export type EvaluationSubmissionResult =
   EvaluationProcessResult | SimilarIdeaMatchResult;
 
 const EVALUATION_ENDPOINT = "/api/evaluation-process";
-const INVALID_RESULT_MESSAGE =
-  "El servicio devolvió un resultado que no se puede verificar.";
 const EVALUATION_UNAVAILABLE_MESSAGE =
   "No se pudo obtener el scoring. La idea sigue en el formulario; inténtalo otra vez.";
 const EVALUATION_TIMEOUT_MESSAGE =
   "La evaluación está tardando más de lo previsto. La idea sigue en el formulario; inténtalo de nuevo.";
 const EVALUATION_TIMEOUT_CODE = "EVALUATION_TIMEOUT";
+const EVALUATION_OUTCOME_UNKNOWN_CODE = "EVALUATION_OUTCOME_UNKNOWN";
+const EVALUATION_OUTCOME_UNKNOWN_MESSAGE =
+  "No hemos podido confirmar si la evaluación terminó. Espera a comprobar el resultado antes de volver a gastar un intento.";
 const ANONYMOUS_QUOTA_EXHAUSTED_CODE = "ANONYMOUS_QUOTA_EXHAUSTED";
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
 const ACTIVE_PLAN_REQUIRED_CODE = "ACTIVE_PLAN_REQUIRED";
@@ -205,7 +206,10 @@ export async function evaluationProcess(
       ? await authenticatedFetch(EVALUATION_ENDPOINT, init)
       : await fetch(EVALUATION_ENDPOINT, init);
   } catch {
-    throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);
+    throw new EvaluationProcessError(
+      EVALUATION_OUTCOME_UNKNOWN_CODE,
+      EVALUATION_OUTCOME_UNKNOWN_MESSAGE,
+    );
   }
 
   if (!response.ok) {
@@ -255,10 +259,18 @@ export async function evaluationProcess(
   try {
     payload = await response.json();
   } catch {
-    throw new Error(INVALID_RESULT_MESSAGE);
+    throw new EvaluationProcessError(
+      EVALUATION_OUTCOME_UNKNOWN_CODE,
+      EVALUATION_OUTCOME_UNKNOWN_MESSAGE,
+    );
   }
 
   const result = parseSubmissionResponse(payload);
-  if (!result) throw new Error(INVALID_RESULT_MESSAGE);
+  if (!result) {
+    throw new EvaluationProcessError(
+      EVALUATION_OUTCOME_UNKNOWN_CODE,
+      EVALUATION_OUTCOME_UNKNOWN_MESSAGE,
+    );
+  }
   return result;
 }

@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSessionStatus } from "./use-session-status";
+import type { AccountAttempts } from "./use-session-status";
 
 const authenticatedFetch = vi.hoisted(() => vi.fn());
 const clearAccessToken = vi.hoisted(() => vi.fn());
@@ -62,6 +63,39 @@ describe("useSessionStatus", () => {
     expect(result.current.accountAttempts?.roasts).toBe(
       Number.POSITIVE_INFINITY,
     );
+  });
+
+  it("refreshes daily plan attempts after a completed use", async () => {
+    const createProfileResponse = (ideas: number) =>
+      new Response(
+        JSON.stringify({
+          user: { role: "user", roastMessagesSent: 0, avatarUrl: null },
+          plans: [
+            {
+              plan: "ILUMINADO",
+              status: "active",
+              attemptsRemaining: { ideas, roasts: 0 },
+            },
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    authenticatedFetch
+      .mockResolvedValueOnce(createProfileResponse(11))
+      .mockResolvedValueOnce(createProfileResponse(10));
+    const { result } = renderHook(() => useSessionStatus());
+    await waitFor(() => expect(result.current.accountAttempts?.ideas).toBe(11));
+
+    let refreshedAttempts: AccountAttempts | null = null;
+    await act(async () => {
+      refreshedAttempts = await result.current.refresh();
+    });
+
+    expect(refreshedAttempts).toMatchObject({
+      ideas: 10,
+      ideasPlanActive: true,
+    });
+    expect(result.current.accountAttempts?.ideas).toBe(10);
   });
 
   it("logs out locally, notifies other tabs, and redirects after the API request", async () => {

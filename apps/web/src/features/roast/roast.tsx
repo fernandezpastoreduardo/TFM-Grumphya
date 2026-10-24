@@ -12,6 +12,8 @@ import {
   type RoastRankingState,
 } from "./components/RoastRanking";
 import { getRoastRanking } from "./services/get-roast-ranking";
+import { UsageLimitDialog } from "../../shared/components/usage-limit-dialog";
+import "../../shared/components/shared-components.scss";
 import "./roast.scss";
 
 // Only the opening exchanges are fixtures; submitted messages use the roast endpoint.
@@ -44,6 +46,7 @@ export function Roast() {
     status: "loading",
   });
   const [rankingRevision, setRankingRevision] = useState(0);
+  const [isDailyQuotaDialogOpen, setIsDailyQuotaDialogOpen] = useState(false);
   const isAuthenticated = session.isAuthenticated === true;
   const hasActiveRoastPlan =
     isAuthenticated && session.accountAttempts?.roastsPlanActive === true;
@@ -211,6 +214,10 @@ export function Roast() {
             setRankingRevision((revision) => revision + 1);
           }}
           onUsageRefresh={usageState.refresh}
+          onAccountUsageRefresh={
+            session.isAuthenticated === false ? undefined : session.refresh
+          }
+          onDailyQuotaExhausted={() => setIsDailyQuotaDialogOpen(true)}
         />
         <p className="prototype-stamp">
           {showDemoExchanges
@@ -242,6 +249,13 @@ export function Roast() {
           </aside>
         ) : null}
       </div>
+      {isDailyQuotaDialogOpen ? (
+        <UsageLimitDialog
+          open
+          scope="roasts"
+          onClose={() => setIsDailyQuotaDialogOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
