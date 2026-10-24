@@ -1,4 +1,5 @@
 import type { AiUsageRecord } from "../infrastructure/ai/ai-usage";
+import type { ApplicationErrorContext } from "../infrastructure/observability/application-error-context";
 
 export type AdminDashboardSnapshot = {
   revenue: { weeklyEur: number; totalEur: number };
@@ -15,12 +16,22 @@ export type AdminDashboardSnapshot = {
     unpricedUsageEvents: number;
   };
   errors: Array<{
+    latestEventId: string;
     code: string;
     weeklyCount: number;
     totalCount: number;
     lastOccurredAt: string;
     latestDiagnosticCode: string | null;
   }>;
+};
+
+export type AdminApplicationErrorDetail = {
+  id: string;
+  code: string;
+  statusCode: number;
+  occurredAt: string;
+  diagnosticCode: string | null;
+  context: ApplicationErrorContext | null;
 };
 
 export type AiCostByActor = {
@@ -65,6 +76,7 @@ export type ContactMessageReplyClaim = {
 
 export interface AdminDashboardRepository {
   getSnapshot(): Promise<AdminDashboardSnapshot>;
+  getApplicationError(id: string): Promise<AdminApplicationErrorDetail | null>;
   listContactMessages(): Promise<AdminContactMessage[]>;
   claimContactMessageReply(
     messageId: string,
@@ -80,6 +92,7 @@ export interface AdminDashboardRepository {
     errorCode: string,
     statusCode: number,
     diagnosticCode?: string,
+    context?: ApplicationErrorContext,
   ): Promise<void>;
 }
 

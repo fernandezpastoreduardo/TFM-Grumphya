@@ -22,7 +22,7 @@ export function PrivacyPolicy() {
           comparten y durante cuánto tiempo los conservamos.
         </p>
         <p className="privacy-policy-version">
-          Versión 2 · 23 de octubre de 2026
+          Versión 3 · 24 de octubre de 2026
         </p>
       </header>
 
@@ -68,6 +68,13 @@ export function PrivacyPolicy() {
             ideas rechazadas se agregan sin una relación con tu cuenta y se
             conserva un título seguro y una representación semántica; el texto
             original no se guarda en ese registro.
+          </li>
+          <li>
+            <strong>Diagnóstico de errores de evaluación:</strong> si el
+            evaluador devuelve una respuesta que el servidor no puede
+            interpretar, el texto de esa idea puede conservarse temporalmente
+            junto al error para investigarlo. Solo las cuentas administradoras
+            pueden consultar ese detalle y se elimina a los 30 días.
           </li>
           <li>
             <strong>Rankings:</strong> el ranking de ideas rechazadas puede
@@ -272,9 +279,10 @@ export function PrivacyPolicy() {
           </li>
           <li>
             Los mensajes de contacto y las métricas técnicas y de uso de IA se
-            conservan hasta 12 meses; los eventos de error de la aplicación,
-            hasta 30 días. Los correos pueden seguir disponibles en los buzones
-            según sus propias reglas de conservación.
+            conservan hasta 12 meses; los eventos de error y el texto de idea
+            asociado a un fallo de evaluación, hasta 30 días. Los correos pueden
+            seguir disponibles en los buzones según sus propias reglas de
+            conservación.
           </li>
         </ul>
         <p>

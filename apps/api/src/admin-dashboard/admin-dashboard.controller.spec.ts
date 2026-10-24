@@ -30,6 +30,18 @@ describe("AdminDashboardController", () => {
     expect(service.listContactMessages).toHaveBeenCalledTimes(1);
   });
 
+  it("returns the requested error detail from its injected service", async () => {
+    const detail = { id: "42", code: "INVALID_EVALUATION_RESPONSE" };
+    const service = {
+      getApplicationError: vi.fn().mockResolvedValue(detail),
+    } as unknown as AdminDashboardService;
+    const reply = { execute: vi.fn() } as unknown as AdminContactMessageReply;
+    const controller = new AdminDashboardController(service, reply);
+
+    await expect(controller.getApplicationError("42")).resolves.toBe(detail);
+    expect(service.getApplicationError).toHaveBeenCalledWith("42");
+  });
+
   it("forwards the authenticated admin and message body to the reply use case", async () => {
     const service = {} as AdminDashboardService;
     const replyResult = { status: "sent" };

@@ -2,6 +2,8 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
 import { AdminContactMessageReply } from "./admin-contact-message-reply";
 import type { AdminContactMessage } from "./admin-dashboard.models";
+import { AdminErrorDetail } from "./components/admin-error-detail";
+import { getApplicationErrorLabel } from "./application-error-labels";
 import {
   LoadingSkeleton,
   SkeletonBlock,
@@ -23,6 +25,7 @@ type DashboardData = {
     unpricedUsageEvents: number;
   };
   errors: Array<{
+    latestEventId: string;
     code: string;
     weeklyCount: number;
     totalCount: number;
@@ -62,6 +65,7 @@ const WEEK_LABEL = new Intl.DateTimeFormat("es-ES", {
   timeZone: "UTC",
 });
 const DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
+const ERROR_EVENT_ID_PATTERN = /^[1-9]\d{0,18}$/u;
 const ADMIN_TABS = [
   { id: "summary", label: "Resumen" },
   { id: "benchmark", label: "Benchmark de IA" },
@@ -130,6 +134,8 @@ function isDashboardData(value: unknown): value is DashboardData {
       (item) =>
         isRecord(item) &&
         typeof item.code === "string" &&
+        typeof item.latestEventId === "string" &&
+        ERROR_EVENT_ID_PATTERN.test(item.latestEventId) &&
         isCount(item.weeklyCount) &&
         isCount(item.totalCount) &&
         typeof item.lastOccurredAt === "string" &&
@@ -172,6 +178,14 @@ function isReplyStatus(
 }
 
 export function AdminDashboard() {
+  const errorEventId = new URLSearchParams(window.location.search).get("error");
+  if (errorEventId !== null) {
+    return <AdminErrorDetail eventId={errorEventId} />;
+  }
+  return <AdminDashboardOverview />;
+}
+
+function AdminDashboardOverview() {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
   const [activeTab, setActiveTab] = useState<AdminTab>("summary");
   function handleTabKeyDown(
@@ -383,17 +397,34 @@ export function AdminDashboard() {
                   <table>
                     <thead>
                       <tr>
-                        <th scope="col">Código</th>
+                        <th scope="col">Error y diagnóstico</th>
                         <th scope="col">Esta semana</th>
                         <th scope="col">Total</th>
                         <th scope="col">Última vez</th>
-                        <th scope="col">Diagnóstico reciente</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.errors.map((error) => (
-                        <tr key={error.code}>
-                          <th scope="row">{error.code}</th>
+                        <tr
+                          key={`${error.code}:${error.latestDiagnosticCode ?? "none"}`}
+                        >
+                          <th scope="row">
+                            <a
+                              href={`/panel-control?error=${encodeURIComponent(error.latestEventId)}`}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              {getApplicationErrorLabel(
+                                error.code,
+                                error.latestDiagnosticCode,
+                              )}
+                            </a>
+                            {error.latestDiagnosticCode && (
+                              <div>
+                                <code>{error.latestDiagnosticCode}</code>
+                              </div>
+                            )}
+                          </th>
                           <td>{error.weeklyCount}</td>
                           <td>{error.totalCount}</td>
                           <td>
@@ -401,7 +432,6 @@ export function AdminDashboard() {
                               {DATE.format(new Date(error.lastOccurredAt))}
                             </time>
                           </td>
-                          <td>{error.latestDiagnosticCode ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>

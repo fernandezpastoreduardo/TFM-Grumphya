@@ -107,4 +107,47 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
     );
     expect(query.mock.calls[0]?.[0]).toContain("CASE WHEN $2 THEN now()");
   });
+
+  it("records the current privacy policy version when registering an account", async () => {
+    const clientQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({
+        rows: [{ plan_code: "ILUMINADO" }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ id: USER_ID }], rowCount: 1 })
+      .mockResolvedValueOnce({
+        rows: [{ id: "pending-registration-id" }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    const client = {
+      query: clientQuery,
+      release: vi.fn(),
+    };
+    const registrationRepository = new PostgresRegistrationRepository({
+      connect: vi.fn().mockResolvedValue(client),
+    } as unknown as Pool);
+
+    await registrationRepository.consumeIntentAndRegister(
+      "intent-token-hash",
+      {
+        email: "persona@example.es",
+        username: "Persona",
+        password: "hashed-password",
+        privacyPolicyAcknowledged: true,
+      },
+      "password-hash",
+      "verification-hash",
+      new Date("2026-10-25T00:00:00.000Z"),
+    );
+
+    const userInsert = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes("privacy_policy_version"),
+    );
+    expect(userInsert?.[1]).toContain("v3");
+    expect(client.release).toHaveBeenCalledOnce();
+  });
 });

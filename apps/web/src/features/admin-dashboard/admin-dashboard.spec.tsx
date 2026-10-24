@@ -40,6 +40,7 @@ const dashboard = {
   errors: [
     {
       code: "INVALID_EVALUATION_RESPONSE",
+      latestEventId: "42",
       weeklyCount: 2,
       totalCount: 4,
       lastOccurredAt: "2026-10-21T18:30:00.000Z",
@@ -83,9 +84,13 @@ describe("AdminDashboard", () => {
     expect(
       await screen.findByRole("heading", { name: "Hola, Jappy." }),
     ).toBeInTheDocument();
-    expect(screen.getByText("INVALID_EVALUATION_RESPONSE")).toBeInTheDocument();
+    const errorDetailLink = screen.getByRole("link", {
+      name: /INVALID_EVALUATION_RESPONSE.*incoherencia/i,
+    });
+    expect(errorDetailLink).toHaveAttribute("target", "_blank");
+    expect(errorDetailLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(errorDetailLink).toHaveAttribute("href", "/panel-control?error=42");
     expect(screen.getByText("Última vez")).toBeInTheDocument();
-    expect(screen.getByText("Diagnóstico reciente")).toBeInTheDocument();
     expect(screen.getByText("decision_semantics")).toBeInTheDocument();
     expect(
       document.querySelector('time[datetime="2026-10-21T18:30:00.000Z"]'),
