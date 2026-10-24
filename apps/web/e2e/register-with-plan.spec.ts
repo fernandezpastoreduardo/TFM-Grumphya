@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const EMAIL = "persona-e2e@example.es";
-const USERNAME = "personaE2E";
+const USERNAME = "PersonaE2EIdentificadorLong123";
 const PASSWORD = "Una contraseña segura para e2e 2026!";
 const REGISTER_BUTTON_NAME = /crear cuenta y verificar correo/i;
 
