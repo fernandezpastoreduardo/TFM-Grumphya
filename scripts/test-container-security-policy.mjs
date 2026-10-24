@@ -6,6 +6,7 @@ const CADDY_DOCKERFILE_PATH = "docker/Caddy.Dockerfile";
 const COMPOSE_PATH = "compose.production.yaml";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
+const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
 const CADDY_SOURCE_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37";
 const CADDY_X_NET_VERSION = "golang.org/x/net@v0.60.0";
 
@@ -68,6 +69,10 @@ assert.match(
   workflow,
   /docker build --pull --file docker\/Caddy\.Dockerfile --tag grumphya-proxy:\$\{\{ github\.sha \}\}/,
   "CI must build and scan the hardened Caddy image",
+);
+assert.ok(
+  workflow.includes(POLICY_TEST_COMMAND),
+  "CI must execute the container security policy guard",
 );
 assert.match(
   compose,
