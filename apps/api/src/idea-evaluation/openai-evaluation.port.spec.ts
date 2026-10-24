@@ -181,7 +181,10 @@ describe("OpenAiEvaluationPort", () => {
     );
     expect(request).toContain("No inventes defectos para variar el resultado");
     expect(request).toContain(
-      "existingProductExample es obligatorio y debe ser null salvo que C10 suspenda",
+      "existingProductExample es obligatorio y debe ser null salvo que C10 sea el primer criterio suspendido (stop_at=C10)",
+    );
+    expect(request).toContain(
+      "Si algún criterio C01–C09 ya es el primer suspenso, devuelve null aunque C10 también obtenga una puntuación inferior a 15",
     );
     expect(request).toContain(
       "No busques en la web, no inventes marcas ni uses un mero competidor de la categoría como ejemplo",

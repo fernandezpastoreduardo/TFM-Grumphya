@@ -15,6 +15,7 @@ const LOW_VALUE_METRIC_BASIS =
   "contar cuántas veces alguien se ata los cordones";
 const LOW_VALUE_METRIC_MESSAGE =
   "La idea solo cuenta una acción, pero no define qué problema resuelve ni qué resultado obtiene alguien, así que no ofrece un motivo concreto para empezar o seguir usando la aplicación.";
+const PHONE_LIKE_PRODUCT_EXAMPLE = "+34 600 123 456";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
@@ -219,7 +220,7 @@ describe("validateModelDecision", () => {
     ).toThrowError(new InvalidModelDecisionError("decision_semantics"));
   });
 
-  it("does not show a C10 example when an earlier criterion is the rejection reason", () => {
+  it("does not show a C10 example when an earlier criterion vetoes and C10 also fails", () => {
     const decision = {
       ...createRejectedDecision(),
       evaluated: createRejectedDecision().evaluated.map((criterion) =>
@@ -233,7 +234,12 @@ describe("validateModelDecision", () => {
     ).toThrowError(new InvalidModelDecisionError("decision_semantics"));
   });
 
-  it.each(["https://example.com", "App <script>", "App\nName"])(
+  it.each([
+    "https://example.com",
+    "App <script>",
+    "App\nName",
+    PHONE_LIKE_PRODUCT_EXAMPLE,
+  ])(
     "rejects unsafe existing product example names: %s",
     (existingProductExample) => {
       const decision = {

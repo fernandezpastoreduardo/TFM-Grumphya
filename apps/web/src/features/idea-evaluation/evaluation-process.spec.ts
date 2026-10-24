@@ -18,6 +18,7 @@ const EVALUATION_RESULT: EvaluationProcessResult = {
 const LONG_TONE_RENDERED_MESSAGE = `${"Una explicación clara. ".repeat(13)}Un cierre correcto.`;
 const SAFE_FAILURE_MESSAGE = /no se puede verificar/i;
 const IDEMPOTENCY_KEY = "8a4e1c42-e198-4db3-b4a8-910e25c8b6d1";
+const PHONE_LIKE_PRODUCT_EXAMPLE = "+34 600 123 456";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -128,6 +129,31 @@ describe("evaluationProcess frontend adapter", () => {
           result: {
             ...EVALUATION_RESULT,
             existingProductExample: "https://example.com",
+          },
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toThrow(SAFE_FAILURE_MESSAGE);
+  });
+
+  it("rejects a phone number returned as a known product example", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: {
+            ...EVALUATION_RESULT,
+            status: "RECHAZADA",
+            safeTitle: "Registro deportivo sin propuesta propia",
+            existingProductExample: PHONE_LIKE_PRODUCT_EXAMPLE,
           },
         }),
       }),
