@@ -18,6 +18,8 @@ Nginx publica la web desde `docker/nginx-spa.conf`: `/index.html` usa
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
+El healthcheck del servicio web permite 30 segundos de arranque inicial antes
+de contar fallos, para tolerar la carga fría del contenedor.
 
 La red interna confía en el proxy Caddy por su dirección privada fija. Express usa `TRUST_PROXY=172.31.0.254/32`, la IP de Caddy en la red `backend`; Caddy determina la dirección remota del socket y la API no está expuesta a Internet. Si cambias las subredes o la IP de Caddy en Compose, actualiza esta allowlist. No configures `trust proxy=true` ni confíes en cabeceras reenviadas desde clientes.
 
