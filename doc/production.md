@@ -51,7 +51,7 @@ docker compose --project-name grumphya --env-file .env.production -f compose.pro
 docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml ps
 ```
 
-Este arranque manual construye la web estática, la API y el proxy desde sus Dockerfiles; Caddy usa `docker/Caddy.Dockerfile`, que recompila la versión fijada con parches de Go y actualiza los paquetes Alpine de la imagen final. Espera a PostgreSQL, ejecuta las migraciones y solo entonces inicia la API. Si la migración falla, la API permanece detenida y Compose informa que su dependencia no completó. Revisa el estado con:
+Este arranque manual construye la web estática, la API, PostgreSQL/pgvector y el proxy desde sus Dockerfiles; Caddy usa `docker/Caddy.Dockerfile`, que recompila la versión fijada con parches de Go y actualiza los paquetes Alpine de la imagen final. Espera a PostgreSQL, ejecuta las migraciones y solo entonces inicia la API. Si la migración falla, la API permanece detenida y Compose informa que su dependencia no completó. Revisa el estado con:
 
 ```sh
 docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml logs --tail=100 db migrate api proxy
