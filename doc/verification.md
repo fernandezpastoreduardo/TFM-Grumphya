@@ -340,3 +340,8 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - La plantilla HTML de correo ahora centra su tarjeta mediante tablas con `align="center"`, ancho fluido y máximo de 600 px, para mejorar el centrado en clientes de correo que no aplican de forma consistente los márgenes CSS. El contenido de la tarjeta conserva su alineación propia; la versión de texto plano no cambia.
 - Las comprobaciones E2E añadidas cubren que el perfil no desborde el viewport de 390 px, que «Borrar idea» tenga un objetivo de 40 × 40 px y que el callout de roast use una sola columna en móvil. Son aserciones de geometría/layout; no equivalen a una inspección visual manual en dispositivos reales.
 - La detección de dictado ahora oculta el control en Android incluso si el navegador anuncia la API; se conserva la ruta de escritura manual. El reconocimiento sigue solicitando procesamiento local (`processLocally`) en `es-ES` y no activa una alternativa remota. Esta decisión evita ofrecer dictado en esa plataforma basándose solo en la presencia de la API.
+
+## Corrección de vulnerabilidades de dependencias, 24 de octubre de 2026
+
+- Tras el fallo de `supply-chain` en CI, se corrigieron los avisos de severidad alta de `body-parser` anterior a `2.4.0` y `multer` anterior a `2.5.0`: `pnpm-workspace.yaml` fija los overrides de ambas dependencias en `2.4.0` y `2.5.0`, respectivamente, y `apps/api/package.json` declara `multer` directamente como `^2.5.0`.
+- `pnpm audit --audit-level moderate` terminó sin vulnerabilidades conocidas en el árbol auditado.
