@@ -104,6 +104,25 @@ assert.match(
   "manual Compose builds must also use the hardened Caddy Dockerfile",
 );
 
+const webServiceStart = compose.indexOf("\n  web:");
+const proxyServiceStart = compose.indexOf("\n  proxy:", webServiceStart);
+assert.ok(webServiceStart >= 0 && proxyServiceStart > webServiceStart);
+const webService = compose.slice(webServiceStart, proxyServiceStart);
+const webHealthcheck = webService.match(
+  /healthcheck:([\s\S]*?)\n    networks:/,
+)?.[1];
+assert.ok(webHealthcheck, "production web healthcheck must exist");
+assert.match(
+  webHealthcheck,
+  /start_period:\s*30s/,
+  "the web healthcheck must allow a cold-start grace period",
+);
+assert.match(
+  webHealthcheck,
+  /retries:\s*6/,
+  "the web healthcheck must keep retrying after its warm-up period",
+);
+
 const htmlEntryLocation = readLocationBlock(nginxSpa, "location = /index.html");
 assert.match(
   htmlEntryLocation,

@@ -239,7 +239,9 @@ ALTER TABLE baseline ADD COLUMN note text;'
   fi
   assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after failed deploy'
   assert_eq "$(cat "$TEST_ROOT/state/previous")" "$THIRD_SHA" 'previous state after failed deploy'
-  assert_contains "$DOCKER_LOG" "/releases/$OLD_SHA/compose.production.yaml"
+  [[ -d $TEST_ROOT/releases/$OLD_SHA ]] || fail 'rollback target release was removed'
+  [[ -d $TEST_ROOT/releases/$THIRD_SHA ]] || fail 'previous release was removed during rollback'
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$OLD_SHA/compose.production.yaml up -d --no-build --wait"
   assert_contains "$DOCKER_LOG" "image inspect grumphya-database:$OLD_SHA"
   [[ ! -e $TEST_ROOT/releases/$NEW_SHA ]] || fail 'failed release directory was retained after rollback'
   if grep -Fq "image rm grumphya-api:$OLD_SHA" "$DOCKER_LOG"; then
