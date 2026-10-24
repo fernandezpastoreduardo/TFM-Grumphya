@@ -65,6 +65,7 @@ FROM nginx:1.30-alpine AS web-production
 RUN apk upgrade --no-cache
 COPY docker/nginx-spa.conf /etc/nginx/conf.d/default.conf
 COPY --from=web-build /workspace/apps/web/dist /usr/share/nginx/html
+RUN nginx -t
 EXPOSE 8080
 
 FROM pnpm-base AS production-dependencies

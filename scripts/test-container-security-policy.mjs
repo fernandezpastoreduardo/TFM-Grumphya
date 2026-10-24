@@ -133,7 +133,12 @@ assert.match(htmlEntryLocation, /try_files \$uri =404;/);
 
 const hashedAssetsLocation = readLocationBlock(
   nginxSpa,
-  "location ~* ^/assets/.+[.-][A-Za-z0-9_-]{8,}\\.(?:js|css)$",
+  'location ~* "^/assets/.+[.-][A-Za-z0-9_-]{8,}\\.(?:js|css)$"',
+);
+assert.match(
+  nginxSpa,
+  /location ~\* "[^"\n]*\{8,[^"\n]*" \{/,
+  "Nginx regex locations with quantifier braces must be quoted",
 );
 assert.match(
   hashedAssetsLocation,
