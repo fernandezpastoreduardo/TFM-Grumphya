@@ -66,6 +66,10 @@ test("verifies the registration, activates the simulated purchase and deletes th
   expect(verificationLink).toBeDefined();
   await page.goto(verificationLink!);
   await expect(
+    page.getByRole("heading", { name: "Confirma tu correo" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Confirmar correo" }).click();
+  await expect(
     page.getByRole("heading", { name: "Correo verificado" }),
   ).toBeVisible();
   await page
