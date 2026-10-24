@@ -49,6 +49,7 @@ export type SpeechToTextSession = { stop: () => void };
 
 const SPEECH_LANGUAGE = "es-ES";
 const SPEECH_QUALITY = "dictation";
+const ANDROID_USER_AGENT_PATTERN = /android/i;
 const LOCAL_SPEECH_OPTIONS: SpeechRecognitionOptions = {
   langs: [SPEECH_LANGUAGE],
   processLocally: true,
@@ -57,6 +58,10 @@ const LOCAL_SPEECH_OPTIONS: SpeechRecognitionOptions = {
 const PERMISSION_ERRORS = new Set(["not-allowed", "service-not-allowed"]);
 
 export function isSpeechToTextSupported(): boolean {
+  if (ANDROID_USER_AGENT_PATTERN.test(window.navigator.userAgent)) {
+    return false;
+  }
+
   const speechWindow = window as SpeechRecognitionWindow;
   const Recognition =
     speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;

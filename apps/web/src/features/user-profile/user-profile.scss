@@ -1,5 +1,7 @@
 .profile-page {
   display: grid;
+  min-width: 0;
+  width: 100%;
   gap: 18px;
 }
 
@@ -11,6 +13,8 @@
 .profile-account-card,
 .profile-ideas-card,
 .profile-error-card {
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
   border-radius: 22px;
   padding: clamp(20px, 3vw, 30px);
@@ -115,6 +119,12 @@
     600 clamp(1.5rem, 2.8vw, 2.2rem)/1.1 "Fredoka",
     sans-serif;
   letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.profile-account-heading > div,
+.profile-section-heading > div {
+  min-width: 0;
 }
 
 .profile-avatar {
@@ -512,6 +522,7 @@
   color: #101b20;
   background: #c6edf2;
   box-shadow: 4px 5px 0 #226b701a;
+  overflow-wrap: anywhere;
 }
 
 .profile-plan-falton {

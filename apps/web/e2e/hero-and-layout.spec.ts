@@ -325,6 +325,19 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
     .evaluate((element) => Number.parseFloat(getComputedStyle(element).top));
   expect(mobileCharacterCounterPosition).toBe("absolute");
   expect(mobileNavigationTop).toBeLessThan(35);
+
+  await page.locator("#idea-text").fill("Una idea para vaciar el campo.");
+  const clearButton = page.getByRole("button", { name: /borrar idea/i });
+  await expect(clearButton).toBeVisible();
+  const clearButtonBox = await clearButton.boundingBox();
+  expect(clearButtonBox?.width).toBe(40);
+  expect(clearButtonBox?.height).toBe(40);
+  const dictateButton = page.locator(".idea-dictation-button");
+  if (await dictateButton.count()) {
+    const dictateButtonBox = await dictateButton.boundingBox();
+    expect(clearButtonBox?.width).toBe(dictateButtonBox?.width);
+    expect(clearButtonBox?.height).toBe(dictateButtonBox?.height);
+  }
 });
 
 test("matches section navigation to the theme and layers curtain over content", async ({
@@ -433,7 +446,11 @@ test("uses Grumphya's navigation logo as the site favicon", async ({
     "/assets/grumphya/mascot-isotype.svg",
   );
   expect(response.ok()).toBe(true);
-  expect(await response.text()).toContain("Grumphya, cara del logotipo");
+  const mascotSvg = await response.text();
+  expect(mascotSvg).toContain("Grumphya, cara del logotipo");
+  expect(mascotSvg).toContain('fill="#24c1c6"');
+  expect(mascotSvg).toContain('fill="#6de0d1"');
+  expect(mascotSvg).not.toContain('fill="#77d8c3"');
 });
 
 test("places the roast ranking beside the chat on desktop and below it on mobile", async ({
@@ -467,6 +484,10 @@ test("places the roast ranking beside the chat on desktop and below it on mobile
   expect(Math.abs(mobileRankingBox!.x - mobileChatBox!.x)).toBeLessThanOrEqual(
     1,
   );
+  const mobileCalloutColumns = await page
+    .locator(".roast-aside")
+    .evaluate((element) => getComputedStyle(element).gridTemplateColumns);
+  expect(mobileCalloutColumns.trim().split(/\s+/)).toHaveLength(1);
 });
 
 test("uses the section hero assets with transparent pixels", async ({

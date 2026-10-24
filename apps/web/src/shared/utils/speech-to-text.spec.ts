@@ -36,6 +36,7 @@ function installSpeechRecognitionMock() {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   Reflect.deleteProperty(window, "SpeechRecognition");
   Reflect.deleteProperty(window, "webkitSpeechRecognition");
 });
@@ -74,6 +75,16 @@ describe("isSpeechToTextSupported", () => {
     });
 
     expect(isSpeechToTextSupported()).toBe(true);
+    expect(constructor).not.toHaveBeenCalled();
+  });
+
+  it("hides local dictation on Android where Spanish speech packs are unreliable", () => {
+    const { constructor } = installSpeechRecognitionMock();
+    vi.spyOn(window.navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (Linux; Android 14; Pixel 9) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36",
+    );
+
+    expect(isSpeechToTextSupported()).toBe(false);
     expect(constructor).not.toHaveBeenCalled();
   });
 });
