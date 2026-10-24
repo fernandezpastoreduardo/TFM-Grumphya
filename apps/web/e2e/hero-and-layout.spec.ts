@@ -603,6 +603,27 @@ test("places the roast ranking beside the chat on desktop and below it on mobile
   expect(mobileCalloutColumns.trim().split(/\s+/)).toHaveLength(1);
 });
 
+test("stacks the notable humans callout content on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.route("**/api/best-users", (route) => route.fulfill({ json: [] }));
+  await page.goto("/humanos-notables");
+
+  const callout = page.locator(".human-callout");
+  await expect(callout).toBeVisible();
+  const calloutLayout = await callout.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      columns: style.gridTemplateColumns.trim().split(/\s+/),
+      justifyItems: style.justifyItems,
+    };
+  });
+
+  expect(calloutLayout.columns).toHaveLength(1);
+  expect(calloutLayout.justifyItems).toBe("start");
+});
+
 test("uses the section hero assets with transparent pixels", async ({
   page,
 }) => {
