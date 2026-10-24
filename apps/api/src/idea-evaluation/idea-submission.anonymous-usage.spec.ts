@@ -32,6 +32,7 @@ function createService(searchResult: unknown = { kind: "no-match" }) {
     hasDifferentIdempotentRequest: vi.fn().mockResolvedValue(false),
     getIdempotentMatch: vi.fn().mockResolvedValue(null),
     claimIdempotentContinuation: vi.fn().mockResolvedValue(true),
+    releaseIdempotentContinuation: vi.fn().mockResolvedValue(undefined),
     addToWorstIdeas: vi.fn().mockResolvedValue("idea-id"),
     updateWorstIdea: vi.fn().mockResolvedValue(2),
   } as unknown as WorstIdeasRepository;

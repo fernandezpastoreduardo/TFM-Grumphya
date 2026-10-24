@@ -41,6 +41,7 @@ import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access
         getIdempotentMatch: async () => null,
         hasDifferentIdempotentRequest: async () => false,
         claimIdempotentContinuation: async () => true,
+        releaseIdempotentContinuation: async () => undefined,
         updateWorstIdea: async () => 1,
       },
     },

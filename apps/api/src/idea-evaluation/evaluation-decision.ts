@@ -462,11 +462,14 @@ function isSafeTitle(value: unknown, ideaText: string): value is string {
 
 function isValidExistingProductExample(value: unknown): value is string | null {
   if (value === null) return true;
+  if (typeof value !== "string") return false;
+  const normalizedValue = value.toLowerCase();
   return (
-    typeof value === "string" &&
     value.trim() === value &&
     value.length >= MIN_PRODUCT_EXAMPLE_LENGTH &&
     value.length <= MAX_PRODUCT_EXAMPLE_LENGTH &&
+    normalizedValue !== "null" &&
+    normalizedValue !== "undefined" &&
     SAFE_PRODUCT_EXAMPLE_PATTERN.test(value) &&
     !EMAIL_PATTERN.test(value) &&
     !URL_PATTERN.test(value) &&

@@ -33,6 +33,9 @@ const EVALUATION_TIMEOUT_CODE = "EVALUATION_TIMEOUT";
 const EVALUATION_OUTCOME_UNKNOWN_CODE = "EVALUATION_OUTCOME_UNKNOWN";
 const EVALUATION_OUTCOME_UNKNOWN_MESSAGE =
   "No hemos podido confirmar si la evaluación terminó. Espera a comprobar el resultado antes de volver a gastar un intento.";
+const INVALID_EVALUATION_RESPONSE_CODE = "INVALID_EVALUATION_RESPONSE";
+const INVALID_EVALUATION_RETRY_MESSAGE =
+  "No se ha podido validar esta evaluación. Puedes volver a intentarlo.";
 const ANONYMOUS_QUOTA_EXHAUSTED_CODE = "ANONYMOUS_QUOTA_EXHAUSTED";
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
 const ACTIVE_PLAN_REQUIRED_CODE = "ACTIVE_PLAN_REQUIRED";
@@ -60,6 +63,29 @@ const PUBLIC_EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const PUBLIC_URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PUBLIC_PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
 const PUBLIC_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
+
+export function getPublicExistingProductExample(
+  value: unknown,
+  status: EvaluationStatus,
+): string | undefined {
+  if (
+    status !== "RECHAZADA" ||
+    typeof value !== "string" ||
+    value.trim() !== value ||
+    value.length < MIN_PUBLIC_PRODUCT_EXAMPLE_LENGTH ||
+    value.length > MAX_PUBLIC_PRODUCT_EXAMPLE_LENGTH ||
+    value.toLowerCase() === "null" ||
+    value.toLowerCase() === "undefined" ||
+    !SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN.test(value) ||
+    PUBLIC_EMAIL_PATTERN.test(value) ||
+    PUBLIC_URL_PATTERN.test(value) ||
+    PUBLIC_PHONE_PATTERN.test(value) ||
+    PUBLIC_CONTROL_PATTERN.test(value)
+  ) {
+    return undefined;
+  }
+  return value;
+}
 
 export class EvaluationProcessError extends Error {
   constructor(
@@ -98,7 +124,6 @@ function parseEvaluationResponse(
 ): EvaluationProcessResult | null {
   if (!isRecord(input)) return null;
   const { status, score, headline, message } = input;
-  const existingProductExample = input.existingProductExample;
   if (
     !isEvaluationStatus(status) ||
     !isValidPublicScore(score) ||
@@ -112,24 +137,14 @@ function parseEvaluationResponse(
         ? MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
         : MAX_PUBLIC_MESSAGE_LENGTH) ||
     (status === "IDEA_INSUFICIENTE" && score !== null) ||
-    (status !== "IDEA_INSUFICIENTE" && score === null) ||
-    (existingProductExample !== undefined &&
-      existingProductExample !== null &&
-      status !== "RECHAZADA") ||
-    (existingProductExample !== undefined &&
-      existingProductExample !== null &&
-      (typeof existingProductExample !== "string" ||
-        existingProductExample.trim() !== existingProductExample ||
-        existingProductExample.length < MIN_PUBLIC_PRODUCT_EXAMPLE_LENGTH ||
-        existingProductExample.length > MAX_PUBLIC_PRODUCT_EXAMPLE_LENGTH ||
-        !SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN.test(existingProductExample) ||
-        PUBLIC_EMAIL_PATTERN.test(existingProductExample) ||
-        PUBLIC_URL_PATTERN.test(existingProductExample) ||
-        PUBLIC_PHONE_PATTERN.test(existingProductExample) ||
-        PUBLIC_CONTROL_PATTERN.test(existingProductExample)))
+    (status !== "IDEA_INSUFICIENTE" && score === null)
   ) {
     return null;
   }
+  const existingProductExample = getPublicExistingProductExample(
+    input.existingProductExample,
+    status,
+  );
 
   let safeTitle: string | undefined;
   if (status === "RECHAZADA") {
@@ -149,9 +164,7 @@ function parseEvaluationResponse(
     headline,
     message,
     ...(safeTitle ? { safeTitle } : {}),
-    ...(typeof existingProductExample === "string"
-      ? { existingProductExample }
-      : {}),
+    ...(existingProductExample ? { existingProductExample } : {}),
   };
 }
 
@@ -228,6 +241,12 @@ export async function evaluationProcess(
       throw new EvaluationProcessError(
         EVALUATION_TIMEOUT_CODE,
         EVALUATION_TIMEOUT_MESSAGE,
+      );
+    }
+    if (errorCode === INVALID_EVALUATION_RESPONSE_CODE) {
+      throw new EvaluationProcessError(
+        INVALID_EVALUATION_RESPONSE_CODE,
+        INVALID_EVALUATION_RETRY_MESSAGE,
       );
     }
     if (errorCode === ANONYMOUS_QUOTA_EXHAUSTED_CODE) {

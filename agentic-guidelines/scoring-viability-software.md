@@ -484,7 +484,8 @@ un producto que cubre las mismas funciones esenciales, puedes devolver su
 nombre en `existingProductExample`; no uses un mero competidor de categoría.
 No consultes fuentes externas, no afirmes disponibilidad actual ni añadas
 detalles sin verificar. Si no hay una coincidencia funcional clara, devuelve
-`null`. El ejemplo solo aporta contexto y no modifica la nota ni el veredicto.
+`null` como valor JSON nulo, nunca como la cadena `"null"` o `"undefined"`.
+El ejemplo solo aporta contexto y no modifica la nota ni el veredicto.
 El backend conserva el nombre solo si es texto seguro y C10 es el primer veto
 (`stop_at: C10`); en otro caso lo normaliza a `null` sin invalidar por sí solo
 una decisión que cumpla el resto del contrato.

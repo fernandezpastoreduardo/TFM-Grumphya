@@ -250,12 +250,30 @@ export class IdeaSubmissionService {
       );
       return response;
     } catch (error) {
-      await this.releaseUsage(
-        anonymousVisitorToken,
-        idempotencyHash,
-        reservation,
-      );
+      try {
+        await this.releaseUsage(
+          anonymousVisitorToken,
+          idempotencyHash,
+          reservation,
+        );
+      } finally {
+        await this.releaseContinuationClaim(idempotencyHash, requestHash);
+      }
       throw error;
+    }
+  }
+
+  private async releaseContinuationClaim(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<void> {
+    try {
+      await this.repository.releaseIdempotentContinuation(
+        idempotencyHash,
+        requestHash,
+      );
+    } catch {
+      this.logger.error("IDEA_CONTINUATION_RELEASE_FAILED");
     }
   }
 

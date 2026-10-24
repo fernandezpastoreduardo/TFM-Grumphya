@@ -252,6 +252,9 @@ describe("validateModelDecision", () => {
     "App <script>",
     "App\nName",
     PHONE_LIKE_PRODUCT_EXAMPLE,
+    "null",
+    "NULL",
+    "undefined",
   ])(
     "omits unsafe existing product example names: %s",
     (existingProductExample) => {

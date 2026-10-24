@@ -56,6 +56,10 @@ export interface WorstIdeasRepository {
     idempotencyHash: string,
     requestHash: string,
   ): Promise<boolean>;
+  releaseIdempotentContinuation(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<void>;
   updateWorstIdea(
     ideaId: string,
     idempotencyHash: string,

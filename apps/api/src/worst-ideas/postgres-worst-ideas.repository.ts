@@ -241,6 +241,27 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     });
   }
 
+  async releaseIdempotentContinuation(
+    idempotencyHash: string,
+    requestHash: string,
+  ): Promise<void> {
+    await this.ensureSchema();
+    if (!idempotencyHash.trim())
+      throw new Error("Rejected idea idempotency hash is invalid.");
+    await this.transaction((client) =>
+      client.query(
+        `UPDATE rejected_idea_idempotency
+         SET continue_started_at = NULL
+         WHERE idempotency_hash = $1
+           AND submission_type = 'match'
+           AND request_hash = $2
+           AND expires_at > now()
+           AND continue_started_at IS NOT NULL`,
+        [idempotencyHash, requestHash],
+      ),
+    );
+  }
+
   async updateWorstIdea(
     ideaId: string,
     idempotencyHash: string,

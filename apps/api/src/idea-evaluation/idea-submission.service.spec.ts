@@ -55,6 +55,7 @@ function createDependencies(
     updateWorstIdea: vi.fn().mockResolvedValue(24),
     getIdempotentMatch: vi.fn().mockResolvedValue(null),
     claimIdempotentContinuation: vi.fn().mockResolvedValue(true),
+    releaseIdempotentContinuation: vi.fn().mockResolvedValue(undefined),
     hasDifferentIdempotentRequest: vi.fn().mockResolvedValue(false),
   } as unknown as WorstIdeasRepository;
   const evaluation = {
@@ -602,6 +603,38 @@ describe("IdeaSubmissionService", () => {
       ),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("releases a failed continuation claim so the same request can retry", async () => {
+    const evaluationFailure = new Error("temporary evaluator failure");
+    const { service, repository, evaluation } = createDependencies();
+    vi.mocked(repository.getIdempotentMatch).mockResolvedValue({
+      id: "idea-1",
+      safeTitle: SAFE_TITLE,
+      count: 24,
+    });
+    vi.mocked(evaluation.evaluate)
+      .mockRejectedValueOnce(evaluationFailure)
+      .mockResolvedValueOnce(EVALUATION_RESULT);
+
+    await expect(
+      service.submit(
+        { ...VALID_REQUEST, continueAnyway: true },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toBe(evaluationFailure);
+    expect(repository.releaseIdempotentContinuation).toHaveBeenCalledWith(
+      IDEMPOTENCY_HASH,
+      REQUEST_HASH,
+    );
+
+    await expect(
+      service.submit(
+        { ...VALID_REQUEST, continueAnyway: true },
+        IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toEqual({ status: "evaluated", result: EVALUATION_RESULT });
+    expect(evaluation.evaluate).toHaveBeenCalledTimes(2);
   });
 
   it("rejects malformed payloads and idempotency keys before calling dependencies", async () => {
