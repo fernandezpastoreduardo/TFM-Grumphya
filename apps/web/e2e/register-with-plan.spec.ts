@@ -106,6 +106,23 @@ test("verifies the registration, activates the simulated purchase and deletes th
     page.getByRole("heading", { name: /tus últimas ideas aprobadas/i }),
   ).toBeVisible();
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  const profileViewportOverflow = await page.evaluate(() => {
+    const profilePage = document.querySelector(".profile-page");
+    const profileCards = document.querySelectorAll(
+      ".profile-account-card, .profile-plans-section, .profile-ideas-card",
+    );
+    if (!profilePage) return ["profile page missing"];
+    return [profilePage, ...Array.from(profileCards)]
+      .filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map((element) => element.className);
+  });
+  expect(profileViewportOverflow).toEqual([]);
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 800 });
+
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
   await expect
     .poll(() =>
