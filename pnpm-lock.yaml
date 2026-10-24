@@ -248,10 +248,10 @@ importers:
   apps/web:
     dependencies:
       react:
-        specifier: ^19.1.1
+        specifier: 19.3.0
         version: 19.3.0
       react-dom:
-        specifier: ^19.1.1
+        specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@playwright/test':
