@@ -251,9 +251,7 @@ export function Home() {
                 ☀
               </span>
               <span className="theme-switch-track" aria-hidden="true">
-                <span className="theme-switch-thumb">
-                  {theme === "light" ? "☀" : "☾"}
-                </span>
+                <span className="theme-switch-thumb" />
               </span>
               <span className="theme-switch-moon" aria-hidden="true">
                 ☾
