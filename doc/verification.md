@@ -190,6 +190,12 @@ Diagnóstico persistente de errores de evaluación y última ocurrencia, 22 de o
 - La excepción de respuesta inválida conserva el código público genérico y transporta internamente la categoría cerrada del validador. El filtro global la persiste junto al evento, y el panel muestra el último diagnóstico disponible y la fecha/hora de la ocurrencia más reciente. La persistencia se espera antes de responder para que el fallo no se pierda como escritura en segundo plano.
 - La migración `029_application_error_diagnostics.sql` añade la columna opcional de diagnóstico; los eventos históricos quedan con `NULL`. No se almacena idea, salida del modelo ni mensaje de excepción.
 
+Detalle de errores administrativos, 24 de octubre de 2026:
+
+- La tabla del panel ahora separa grupos por código y diagnóstico; cada denominación abre en una pestaña nueva el evento más reciente de ese grupo. El endpoint de detalle valida el identificador y requiere las guardas de acceso y rol administrador.
+- Para `INVALID_EVALUATION_RESPONSE`, el evento conserva el caso de uso y el texto de idea de hasta 2.000 caracteres en `context_json`. Solo lo devuelve el endpoint administrativo de detalle. No se guarda texto para otras clases de error, ni texto de excepción o respuesta cruda del proveedor. El evento y su contexto se purgan a los 30 días.
+- La migración `031_application_error_context.sql`, los tests de filtro, repositorio, servicio, controlador y UI cubren persistencia, autorización de caso, etiquetas específicas y renderizado seguro del texto. La política de privacidad versión 3 y los términos informan del uso temporal del texto para depuración.
+
 Límites registrados en esa revisión: el rate limit por ruta en memoria es por proceso y no coordina réplicas; antes de producción multiinstancia debe moverse a un almacén compartido o gateway. En aquel momento las cuotas diarias y autenticación/autorización de cuentas estaban pendientes; el alta, login y rutas de perfil protegidas se implementaron después. Esta revisión no fue un pentest ni escaneo dinámico completo.
 
 ## Verificación de `manageUserUnknow`, 15 de octubre de 2026
