@@ -167,7 +167,7 @@ Si el helper informa `new release failed; automatic rollback completed`, la acti
 
 ### Alcance que requiere el VPS real
 
-Se puede probar localmente el workflow, análisis, empaquetado, helper con comandos simulados, checksum, bloqueo de migraciones y rollback simulado. No se ejecutan en esta tarea los pasos a `main`, no se crea ni activa la variable, y no se conecta a ningún VPS. Solo con el servidor y dominio contratados se podrán comprobar el usuario restringido y sudoers, su huella SSH real, disco disponible, firewall/DNS, emisión HTTPS de Caddy, salud pública, latencia de restauración y rollback extremo a extremo.
+CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. No se activa el despliegue desde GitHub ni se conecta a ningún VPS real. Solo con el servidor y dominio contratados se podrán comprobar el usuario restringido y sudoers, su huella SSH real, disco disponible, firewall/DNS, emisión HTTPS pública de Caddy, salud pública, latencia de restauración y rollback extremo a extremo.
 
 Después de que la migración inicial haya terminado, aprovisiona Jappy explícitamente:
 

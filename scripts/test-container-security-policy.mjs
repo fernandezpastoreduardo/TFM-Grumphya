@@ -3,22 +3,33 @@ import { readFile } from "node:fs/promises";
 
 const DEPENDABOT_PATH = ".github/dependabot.yml";
 const CADDY_DOCKERFILE_PATH = "docker/Caddy.Dockerfile";
+const DOCKERFILE_PATH = "Dockerfile";
 const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
+const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
 const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
 const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
 const CADDY_SOURCE_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37";
 const CADDY_X_NET_VERSION = "golang.org/x/net@v0.60.0";
 
-const [dependabot, caddyDockerfile, compose, workflow, nginxSpa] =
-  await Promise.all([
-    readFile(DEPENDABOT_PATH, "utf8"),
-    readFile(CADDY_DOCKERFILE_PATH, "utf8"),
-    readFile(COMPOSE_PATH, "utf8"),
-    readFile(WORKFLOW_PATH, "utf8"),
-    readFile(NGINX_SPA_PATH, "utf8"),
-  ]);
+const [
+  dependabot,
+  caddyDockerfile,
+  dockerfile,
+  compose,
+  workflow,
+  nginxSpa,
+  productionComposeSmoke,
+] = await Promise.all([
+  readFile(DEPENDABOT_PATH, "utf8"),
+  readFile(CADDY_DOCKERFILE_PATH, "utf8"),
+  readFile(DOCKERFILE_PATH, "utf8"),
+  readFile(COMPOSE_PATH, "utf8"),
+  readFile(WORKFLOW_PATH, "utf8"),
+  readFile(NGINX_SPA_PATH, "utf8"),
+  readFile(PRODUCTION_COMPOSE_SMOKE_PATH, "utf8"),
+]);
 
 function readLocationBlock(configuration, location) {
   const locationStart = configuration.indexOf(location);
@@ -121,6 +132,110 @@ assert.match(
   webHealthcheck,
   /retries:\s*6/,
   "the web healthcheck must keep retrying after its warm-up period",
+);
+
+const smokeStepStart = workflow.indexOf(
+  "- name: Smoke test the scanned production images with isolated Compose resources",
+);
+const packageStepStart = workflow.indexOf(
+  "- name: Package the already-scanned release images",
+);
+assert.ok(
+  smokeStepStart > 0 && packageStepStart > smokeStepStart,
+  "CI must smoke test production images after scanning and before packaging",
+);
+assert.ok(
+  workflow
+    .slice(smokeStepStart, packageStepStart)
+    .includes('bash scripts/test-production-compose.sh "${{ github.sha }}"'),
+  "the production Compose smoke must use the exact scanned revision",
+);
+const webImageStageStart = dockerfile.indexOf(
+  "FROM nginx:1.30-alpine AS web-production",
+);
+const webImageStageEnd = dockerfile.indexOf(
+  "FROM pnpm-base AS production-dependencies",
+);
+assert.ok(webImageStageStart >= 0 && webImageStageEnd > webImageStageStart);
+assert.match(
+  dockerfile.slice(webImageStageStart, webImageStageEnd),
+  /RUN nginx -t/,
+  "the static web image must validate its Nginx configuration during build",
+);
+assert.match(
+  productionComposeSmoke,
+  /up --detach --pull never --no-build --wait --wait-timeout 180/,
+  "the Compose smoke must wait for the already-scanned production images without rebuilding or pulling",
+);
+assert.match(
+  productionComposeSmoke,
+  /force-recreate --wait --wait-timeout 180[\s\\]*db migrate api web proxy/,
+  "the Compose smoke must recreate PostgreSQL and app services before checking persistence",
+);
+assert.match(
+  productionComposeSmoke,
+  /com\.grumphya\.ci\.stack/,
+  "the smoke must label its private volumes before cleanup",
+);
+assert.match(
+  productionComposeSmoke,
+  /EDGE_SUBNET="10\.240\./,
+  "the smoke must use a private test subnet instead of production's fixed subnet",
+);
+assert.match(
+  productionComposeSmoke,
+  /BACKEND_SUBNET="10\.241\./,
+  "the smoke must use a private backend subnet instead of production's fixed subnet",
+);
+assert.match(
+  productionComposeSmoke,
+  /HTTP_PORT=\$\(\(18000 \+ NETWORK_SLOT\)\)/,
+  "the smoke must bind HTTP on a test-only host port",
+);
+assert.match(
+  productionComposeSmoke,
+  /HTTPS_PORT=\$\(\(40000 \+ NETWORK_SLOT\)\)/,
+  "the smoke must bind HTTPS on a test-only host port",
+);
+assert.match(
+  productionComposeSmoke,
+  /127\.0\.0\.1:\$HTTP_PORT:80/,
+  "the smoke must expose its HTTP test port only on the loopback interface",
+);
+assert.match(
+  productionComposeSmoke,
+  /127\.0\.0\.1:\$HTTPS_PORT:443/,
+  "the smoke must expose its HTTPS test ports only on the loopback interface",
+);
+assert.match(
+  productionComposeSmoke,
+  /docker inspect --format '\{\{json \.NetworkSettings\.Ports\}\}'/,
+  "the smoke must verify internal services do not publish host ports",
+);
+assert.match(
+  productionComposeSmoke,
+  /assert_not_published web/,
+  "the static web service must not publish a host port",
+);
+assert.match(
+  productionComposeSmoke,
+  /assert_proxy_ports[\s\S]*?"80\/tcp"[\s\S]*?"443\/tcp"[\s\S]*?"443\/udp"/,
+  "the proxy must be the only published service and expose only HTTP/HTTPS",
+);
+assert.match(
+  productionComposeSmoke,
+  /HostIp,\s*"127\.0\.0\.1"/,
+  "the smoke must verify that every test-only proxy binding is loopback-only",
+);
+assert.match(
+  productionComposeSmoke,
+  /permissionsPolicy[\s\S]*?microphone=\\\(self\\\)[\s\S]*?on-device-speech-recognition=\\\(self\\\)/,
+  "the HTTPS smoke must preserve the voice dictation permissions policy",
+);
+assert.doesNotMatch(
+  productionComposeSmoke,
+  /\bdown\s+-v\b|volume\s+prune/,
+  "the smoke must not use broad volume deletion commands",
 );
 
 const htmlEntryLocation = readLocationBlock(nginxSpa, "location = /index.html");
