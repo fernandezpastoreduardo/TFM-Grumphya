@@ -135,6 +135,8 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - name: Smoke test the scanned production images with isolated Compose resources
+        run: bash scripts/test-production-compose.sh "${{ github.sha }}"
       - name: Package the already-scanned release images
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         run: |
