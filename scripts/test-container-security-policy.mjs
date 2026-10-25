@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { runInNewContext } from "node:vm";
 
 const DEPENDABOT_PATH = ".github/dependabot.yml";
 const CADDY_DOCKERFILE_PATH = "docker/Caddy.Dockerfile";
@@ -219,8 +220,49 @@ assert.match(
 );
 assert.match(
   productionComposeSmoke,
-  /assert_proxy_ports[\s\S]*?"80\/tcp"[\s\S]*?"443\/tcp"[\s\S]*?"443\/udp"/,
+  /assert_proxy_ports[\s\S]*?const expected = \{[\s\S]*?"80\/tcp"[\s\S]*?"443\/tcp"[\s\S]*?"443\/udp"[\s\S]*?assert\.deepEqual\(publishedPorts, Object\.keys\(expected\)\.sort\(\)\)/,
   "the proxy must be the only published service and expose only HTTP/HTTPS",
+);
+assert.match(
+  productionComposeSmoke,
+  /const publishedPorts = Object\.entries\(ports\)[\s\S]*?\.filter\(\(\[, bindings\]\) => Array\.isArray\(bindings\) && bindings\.length > 0\)[\s\S]*?\.map\(\(\[containerPort\]\) => containerPort\)/,
+  "the proxy port check must ignore image-exposed ports without host bindings",
+);
+const publishedPortsLogic = productionComposeSmoke.match(
+  /const publishedPorts = Object\.entries\(ports\)[\s\S]*?\.sort\(\);/,
+);
+assert.ok(
+  publishedPortsLogic,
+  "the smoke must identify ports bound to the host",
+);
+const getPublishedPorts = (ports) =>
+  Array.from(
+    runInNewContext(`${publishedPortsLogic[0]} publishedPorts`, { ports }),
+  );
+const expectedPublishedPorts = ["443/tcp", "443/udp", "80/tcp"];
+assert.deepEqual(
+  Array.from(
+    getPublishedPorts({
+      "80/tcp": [{ HostIp: "127.0.0.1", HostPort: "18001" }],
+      "443/tcp": [{ HostIp: "127.0.0.1", HostPort: "40001" }],
+      "443/udp": [{ HostIp: "127.0.0.1", HostPort: "40001" }],
+      "2019/tcp": null,
+    }),
+  ),
+  expectedPublishedPorts,
+  "Caddy's exposed but unpublished admin port must not count as a host binding",
+);
+assert.deepEqual(
+  Array.from(
+    getPublishedPorts({
+      "80/tcp": [{ HostIp: "127.0.0.1", HostPort: "18001" }],
+      "443/tcp": [{ HostIp: "127.0.0.1", HostPort: "40001" }],
+      "443/udp": [{ HostIp: "127.0.0.1", HostPort: "40001" }],
+      "2019/tcp": [{ HostIp: "0.0.0.0", HostPort: "2019" }],
+    }),
+  ),
+  [...expectedPublishedPorts, "2019/tcp"].sort(),
+  "the smoke must detect Caddy's admin port if it is published to the host",
 );
 assert.match(
   productionComposeSmoke,

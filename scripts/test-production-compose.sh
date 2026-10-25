@@ -204,7 +204,11 @@ const expected = {
   "443/tcp": process.argv[4],
   "443/udp": process.argv[4],
 };
-assert.deepEqual(Object.keys(ports).sort(), Object.keys(expected).sort());
+const publishedPorts = Object.entries(ports)
+  .filter(([, bindings]) => Array.isArray(bindings) && bindings.length > 0)
+  .map(([containerPort]) => containerPort)
+  .sort();
+assert.deepEqual(publishedPorts, Object.keys(expected).sort());
 for (const [containerPort, hostPort] of Object.entries(expected)) {
   assert.equal(ports[containerPort]?.length, 1);
   assert.equal(ports[containerPort][0].HostPort, hostPort);
