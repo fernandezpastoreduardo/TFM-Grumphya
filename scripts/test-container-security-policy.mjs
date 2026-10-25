@@ -237,6 +237,33 @@ assert.doesNotMatch(
   /\bdown\s+-v\b|volume\s+prune/,
   "the smoke must not use broad volume deletion commands",
 );
+assert.match(
+  productionComposeSmoke,
+  /if \[\[ \$label == "\$STACK_ID" \]\]; then[\s\S]*?docker volume rm "\$volume"/,
+  "cleanup must delete a volume only after confirming it belongs to this smoke run",
+);
+assert.match(
+  productionComposeSmoke,
+  /for volume in[\s\S]*?"\$STACK_ID-postgres"[\s\S]*?"\$STACK_ID-avatars"[\s\S]*?"\$STACK_ID-caddy-data"[\s\S]*?"\$STACK_ID-caddy-config"/,
+  "cleanup must restrict volume deletion to the four explicitly named smoke volumes",
+);
+assert.match(
+  productionComposeSmoke,
+  /if \[\[ \$MODE == --validate-only \]\]; then[\s\S]*?config --quiet[\s\S]*?exit 0/,
+  "validate-only mode must validate the generated Compose config without starting containers",
+);
+const validateOnlyBlock = productionComposeSmoke.match(
+  /if \[\[ \$MODE == --validate-only \]\]; then([\s\S]*?)\nfi/,
+)?.[1];
+assert.ok(
+  validateOnlyBlock,
+  "validate-only mode must have a bounded control-flow block",
+);
+assert.doesNotMatch(
+  validateOnlyBlock,
+  /"\$\{compose\[@\]\}"\s+(up|down|start|stop|rm)\b/,
+  "validate-only mode must not start or stop Compose services",
+);
 
 const htmlEntryLocation = readLocationBlock(nginxSpa, "location = /index.html");
 assert.match(
