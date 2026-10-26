@@ -445,6 +445,27 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(pool.client.queries.at(-1)?.sql).toBe("COMMIT");
   });
 
+  it("reconciles a stale all-time count with the authoritative rejected-idea count", async () => {
+    const pool = new FakePgPool();
+    pool.client.currentCount = 20;
+    const repository = makeRepository(pool);
+
+    await expect(
+      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+    ).resolves.toBe(21);
+
+    const allTimeUpdate = pool.client.queries.find(({ sql }) =>
+      sql.includes("UPDATE rejected_idea_all_time_counts"),
+    );
+    const usesAuthoritativeCount =
+      /GREATEST\(aggregate\.submission_count \+ 1, idea\.count\)/i.test(
+        allTimeUpdate?.sql ?? "",
+      ) || allTimeUpdate?.values?.includes(21);
+    expect(usesAuthoritativeCount).toBe(true);
+    expect(allTimeUpdate?.values).toContain(IDEA_ID);
+    expect(pool.client.queries.at(-1)?.sql).toBe("COMMIT");
+  });
+
   it("rolls back a repeated rejection if its all-time aggregate is missing", async () => {
     const pool = new FakePgPool();
     pool.client.returnNoAllTimeUpdate = true;

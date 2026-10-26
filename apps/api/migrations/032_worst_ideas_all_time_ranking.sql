@@ -1,3 +1,4 @@
+-- deployment-rollback-compatible: true
 -- Retain only a generic safe title and aggregate count while the idea is active.
 CREATE TABLE IF NOT EXISTS rejected_idea_all_time_counts (
   rejected_idea_id uuid PRIMARY KEY,

@@ -79,6 +79,14 @@ describe("controlled database migrations", () => {
     expect(migrationSql).toContain("last_received_at timestamptz NOT NULL");
     expect(migrationSql).toContain("SELECT id, safe_title, count");
     expect(migrationSql).toContain("FROM rejected_ideas");
+    expect(migrationSql).toContain("ON CONFLICT (rejected_idea_id) DO UPDATE");
+    expect(migrationSql).toContain(
+      "GREATEST(rejected_idea_all_time_counts.submission_count, EXCLUDED.submission_count)",
+    );
+    expect(migrationSql).toContain(
+      "GREATEST(rejected_idea_all_time_counts.last_received_at, EXCLUDED.last_received_at)",
+    );
+    expect(migrationSql).not.toMatch(/original_idea|idea_text|author|email/i);
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["032_worst_ideas_all_time_ranking"],

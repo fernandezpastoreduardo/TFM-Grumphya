@@ -449,10 +449,12 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     ideaId: string,
   ): Promise<void> {
     const result = await client.query(
-      `UPDATE rejected_idea_all_time_counts
-       SET submission_count = submission_count + 1,
+      `UPDATE rejected_idea_all_time_counts AS aggregate
+       SET submission_count = GREATEST(aggregate.submission_count + 1, idea.count),
            last_received_at = now()
-       WHERE rejected_idea_id = $1`,
+       FROM rejected_ideas AS idea
+       WHERE aggregate.rejected_idea_id = $1
+         AND idea.id = aggregate.rejected_idea_id`,
       [ideaId],
     );
     if (result.rowCount !== 1)
