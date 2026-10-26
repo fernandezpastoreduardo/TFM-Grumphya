@@ -564,23 +564,23 @@ test("uses Grumphya's navigation logo as the site favicon", async ({
 }) => {
   await page.goto("/precios");
   const favicon = page.locator('link[rel="icon"]');
+  await expect(favicon).toHaveAttribute("type", "image/png");
   await expect(favicon).toHaveAttribute(
     "href",
-    "/assets/grumphya/mascot-isotype.svg",
+    "/assets/grumphya/mascot-isotype.png",
   );
   const navigationLogo = await page
     .locator(".brand-mark")
     .evaluate((element) => getComputedStyle(element).backgroundImage);
-  expect(navigationLogo).toContain("/assets/grumphya/mascot-isotype.svg");
+  expect(navigationLogo).toContain("/assets/grumphya/mascot-isotype.png");
   const response = await page.request.get(
-    "/assets/grumphya/mascot-isotype.svg",
+    "/assets/grumphya/mascot-isotype.png",
   );
   expect(response.ok()).toBe(true);
-  const mascotSvg = await response.text();
-  expect(mascotSvg).toContain("Grumphya, cara del logotipo");
-  expect(mascotSvg).toContain('fill="#24c1c6"');
-  expect(mascotSvg).toContain('fill="#6de0d1"');
-  expect(mascotSvg).not.toContain('fill="#77d8c3"');
+  expect(response.headers()["content-type"]).toContain("image/png");
+  expect(Array.from((await response.body()).subarray(0, 8))).toEqual([
+    137, 80, 78, 71, 13, 10, 26, 10,
+  ]);
 });
 
 test("places the roast ranking beside the chat on desktop and below it on mobile", async ({
