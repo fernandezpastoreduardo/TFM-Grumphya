@@ -71,12 +71,12 @@ comandos de cada entorno.
   más reciente del grupo y abre el detalle en otra pestaña. El detalle muestra
   estado HTTP, fecha, caso de uso y diagnóstico; eventos históricos sin
   contexto indican que no se guardó información de entrada.
-- Solo los errores `INVALID_EVALUATION_RESPONSE` guardan el texto enviado al
-  evaluador (máximo 2.000 caracteres) en `context_json`, para diagnosticar las
-  validaciones que rechazaron la respuesta. El detalle solo está disponible
+- Los errores 5xx de `POST /api/evaluation-process` pueden guardar en
+  `context_json` hasta 2.000 caracteres del texto enviado, para diagnosticar
+  fallos como errores del proveedor, timeouts o respuestas no válidas. El detalle solo está disponible
   tras autenticación y comprobación del rol admin. El texto no se incluye en
   logs ni se comparte con la vista agregada; se elimina con el evento a los 30
-  días. El resto de errores no guarda payloads, rutas, credenciales ni mensajes
+  días. Otros errores no guardan payloads, rutas, credenciales ni mensajes
   de excepción, y nunca se persiste la respuesta cruda del proveedor. La
   migración `029` añade la categoría opcional y `031` el contexto acotado. Los
   eventos se purgan a los 30 días y las métricas de IA a los 12 meses mediante
