@@ -70,6 +70,20 @@ class InvalidEvaluationResponseException extends ServiceUnavailableException {
   }
 }
 
+class EvaluationFailureException extends ServiceUnavailableException {
+  readonly applicationErrorDiagnostic: string;
+  readonly applicationErrorContext: {
+    useCase: "idea_evaluation";
+    inputText: string;
+  };
+
+  constructor(diagnosticCode: string, inputText: string) {
+    super(EVALUATOR_UNAVAILABLE_RESPONSE);
+    this.applicationErrorDiagnostic = diagnosticCode;
+    this.applicationErrorContext = { useCase: "idea_evaluation", inputText };
+  }
+}
+
 class EvaluationTimeoutError extends Error {
   constructor() {
     super("Evaluation timed out.");
@@ -200,7 +214,7 @@ async function evaluateAndValidate(
     } catch (error) {
       if (
         !(error instanceof InvalidModelDecisionError) ||
-        error.validationCode !== "decision_semantics" ||
+        !error.validationCode.startsWith("semantic_") ||
         attempt === MAX_SEMANTIC_RETRIES
       ) {
         throw error;
@@ -209,7 +223,7 @@ async function evaluateAndValidate(
     }
   }
 
-  throw new InvalidModelDecisionError("decision_semantics");
+  throw new InvalidModelDecisionError("semantic_rejected_criteria_incomplete");
 }
 
 @Injectable()
@@ -235,7 +249,10 @@ export class EvaluationProcessService {
     }
 
     if (!this.evaluationPort) {
-      throw new ServiceUnavailableException(EVALUATOR_UNAVAILABLE_RESPONSE);
+      throw new EvaluationFailureException(
+        "evaluator_not_configured",
+        request.ideaText,
+      );
     }
 
     try {
@@ -249,7 +266,17 @@ export class EvaluationProcessService {
     } catch (error) {
       if (error instanceof EvaluationTimeoutError) {
         this.logger.warn(EVALUATION_TIMEOUT_RESPONSE.code);
-        throw new GatewayTimeoutException(EVALUATION_TIMEOUT_RESPONSE);
+        const timeout = new GatewayTimeoutException(
+          EVALUATION_TIMEOUT_RESPONSE,
+        );
+        Object.assign(timeout, {
+          applicationErrorDiagnostic: "evaluation_timeout",
+          applicationErrorContext: {
+            useCase: "idea_evaluation",
+            inputText: request.ideaText,
+          },
+        });
+        throw timeout;
       }
       if (error instanceof InvalidModelDecisionError) {
         this.logger.error(
@@ -262,10 +289,16 @@ export class EvaluationProcessService {
       }
       if (error instanceof OpenAiEvaluationFailure) {
         this.logger.error(error.code);
-        throw new ServiceUnavailableException(EVALUATOR_UNAVAILABLE_RESPONSE);
+        throw new EvaluationFailureException(
+          error.code.toLowerCase(),
+          request.ideaText,
+        );
       }
       this.logger.error(EVALUATOR_UNAVAILABLE_RESPONSE.code);
-      throw new ServiceUnavailableException(EVALUATOR_UNAVAILABLE_RESPONSE);
+      throw new EvaluationFailureException(
+        "unexpected_evaluation_failure",
+        request.ideaText,
+      );
     }
   }
 }

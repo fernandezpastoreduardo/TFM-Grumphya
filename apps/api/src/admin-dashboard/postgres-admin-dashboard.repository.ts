@@ -416,11 +416,7 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
     if (!Number.isInteger(statusCode) || statusCode < 400 || statusCode > 599)
       return;
     const applicationErrorContext =
-      normalizedCode === "INVALID_EVALUATION_RESPONSE" &&
-      statusCode === 503 &&
-      normalizedDiagnosticCode !== null
-        ? parseApplicationErrorContext(context)
-        : null;
+      statusCode >= 500 ? parseApplicationErrorContext(context) : null;
     await this.pool.query(
       `INSERT INTO application_error_events
          (error_code,status_code,diagnostic_code,context_json)

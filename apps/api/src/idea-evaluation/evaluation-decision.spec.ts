@@ -639,7 +639,7 @@ describe("validateModelDecision", () => {
     ["decision_fields", { ...createCompleteDecision(), stop_at: "C01" }],
     ["visible_message", { ...createCompleteDecision(), message: "Muy corto." }],
     [
-      "decision_semantics",
+      "semantic_rejected_criteria_incomplete",
       {
         ...createRejectedDecision(),
         evaluated: createRejectedDecision().evaluated.map((item, index) =>
@@ -662,6 +662,84 @@ describe("validateModelDecision", () => {
       expect(thrown).toBeInstanceOf(InvalidModelDecisionError);
       expect(thrown).toHaveProperty("validationCode", expectedCode);
       expect(String(thrown)).not.toContain(IDEA_TEXT);
+    },
+  );
+
+  it.each([
+    [
+      "semantic_safe_title_invalid",
+      { ...createRejectedDecision(), safeTitle: "" },
+    ],
+    [
+      "semantic_rejected_without_failed_criterion",
+      {
+        ...createRejectedDecision(),
+        evaluated: createRejectedDecision().evaluated.map((item) => ({
+          ...item,
+          score: item.state === "PUNTUADO" ? 50 : item.score,
+        })),
+      },
+    ],
+    [
+      "semantic_rejection_stop_at_mismatch",
+      {
+        ...createRejectedDecision(),
+        stop_at: "C02",
+        reason_code: "PELIGRO_ESTRUCTURAL",
+      },
+    ],
+    [
+      "semantic_rejection_reason_code_mismatch",
+      { ...createRejectedDecision(), reason_code: "PELIGRO_ESTRUCTURAL" },
+    ],
+    [
+      "semantic_rejection_basis_not_literal",
+      { ...createRejectedDecision(), basis: "frase que no aparece" },
+    ],
+    [
+      "semantic_non_rejected_has_rejection_fields",
+      {
+        ...createCompleteDecision(),
+        stop_at: "C01",
+        reason_code: "PRIVACIDAD_ESTRUCTURAL",
+        basis: IDEA_TEXT,
+      },
+    ],
+    [
+      "semantic_insufficient_has_criteria",
+      {
+        ...createInsufficientDecision(),
+        evaluated: createCompleteDecision().evaluated,
+      },
+    ],
+    [
+      "semantic_passing_criteria_incomplete",
+      {
+        ...createCompleteDecision(),
+        evaluated: createCompleteDecision().evaluated.slice(0, 9),
+      },
+    ],
+    [
+      "semantic_passing_failed_criterion",
+      {
+        ...createCompleteDecision(),
+        evaluated: createCompleteDecision().evaluated.map((item, index) =>
+          index === 0 ? { ...item, score: 14 } : item,
+        ),
+      },
+    ],
+  ] as const)(
+    "reports the precise semantic diagnostic %s",
+    (code, decision) => {
+      let thrown: unknown;
+      try {
+        validateModelDecision(decision, IDEA_TEXT);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(InvalidModelDecisionError);
+      expect(thrown).toHaveProperty("validationCode", code);
     },
   );
 

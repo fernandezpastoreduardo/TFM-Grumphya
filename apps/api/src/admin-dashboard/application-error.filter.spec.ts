@@ -100,4 +100,56 @@ describe("ApplicationErrorFilter", () => {
       undefined,
     );
   });
+
+  it("captures the idea text for server failures on the evaluation endpoint", async () => {
+    const request = {
+      method: "POST",
+      url: "/api/evaluation-process",
+      body: {
+        ideaText: "Una app para avisar si el purificador necesita recambio",
+      },
+    };
+    const { filter, repository } = createFilter();
+    const host = {
+      getArgByIndex: (index: number) =>
+        index === 0 ? request : ERROR_RESPONSE,
+    } as unknown as ArgumentsHost;
+
+    await filter.catch(
+      new HttpException({ code: "EVALUATOR_UNAVAILABLE" }, 503),
+      host,
+    );
+
+    expect(repository.recordApplicationError).toHaveBeenCalledWith(
+      "EVALUATOR_UNAVAILABLE",
+      503,
+      undefined,
+      {
+        useCase: "idea_evaluation",
+        inputText: "Una app para avisar si el purificador necesita recambio",
+      },
+    );
+  });
+
+  it("does not capture idea text from another route", async () => {
+    const request = {
+      method: "POST",
+      url: "/api/roast",
+      body: { ideaText: "texto privado" },
+    };
+    const { filter, repository } = createFilter();
+    const host = {
+      getArgByIndex: (index: number) =>
+        index === 0 ? request : ERROR_RESPONSE,
+    } as unknown as ArgumentsHost;
+
+    await filter.catch(new HttpException({ code: "HTTP_503" }, 503), host);
+
+    expect(repository.recordApplicationError).toHaveBeenCalledWith(
+      "HTTP_503",
+      503,
+      undefined,
+      undefined,
+    );
+  });
 });

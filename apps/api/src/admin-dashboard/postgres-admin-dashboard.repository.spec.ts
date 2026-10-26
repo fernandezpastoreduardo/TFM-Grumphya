@@ -155,43 +155,73 @@ describe("PostgresAdminDashboardRepository", () => {
     );
   });
 
-  it.each([
-    {
-      errorCode: "HTTP_500",
-      statusCode: 503,
-      diagnosticCode: "decision_semantics",
-    },
-    {
-      errorCode: "INVALID_EVALUATION_RESPONSE",
-      statusCode: 500,
-      diagnosticCode: "decision_semantics",
-    },
-    {
-      errorCode: "INVALID_EVALUATION_RESPONSE",
-      statusCode: 503,
-      diagnosticCode: undefined,
-    },
-  ])(
-    "does not persist idea context without a classified evaluation failure: %o",
-    async ({ errorCode, statusCode, diagnosticCode }) => {
-      const query = vi.fn().mockResolvedValue({ rowCount: 1 });
-      const repository = new PostgresAdminDashboardRepository({
-        query,
-      } as unknown as Pool);
+  it("stores context for provider and timeout evaluation failures", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+    const context = {
+      useCase: "idea_evaluation" as const,
+      inputText: "Una app para conectar un purificador de aire",
+    };
 
-      await repository.recordApplicationError(
-        errorCode,
-        statusCode,
-        diagnosticCode,
-        { useCase: "idea_evaluation", inputText: "private idea" },
-      );
+    await repository.recordApplicationError(
+      "EVALUATOR_UNAVAILABLE",
+      503,
+      "openai_http_429",
+      context,
+    );
 
-      expect(query).toHaveBeenCalledWith(
-        expect.stringContaining("context_json"),
-        [errorCode, statusCode, diagnosticCode ?? null, null],
-      );
-    },
-  );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("context_json"),
+      [
+        "EVALUATOR_UNAVAILABLE",
+        503,
+        "openai_http_429",
+        JSON.stringify(context),
+      ],
+    );
+  });
+
+  it("stores bounded evaluation context for any 5xx, even without a classified code", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+    const context = {
+      useCase: "idea_evaluation" as const,
+      inputText: "private idea",
+    };
+
+    await repository.recordApplicationError(
+      "HTTP_503",
+      503,
+      undefined,
+      context,
+    );
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("context_json"),
+      ["HTTP_503", 503, null, JSON.stringify(context)],
+    );
+  });
+
+  it("does not store evaluation context for client errors", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await repository.recordApplicationError("HTTP_400", 400, undefined, {
+      useCase: "idea_evaluation",
+      inputText: "private idea",
+    });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("context_json"),
+      ["HTTP_400", 400, null, null],
+    );
+  });
 
   it("returns a single admin error event with its safe context", async () => {
     const occurredAt = new Date("2026-10-24T10:30:00.000Z");

@@ -72,11 +72,11 @@ export function PrivacyPolicy() {
             número de recepciones solo a ti.
           </li>
           <li>
-            <strong>Diagnóstico de errores de evaluación:</strong> si el
-            evaluador devuelve una respuesta que el servidor no puede
-            interpretar, el texto de esa idea puede conservarse temporalmente
-            junto al error para investigarlo. Solo las cuentas administradoras
-            pueden consultar ese detalle y se elimina a los 30 días.
+            <strong>Diagnóstico de errores de evaluación:</strong> si se produce
+            un error del servidor al evaluar una idea, el texto enviado puede
+            conservarse temporalmente junto al diagnóstico para investigarlo.
+            Solo las cuentas administradoras pueden consultar ese detalle y se
+            elimina a los 30 días.
           </li>
           <li>
             <strong>Rankings:</strong> el ranking educativo de ideas rechazadas

@@ -147,7 +147,7 @@ export function AdminErrorDetail({ eventId }: { eventId: string }) {
         </div>
         {detail.diagnosticCode && (
           <div>
-            <dt>Validación interna</dt>
+            <dt>Diagnóstico interno</dt>
             <dd>
               <code>{detail.diagnosticCode}</code>
             </dd>
