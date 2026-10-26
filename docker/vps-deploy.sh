@@ -422,6 +422,7 @@ deploy() {
   [[ $actual_bytes == "$payload_bytes" ]] || die 'deployment bundle size does not match preflight'
   actual_hash=$(sha256sum "$bundle_dir" | awk '{print $1}')
   [[ $actual_hash == "$expected_hash" ]] || die 'deployment bundle SHA-256 verification failed'
+  log "release bundle received and SHA-256 verified for $sha ($actual_bytes bytes)"
   validate_bundle_listing "$bundle_dir"
   [[ ! -e $release_path ]] || die 'release directory already exists'
   mkdir -m 700 "$candidate_dir"
@@ -434,7 +435,10 @@ deploy() {
   fi
 
   compose_for "$candidate_dir" config --quiet >/dev/null || die 'candidate production Compose configuration is invalid'
+  log "release contents and rollback compatibility validated for $sha"
+  log "loading scanned release images for $sha"
   load_release_images "$candidate_dir" "$sha"
+  log "scanned release images loaded for $sha"
   mv "$candidate_dir" "$release_path"
   candidate_dir=$release_path
 
@@ -443,6 +447,7 @@ deploy() {
   write_state previous "$previous"
   ROLLOUT_IN_PROGRESS=1
   trap 'deploy_exit_recovery $?' EXIT
+  log "starting atomic Compose rollout for $sha"
   if compose_for "$candidate_dir" up -d --no-build --wait >/dev/null; then
     write_state current "$sha"
     clear_pending_state

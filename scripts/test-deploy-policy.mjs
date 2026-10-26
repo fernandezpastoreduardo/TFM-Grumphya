@@ -46,10 +46,14 @@ assert.doesNotMatch(
 assert.match(dependencyAuditJob, /pnpm audit --audit-level moderate/);
 assert.match(dependencyAuditJob, /pnpm audit --prod --audit-level high/);
 const deploymentStepStart = workflow.indexOf(
-  "      - name: Deploy and verify, rolling back on failed public health checks",
+  "      - name: Preflight production deployment",
   releaseJobStart,
 );
-assert.notEqual(deploymentStepStart, -1, "production deploy step must exist");
+assert.notEqual(
+  deploymentStepStart,
+  -1,
+  "production preflight step must exist",
+);
 const deploymentStepEnd = workflow.indexOf(
   "\n  deploy-production:",
   deploymentStepStart,
@@ -96,8 +100,33 @@ for (const jobName of [
 assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e, dependency-audit\]/);
 assert.match(
   releaseJob,
-  /docker compose --parallel 4 --file compose\.production\.yaml build --pull api web db proxy/,
-  "production images must build concurrently through Compose",
+  /docker compose --builder "\$BUILDER" --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
+  "production images must build concurrently through the configured Buildx builder",
+);
+assert.match(
+  releaseJob,
+  /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4\.3\.0/,
+  "production builds must use the pinned Buildx setup action",
+);
+assert.match(
+  releaseJob,
+  /crazy-max\/ghaction-github-runtime@04d248b84655b509d8c44dc1d6f990c879747487 # v4\.0\.0/,
+  "BuildKit must receive the GitHub Actions cache runtime",
+);
+assert.match(
+  releaseJob,
+  /services:\s*\n\s+proxy:\s*\n\s+build:\s*\n\s+cache_from:[\s\S]*?type=gha,scope=grumphya-caddy[\s\S]*?cache_to:[\s\S]*?type=gha,scope=grumphya-caddy,mode=max,ignore-error=true/,
+  "only the slow Caddy build should use a non-blocking persistent BuildKit cache",
+);
+assert.match(
+  releaseJob,
+  /--file compose\.production\.yaml[\s\S]*?--file "\$RUNNER_TEMP\/compose\.build-cache\.yaml"/,
+  "the BuildKit cache must be applied as a CI-only Compose override",
+);
+assert.match(
+  releaseJob,
+  /name: Clear temporary BuildKit cache credentials\n\s+if: always\(\)[\s\S]*?ACTIONS_RUNTIME_TOKEN=/,
+  "BuildKit cache credentials must be cleared before later supply-chain steps",
 );
 assert.doesNotMatch(
   workflow,
@@ -343,7 +372,7 @@ assert.match(
 );
 assert.match(
   workflow,
-  /Build images while downloading the Trivy vulnerability database[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?2>&1 &\n[\s\S]*?docker compose --parallel 4 --file compose\.production\.yaml build --pull api web db proxy/,
+  /Build images while downloading the Trivy vulnerability database[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?2>&1 &\n[\s\S]*?docker compose --builder "\$BUILDER" --parallel 4[\s\S]*?build --pull api web db proxy/,
   "Docker image builds and vulnerability database download must overlap",
 );
 const trivyDatabaseDownloadStart = workflow.indexOf(
@@ -362,7 +391,9 @@ const databaseDownloadWait = trivyDatabaseBuildStep.indexOf(
 assert.ok(databaseDownloadWait >= 0, "Trivy database download must be awaited");
 assert.ok(
   databaseDownloadWait >
-    trivyDatabaseBuildStep.indexOf("docker compose --parallel 4"),
+    trivyDatabaseBuildStep.indexOf(
+      'docker compose --builder "$BUILDER" --parallel 4',
+    ),
   "the database download should overlap image builds",
 );
 assert.match(
@@ -381,15 +412,24 @@ assert.doesNotMatch(
   "production scans must not download the unnecessary Java index database",
 );
 
-const packageStart = workflow.indexOf(
-  "- name: Package the already-scanned release images",
+const saveImagesStart = workflow.indexOf("- name: Save scanned release images");
+const assembleBundleStart = workflow.indexOf(
+  "- name: Assemble production release bundle",
 );
-const packageEnd = workflow.indexOf("      - name:", packageStart + 1);
-const packageStep = workflow.slice(
-  packageStart,
-  packageEnd === -1 ? undefined : packageEnd,
+const preflightStart = workflow.indexOf(
+  "- name: Preflight production deployment",
 );
-assert.ok(packageStart >= 0, "release package step must exist");
+assert.ok(saveImagesStart >= 0, "release image save step must exist");
+assert.ok(
+  assembleBundleStart > saveImagesStart,
+  "bundle assembly must follow image saving",
+);
+assert.ok(
+  preflightStart > assembleBundleStart,
+  "deployment preflight must follow bundle assembly",
+);
+const saveImagesStep = workflow.slice(saveImagesStart, assembleBundleStart);
+const assembleBundleStep = workflow.slice(assembleBundleStart, preflightStart);
 for (const imageName of [
   "grumphya-api",
   "grumphya-web",
@@ -397,20 +437,69 @@ for (const imageName of [
   "grumphya-proxy",
 ]) {
   assert.ok(
-    packageStep.includes(`${imageName}:${shaTag}`),
-    `release bundle must contain the scanned ${imageName} image for this SHA`,
+    saveImagesStep.includes(`${imageName}:${shaTag}`),
+    `release image archive must contain the scanned ${imageName} image for this SHA`,
   );
 }
 assert.ok(
-  packageStep.includes(`DEPLOY_SHA=${shaTag}`),
+  assembleBundleStep.includes(`DEPLOY_SHA=${shaTag}`),
   "release metadata must be bound to the same commit SHA as scanned images",
 );
-for (const guard of REQUIRED_DEPLOY_GUARDS.filter(
-  (guard) => !guard.startsWith("needs."),
-)) {
+for (const [stepName, step] of [
+  ["image save", saveImagesStep],
+  ["bundle assembly", assembleBundleStep],
+]) {
+  for (const guard of REQUIRED_DEPLOY_GUARDS) {
+    assert.ok(
+      step.includes(guard),
+      `${stepName} step missing deploy guard: ${guard}`,
+    );
+  }
+}
+const deploymentExecutionStepStart = workflow.indexOf(
+  "      - name: Deploy and verify, rolling back on failed public health checks",
+  deploymentStepStart,
+);
+const deploymentExecutionStep = workflow.slice(
+  deploymentExecutionStepStart,
+  deploymentStepEnd === -1 ? undefined : deploymentStepEnd,
+);
+const executionConditionBlock = deploymentExecutionStep.match(
+  /if:\s*>-\s*([\s\S]*?)\n\s*env:/,
+)?.[1];
+assert.equal(
+  executionConditionBlock?.replace(/\s+/g, " ").trim(),
+  EXPECTED_DEPLOY_CONDITION,
+  "the deployment step must retain every safety gate after preflight",
+);
+const deploymentPreflightStep = deploymentStep.slice(
+  0,
+  deploymentExecutionStepStart - deploymentStepStart,
+);
+assert.match(
+  deploymentPreflightStep,
+  /id: production-preflight[\s\S]*?preflight \$GITHUB_SHA \$release_bytes/,
+  "the preflight step must check VPS capacity before release transfer",
+);
+assert.match(
+  deploymentPreflightStep,
+  /echo "release_bytes=\$release_bytes"[\s\S]*?echo "release_sha256=\$release_sha256"[\s\S]*?echo "previous_sha=\$previous_sha"[\s\S]*?>> "\$GITHUB_OUTPUT"/,
+  "preflight must pass the measured bundle metadata and rollback revision to deployment",
+);
+assert.match(
+  deploymentExecutionStep,
+  /RELEASE_BYTES: \$\{\{ steps\.production-preflight\.outputs\.release_bytes \}\}[\s\S]*?RELEASE_SHA256: \$\{\{ steps\.production-preflight\.outputs\.release_sha256 \}\}[\s\S]*?PREVIOUS_RELEASE_SHA: \$\{\{ steps\.production-preflight\.outputs\.previous_sha \}\}/,
+  "deployment must consume the values validated during preflight",
+);
+assert.match(
+  deploymentExecutionStep,
+  /\[\[ "\$release_bytes" == "\$RELEASE_BYTES" && "\$release_sha256" == "\$RELEASE_SHA256" \]\]/,
+  "deployment must revalidate bundle size and hash after preflight",
+);
+for (const guard of REQUIRED_DEPLOY_GUARDS) {
   assert.ok(
-    packageStep.includes(guard),
-    `package step missing deploy guard: ${guard}`,
+    deploymentStep.includes(guard),
+    `preflight or deployment step missing deploy guard: ${guard}`,
   );
 }
 assert.match(deploymentStep, /StrictHostKeyChecking=yes/);

@@ -98,7 +98,7 @@ assert.ok(
 
 assert.match(
   workflow,
-  /docker compose --parallel 4 --file compose\.production\.yaml build --pull api web db proxy/,
+  /docker compose --builder "\$BUILDER" --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
   "CI must build all production images concurrently through Compose",
 );
 assert.match(
@@ -144,7 +144,7 @@ const smokeStepStart = workflow.indexOf(
   "- name: Smoke test the scanned production images with isolated Compose resources",
 );
 const packageStepStart = workflow.indexOf(
-  "- name: Package the already-scanned release images",
+  "- name: Save scanned release images",
 );
 assert.ok(
   smokeStepStart > 0 && packageStepStart > smokeStepStart,
