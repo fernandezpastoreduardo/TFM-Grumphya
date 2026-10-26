@@ -505,6 +505,9 @@ export function UserProfile() {
             const plan = profile.plans.find((item) => item.plan === code);
             if (!plan) return null;
             const content = PLANS[code];
+            const isJappyAdmin =
+              profile.user.role === "admin" &&
+              profile.user.username.toLocaleLowerCase("es-ES") === "jappy";
             const isActive = plan.status === "active";
             const startsAt = formatDate(plan.startsAt);
             const expiresAt = formatDate(plan.expiresAt);
@@ -519,15 +522,19 @@ export function UserProfile() {
                     <p>{content.description}</p>
                   </div>
                   <span
-                    className={`profile-plan-status profile-plan-status-${plan.status}`}
+                    className={`profile-plan-status profile-plan-status-${isJappyAdmin ? "active" : plan.status}`}
                   >
-                    {PLAN_STATUS_LABEL[plan.status]}
+                    {isJappyAdmin
+                      ? "Ilimitado"
+                      : PLAN_STATUS_LABEL[plan.status]}
                   </span>
                 </div>
                 <p className="profile-plan-allowance">
-                  {content.attempts(plan)}
+                  {isJappyAdmin
+                    ? "Acceso ilimitado para esta cuenta."
+                    : content.attempts(plan)}
                 </p>
-                {isActive ? (
+                {!isJappyAdmin && isActive ? (
                   <>
                     <p className="profile-plan-renewal">
                       Activo desde:{" "}
@@ -538,7 +545,8 @@ export function UserProfile() {
                       <strong>{expiresAt ?? "fecha no disponible"}</strong>
                     </p>
                   </>
-                ) : (
+                ) : null}
+                {!isJappyAdmin && !isActive ? (
                   <button
                     className="profile-plan-link"
                     type="button"
@@ -549,7 +557,7 @@ export function UserProfile() {
                       ? "Preparando el café…"
                       : "Pagar un café"}
                   </button>
-                )}
+                ) : null}
               </article>
             );
           })}

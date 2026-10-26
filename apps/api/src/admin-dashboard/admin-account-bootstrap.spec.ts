@@ -74,5 +74,8 @@ describe("explicit administrator provisioning", () => {
     expect(insert?.sql).toContain("'admin'");
     expect(insert?.values).toContain("jappy");
     expect(insert?.values).toContain("opaque-password-hash");
+    expect(insert?.sql).toContain("public_rankings_consent_at");
+    expect(insert?.sql).toContain("public_rankings_consent_policy_version");
+    expect(insert?.sql).toContain("'v2'");
   });
 });

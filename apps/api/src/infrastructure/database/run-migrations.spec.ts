@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(32);
+    ).toHaveLength(33);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -84,6 +84,30 @@ describe("controlled database migrations", () => {
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["032_worst_ideas_all_time_ranking"],
+    );
+  });
+
+  it("opts existing administrator accounts into the public rankings", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes("public_rankings_consent_policy_version = 'v2'"),
+    )?.[0];
+    expect(migrationSql).toContain("UPDATE users");
+    expect(migrationSql).toContain("WHERE role = 'admin'");
+    expect(migrationSql).toContain("username_normalized = 'jappy'");
+    expect(migrationSql).toContain("public_rankings_consent_at IS NULL");
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["033_admin_rankings_opt_in"],
     );
   });
 

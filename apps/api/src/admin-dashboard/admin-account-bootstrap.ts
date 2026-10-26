@@ -27,8 +27,9 @@ export async function provisionAdminAccount(
     if (!account) {
       await client.query(
         `INSERT INTO users(email,email_normalized,username,username_normalized,password_hash,
-          privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status,role)
-         VALUES($1,$2,$3,$4,$5,$6,now(),now(),'active','admin')`,
+          privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status,role,
+          public_rankings_consent_at,public_rankings_consent_policy_version)
+         VALUES($1,$2,$3,$4,$5,$6,now(),now(),'active','admin',now(),'v2')`,
         [
           ADMIN_EMAIL,
           ADMIN_EMAIL,

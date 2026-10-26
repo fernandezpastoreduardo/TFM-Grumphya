@@ -8,6 +8,7 @@ import type {
 } from "./plan-usage.models";
 
 const RESERVATION_TTL_MINUTES = 30;
+const JAPPY_ADMIN_USERNAME = "jappy";
 const IDEMPOTENCY_TTL_HOURS = 24;
 const PLAN_FOR_SCOPE = { ideas: "ILUMINADO", roasts: "FALTON" } as const;
 const COUNTER_FOR_SCOPE = {
@@ -52,8 +53,12 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
            AND request.plan_code=expired.plan_code
            AND request.idempotency_hash=expired.idempotency_hash`,
       );
-      const active = await client.query<{ usage_limit: number; role: string }>(
-        `SELECT u.role,COALESCE(p.${LIMIT_FOR_SCOPE[scope]},0) AS usage_limit
+      const active = await client.query<{
+        usage_limit: number;
+        role: string;
+        username_normalized: string;
+      }>(
+        `SELECT u.role,u.username_normalized,COALESCE(p.${LIMIT_FOR_SCOPE[scope]},0) AS usage_limit
          FROM users u
          LEFT JOIN LATERAL (
            SELECT s.plan_code FROM subscriptions s
@@ -66,7 +71,9 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
         [userId, PLAN_FOR_SCOPE[scope]],
       );
       const limit = Number(active.rows[0]?.usage_limit ?? 0);
-      const isAdmin = active.rows[0]?.role === "admin";
+      const isAdmin =
+        active.rows[0]?.role === "admin" &&
+        active.rows[0]?.username_normalized === JAPPY_ADMIN_USERNAME;
       if (!isAdmin && limit < 1) throw new Error("ACTIVE_PLAN_REQUIRED");
 
       const date = await client.query<{ usage_date: string }>(
@@ -154,15 +161,18 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
     await this.transaction(async (client) => {
       const active = await client.query<{
         role: string;
+        username_normalized: string;
         has_active_plan: boolean;
       }>(
-        `SELECT u.role,EXISTS (
+        `SELECT u.role,u.username_normalized,EXISTS (
            SELECT 1 FROM subscriptions s WHERE s.user_id=u.id AND s.plan_code=$2
              AND s.status='active' AND s.starts_at <= now() AND s.expires_at > now()
          ) AS has_active_plan FROM users u WHERE u.id=$1 AND u.status='active' FOR SHARE OF u`,
         [userId, PLAN_FOR_SCOPE[scope]],
       );
-      const isAdmin = active.rows[0]?.role === "admin";
+      const isAdmin =
+        active.rows[0]?.role === "admin" &&
+        active.rows[0]?.username_normalized === JAPPY_ADMIN_USERNAME;
       if (
         !active.rowCount ||
         (!isAdmin && active.rows[0]?.has_active_plan !== true)
@@ -183,7 +193,11 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
       );
       const usageDate = request.rows[0]?.usage_date;
       if (!usageDate) throw new Error("PLAN_USAGE_RESERVATION_UNAVAILABLE");
-      if (isAdmin) return;
+      if (isAdmin) {
+        if (scope === "roasts")
+          await this.recordRoastMessageEvent(client, userId, idempotencyHash);
+        return;
+      }
       const updated = await client.query(
         `UPDATE account_daily_plan_usage SET ${COUNTER_FOR_SCOPE[scope]}=${COUNTER_FOR_SCOPE[scope]}+1,updated_at=now()
          WHERE user_id=$1 AND plan_code=$2 AND usage_date=$3
@@ -252,15 +266,16 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
     const inserted = await client.query(
       `INSERT INTO account_roast_message_events(user_id,idempotency_hash)
        SELECT $1,$2 WHERE EXISTS (
-         SELECT 1 FROM users WHERE id=$1 AND role='user'
-       ) AND EXISTS (
-         SELECT 1 FROM subscriptions s
-         WHERE s.user_id=$1 AND s.plan_code='FALTON'
-           AND s.status IN ('active','expired','cancelled')
-           AND s.starts_at <= now()
+         SELECT 1 FROM users WHERE id=$1 AND status='active'
+           AND ((role='admin' AND username_normalized=$3) OR (role='user' AND EXISTS (
+             SELECT 1 FROM subscriptions s
+             WHERE s.user_id=$1 AND s.plan_code='FALTON'
+               AND s.status IN ('active','expired','cancelled')
+               AND s.starts_at <= now()
+           )))
        ) ON CONFLICT(user_id,idempotency_hash) DO NOTHING
        RETURNING user_id`,
-      [userId, idempotencyHash],
+      [userId, idempotencyHash, JAPPY_ADMIN_USERNAME],
     );
     if (inserted.rowCount === 1) {
       await client.query(
