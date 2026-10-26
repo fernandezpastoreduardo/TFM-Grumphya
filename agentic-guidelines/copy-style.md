@@ -28,6 +28,7 @@ More examples of copy directly in spanish:
 - Los riesgos y recomendaciones se expresan con claridad, aunque el titular sea mordaz.
 - No afirmar que una idea fracasará; hablar de señales, supuestos y riesgos.
 - Decir «Tus buenas ideas, las aprobadas, son tuyas». No prometer que ninguna idea se publica: de las rechazadas se puede mostrar solo un título breve y su número de recepciones, jamás el autor o el texto original.
+- Antes de enviar una idea, avisar de que el título generado y el número de recepciones pueden aparecer en el ranking; explicar que el filtro reduce el riesgo, pero no garantiza anonimato, y enlazar a la política de privacidad.
 - En «Humanos notables» se muestra el alias y cuántas ideas se le han aprobado, sin información de esas ideas.
 - La sección de ideas rechazadas se titula «El muro de la vergüenza»; su humor
   se dirige a las ideas y conserva la protección de datos descrita arriba.

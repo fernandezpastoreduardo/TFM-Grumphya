@@ -52,7 +52,7 @@ const BUTTON_LABEL = {
 const NEXT_STEP_LABEL = "Adelante";
 const PREVIOUS_STEP_LABEL = "Cambiar idea";
 const PUBLIC_RANKING_NOTICE =
-  "Si la evaluación rechaza tu idea, un título creado para ser seguro y su número de recepciones pueden aparecer en el ranking educativo «Worst Ideas». No se publican el texto original, tu cuenta ni el autor. El filtro automático reduce datos identificativos, pero no puede descartar todas las pistas que permitan reconocer a alguien.";
+  "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Worst Ideas». El filtro no garantiza anonimato. Consulta la";
 const VALIDATION_MESSAGES: Record<InvalidIdeaTextReason, string> = {
   not_text: INVALID_IDEA_MESSAGE,
   empty: EMPTY_IDEA_MESSAGE,
@@ -165,7 +165,7 @@ export function GetUserIdea({
             textareaRef={ideaInputRef}
           />
           <p className="idea-ranking-privacy-note">
-            {PUBLIC_RANKING_NOTICE} Lee la{" "}
+            {PUBLIC_RANKING_NOTICE}{" "}
             <a href="/politica-de-privacidad">política de privacidad</a>.
           </p>
           <div className="idea-step-actions">

@@ -267,7 +267,7 @@ y pesa 202.657 B. Los tres conservan transparencia.
 
 ## Ranking público de ideas rechazadas
 
-La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Antes de enviar una idea, el formulario informa de que un título filtrado para ser seguro y su recuento pueden aparecer en el ranking, y enlaza a privacidad. Primero,
+La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Antes de enviar una idea, el formulario avisa: «Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Worst Ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.» Primero,
 `WorstIdeasAllTime` obtiene el ranking histórico de `GET /api/worst-ideas/all-time`;
 después, `WorstIdeasAll` obtiene el semanal de `GET /api/worst-ideas`. No incluyen
 filas de ejemplo. Cada fila muestra su puesto, título seguro y número de

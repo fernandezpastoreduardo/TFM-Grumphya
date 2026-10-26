@@ -31,8 +31,10 @@ describe("GetUserIdea", () => {
 
     expect(screen.getByRole("textbox", { name: INPUT_LABEL })).toBeVisible();
     expect(
-      screen.getByText(/un título creado para ser seguro.*ranking educativo/i),
-    ).toBeVisible();
+      screen.getByText(/si rechazamos tu idea/i).closest("p"),
+    ).toHaveTextContent(
+      "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Worst Ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.",
+    );
     expect(
       screen.getByRole("link", { name: /política de privacidad/i }),
     ).toHaveAttribute("href", "/politica-de-privacidad");
