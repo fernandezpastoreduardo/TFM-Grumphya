@@ -45,6 +45,11 @@ describe("explicit administrator provisioning", () => {
     expect(
       fake.queries.some(({ sql }) => sql.includes("UPDATE auth_sessions")),
     ).toBe(false);
+    expect(
+      fake.queries.some(({ sql }) =>
+        /public_rankings_consent_(?:at|policy_version)/i.test(sql),
+      ),
+    ).toBe(false);
     expect(fake.queries.some(({ sql }) => sql.includes("COMMIT"))).toBe(true);
   });
 
@@ -74,8 +79,9 @@ describe("explicit administrator provisioning", () => {
     expect(insert?.sql).toContain("'admin'");
     expect(insert?.values).toContain("jappy");
     expect(insert?.values).toContain("opaque-password-hash");
-    expect(insert?.sql).toContain("public_rankings_consent_at");
-    expect(insert?.sql).toContain("public_rankings_consent_policy_version");
-    expect(insert?.sql).toContain("'v2'");
+    expect(insert?.sql).not.toMatch(
+      /public_rankings_consent_(?:at|policy_version)/i,
+    );
+    expect(insert?.sql).not.toContain("'v2'");
   });
 });

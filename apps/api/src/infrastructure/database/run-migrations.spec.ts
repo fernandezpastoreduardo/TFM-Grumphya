@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(33);
+    ).toHaveLength(32);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -87,7 +87,7 @@ describe("controlled database migrations", () => {
     );
   });
 
-  it("opts existing administrator accounts into the public rankings", async () => {
+  it("does not automatically opt existing administrator accounts into public rankings", async () => {
     const query = vi.fn().mockImplementation(async (sql: string) => {
       if (sql.startsWith("SELECT version FROM schema_migrations")) {
         return { rows: [], rowCount: 0 };
@@ -98,17 +98,31 @@ describe("controlled database migrations", () => {
 
     await runMigrations(pool);
 
-    const migrationSql = query.mock.calls.find(([sql]) =>
-      String(sql).includes("public_rankings_consent_policy_version = 'v2'"),
+    expect(
+      query.mock.calls.some(([sql]) =>
+        /UPDATE\s+users\s+SET\s+public_rankings_consent_(?:at|policy_version)/i.test(
+          String(sql),
+        ),
+      ),
+    ).toBe(false);
+    const recordedVersions = query.mock.calls
+      .filter(([sql]) =>
+        String(sql).startsWith(
+          "INSERT INTO schema_migrations(version) VALUES($1)",
+        ),
+      )
+      .map(([, values]) => values?.[0]);
+    expect(recordedVersions).toContain("032_worst_ideas_all_time_ranking");
+    expect(recordedVersions).not.toContain("033_admin_rankings_opt_in");
+
+    const consentSchemaSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes("users_public_rankings_consent_pair_check"),
     )?.[0];
-    expect(migrationSql).toContain("UPDATE users");
-    expect(migrationSql).toContain("WHERE role = 'admin'");
-    expect(migrationSql).toContain("username_normalized = 'jappy'");
-    expect(migrationSql).toContain("public_rankings_consent_at IS NULL");
-    expect(query).toHaveBeenCalledWith(
-      "INSERT INTO schema_migrations(version) VALUES($1)",
-      ["033_admin_rankings_opt_in"],
+    expect(consentSchemaSql).toContain(
+      "ADD COLUMN IF NOT EXISTS public_rankings_consent_at timestamptz",
     );
+    expect(consentSchemaSql).not.toMatch(/DEFAULT\s+now\s*\(\)/i);
+    expect(consentSchemaSql).not.toMatch(/UPDATE\s+users/i);
   });
 
   it("rolls back the migration transaction and releases the client on failure", async () => {
