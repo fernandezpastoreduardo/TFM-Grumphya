@@ -411,6 +411,73 @@ describe("EvaluationProcessService", () => {
     expect(JSON.stringify(loggerError.mock.calls)).not.toContain(VALID_IDEA);
   });
 
+  it("retries once when a structured decision has inconsistent semantics", async () => {
+    const inconsistentDecision = {
+      ...createCompleteDecision(),
+      evaluated: createCompleteDecision().evaluated.map((criterion) =>
+        criterion.id === "C04"
+          ? { id: "C04", state: "PUNTUADO", score: 10 }
+          : criterion,
+      ),
+    };
+    const port = createPort(inconsistentDecision);
+    vi.mocked(port.evaluate)
+      .mockResolvedValueOnce(inconsistentDecision)
+      .mockResolvedValueOnce(createCompleteDecision());
+    const service = new EvaluationProcessService(port);
+
+    const result = await service.evaluate({
+      ideaText: VALID_IDEA,
+      tone: "soft",
+    });
+
+    expect(result).toEqual({
+      status: "SIN_BLOQUEO_EVIDENTE",
+      score: 7.13,
+      headline: "¡Qué ilusión! Ha superado el primer repaso.",
+      message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+    });
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+    expect(port.evaluate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        ideaText: VALID_IDEA,
+        policyVersion: POLICY_VERSION,
+      }),
+    );
+  });
+
+  it("returns the semantic validation error after the single retry fails", async () => {
+    const inconsistentDecision = {
+      ...createCompleteDecision(),
+      evaluated: createCompleteDecision().evaluated.map((criterion) =>
+        criterion.id === "C04"
+          ? { id: "C04", state: "PUNTUADO", score: 10 }
+          : criterion,
+      ),
+    };
+    const loggerError = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    const port = createPort(inconsistentDecision);
+    const service = new EvaluationProcessService(port);
+    let caught: unknown;
+
+    try {
+      await service.evaluate({ ideaText: VALID_IDEA, tone: "soft" });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "decision_semantics",
+    });
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+    expect(loggerError).toHaveBeenCalledWith(
+      "INVALID_EVALUATION_RESPONSE validation=decision_semantics",
+    );
+  });
+
   it("maps provider errors without exposing their messages", async () => {
     const loggerError = vi
       .spyOn(Logger.prototype, "error")

@@ -34,6 +34,7 @@ export type EvaluationProcessResponse = {
 const POLICY_VERSION = "grumphya-concept-v9";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
+const MAX_SEMANTIC_RETRIES = 1;
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
 const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
 const VISIBLE_SCORE_DECIMAL_SCALE = 100;
@@ -147,9 +148,9 @@ async function evaluateWithTimeout(
   ideaText: string,
   tone: "soft" | "hard",
   userId?: string,
+  timeoutMs = getEvaluationTimeoutMs(),
 ): Promise<unknown> {
   const abortController = new AbortController();
-  const timeoutMs = getEvaluationTimeoutMs();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_resolve, reject) => {
     timeoutId = setTimeout(() => {
@@ -172,6 +173,43 @@ async function evaluateWithTimeout(
   } finally {
     if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
+}
+
+async function evaluateAndValidate(
+  port: EvaluationPort,
+  ideaText: string,
+  tone: "soft" | "hard",
+  userId?: string,
+): Promise<ModelDecision> {
+  const deadline = Date.now() + getEvaluationTimeoutMs();
+  let attempt = 0;
+
+  while (attempt <= MAX_SEMANTIC_RETRIES) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) throw new EvaluationTimeoutError();
+
+    const rawDecision = await evaluateWithTimeout(
+      port,
+      ideaText,
+      tone,
+      userId,
+      remainingMs,
+    );
+    try {
+      return validateModelDecision(rawDecision, ideaText);
+    } catch (error) {
+      if (
+        !(error instanceof InvalidModelDecisionError) ||
+        error.validationCode !== "decision_semantics" ||
+        attempt === MAX_SEMANTIC_RETRIES
+      ) {
+        throw error;
+      }
+      attempt += 1;
+    }
+  }
+
+  throw new InvalidModelDecisionError("decision_semantics");
 }
 
 @Injectable()
@@ -201,13 +239,12 @@ export class EvaluationProcessService {
     }
 
     try {
-      const rawDecision = await evaluateWithTimeout(
+      const decision = await evaluateAndValidate(
         this.evaluationPort,
         request.ideaText,
         request.tone,
         userId,
       );
-      const decision = validateModelDecision(rawDecision, request.ideaText);
       return toPublicResponse(decision, request.tone);
     } catch (error) {
       if (error instanceof EvaluationTimeoutError) {
