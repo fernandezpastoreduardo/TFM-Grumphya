@@ -767,6 +767,7 @@ test("uses the section hero assets with transparent pixels", async ({
 test("stacks mobile mascots after page content and prevents iPhone input zoom", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/contacto");
 
