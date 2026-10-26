@@ -21,8 +21,8 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 - Path: /lo-peor-de-lo-peor
 - Layout: el ranking histórico y el semanal se apilan en la columna principal; el ranking privado del usuario ocupa la columna secundaria
-  - Worst ideas of all time
-  - Worst ideas of the current week
+  - «Desde el inicio»: «Las peores ideas de todos los tiempos»
+  - «Semana actual»: «Ideas que necesitan sentarse»
   - Worst current logged user's ideas
     - Copy: Tú también haces tus pinitos. Estos son los peores que has plantado... hasta ahora.
 - Features:
@@ -124,8 +124,8 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 10. Política de privacidad
 
 - Path: `/politica-de-privacidad`
-- Política versión 3 en español, con responsable y domicilio, finalidades, bases, proveedores, conservación, derechos, cookies, IA, dictado y seguridad. Informa de la conservación temporal del texto de idea en errores `INVALID_EVALUATION_RESPONSE`; su casilla de lectura no sustituye los consentimientos específicos. Las nuevas altas registran `v3`; las cuentas existentes mantienen su aceptación `v2` salvo que se solicite una nueva aceptación.
-- Los rankings de cuentas requieren adhesión voluntaria y revocable desde el perfil. La preferencia se guarda en servidor y las consultas públicas excluyen por defecto a quien no la haya activado. Antes de producción, verificar proveedores, cookies, copias, logs y medidas para menores.
+- Política versión 3 en español, con responsable y domicilio, finalidades, bases, proveedores, conservación, derechos, cookies, IA, dictado y seguridad. Informa de la conservación temporal del texto de idea en errores `INVALID_EVALUATION_RESPONSE` y de la publicación agregada de títulos seguros y cantidades en Worst Ideas; su casilla de lectura no sustituye los consentimientos específicos. Las nuevas altas registran `v3`; las cuentas existentes mantienen su aceptación `v2` salvo que se solicite una nueva aceptación. La versión y fecha visibles deben actualizarse cuando el responsable apruebe la aclaración sobre el ranking histórico.
+- Los rankings de cuentas requieren adhesión voluntaria y revocable desde el perfil. La preferencia se guarda en servidor y las consultas públicas excluyen por defecto a quien no la haya activado. Esta preferencia no cubre Worst Ideas; antes de activar el ranking agregado en producción, el responsable debe decidir su base jurídica y revisar su identificabilidad.
 - La función de avatar envía la imagen procesada a OpenAI para moderación. El avatar solo aparece en rankings cuando la persona ha autorizado su participación.
 - El enlace desde el formulario de alta debe ser visible, descriptivo, accesible por teclado y abrir la ruta interna.
 
@@ -136,7 +136,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 ## Delivery boundary
 
-La primera entrega incluye Home con dictado por voz, evaluación y similitud, tres usos anónimos de ideas y tres de roast por perfil de navegador, con purga del perfil tras 400 días sin actividad, alta con verificación de correo y confirmación simulada para Iluminado o Faltón, login con access JWT y perfil dinámico. Iluminado permite 11 evaluaciones y Faltón 11 roasts por día local de `Europe/Madrid`, con reserva transaccional e idempotencia. Las cachés de respuestas se eliminan cada hora tras su TTL de 24 horas. Las reservas incompletas devuelven `409` durante 30 minutos y luego pueden recuperarse; los errores liberan el intento. La recuperación de contraseña también está disponible mediante enlace de un solo uso; la autenticación de dos factores sigue pendiente. El perfil conserva los datos de cuenta, suscripciones, intentos restantes e ideas aprobadas privadas, y permite editar un avatar procesado y moderado por OpenAI. La participación en los rankings de cuentas es voluntaria y revocable desde el perfil. Las listas de Worst Ideas muestran títulos seguros y cantidades semanales, sin autor ni texto original. Contacto autenticado persiste mensajes en PostgreSQL, envía confirmación por SMTP y permite a Jappy responder desde el panel; los mensajes se purgan a los 12 meses. La política de privacidad versión 3 está incorporada; validar proveedores y ajustes de producción antes de abrir el servicio. A corto plazo quedan por completar las vistas restantes de rankings, precios y ROI. Los pagos reales llegan a medio plazo.
+La primera entrega incluye Home con dictado por voz, evaluación y similitud, tres usos anónimos de ideas y tres de roast por perfil de navegador, con purga del perfil tras 400 días sin actividad, alta con verificación de correo y confirmación simulada para Iluminado o Faltón, login con access JWT y perfil dinámico. Iluminado permite 11 evaluaciones y Faltón 11 roasts por día local de `Europe/Madrid`, con reserva transaccional e idempotencia. Las cachés de respuestas se eliminan cada hora tras su TTL de 24 horas. Las reservas incompletas devuelven `409` durante 30 minutos y luego pueden recuperarse; los errores liberan el intento. La recuperación de contraseña también está disponible mediante enlace de un solo uso; la autenticación de dos factores sigue pendiente. El perfil conserva los datos de cuenta, suscripciones, intentos restantes e ideas aprobadas privadas, y permite editar un avatar procesado y moderado por OpenAI. La participación en los rankings de cuentas es voluntaria y revocable desde el perfil. Worst Ideas presenta rankings público histórico y semanal con títulos seguros y cantidades, sin autor ni texto original; la base jurídica del agregado público requiere decisión del responsable. Contacto autenticado persiste mensajes en PostgreSQL, envía confirmación por SMTP y permite a Jappy responder desde el panel; los mensajes se purgan a los 12 meses. La política de privacidad versión 3 está incorporada; validar proveedores y ajustes de producción antes de abrir el servicio. A corto plazo quedan por completar las vistas restantes de rankings, precios y ROI. Los pagos reales llegan a medio plazo.
 
 ## Shared interaction rules
 

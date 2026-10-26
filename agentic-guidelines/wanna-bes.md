@@ -33,7 +33,7 @@ El límite secundario de creación de perfiles anónimos —20 por IP en 24 hora
 
 **Mejora a valorar:** mover los contadores por minuto a un almacén compartido, como Redis, o a un gateway que aplique el límite antes de distribuir las solicitudes. Definir la estrategia al preparar el despliegue con varias réplicas y comprobar límites simultáneos y recuperación ante reinicios.
 
-## Consentimiento para rankings públicos
+## Consentimiento para rankings públicos de cuentas
 
 **Estado:** implementado con adhesión voluntaria.
 
