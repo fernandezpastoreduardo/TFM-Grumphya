@@ -20,6 +20,7 @@ class FakePgClient {
   duplicateHash = false;
   currentCount = 4;
   returnNoUpdate = false;
+  returnNoAllTimeUpdate = false;
   continuationClaimed = false;
   idempotencyExists = true;
   submissionType: "match" | "new_rejection" = "match";
@@ -119,6 +120,16 @@ class FakePgClient {
         fields: [],
       };
     }
+    if (sql.includes("UPDATE rejected_idea_all_time_counts")) {
+      const rowCount = this.returnNoAllTimeUpdate ? 0 : 1;
+      return {
+        rows: [],
+        rowCount,
+        command: "UPDATE",
+        oid: 0,
+        fields: [],
+      } as unknown as QueryResult<Row>;
+    }
     return this.result([]) as unknown as QueryResult<Row>;
   }
 
@@ -147,6 +158,16 @@ class FakePgPool {
     { safe_title: SAFE_TITLE, rejected_count: "7" },
     { safe_title: "Un calendario para no hacer nada", rejected_count: "3" },
   ];
+  allTimeRankingRows: Array<{
+    safe_title: string;
+    submission_count: string;
+  }> = [
+    { safe_title: SAFE_TITLE, submission_count: "11" },
+    {
+      safe_title: "Un calendario para no hacer nada",
+      submission_count: "3",
+    },
+  ];
   userHistoryRows: Array<{
     safe_title: string;
     submission_count: string;
@@ -164,6 +185,15 @@ class FakePgPool {
     values?: unknown[],
   ): Promise<QueryResult<Row>> {
     this.queries.push({ sql, values });
+    if (sql.includes("FROM rejected_idea_all_time_counts")) {
+      return {
+        rows: this.allTimeRankingRows as unknown as Row[],
+        rowCount: this.allTimeRankingRows.length,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
     if (sql.includes("FROM rejected_idea_weekly_counts")) {
       return {
         rows: this.rankingRows as unknown as Row[],
@@ -210,6 +240,29 @@ const makeRepository = (pool: FakePgPool): PostgresWorstIdeasRepository =>
   );
 
 describe("PostgresWorstIdeasRepository", () => {
+  it("lists the top all-time safe titles and submission counts", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+
+    await expect(repository.getIdeaListWorstAllTime()).resolves.toEqual([
+      { safeTitle: SAFE_TITLE, count: 11 },
+      { safeTitle: "Un calendario para no hacer nada", count: 3 },
+    ]);
+
+    expect(pool.queries[0]?.sql).toContain(
+      "FROM rejected_idea_all_time_counts",
+    );
+    expect(pool.queries[0]?.sql).toContain(
+      "ORDER BY submission_count DESC, safe_title ASC",
+    );
+    expect(pool.queries[0]?.sql).toContain(
+      "last_received_at > now() - interval '24 months'",
+    );
+    expect(pool.queries[0]?.sql).toContain("LIMIT 10");
+    expect(pool.queries[0]?.sql).not.toContain("original_idea");
+    expect(pool.queries[0]?.sql).not.toContain("idea_text");
+  });
+
   it("lists only the requested user's safe titles and submission counts", async () => {
     const pool = new FakePgPool();
     const repository = makeRepository(pool);
@@ -319,6 +372,7 @@ describe("PostgresWorstIdeasRepository", () => {
       "INSERT",
       "UPDATE",
       "INSERT",
+      "INSERT",
       "COMMIT",
     ]);
     const insert = queries.find(({ sql }) =>
@@ -336,6 +390,11 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(
       queries.find(({ sql }) => sql.includes("week_start"))?.sql,
     ).toContain("Europe/Madrid");
+    const allTimeAggregate = queries.find(({ sql }) =>
+      sql.includes("INSERT INTO rejected_idea_all_time_counts"),
+    );
+    expect(allTimeAggregate?.sql).toContain("last_received_at");
+    expect(allTimeAggregate?.values).toEqual([IDEA_ID, SAFE_TITLE]);
     expect(
       queries.find(({ sql }) => sql.includes("rejected_idea_idempotency"))
         ?.values,
@@ -379,7 +438,23 @@ describe("PostgresWorstIdeasRepository", () => {
     expect(
       pool.client.queries.some(({ sql }) => sql.includes("week_start")),
     ).toBe(true);
+    const allTimeUpdate = pool.client.queries.find(({ sql }) =>
+      sql.includes("UPDATE rejected_idea_all_time_counts"),
+    );
+    expect(allTimeUpdate?.sql).toContain("last_received_at = now()");
     expect(pool.client.queries.at(-1)?.sql).toBe("COMMIT");
+  });
+
+  it("rolls back a repeated rejection if its all-time aggregate is missing", async () => {
+    const pool = new FakePgPool();
+    pool.client.returnNoAllTimeUpdate = true;
+    const repository = makeRepository(pool);
+
+    await expect(
+      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+    ).rejects.toThrow("Rejected idea all-time aggregate is unavailable.");
+    expect(pool.client.queries.at(-1)?.sql).toBe("ROLLBACK");
+    expect(pool.client.releaseCalled).toBe(true);
   });
 
   it("rolls back when the update target does not exist", async () => {

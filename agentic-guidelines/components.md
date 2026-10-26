@@ -46,9 +46,9 @@ El copy, las acciones y el contraste siguen `copy-style.md` y
 
 Los componentes específicos permanecen dentro de su feature hasta que exista un segundo consumidor real.
 
-### WorstIdeasAll
+### WorstIdeasAllTime / WorstIdeasAll
 
-Listado de hasta diez de las peores ideas de todos los usuarios, ordenado por cantidad de veces que se han introducido de manera descendente. Se muestra el título seguro conceptual de la idea sin indicar identidad de ningún usuario implicado
+`WorstIdeasAllTime` y `WorstIdeasAll` presentan los rankings públicos de ideas rechazadas: el histórico (`GET /api/worst-ideas/all-time`) y el semanal (`GET /api/worst-ideas`). Cada uno muestra como máximo diez títulos seguros con su cantidad de recepciones, en orden descendente de cantidad y con título ascendente para desempatar. El histórico aparece antes del semanal; ambos excluyen autor y texto original. La retrocarga del histórico usa las filas que aún existen en el corpus cuando se aplica la migración y no recupera ideas purgadas previamente.
 
 ### WorstIdeasUser
 

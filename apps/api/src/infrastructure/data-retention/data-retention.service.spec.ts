@@ -31,6 +31,14 @@ describe("DataRetentionService", () => {
           String(sql).includes("interval '24 months'"),
         ),
     ).toBe(true);
+    const allTimeAggregateCleanup = vi
+      .mocked(pool.query)
+      .mock.calls.find(([sql]) =>
+        String(sql).includes("DELETE FROM rejected_idea_all_time_counts"),
+      )?.[0];
+    expect(allTimeAggregateCleanup).toContain("last_received_at");
+    expect(allTimeAggregateCleanup).toContain("interval '24 months'");
+    expect(allTimeAggregateCleanup).toContain("LIMIT 500");
     const applicationErrorCleanup = vi
       .mocked(pool.query)
       .mock.calls.find(([sql]) =>

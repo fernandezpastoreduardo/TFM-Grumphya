@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(31);
+    ).toHaveLength(32);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -55,6 +55,33 @@ describe("controlled database migrations", () => {
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["031_application_error_context"],
+    );
+  });
+
+  it("creates and backfills the safe all-time rejected-idea aggregate", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes(
+        "CREATE TABLE IF NOT EXISTS rejected_idea_all_time_counts",
+      ),
+    )?.[0];
+    expect(migrationSql).toContain("safe_title text NOT NULL");
+    expect(migrationSql).toContain("submission_count bigint NOT NULL");
+    expect(migrationSql).toContain("last_received_at timestamptz NOT NULL");
+    expect(migrationSql).toContain("SELECT id, safe_title, count");
+    expect(migrationSql).toContain("FROM rejected_ideas");
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["032_worst_ideas_all_time_ranking"],
     );
   });
 

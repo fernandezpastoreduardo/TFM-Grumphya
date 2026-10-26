@@ -130,6 +130,23 @@ describe("security middleware", () => {
     expect(next).toHaveBeenCalledTimes(30);
   });
 
+  it("applies the public ranking read limit to the all-time endpoint", () => {
+    const middleware = createSecurityMiddleware();
+    const request = createRequest("/api/worst-ideas/all-time", "GET");
+    const next = vi.fn() as NextFunction;
+
+    for (let index = 0; index < 30; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response, headers } = createResponse();
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(30);
+  });
+
   it("limits private worst-ideas history reads by client IP", () => {
     const middleware = createSecurityMiddleware();
     const request = createRequest("/api/account/worst-ideas", "GET");

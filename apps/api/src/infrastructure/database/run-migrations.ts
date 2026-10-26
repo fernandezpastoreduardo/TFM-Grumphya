@@ -100,6 +100,10 @@ const MIGRATIONS = [
     version: "031_application_error_context",
     file: "031_application_error_context.sql",
   },
+  {
+    version: "032_worst_ideas_all_time_ranking",
+    file: "032_worst_ideas_all_time_ranking.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

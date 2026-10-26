@@ -64,6 +64,13 @@ const EXPIRED_DATA_DELETIONS = [
    ) DELETE FROM rejected_idea_idempotency AS request USING due
      WHERE request.idempotency_hash=due.idempotency_hash`,
   `WITH due AS (
+     SELECT aggregate.rejected_idea_id FROM rejected_idea_all_time_counts AS aggregate
+     WHERE aggregate.last_received_at <= now() - interval '24 months'
+     ORDER BY aggregate.last_received_at LIMIT ${DELETE_BATCH_SIZE}
+     FOR UPDATE OF aggregate SKIP LOCKED
+   ) DELETE FROM rejected_idea_all_time_counts AS aggregate USING due
+     WHERE aggregate.rejected_idea_id=due.rejected_idea_id`,
+  `WITH due AS (
      SELECT id FROM rejected_ideas
      WHERE last_received_at <= now() - interval '24 months'
      ORDER BY last_received_at LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED

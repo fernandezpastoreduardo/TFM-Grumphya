@@ -88,6 +88,15 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 - Devuelve como máximo 10 elementos.
 - Lista vacía si no hay registros semanales. No se mezclan datos de muestra.
 
+### IdeaListItemWorstAllTime
+
+- `GET /api/worst-ideas/all-time` es público y devuelve el ranking histórico agregado.
+- `safeTitle: string`: título genérico seguro de la idea rechazada; no incluye autor ni texto original.
+- `count: number`: número total de recepciones registradas para esa idea.
+- Orden: `count` descendente y `safeTitle` ascendente como desempate.
+- Devuelve como máximo 10 elementos. La tabla agregada conserva el título seguro y el contador después de purgar el corpus semántico, hasta que la idea alcanza 24 meses desde `last_received_at`; entonces se elimina también el agregado. La migración inicial solo retrocarga ideas que todavía están en el corpus; no incluye las que ya se purgaron.
+- Lista vacía si todavía no hay registros; no se mezclan datos de muestra.
+
 ### IdeaListItemWorstUser
 
 - `GET /api/account/worst-ideas` requiere `Authorization: Bearer <access JWT>` válido y devuelve un array de estos DTOs solo para el usuario de la sesión.

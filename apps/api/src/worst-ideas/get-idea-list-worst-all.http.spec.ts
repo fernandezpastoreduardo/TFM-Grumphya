@@ -7,6 +7,9 @@ import { GetIdeaListWorstAllController } from "./get-idea-list-worst-all.control
 import { GetIdeaListWorstAll } from "./get-idea-list-worst-all.service";
 
 const RANKING = [{ safeTitle: "Una suscripción a los lunes", weeklyCount: 4 }];
+const ALL_TIME_RANKING = [
+  { safeTitle: "La red social de las tostadoras", count: 9 },
+];
 
 class WorstIdeasHttpTestModule {}
 Module({
@@ -14,7 +17,10 @@ Module({
   providers: [
     {
       provide: GetIdeaListWorstAll,
-      useValue: { execute: vi.fn().mockResolvedValue(RANKING) },
+      useValue: {
+        execute: vi.fn().mockResolvedValue(RANKING),
+        executeAllTime: vi.fn().mockResolvedValue(ALL_TIME_RANKING),
+      },
     },
   ],
 })(WorstIdeasHttpTestModule);
@@ -45,5 +51,12 @@ describe("getIdeaListWorstAll HTTP endpoint", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(RANKING);
+  });
+
+  it("serves the public all-time ranking at its dedicated endpoint", async () => {
+    const response = await fetch(`${apiOrigin}/worst-ideas/all-time`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(ALL_TIME_RANKING);
   });
 });

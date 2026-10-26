@@ -5,6 +5,11 @@
     sans-serif;
   letter-spacing: -0.04em;
 }
+.worst-ideas-rankings {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
 .idea-ranking {
   display: grid;
   gap: 7px;
@@ -170,6 +175,9 @@
   }
 }
 @media (max-width: 640px) {
+  .worst-ideas-rankings {
+    gap: 12px;
+  }
   .idea-ranking li {
     grid-template-columns: 30px minmax(0, 1fr) auto;
     gap: 7px;

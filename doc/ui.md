@@ -32,8 +32,8 @@ la lámina maestra está en
   acción para volver a él dice «Volver a ver la evaluación».
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
-- El favicon apunta directamente a `/assets/grumphya/mascot-isotype.svg`, el
-  mismo recurso SVG de Grumphya que ya sirve la navegación; no se mantiene una
+- El favicon apunta directamente a `/assets/grumphya/mascot-isotype.png`, el
+  mismo recurso PNG de Grumphya que ya sirve la navegación; no se mantiene una
   copia de favicon con URL y caché separadas.
 - El texto del hero vive en HTML y sigue siendo editable. No forma parte de un
   asset gráfico.
@@ -267,19 +267,20 @@ y pesa 202.657 B. Los tres conservan transparencia.
 
 ## Ranking público de ideas rechazadas
 
-La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». El componente
-`WorstIdeasAll` obtiene los datos reales de `GET /api/worst-ideas`; no incluye
-filas de ejemplo en el ranking público. Cada fila muestra su puesto, el título
-seguro y el número de recepciones de la semana actual. El pie aclara que no se
-muestran autor ni texto original. La API limita el ranking a diez ideas; el
-componente valida el contrato de cada fila y presenta esa respuesta.
+La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Primero,
+`WorstIdeasAllTime` obtiene el ranking histórico de `GET /api/worst-ideas/all-time`;
+después, `WorstIdeasAll` obtiene el semanal de `GET /api/worst-ideas`. No incluyen
+filas de ejemplo. Cada fila muestra su puesto, título seguro y número de
+recepciones del periodo correspondiente. El pie aclara que no se muestran autor
+ni texto original. Cada endpoint limita su ranking a diez ideas y los
+componentes validan el contrato de cada fila.
 
-Mientras espera la respuesta anuncia «Cargando el ranking semanal…». Si la
-petición falla o el JSON no cumple el contrato, muestra un mensaje genérico y
-un botón «Volver a intentarlo». Una respuesta válida vacía se muestra como un
-estado informativo, y una lista con datos se presenta como lista ordenada con
-nombre accesible. Las peticiones se cancelan al desmontar el componente; no se
-reflejan detalles internos del error.
+Mientras esperan las respuestas, anuncian la carga de cada ranking. Si una
+petición falla o el JSON no cumple el contrato, su bloque muestra un mensaje
+genérico y un botón «Volver a intentarlo». Una respuesta válida vacía se muestra
+como un estado informativo, y una lista con datos se presenta como lista
+ordenada con nombre accesible. Las peticiones se cancelan al desmontar cada
+componente; no se reflejan detalles internos del error.
 
 Las filas y mensajes mantienen texto oscuro sobre superficies claras también
 en el tema oscuro. En pantallas estrechas las filas reducen sus columnas,
@@ -288,10 +289,12 @@ El endpoint y el DTO se especifican en `agentic-guidelines/Dtos.md`; la
 implementación automatizada del componente está cubierta en
 `apps/web/src/features/worst-ideas/worst-ideas.spec.tsx`.
 
-El ranking ordena por cantidad de recepciones durante la semana, de mayor a
-menor, y usa el título seguro ascendente para desempatar. El score de rúbrica
-almacenado no cambia la posición, por lo que una idea con menos repeticiones no
-puede superar a otra con más recepciones por haber recibido un score menor.
+El ranking histórico ordena por cantidad total de recepciones, de mayor a
+menor, y usa el título seguro ascendente para desempatar. El semanal mantiene
+ese orden aplicado a las recepciones de la semana. El score de rúbrica
+almacenado no cambia la posición de ninguno de los dos rankings. La tabla
+histórica se inicia con los registros que siguen disponibles en el corpus al
+instalar su migración; no puede reconstruir ideas que ya se habían purgado.
 
 ## Historial privado de ideas rechazadas
 

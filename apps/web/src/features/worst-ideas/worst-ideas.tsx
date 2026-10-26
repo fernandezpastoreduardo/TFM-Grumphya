@@ -7,74 +7,100 @@ import { WorstIdeasUser } from "./worst-ideas-user";
 import "./worst-ideas.scss";
 
 const WORST_IDEAS_ENDPOINT = "/api/worst-ideas";
+const WORST_IDEAS_ALL_TIME_ENDPOINT = "/api/worst-ideas/all-time";
 const ERROR_MESSAGE = "No se ha podido cargar el ranking. Prueba de nuevo.";
-const EMPTY_MESSAGE =
+const EMPTY_WEEKLY_MESSAGE =
   "Esta semana no hay ideas en el ranking. Qué semana tan sospechosamente sensata.";
+const EMPTY_ALL_TIME_MESSAGE =
+  "Aún no hay ideas rechazadas para inaugurar este ranking. No te emociones.";
 
-interface IdeaListItemWorstAll {
+type RankingCountField = "count" | "weeklyCount";
+
+interface RankingIdea {
   safeTitle: string;
-  weeklyCount: number;
+  count: number;
 }
 
 type RankingState =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "success"; ideas: IdeaListItemWorstAll[] };
+  | { status: "success"; ideas: RankingIdea[] };
 
-function isIdeaListItem(value: unknown): value is IdeaListItemWorstAll {
-  if (typeof value !== "object" || value === null) return false;
-  const item = value as Record<string, unknown>;
-  return (
-    typeof item.safeTitle === "string" &&
-    item.safeTitle.trim().length > 0 &&
-    typeof item.weeklyCount === "number" &&
-    Number.isSafeInteger(item.weeklyCount) &&
-    item.weeklyCount >= 0
-  );
+function parseRankingItems(
+  value: unknown,
+  countField: RankingCountField,
+): RankingIdea[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const ideas: RankingIdea[] = [];
+  for (const itemValue of value) {
+    if (typeof itemValue !== "object" || itemValue === null) return null;
+    const item = itemValue as Record<string, unknown>;
+    const safeTitle = item.safeTitle;
+    const count = item[countField];
+    if (
+      typeof safeTitle !== "string" ||
+      safeTitle.trim().length === 0 ||
+      typeof count !== "number" ||
+      !Number.isSafeInteger(count) ||
+      count < 0
+    ) {
+      return null;
+    }
+    ideas.push({ safeTitle, count });
+  }
+
+  return ideas;
 }
 
 async function loadWorstIdeas(
   signal: AbortSignal,
-): Promise<IdeaListItemWorstAll[]> {
-  const response = await fetch(WORST_IDEAS_ENDPOINT, {
-    signal,
-    credentials: "omit",
-  });
+  endpoint: string,
+  countField: RankingCountField,
+): Promise<RankingIdea[]> {
+  const response = await fetch(endpoint, { signal, credentials: "omit" });
   if (!response.ok) throw new Error("Ranking request failed.");
 
   const payload: unknown = await response.json();
-  if (!Array.isArray(payload) || !payload.every(isIdeaListItem)) {
-    throw new Error("Ranking response is invalid.");
-  }
+  const ideas = parseRankingItems(payload, countField);
+  if (!ideas) throw new Error("Ranking response is invalid.");
 
-  return payload;
+  return ideas;
 }
 
-function useWorstIdeasAll() {
+function useWorstIdeasRanking(endpoint: string, countField: RankingCountField) {
   const [state, setState] = useState<RankingState>({ status: "loading" });
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
     setState({ status: "loading" });
-    loadWorstIdeas(controller.signal)
+    loadWorstIdeas(controller.signal, endpoint, countField)
       .then((ideas) => setState({ status: "success", ideas }))
       .catch(() => {
         if (!controller.signal.aborted) setState({ status: "error" });
       });
 
     return () => controller.abort();
-  }, [retry]);
+  }, [countField, endpoint, retry]);
 
   return { state, retry: () => setRetry((value) => value + 1) };
 }
 
-function RankingHeading() {
+function RankingHeading({
+  id,
+  eyebrow,
+  title,
+}: {
+  id: string;
+  eyebrow: string;
+  title: string;
+}) {
   return (
     <div className="content-card-heading">
       <div>
-        <span className="eyebrow">Semana actual</span>
-        <h2 id="weekly-title">Ideas que necesitan sentarse</h2>
+        <span className="eyebrow">{eyebrow}</span>
+        <h2 id={id}>{title}</h2>
       </div>
       <span className="round-illustration" aria-hidden="true">
         ✕
@@ -83,12 +109,15 @@ function RankingHeading() {
   );
 }
 
-function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
+function RankingList({
+  ideas,
+  label,
+}: {
+  ideas: RankingIdea[];
+  label: string;
+}) {
   return (
-    <ol
-      className="idea-ranking"
-      aria-label="Ranking semanal de ideas rechazadas"
-    >
+    <ol className="idea-ranking" aria-label={label}>
       {ideas.map((idea, index) => (
         <li key={`${idea.safeTitle}-${index}`}>
           <span className="ranking-position" aria-label={`Puesto ${index + 1}`}>
@@ -96,10 +125,8 @@ function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
           </span>
           <span className="ranking-title">{idea.safeTitle}</span>
           <span className="ranking-count">
-            <strong>{idea.weeklyCount}</strong>
-            <small>
-              {idea.weeklyCount === 1 ? "recepción" : "recepciones"}
-            </small>
+            <strong>{idea.count}</strong>
+            <small>{idea.count === 1 ? "recepción" : "recepciones"}</small>
           </span>
         </li>
       ))}
@@ -107,13 +134,22 @@ function RankingList({ ideas }: { ideas: IdeaListItemWorstAll[] }) {
   );
 }
 
-function RankingContent({ state, retry }: ReturnType<typeof useWorstIdeasAll>) {
+function RankingContent({
+  state,
+  retry,
+  loadingLabel,
+  emptyMessage,
+  listLabel,
+}: {
+  state: RankingState;
+  retry: () => void;
+  loadingLabel: string;
+  emptyMessage: string;
+  listLabel: string;
+}) {
   if (state.status === "loading") {
     return (
-      <LoadingSkeleton
-        label="Cargando el ranking semanal"
-        className="idea-ranking-skeleton"
-      >
+      <LoadingSkeleton label={loadingLabel} className="idea-ranking-skeleton">
         {Array.from({ length: 5 }, (_, index) => (
           <div className="idea-ranking-skeleton-row" key={index}>
             <SkeletonBlock className="skeleton-ranking-position" />
@@ -139,24 +175,44 @@ function RankingContent({ state, retry }: ReturnType<typeof useWorstIdeasAll>) {
   if (state.ideas.length === 0) {
     return (
       <p className="ranking-message" role="status">
-        {EMPTY_MESSAGE}
+        {emptyMessage}
       </p>
     );
   }
 
-  return <RankingList ideas={state.ideas} />;
+  return <RankingList ideas={state.ideas} label={listLabel} />;
 }
 
-export function WorstIdeasAll() {
-  const ranking = useWorstIdeasAll();
+function RankingCard({
+  endpoint,
+  countField,
+  titleId,
+  eyebrow,
+  title,
+  loadingLabel,
+  emptyMessage,
+  listLabel,
+}: {
+  endpoint: string;
+  countField: RankingCountField;
+  titleId: string;
+  eyebrow: string;
+  title: string;
+  loadingLabel: string;
+  emptyMessage: string;
+  listLabel: string;
+}) {
+  const ranking = useWorstIdeasRanking(endpoint, countField);
 
   return (
-    <section
-      className="content-card ranking-card"
-      aria-labelledby="weekly-title"
-    >
-      <RankingHeading />
-      <RankingContent {...ranking} />
+    <section className="content-card ranking-card" aria-labelledby={titleId}>
+      <RankingHeading id={titleId} eyebrow={eyebrow} title={title} />
+      <RankingContent
+        {...ranking}
+        loadingLabel={loadingLabel}
+        emptyMessage={emptyMessage}
+        listLabel={listLabel}
+      />
       <p className="privacy-footnote">
         <span aria-hidden="true">⌑</span> Solo mostramos títulos breves y
         cantidades. Sin autor. Sin texto original. Sin cotilleo identificable.
@@ -165,10 +221,43 @@ export function WorstIdeasAll() {
   );
 }
 
+export function WorstIdeasAllTime() {
+  return (
+    <RankingCard
+      endpoint={WORST_IDEAS_ALL_TIME_ENDPOINT}
+      countField="count"
+      titleId="all-time-title"
+      eyebrow="Desde el inicio"
+      title="Las peores ideas de todos los tiempos"
+      loadingLabel="Cargando el ranking histórico"
+      emptyMessage={EMPTY_ALL_TIME_MESSAGE}
+      listLabel="Ranking histórico de ideas rechazadas"
+    />
+  );
+}
+
+export function WorstIdeasAll() {
+  return (
+    <RankingCard
+      endpoint={WORST_IDEAS_ENDPOINT}
+      countField="weeklyCount"
+      titleId="weekly-title"
+      eyebrow="Semana actual"
+      title="Ideas que necesitan sentarse"
+      loadingLabel="Cargando el ranking semanal"
+      emptyMessage={EMPTY_WEEKLY_MESSAGE}
+      listLabel="Ranking semanal de ideas rechazadas"
+    />
+  );
+}
+
 export function WorstIdeas() {
   return (
-    <div className="section-content-grid">
-      <WorstIdeasAll />
+    <div className="section-content-grid worst-ideas-layout">
+      <div className="worst-ideas-rankings">
+        <WorstIdeasAllTime />
+        <WorstIdeasAll />
+      </div>
       <WorstIdeasUser />
     </div>
   );

@@ -137,7 +137,9 @@ export function createSecurityMiddleware(
       (request.path === "/api/evaluation-process" ||
         request.path === "/api/roast");
     const isWorstIdeasRead =
-      request.method === "GET" && request.path === "/api/worst-ideas";
+      request.method === "GET" &&
+      (request.path === "/api/worst-ideas" ||
+        request.path === "/api/worst-ideas/all-time");
     const isWorstIdeasUserRead =
       request.method === "GET" && request.path === "/api/account/worst-ideas";
     const isRoastRankingRead =

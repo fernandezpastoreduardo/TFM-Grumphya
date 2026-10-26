@@ -1,11 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { WorstIdeas, WorstIdeasAll } from "./worst-ideas";
+import { WorstIdeas, WorstIdeasAll, WorstIdeasAllTime } from "./worst-ideas";
 
 const RANKING = [
   { safeTitle: "Una suscripción a los lunes", weeklyCount: 4 },
   { safeTitle: "Una app para ordenar calcetines", weeklyCount: 2 },
+];
+const ALL_TIME_RANKING = [
+  { safeTitle: "La red social de las tostadoras", count: 14 },
+  { safeTitle: "Una app para ordenar calcetines", count: 8 },
 ];
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -17,7 +21,15 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 describe("WorstIdeasAll", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(RANKING)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) => {
+        const responseBody = String(input).endsWith("/all-time")
+          ? ALL_TIME_RANKING
+          : RANKING;
+        return Promise.resolve(jsonResponse(responseBody));
+      }),
+    );
   });
 
   it("loads the public weekly ranking from the API", async () => {
@@ -129,6 +141,13 @@ describe("WorstIdeasAll", () => {
   it("keeps the personal history in its own aside", async () => {
     render(<WorstIdeas />);
 
+    const allTimeCard = await screen.findByRole("region", {
+      name: "Las peores ideas de todos los tiempos",
+    });
+    const weeklyCard = await screen.findByRole("region", {
+      name: "Ideas que necesitan sentarse",
+    });
+    expect(allTimeCard.parentElement).toBe(weeklyCard.parentElement);
     expect(
       screen.getByRole("complementary", { name: "Tu historial" }),
     ).toBeInTheDocument();
@@ -137,5 +156,41 @@ describe("WorstIdeasAll", () => {
         name: "Tú también tienes tus pinitos.",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("loads and labels the all-time public ranking separately from the weekly one", async () => {
+    render(<WorstIdeasAllTime />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Las peores ideas de todos los tiempos",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("list", {
+        name: "Ranking histórico de ideas rechazadas",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("La red social de las tostadoras"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("14")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/worst-ideas/all-time",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+        credentials: "omit",
+      }),
+    );
+  });
+
+  it("shows the all-time-specific empty state when no historical entries exist", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([])));
+    render(<WorstIdeasAllTime />);
+
+    expect(
+      await screen.findByText(/aún no hay ideas rechazadas para inaugurar/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 });

@@ -12,4 +12,9 @@ export class GetIdeaListWorstAllController {
   list() {
     return this.getIdeaListWorstAll.execute();
   }
+
+  @Get("all-time")
+  listAllTime() {
+    return this.getIdeaListWorstAll.executeAllTime();
+  }
 }

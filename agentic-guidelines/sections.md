@@ -20,15 +20,17 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 2. Worst Ideas
 
 - Path: /lo-peor-de-lo-peor
-- Layout: Two tables which contains two rankings
-  - Worst week´s ideas
+- Layout: el ranking histórico y el semanal se apilan en la columna principal; el ranking privado del usuario ocupa la columna secundaria
+  - Worst ideas of all time
+  - Worst ideas of the current week
   - Worst current logged user's ideas
     - Copy: Tú también haces tus pinitos. Estos son los peores que has plantado... hasta ahora.
 - Features:
-  - getIdeaListWorstAll: el componente implementado `WorstIdeasAll` consume la respuesta.
+  - getIdeaListWorstAllTime: el componente implementado `WorstIdeasAllTime` consume `GET /api/worst-ideas/all-time` antes del semanal.
+  - getIdeaListWorstAll: el componente implementado `WorstIdeasAll` consume la respuesta semanal.
   - getIdeaListWorstUser: el componente implementado `WorstIdeasUser` consulta `GET /api/account/worst-ideas`; requiere sesión autenticada y muestra solo las ideas rechazadas del propietario, ordenadas por cantidad descendente.
     - Si no hay sesión válida, el historial muestra una invitación a crear cuenta. Si la cuenta no tiene rechazos, muestra un estado vacío; no hay historial anónimo ni uso de `localStorage`.
-- `WorstIdeasAll` carga el ranking público desde `GET /api/worst-ideas`, valida el contrato en ejecución y presenta los estados de carga, error recuperable, lista vacía y resultados. El ranking semanal muestra solo título seguro y cantidad de recepciones; nunca usuario, texto original ni identificadores de autor. El contrato API y su orden están especificados en `Dtos.md`.
+- `WorstIdeasAllTime` carga primero el ranking público histórico desde `GET /api/worst-ideas/all-time`; debajo, `WorstIdeasAll` carga el ranking de la semana desde `GET /api/worst-ideas`. Ambos validan el contrato en ejecución y presentan estados de carga, error recuperable, lista vacía y resultados con el mismo formato. Solo muestran título seguro y cantidad de recepciones; nunca usuario, texto original ni identificadores de autor. Los contratos API y su orden están especificados en `Dtos.md`.
 
 3. "Vent / Roast to your heart's content" section
 
@@ -100,7 +102,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
      - Login existing account (User / Password)
        - Access token de 10 minutos. Con «Recordarme», refresh token de hasta 30 días; sin marcarlo, cookie de sesión con vencimiento del servidor a las 24 horas. Logout revoca el refresh token. Los permisos del plan se verifican en servidor y caducan aunque el usuario siga autenticado.
      - No hay enlace de alta desde Login: el registro empieza al elegir Iluminado o Faltón en `/precios`. «He olvidado la contraseña» lleva a `/recuperar-contrasena`. El campo de contraseña empieza oculto y un control accesible permite mostrarlo u ocultarlo.
-     - El encabezado actual es «Aquí solo evaluamos ideas, no contraseñas.»; el copy existente bajo el formulario conserva el rechazo humorístico a otros métodos de acceso y explica la privacidad de las ideas aprobadas/rechazadas.
+     - El encabezado actual es «¿Vienes a por más? Estupendo, tengo servidores para eso y más.»; el copy existente bajo el formulario conserva el rechazo humorístico a otros métodos de acceso y explica la privacidad de las ideas aprobadas/rechazadas.
    - Must have copy text under submit login button in this way:
      "¿Quieres hacer login con Google, GitHub o la app del supermercado?"
      "Pues no se puede"

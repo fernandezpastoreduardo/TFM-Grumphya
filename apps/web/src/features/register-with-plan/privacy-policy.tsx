@@ -273,9 +273,11 @@ export function PrivacyPolicy() {
           </li>
           <li>
             El texto original de ideas rechazadas no queda en el registro de
-            rechazo; su título seguro y vector se conservan hasta 24 meses desde
-            la última vez que se recibió esa idea. Un proceso periódico elimina
-            los registros vencidos.
+            rechazo. El título seguro y el vector usados para detectar
+            coincidencias se conservan hasta 24 meses desde la última recepción
+            y después se eliminan. El título seguro y el contador agregado del
+            ranking histórico, sin autor, texto original ni vector, también se
+            eliminan cuando esa idea alcanza 24 meses sin nuevas recepciones.
           </li>
           <li>
             Los mensajes de contacto y las métricas técnicas y de uso de IA se

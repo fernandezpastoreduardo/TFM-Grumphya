@@ -20,6 +20,11 @@ export interface IdeaListItemWorstAll {
   weeklyCount: number;
 }
 
+export interface IdeaListItemWorstAllTime {
+  safeTitle: string;
+  count: number;
+}
+
 export interface IdeaListItemWorstUser {
   safeTitle: string;
   count: number;
@@ -31,6 +36,7 @@ export type RejectedIdeaSubmissionType = "match" | "new_rejection";
 
 export interface WorstIdeasRepository {
   getIdeaListWorstAll(): Promise<IdeaListItemWorstAll[]>;
+  getIdeaListWorstAllTime(): Promise<IdeaListItemWorstAllTime[]>;
   getIdeaListWorstUser(userId: string): Promise<IdeaListItemWorstUser[]>;
   searchRejected(
     embedding: readonly number[],
