@@ -14,13 +14,4 @@ INSERT INTO rejected_idea_all_time_counts
   (rejected_idea_id, safe_title, submission_count, last_received_at)
 SELECT id, safe_title, count, last_received_at
 FROM rejected_ideas
-ON CONFLICT (rejected_idea_id) DO UPDATE
-SET safe_title = EXCLUDED.safe_title,
-    submission_count = GREATEST(
-      rejected_idea_all_time_counts.submission_count,
-      EXCLUDED.submission_count
-    ),
-    last_received_at = GREATEST(
-      rejected_idea_all_time_counts.last_received_at,
-      EXCLUDED.last_received_at
-    );
+ON CONFLICT (rejected_idea_id) DO NOTHING;

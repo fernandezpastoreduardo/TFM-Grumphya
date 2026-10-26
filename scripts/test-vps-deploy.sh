@@ -224,6 +224,16 @@ ALTER TABLE baseline ADD COLUMN note text;'
   cleanup_fixture
 }
 
+test_all_time_ranking_migration_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" "$(<"$SCRIPT_DIR/../apps/api/migrations/032_worst_ideas_all_time_ranking.sql")"
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'the all-time ranking migration was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after compatible aggregate migration'
+  cleanup_fixture
+}
+
 test_failed_compose_restores_previous() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -408,6 +418,7 @@ test_gateway_accepts_only_allowlisted_commands() {
 
 for test_case in \
   test_deploy_ok \
+  test_all_time_ranking_migration_is_rollback_compatible \
   test_failed_compose_restores_previous \
   test_bundle_digest_mismatch_is_rejected_before_image_load \
   test_release_retention_keeps_current_and_previous_only \
