@@ -15,7 +15,7 @@ const REQUIRED_DEPLOY_GUARDS = [
   "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
 ];
 const EXPECTED_DEPLOY_CONDITION = REQUIRED_DEPLOY_GUARDS.join(" && ");
-const REQUIRED_IMAGE_SCANS = ["Scan production images two at a time"];
+const REQUIRED_IMAGE_SCANS = ["Scan production images sequentially"];
 const DEPLOY_ONLY_SECRETS = [
   "secrets.PRODUCTION_SSH_HOST",
   "secrets.PRODUCTION_SSH_USER",
@@ -308,38 +308,32 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
   assert.match(scanStep, /--exit-code 1/);
   assert.match(scanStep, /--skip-version-check/);
   assert.match(scanStep, /--disable-telemetry/);
-  assert.match(scanStep, /--cache-dir "\$scan_dir\/\$name-cache"/);
-  assert.match(scanStep, /cp -R "\$RUNNER_TEMP\/trivy-db\/db"/);
+  assert.match(scanStep, /--cache-dir "\$RUNNER_TEMP\/trivy-db"/);
+  assert.doesNotMatch(scanStep, /cp -R|pids=\(\)|wait_for_scan_batch/);
+  assert.match(
+    scanStep,
+    /for image in "\$API_IMAGE" "\$WEB_IMAGE" "\$DATABASE_IMAGE" "\$PROXY_IMAGE"; do[\s\S]*?done/,
+    "all four production images must be included in the scan loop",
+  );
+  assert.doesNotMatch(
+    scanStep,
+    /trivy image[^\n]*&\s*$/m,
+    "Trivy scans must run in the foreground to avoid overlapping image extraction",
+  );
   assert.doesNotMatch(
     scanStep,
     /java-db|--download-java-db-only/,
     "production images do not need Trivy's Java index database",
   );
-  assert.match(scanStep, /&\s*$/m);
   assert.match(
     scanStep,
-    /if \(\( \$\{#pids\[@\]\} == 2 \)\); then\s+wait_for_scan_batch\s+fi/,
-    "image scanning must cap Trivy extraction to two concurrent images",
+    /scan_status=0\s+for image in[\s\S]*?if TRIVY_SKIP_DB_UPDATE=true[\s\S]*?"\$image" > "\$scan_dir\/\$name\.log" 2>&1; then\s+(:|true)\s+else\s+scan_status=1\s+fi/,
+    "exit 0 must leave the initialized status unchanged, and any failed Trivy scan must set it to 1",
   );
   assert.match(
     scanStep,
-    /wait_for_scan_batch\(\)[\s\S]*?for pid in "\$\{pids\[@\]\}"; do\s+wait "\$pid" \|\| scan_status=1\s+done\s+pids=\(\)/,
-    "each batch must wait for every process, retain failures, and clear its PID list",
-  );
-  assert.match(
-    scanStep,
-    /pids\+=\("\$!"\)\s+if \(\( \$\{#pids\[@\]\} == 2 \)\); then\s+wait_for_scan_batch\s+fi/,
-    "a full batch must be drained before the next image starts",
-  );
-  assert.match(
-    scanStep,
-    /done\s+wait_for_scan_batch\s+for image in "\$API_IMAGE"/,
-    "the final partial batch must also be drained before reading scan results",
-  );
-  assert.match(
-    scanStep,
-    /cat "\$scan_dir\/\$\{image%%:\*\}\.log"[\s\S]*?exit "\$scan_status"/,
-    "any failed scan wait must propagate to the step exit status",
+    /done\s+for image in "\$API_IMAGE"[\s\S]*?cat "\$scan_dir\/\$\{image%%:\*\}\.log"[\s\S]*?exit "\$scan_status"/,
+    "every image report must be printed and any failed scan must fail the step",
   );
 }
 assert.match(
@@ -356,7 +350,7 @@ const trivyDatabaseDownloadStart = workflow.indexOf(
   "- name: Build images while downloading the Trivy vulnerability database",
 );
 const imageScanStart = workflow.indexOf(
-  "- name: Scan production images two at a time",
+  "- name: Scan production images sequentially",
 );
 const trivyDatabaseBuildStep = workflow.slice(
   trivyDatabaseDownloadStart,
