@@ -2,8 +2,13 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      approve_production_deploy:
+        description: Confirmo el despliegue en producción y su archivo si todas las comprobaciones pasan
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -14,6 +19,9 @@ concurrency:
 
 jobs:
   quality-and-e2e:
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -67,6 +75,11 @@ jobs:
       - run: pnpm test:e2e
 
   supply-chain:
+    name: Build, scan, deploy and archive production release
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')
+    needs: quality-and-e2e
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -138,7 +151,14 @@ jobs:
       - name: Smoke test the scanned production images with isolated Compose resources
         run: bash scripts/test-production-compose.sh "${{ github.sha }}"
       - name: Package the already-scanned release images
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        if: >-
+          success() &&
+          github.event_name == 'workflow_dispatch' &&
+          github.actor == 'fernandezpastoreduardo' &&
+          github.triggering_actor == 'fernandezpastoreduardo' &&
+          github.ref == 'refs/heads/main' &&
+          inputs.approve_production_deploy == true &&
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         run: |
           set -euo pipefail
           mkdir -p release/docker release/migrations
@@ -158,43 +178,23 @@ jobs:
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
           EOF
           tar -C release -czf release-bundle.tar.gz compose.production.yaml docker migrations images.tar release.env
-      - name: Keep the release artifact for the gated deployment job
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: production-release-${{ github.sha }}
-          path: release-bundle.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 0
-
-  deploy-production:
-    if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      needs.quality-and-e2e.result == 'success' &&
-      needs.supply-chain.result == 'success' &&
-      vars.PRODUCTION_DEPLOY_ENABLED == 'true'
-    needs: [quality-and-e2e, supply-chain]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      actions: read
-    env:
-      PRODUCTION_SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
-      PRODUCTION_SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
-      PRODUCTION_SSH_PORT: ${{ vars.PRODUCTION_SSH_PORT }}
-      PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
-      PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
-      PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
-    steps:
-      - name: Download the exact scanned release artifact
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: production-release-${{ github.sha }}
-          path: release
       - name: Deploy and verify, rolling back on failed public health checks
+        if: >-
+          success() &&
+          github.event_name == 'workflow_dispatch' &&
+          github.actor == 'fernandezpastoreduardo' &&
+          github.triggering_actor == 'fernandezpastoreduardo' &&
+          github.ref == 'refs/heads/main' &&
+          inputs.approve_production_deploy == true &&
+          needs.quality-and-e2e.result == 'success' &&
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        env:
+          PRODUCTION_SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+          PRODUCTION_SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+          PRODUCTION_SSH_PORT: ${{ vars.PRODUCTION_SSH_PORT }}
+          PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+          PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -209,7 +209,7 @@ jobs:
           ssh_port=${PRODUCTION_SSH_PORT:-22}
           [[ "$ssh_port" =~ ^[0-9]{1,5}$ ]]
           (( 10#$ssh_port > 0 && 10#$ssh_port <= 65535 ))
-          release_file=release/release-bundle.tar.gz
+          release_file=release-bundle.tar.gz
           test -s "$release_file"
           release_bytes=$(stat -c '%s' "$release_file")
           release_sha256=$(sha256sum "$release_file" | cut -d ' ' -f 1)
@@ -252,3 +252,35 @@ jobs:
           curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/build.json" > "$RUNNER_TEMP/web-build.json"
           node -e 'const build = require(process.argv[1]); if (build.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/web-build.json" "$GITHUB_SHA"
           trap - ERR
+      - name: Keep the successfully deployed release artifact
+        if: >-
+          success() &&
+          github.event_name == 'workflow_dispatch' &&
+          github.actor == 'fernandezpastoreduardo' &&
+          github.triggering_actor == 'fernandezpastoreduardo' &&
+          github.ref == 'refs/heads/main' &&
+          inputs.approve_production_deploy == true &&
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: production-release-${{ github.sha }}
+          path: release-bundle.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+
+  deploy-production:
+    name: Production deployment confirmed
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'fernandezpastoreduardo' &&
+      github.triggering_actor == 'fernandezpastoreduardo' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.approve_production_deploy == true &&
+      needs.supply-chain.result == 'success' &&
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+    needs: supply-chain
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report the verified production release
+        run: echo "Production deployment and public health checks passed for $GITHUB_SHA."

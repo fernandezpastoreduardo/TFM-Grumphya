@@ -1,6 +1,6 @@
 # Producción en un único VPS
 
-Esta caja prepara Grumphya para un único VPS IONOS M+ con Docker Compose e incluye una opción de despliegue automático desde GitHub Actions, desactivada por defecto. No crea recursos, contrata servicios ni despliega durante esta tarea. Antes de arrancar, asigna un dominio al VPS y permite tráfico entrante TCP 80/443 y UDP 443 en el firewall de IONOS y del sistema. Caddy obtiene y renueva automáticamente el certificado cuando el DNS público apunta al servidor.
+Esta caja prepara Grumphya para un único VPS IONOS M+ con Docker Compose e incluye un despliegue manual desde GitHub Actions, protegido por una confirmación de la cuenta autorizada. No crea recursos, contrata servicios ni despliega durante esta tarea. Antes de arrancar, asigna un dominio al VPS y permite tráfico entrante TCP 80/443 y UDP 443 en el firewall de IONOS y del sistema. Caddy obtiene y renueva automáticamente el certificado cuando el DNS público apunta al servidor.
 
 ## Topología
 
@@ -70,9 +70,9 @@ curl --fail https://<tu-dominio>/una-ruta-interna-de-la-spa
 
 La respuesta de salud confirma PostgreSQL y pgvector. Comprueba también en el navegador que la página y `/api/*` usan HTTPS y que el HTML recibe `Permissions-Policy: camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)`. La disponibilidad del dictado depende además del navegador del usuario.
 
-## Despliegue automático desde GitHub (opcional)
+## Despliegue manual desde GitHub (opcional)
 
-El workflow está apagado por defecto. Los pull requests ejecutan las pruebas, construcción y escaneos, pero nunca reciben credenciales SSH ni despliegan. Un push a `main` solo publica si pasan `quality-and-e2e` y `supply-chain` y la variable `PRODUCTION_DEPLOY_ENABLED` vale exactamente `true`.
+Los pull requests ejecutan las pruebas, construcción y escaneos, pero nunca reciben credenciales SSH ni despliegan. Un push a `main` no inicia el workflow. Para publicar, la cuenta `fernandezpastoreduardo` debe abrir Actions, seleccionar el workflow `CI`, elegir la rama `main` y marcar `approve_production_deploy` antes de pulsar “Run workflow”. El workflow también verifica que quien reejecuta el run sea esa misma cuenta. La publicación requiere que pasen las comprobaciones y que `PRODUCTION_DEPLOY_ENABLED` valga exactamente `true`.
 
 ### Preparación manual inicial del VPS
 
@@ -143,11 +143,13 @@ Haz primero la instalación y una puesta en marcha manual siguiendo las seccione
 
 La clave de host se fija en `known_hosts` y SSH usa `StrictHostKeyChecking=yes`, desactivando además el almacén global del runner para que solo cuente la huella guardada como secreto. Si el puerto SSH no es `22`, la entrada debe usar el formato `[host]:puerto`. El workflow no acepta una identidad nueva ni ejecuta `ssh-keyscan` para confiar en el servidor durante un despliegue.
 
-### Qué ocurre en cada push a `main`
+### Cómo aprobar un despliegue de `main`
 
-El job `supply-chain` construye API, web estática, PostgreSQL/pgvector y Caddy con tags derivados de `github.sha`, escanea cada imagen y empaqueta esas mismas imágenes solo después de que todos los escaneos pasen. Se comparte un artefacto temporal del mismo run de Actions. El VPS carga ese paquete; no reconstruye imágenes ni descarga tags mutables. En Compose, `PROXY_IMAGE` selecciona la imagen etiquetada de ese paquete y el helper arranca las releases con `--no-build`; así la publicación utiliza la misma imagen Caddy escaneada. El arranque manual sin `PROXY_IMAGE` usa `grumphya-proxy:production` y construye el proxy desde `docker/Caddy.Dockerfile`. Se elige el artefacto de Actions para evitar configurar un registry, credenciales de publicación o facturación de almacenamiento de imágenes. El artefacto caduca en siete días y no contiene secretos.
+Al iniciar manualmente el workflow desde `main` con la confirmación marcada, el job `supply-chain` construye API, web estática, PostgreSQL/pgvector y Caddy con tags derivados de `github.sha`, y escanea cada imagen. Si todos los escaneos pasan, empaqueta esas mismas imágenes y las envía al VPS; no reconstruye ni descarga tags mutables. En Compose, `PROXY_IMAGE` selecciona la imagen etiquetada del paquete y el helper arranca la release con `--no-build`, así la publicación utiliza la misma imagen Caddy escaneada. El arranque manual sin `PROXY_IMAGE` usa `grumphya-proxy:production` y construye el proxy desde `docker/Caddy.Dockerfile`. Solo después de que el despliegue y las comprobaciones públicas de salud terminen correctamente, Actions archiva el paquete como `production-release-<SHA>` durante tres días. El artefacto no contiene secretos. Se evita configurar un registry, credenciales de publicación o facturación de almacenamiento de imágenes.
 
-`deploy-production` depende de ambos jobs, solo se evalúa para `push` a `main` y requiere `PRODUCTION_DEPLOY_ENABLED=true`. `pull_request`, otras ramas, fallos y variable ausente/desactivada no acceden a secretos SSH. La concurrencia no cancela un run en curso; además, el helper del VPS usa un lock para excluir ejecuciones simultáneas.
+Si falla el paso de archivo del artefacto después de desplegar y pasar las comprobaciones públicas, Actions mostrará el run como fallido aunque el VPS pueda estar sirviendo la nueva revisión. Comprueba `https://<tu-dominio>/api/health` y `https://<tu-dominio>/build.json`: ambos deben anunciar el SHA del run, y la salud debe indicar `status: ok`. Si falló la subida, `production-release-<SHA>` no estará disponible como artefacto del run.
+
+La etapa de despliegue está dentro de `supply-chain` y solo se ejecuta en un `workflow_dispatch` autorizado desde `main`, con la confirmación manual marcada y `PRODUCTION_DEPLOY_ENABLED=true`. `supply-chain` depende de `quality-and-e2e`, así que ningún despliegue comienza antes de que pasen las pruebas de calidad. Los pull requests, otras ramas, fallos y variable ausente/desactivada no acceden a secretos SSH. El job final `deploy-production` solo confirma que ese flujo integrado terminó con éxito. La concurrencia no cancela un run en curso; además, el helper del VPS usa un lock para excluir ejecuciones simultáneas.
 
 Antes de sustituir servicios, el helper comprueba la release actual, configuración y secretos existentes en el VPS, y espacio disponible para el artefacto y las nuevas imágenes. Comprueba el tamaño y SHA-256 recibido, carga las imágenes inmutables de esa revisión y valida la configuración. Compose espera a las migraciones y a los healthchecks. Si `up --wait` falla porque un servicio todavía no está saludable (por ejemplo, un fallo temporal del healthcheck de la web), el helper restaura la release anterior y espera sus healthchecks antes de devolver un error; Actions comprueba entonces que vuelve a responder la revisión anterior. Si también falla la restauración, el helper lo informa y requiere inspección manual. Los tags y directorios de la release actual/anterior se retienen; PostgreSQL, avatares y certificados usan nombres de volumen estables. El despliegue y el rollback no llaman `down -v`, `volume prune` ni hacen restauraciones destructivas.
 
@@ -157,7 +159,7 @@ Tras arrancar, Actions consulta la web, una ruta SPA y `/api/health` por HTTPS y
 
 Una reversión de imágenes no revierte PostgreSQL. Para cada migración nueva, añade la declaración exacta `-- deployment-rollback-compatible: true` y usa el patrón expand/contract: primero añade elementos compatibles con las dos versiones; elimina o renombra datos/columnas solo en una release posterior cuando la versión antigua ya no sea objetivo de rollback. El helper bloquea migraciones eliminadas o editadas y rechaza operaciones SQL reconocidas como destructivas, además de exigir la declaración.
 
-La declaración es una revisión explícita del desarrollador, no una prueba matemática de compatibilidad; un análisis estático no puede demostrar que el comportamiento de una migración preserve todos los usos de la versión anterior. Revisa cada diff SQL y prueba migración, healthcheck y rollback de ambas imágenes con una base desechable antes de integrar una migración. Si una migración no puede ser compatible con la release anterior, no la publiques con el despliegue automático: divide el cambio en releases expand/contract y conserva una copia externa reciente. Un fallo de migración bloquea el inicio de la nueva API; no se intenta reparar con `down -v` ni restaurar encima de los datos actuales.
+La declaración es una revisión explícita del desarrollador, no una prueba matemática de compatibilidad; un análisis estático no puede demostrar que el comportamiento de una migración preserve todos los usos de la versión anterior. Revisa cada diff SQL y prueba migración, healthcheck y rollback de ambas imágenes con una base desechable antes de integrar una migración. Si una migración no puede ser compatible con la release anterior, no la publiques con el despliegue de producción: divide el cambio en releases expand/contract y conserva una copia externa reciente. Un fallo de migración bloquea el inicio de la nueva API; no se intenta reparar con `down -v` ni restaurar encima de los datos actuales.
 
 ### Errores y recuperación
 
@@ -226,7 +228,7 @@ gpg --decrypt /ruta/segura/grumphya-fecha.sql.gpg | docker compose --project-nam
 gpg --decrypt /ruta/segura/avatars-fecha.tar.gz.gpg | docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml run --rm --entrypoint tar api -xzf - -C /workspace/var/avatars
 ```
 
-Si usas el despliegue automático, vuelve a arrancar la release activa para conservar exactamente sus imágenes: `sha=$(/usr/local/sbin/grumphya-deploy status)` y después `docker compose --project-name grumphya --env-file .env.production --env-file "/opt/grumphya/releases/$sha/release.env" -f "/opt/grumphya/releases/$sha/compose.production.yaml" up -d --no-build --wait`. En una instalación manual con CI desactivado, el `up -d` del bloque anterior es suficiente.
+Si usas el despliegue desde GitHub, vuelve a arrancar la release activa para conservar exactamente sus imágenes: `sha=$(/usr/local/sbin/grumphya-deploy status)` y después `docker compose --project-name grumphya --env-file .env.production --env-file "/opt/grumphya/releases/$sha/release.env" -f "/opt/grumphya/releases/$sha/compose.production.yaml" up -d --no-build --wait`. En una instalación manual con CI desactivado, el `up -d` del bloque anterior es suficiente.
 
 Para una restauración real sobre una base existente, crea una base limpia y restaura ahí, o sigue el procedimiento validado de `pg_restore`/`psql` para evitar duplicar objetos. Mantén una copia de la base y del archivo de avatares anterior hasta verificar `/api/health`, el acceso a cuentas y la lectura de avatares. El volumen Docker no sustituye a una copia externa.
 
