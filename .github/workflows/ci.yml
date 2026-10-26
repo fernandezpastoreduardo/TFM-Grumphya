@@ -165,7 +165,7 @@ jobs:
           cat "$RUNNER_TEMP/trivy-db-download.log"
       - name: Test production image contract
         run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
-      - name: Scan all production images concurrently
+      - name: Scan production images two at a time
         shell: bash
         env:
           API_IMAGE: grumphya-api:${{ github.sha }}
@@ -177,11 +177,20 @@ jobs:
           scan_dir=$(mktemp -d "$RUNNER_TEMP/trivy-scans.XXXXXX")
           pids=()
           scan_status=0
+          wait_for_scan_batch() {
+            local pid
+            for pid in "${pids[@]}"; do
+              wait "$pid" || scan_status=1
+            done
+            pids=()
+          }
           for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
             name=${image%%:*}
             mkdir -p "$scan_dir/$name-cache"
             cp -R "$RUNNER_TEMP/trivy-db/db" "$scan_dir/$name-cache/db"
             TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image \
+              --skip-version-check \
+              --disable-telemetry \
               --cache-dir "$scan_dir/$name-cache" \
               --scanners vuln \
               --severity HIGH,CRITICAL \
@@ -189,10 +198,11 @@ jobs:
               --exit-code 1 \
               "$image" > "$scan_dir/$name.log" 2>&1 &
             pids+=("$!")
+            if (( ${#pids[@]} == 2 )); then
+              wait_for_scan_batch
+            fi
           done
-          for pid in "${pids[@]}"; do
-            wait "$pid" || scan_status=1
-          done
+          wait_for_scan_batch
           for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
             cat "$scan_dir/${image%%:*}.log"
           done
