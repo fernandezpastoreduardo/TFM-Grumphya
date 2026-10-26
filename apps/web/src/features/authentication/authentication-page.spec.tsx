@@ -49,7 +49,7 @@ describe("AuthenticationPage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Aquí solo evaluamos ideas, no contraseñas.",
+        name: "¿Vienes a por más? Estupendo, tengo servidores para eso y más.",
       }),
     ).toBeInTheDocument();
     expect(

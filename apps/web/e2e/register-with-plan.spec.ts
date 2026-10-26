@@ -155,7 +155,7 @@ test("verifies the registration, activates the simulated purchase and deletes th
   await expect(page).toHaveURL(/\/login$/);
   await expect(
     page.getByRole("heading", {
-      name: "Aquí solo evaluamos ideas, no contraseñas.",
+      name: "¿Vienes a por más? Estupendo, tengo servidores para eso y más.",
     }),
   ).toBeVisible();
   const protectedProfileStatus = await page.evaluate(async () => {

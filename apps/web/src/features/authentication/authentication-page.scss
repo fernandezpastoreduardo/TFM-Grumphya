@@ -1,5 +1,11 @@
-.authentication-layout {
-  align-items: start;
+@media (min-width: 980px) {
+  .auth-layout.authentication-layout {
+    align-items: start;
+  }
+
+  .auth-layout.authentication-layout > .auth-aside {
+    align-self: start;
+  }
 }
 
 .authentication-password-field {

@@ -79,7 +79,7 @@ export function AuthenticationPage() {
     <div className="auth-layout authentication-layout">
       <section className="content-card auth-card">
         <span className="eyebrow">Acceso con usuario y contraseña</span>
-        <h2>Aquí solo evaluamos ideas, no contraseñas.</h2>
+        <h2>¿Vienes a por más? Estupendo, tengo servidores para eso y más.</h2>
         <form onSubmit={submitAuth}>
           <label htmlFor="login-identifier">Usuario o correo</label>
           <input

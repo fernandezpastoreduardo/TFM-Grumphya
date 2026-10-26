@@ -223,7 +223,7 @@ test("aligns login content and keeps Good Practices editorial content in flow", 
   await page.goto("/login");
   await expect(
     page.getByRole("heading", {
-      name: "Aquí solo evaluamos ideas, no contraseñas.",
+      name: "¿Vienes a por más? Estupendo, tengo servidores para eso y más.",
     }),
   ).toBeVisible();
 
@@ -231,6 +231,23 @@ test("aligns login content and keeps Good Practices editorial content in flow", 
     .locator(".authentication-layout")
     .evaluate((element) => getComputedStyle(element).alignItems);
   expect(loginAlignment).toBe("start");
+
+  await page.setViewportSize({ width: 979, height: 844 });
+  await expect
+    .poll(() =>
+      page
+        .locator(".authentication-layout")
+        .evaluate((element) => getComputedStyle(element).alignItems),
+    )
+    .toBe("center");
+  await page.setViewportSize({ width: 980, height: 844 });
+  await expect
+    .poll(() =>
+      page
+        .locator(".authentication-layout")
+        .evaluate((element) => getComputedStyle(element).alignItems),
+    )
+    .toBe("start");
   await expect(
     page.getByRole("heading", { name: "Tu historial no es público." }),
   ).toBeVisible();
