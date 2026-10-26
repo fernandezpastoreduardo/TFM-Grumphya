@@ -368,6 +368,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
           getComputedStyle(home, "::before").zIndex,
           10,
         ),
+        curtainOpacity: getComputedStyle(home, "::before").opacity,
         audienceZIndex: Number.parseInt(
           getComputedStyle(home, "::after").zIndex,
           10,
@@ -393,6 +394,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(lightThemeLayers!.curtainZIndex).toBe(
     lightThemeLayers!.audienceZIndex,
   );
+  expect(lightThemeLayers!.curtainOpacity).toBe("1");
   expect(lightThemeLayers!.characterCounterPosition).toBe("static");
 
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
@@ -406,6 +408,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(darkThemeLayers!.navigationZIndex).toBeGreaterThan(
     darkThemeLayers!.ideaWorkspaceZIndex,
   );
+  expect(darkThemeLayers!.curtainOpacity).toBe("1");
 
   await page.setViewportSize({ width: 979, height: 844 });
   const homeAt979 = await readNavigationLayers();
@@ -475,6 +478,7 @@ test("matches section navigation to the theme and layers curtain over content", 
           getComputedStyle(appPage, "::before").zIndex,
           10,
         ),
+        curtainOpacity: getComputedStyle(appPage, "::before").opacity,
         audienceZIndex: Number.parseInt(
           getComputedStyle(appPage, "::after").zIndex,
           10,
@@ -499,6 +503,7 @@ test("matches section navigation to the theme and layers curtain over content", 
   expect(lightLayers!.curtainZIndex).toBeGreaterThan(
     lightLayers!.contentZIndex,
   );
+  expect(lightLayers!.curtainOpacity).toBe("1");
   expect(lightLayers!.headerTop).toBe(lightLayers!.expectedNavigationTop);
 
   await page.setViewportSize({ width: 979, height: 844 });
@@ -520,6 +525,7 @@ test("matches section navigation to the theme and layers curtain over content", 
   expect(darkLayers!.isDarkTheme).toBe(true);
   expect(darkLayers!.headerBackground).toBe(darkLayers!.themeBackground);
   expect(darkLayers!.curtainZIndex).toBe(darkLayers!.audienceZIndex);
+  expect(darkLayers!.curtainOpacity).toBe("1");
   await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
 
   await page.setViewportSize({ width: 390, height: 844 });
