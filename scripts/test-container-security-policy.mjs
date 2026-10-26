@@ -98,8 +98,13 @@ assert.ok(
 
 assert.match(
   workflow,
-  /docker build --pull --file docker\/Caddy\.Dockerfile --tag grumphya-proxy:\$\{\{ github\.sha \}\}/,
-  "CI must build and scan the hardened Caddy image",
+  /docker compose --parallel 4 --file compose\.production\.yaml build --pull api web db proxy/,
+  "CI must build all production images concurrently through Compose",
+);
+assert.match(
+  workflow,
+  /PROXY_IMAGE: grumphya-proxy:\$\{\{ github\.sha \}\}/,
+  "the hardened Caddy image must use the current commit tag",
 );
 assert.ok(
   workflow.includes(POLICY_TEST_COMMAND),

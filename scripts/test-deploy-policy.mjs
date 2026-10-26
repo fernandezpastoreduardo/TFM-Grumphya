@@ -11,15 +11,11 @@ const REQUIRED_DEPLOY_GUARDS = [
   "inputs.approve_production_deploy == true",
   "needs.quality-and-e2e.result == 'success'",
   "needs.e2e.result == 'success'",
+  "needs.dependency-audit.result == 'success'",
   "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
 ];
 const EXPECTED_DEPLOY_CONDITION = REQUIRED_DEPLOY_GUARDS.join(" && ");
-const REQUIRED_IMAGE_SCANS = [
-  "Scan API image",
-  "Scan web image",
-  "Scan PostgreSQL image",
-  "Scan Caddy image",
-];
+const REQUIRED_IMAGE_SCANS = ["Scan all production images concurrently"];
 const DEPLOY_ONLY_SECRETS = [
   "secrets.PRODUCTION_SSH_HOST",
   "secrets.PRODUCTION_SSH_USER",
@@ -32,34 +28,36 @@ const releaseJobStart = workflow.indexOf("  supply-chain:");
 assert.notEqual(releaseJobStart, -1, "release job must exist");
 const releaseJob = workflow.slice(releaseJobStart);
 const beforeReleaseJob = workflow.slice(0, releaseJobStart);
+const dependencyAuditStart = workflow.indexOf("  dependency-audit:");
+assert.notEqual(dependencyAuditStart, -1, "early dependency audit must exist");
+const dependencyAuditEnd = workflow.indexOf(
+  "  supply-chain:",
+  dependencyAuditStart,
+);
+const dependencyAuditJob = workflow.slice(
+  dependencyAuditStart,
+  dependencyAuditEnd,
+);
+assert.doesNotMatch(
+  dependencyAuditJob,
+  /^    needs:/m,
+  "dependency auditing must start in parallel with quality and E2E",
+);
+assert.match(dependencyAuditJob, /pnpm audit --audit-level moderate/);
+assert.match(dependencyAuditJob, /pnpm audit --prod --audit-level high/);
 const deploymentStepStart = workflow.indexOf(
   "      - name: Deploy and verify, rolling back on failed public health checks",
   releaseJobStart,
 );
 assert.notEqual(deploymentStepStart, -1, "production deploy step must exist");
 const deploymentStepEnd = workflow.indexOf(
-  "      - name:",
-  deploymentStepStart + 1,
+  "\n  deploy-production:",
+  deploymentStepStart,
 );
 const deploymentStep = workflow.slice(
   deploymentStepStart,
   deploymentStepEnd === -1 ? undefined : deploymentStepEnd,
 );
-const artifactStepStart = workflow.indexOf(
-  "      - name: Keep the successfully deployed release artifact",
-  deploymentStepStart,
-);
-assert.ok(
-  artifactStepStart > deploymentStepStart,
-  "artifact upload must follow deployment",
-);
-assert.equal(
-  deploymentStepEnd,
-  artifactStepStart,
-  "artifact upload must be the next step after deployment and verification",
-);
-const artifactStep = workflow.slice(artifactStepStart);
-
 assert.match(workflow, /cancel-in-progress:\s*false/);
 assert.doesNotMatch(
   workflow,
@@ -72,7 +70,12 @@ assert.match(workflow, /approve_production_deploy:[\s\S]*?default:\s*false/);
 
 const expectedManualActorGate =
   "github.event_name != 'workflow_dispatch' || (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')";
-for (const jobName of ["quality-and-e2e", "e2e", "supply-chain"]) {
+for (const jobName of [
+  "quality-and-e2e",
+  "e2e",
+  "dependency-audit",
+  "supply-chain",
+]) {
   const jobStart = workflow.indexOf(`  ${jobName}:`);
   const nextJobMatch = workflow
     .slice(jobStart + 1)
@@ -90,7 +93,17 @@ for (const jobName of ["quality-and-e2e", "e2e", "supply-chain"]) {
   );
 }
 
-assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e\]/);
+assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e, dependency-audit\]/);
+assert.match(
+  releaseJob,
+  /docker compose --parallel 4 --file compose\.production\.yaml build --pull api web db proxy/,
+  "production images must build concurrently through Compose",
+);
+assert.doesNotMatch(
+  workflow,
+  /actions\/upload-artifact@/,
+  "production releases must not consume the repository artifact quota",
+);
 assert.match(
   workflow,
   /container:\s*\n\s+image:\s*mcr\.microsoft\.com\/playwright:v1\.64\.0-noble/,
@@ -163,6 +176,19 @@ const deploymentContexts = [
     approve: true,
     quality: "success",
     e2e: "failure",
+    enabled: "true",
+    expected: false,
+  },
+  {
+    name: "failed dependency audit",
+    event: "workflow_dispatch",
+    ref: "refs/heads/main",
+    actor: "fernandezpastoreduardo",
+    triggeringActor: "fernandezpastoreduardo",
+    approve: true,
+    quality: "success",
+    e2e: "success",
+    audit: "failure",
     enabled: "true",
     expected: false,
   },
@@ -240,6 +266,7 @@ for (const context of deploymentContexts) {
     context.approve === true &&
     context.quality === "success" &&
     (context.e2e ?? "success") === "success" &&
+    (context.audit ?? "success") === "success" &&
     deploymentStep.includes("needs.e2e.result == 'success'") &&
     context.enabled === "true";
   assert.equal(allowed, context.expected, `deploy gate: ${context.name}`);
@@ -253,17 +280,8 @@ for (const secret of DEPLOY_ONLY_SECRETS) {
   );
 }
 
-for (const scan of REQUIRED_IMAGE_SCANS) {
-  assert.ok(workflow.includes(scan), `missing production image scan: ${scan}`);
-}
-
 const shaTag = "${{ github.sha }}";
-for (const [scanName, imageName] of [
-  ["Scan API image", "grumphya-api"],
-  ["Scan web image", "grumphya-web"],
-  ["Scan PostgreSQL image", "grumphya-database"],
-  ["Scan Caddy image", "grumphya-proxy"],
-]) {
+for (const scanName of REQUIRED_IMAGE_SCANS) {
   const scanStart = workflow.indexOf(`- name: ${scanName}`);
   const nextStep = workflow.indexOf("      - name:", scanStart + 1);
   const scanStep = workflow.slice(
@@ -271,11 +289,41 @@ for (const [scanName, imageName] of [
     nextStep === -1 ? undefined : nextStep,
   );
   assert.ok(scanStart >= 0, `missing scan step: ${scanName}`);
-  assert.ok(
-    scanStep.includes(`image-ref: ${imageName}:${shaTag}`),
-    `${scanName} must scan the image tagged with this commit SHA`,
+  for (const [envName, imageName] of [
+    ["API_IMAGE", "grumphya-api"],
+    ["WEB_IMAGE", "grumphya-web"],
+    ["DATABASE_IMAGE", "grumphya-database"],
+    ["PROXY_IMAGE", "grumphya-proxy"],
+  ]) {
+    assert.ok(
+      scanStep.includes(`${envName}: ${imageName}:${shaTag}`),
+      `${scanName} must scan ${imageName} tagged with this commit SHA`,
+    );
+  }
+  assert.match(
+    scanStep,
+    /TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image/,
   );
+  assert.match(scanStep, /--scanners vuln/);
+  assert.match(scanStep, /--severity HIGH,CRITICAL/);
+  assert.match(scanStep, /--ignore-unfixed/);
+  assert.match(scanStep, /--exit-code 1/);
+  assert.match(scanStep, /&\s*$/m);
+  assert.match(scanStep, /wait "\$pid" \|\| scan_status=1/);
+  assert.match(scanStep, /--cache-dir "\$scan_dir\/\$name-cache"/);
+  assert.match(scanStep, /cp -R "\$RUNNER_TEMP\/trivy-db\/db"/);
+  assert.match(scanStep, /cp -R "\$RUNNER_TEMP\/trivy-db\/java-db"/);
 }
+assert.match(
+  workflow,
+  /aquasecurity\/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241 # v0\.2\.6/,
+  "Trivy must be installed from a pinned action revision",
+);
+assert.match(
+  workflow,
+  /Download Trivy databases once[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-java-db-only/,
+  "Trivy databases must be downloaded once before parallel scans",
+);
 
 const packageStart = workflow.indexOf(
   "- name: Package the already-scanned release images",
@@ -309,22 +357,6 @@ for (const guard of REQUIRED_DEPLOY_GUARDS.filter(
     `package step missing deploy guard: ${guard}`,
   );
 }
-assert.match(artifactStep, /success\(\)/);
-assert.match(artifactStep, /retention-days:\s*3/);
-assert.ok(
-  artifactStep.includes(`name: production-release-${shaTag}`),
-  "the archived artifact must identify the deployed commit SHA",
-);
-assert.ok(
-  artifactStep.includes("path: release-bundle.tar.gz"),
-  "the archived artifact must be the release bundle that was deployed",
-);
-assert.doesNotMatch(
-  artifactStep,
-  /always\(\)|failure\(\)/,
-  "an artifact must not upload after a failed deployment",
-);
-
 assert.match(deploymentStep, /StrictHostKeyChecking=yes/);
 assert.match(deploymentStep, /GlobalKnownHostsFile=\/dev\/null/);
 assert.doesNotMatch(deploymentStep, /ssh-keyscan/);
@@ -352,23 +384,6 @@ assert.match(
   deploymentStep,
   /build\.revision !== process\.argv\[2\]/,
   "deployment must confirm that the public web build serves the deployed revision",
-);
-
-const artifactConditionBlock = artifactStep.match(
-  /if:\s*>-\s*([\s\S]*?)\n\s*uses:/,
-)?.[1];
-assert.equal(
-  artifactConditionBlock?.replace(/\s+/g, " ").trim(),
-  [
-    "success()",
-    "github.event_name == 'workflow_dispatch'",
-    "github.actor == 'fernandezpastoreduardo'",
-    "github.triggering_actor == 'fernandezpastoreduardo'",
-    "github.ref == 'refs/heads/main'",
-    "inputs.approve_production_deploy == true",
-    "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
-  ].join(" && "),
-  "release archive must require successful prior steps and the production deployment context",
 );
 
 console.log("Deployment policy guards are present.");

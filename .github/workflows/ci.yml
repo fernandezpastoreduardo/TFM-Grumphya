@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       approve_production_deploy:
-        description: Confirmo el despliegue en producción y su archivo si todas las comprobaciones pasan
+        description: Confirmo el despliegue en producción si todas las comprobaciones pasan
         type: boolean
         required: true
         default: false
@@ -96,14 +96,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:e2e
 
-  supply-chain:
-    name: Build, scan, deploy and archive production release
+  dependency-audit:
+    name: Dependency security audit
     if: >-
       github.event_name != 'workflow_dispatch' ||
       (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')
-    needs: [quality-and-e2e, e2e]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -120,56 +119,71 @@ jobs:
         run: pnpm audit --audit-level moderate
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
-      - name: Build API image
-        run: docker build --pull --target production --tag grumphya-api:${{ github.sha }} .
-      - name: Build static web image
-        run: docker build --pull --target web-production --build-arg DEPLOY_SHA=${{ github.sha }} --tag grumphya-web:${{ github.sha }} .
-      - name: Build PostgreSQL image
-        run: docker build --pull --target database-production --tag grumphya-database:${{ github.sha }} .
-      - name: Build Caddy image
-        run: docker build --pull --file docker/Caddy.Dockerfile --tag grumphya-proxy:${{ github.sha }} .
+
+  supply-chain:
+    name: Build, scan and deploy production release
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')
+    needs: [quality-and-e2e, e2e, dependency-audit]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build production images concurrently
+        env:
+          DOMAIN: ci.invalid
+          DEPLOY_SHA: ${{ github.sha }}
+          API_IMAGE: grumphya-api:${{ github.sha }}
+          WEB_IMAGE: grumphya-web:${{ github.sha }}
+          DATABASE_IMAGE: grumphya-database:${{ github.sha }}
+          PROXY_IMAGE: grumphya-proxy:${{ github.sha }}
+        run: docker compose --parallel 4 --file compose.production.yaml build --pull api web db proxy
       - name: Test production image contract
         run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
-      - name: Scan API image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      - name: Install the pinned Trivy scanner
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241 # v0.2.6
         with:
           version: v0.76.0
-          image-ref: grumphya-api:${{ github.sha }}
-          scan-type: image
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-      - name: Scan web image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: v0.76.0
-          image-ref: grumphya-web:${{ github.sha }}
-          scan-type: image
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-      - name: Scan PostgreSQL image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: v0.76.0
-          image-ref: grumphya-database:${{ github.sha }}
-          scan-type: image
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-      - name: Scan Caddy image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          version: v0.76.0
-          image-ref: grumphya-proxy:${{ github.sha }}
-          scan-type: image
-          scanners: vuln
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
+      - name: Download Trivy databases once
+        run: |
+          trivy --cache-dir "$RUNNER_TEMP/trivy-db" image --download-db-only
+          trivy --cache-dir "$RUNNER_TEMP/trivy-db" image --download-java-db-only
+      - name: Scan all production images concurrently
+        shell: bash
+        env:
+          API_IMAGE: grumphya-api:${{ github.sha }}
+          WEB_IMAGE: grumphya-web:${{ github.sha }}
+          DATABASE_IMAGE: grumphya-database:${{ github.sha }}
+          PROXY_IMAGE: grumphya-proxy:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          scan_dir=$(mktemp -d "$RUNNER_TEMP/trivy-scans.XXXXXX")
+          pids=()
+          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
+            name=${image%%:*}
+            mkdir -p "$scan_dir/$name-cache"
+            cp -R "$RUNNER_TEMP/trivy-db/db" "$scan_dir/$name-cache/db"
+            cp -R "$RUNNER_TEMP/trivy-db/java-db" "$scan_dir/$name-cache/java-db"
+            TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image \
+              --cache-dir "$scan_dir/$name-cache" \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1 \
+              "$image" > "$scan_dir/$name.log" 2>&1 &
+            pids+=("$!")
+          done
+          scan_status=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || scan_status=1
+          done
+          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
+            cat "$scan_dir/${image%%:*}.log"
+          done
+          exit "$scan_status"
       - name: Smoke test the scanned production images with isolated Compose resources
         run: bash scripts/test-production-compose.sh "${{ github.sha }}"
       - name: Package the already-scanned release images
@@ -210,6 +224,7 @@ jobs:
           inputs.approve_production_deploy == true &&
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
+          needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
           PRODUCTION_SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
@@ -275,23 +290,6 @@ jobs:
           curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/build.json" > "$RUNNER_TEMP/web-build.json"
           node -e 'const build = require(process.argv[1]); if (build.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/web-build.json" "$GITHUB_SHA"
           trap - ERR
-      - name: Keep the successfully deployed release artifact
-        if: >-
-          success() &&
-          github.event_name == 'workflow_dispatch' &&
-          github.actor == 'fernandezpastoreduardo' &&
-          github.triggering_actor == 'fernandezpastoreduardo' &&
-          github.ref == 'refs/heads/main' &&
-          inputs.approve_production_deploy == true &&
-          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: production-release-${{ github.sha }}
-          path: release-bundle.tar.gz
-          if-no-files-found: error
-          retention-days: 3
-          compression-level: 0
-
   deploy-production:
     name: Production deployment confirmed
     if: >-
