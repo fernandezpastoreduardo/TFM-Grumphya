@@ -251,9 +251,13 @@ describe("Roast", () => {
   it("clarifies that only the opening exchanges are examples", () => {
     render(<Roast />);
 
+    expect(screen.getByText(/conversaciones de ejemplo/i)).toBeVisible();
+    expect(
+      screen.queryByText(/vista de demostración/i),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        /los intercambios iniciales son ejemplos\. tus mensajes serán atendidas con el debido respeto por grumphya/i,
+        /los intercambios iniciales son ejemplos\. grumphya tratará tus mensajes con el debido respeto/i,
       ),
     ).toBeInTheDocument();
   });

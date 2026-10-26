@@ -220,7 +220,7 @@ export function Roast() {
         />
         <p className="prototype-stamp">
           {showDemoExchanges
-            ? "Los intercambios iniciales son ejemplos. Tus mensajes serán atendidas con el DEBIDO respeto por Grumphya."
+            ? "Los intercambios iniciales son ejemplos. Grumphya tratará tus mensajes con el debido respeto."
             : "Los mensajes de roast no se guardan para futuras visitas. Los intercambios de esta sesión aparecen aquí."}
         </p>
       </section>
