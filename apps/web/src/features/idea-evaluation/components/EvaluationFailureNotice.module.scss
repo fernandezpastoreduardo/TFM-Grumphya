@@ -1,0 +1,38 @@
+.notice {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 14px 0 8px;
+  text-align: center;
+
+  img {
+    display: block;
+    width: clamp(140px, 28vw, 220px);
+    max-height: 220px;
+    object-fit: contain;
+  }
+
+  p {
+    max-width: 48ch;
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.55;
+  }
+}
+
+@media (max-width: 600px) {
+  .notice {
+    gap: 14px;
+    padding-top: 0;
+
+    img {
+      width: min(160px, 48vw);
+      max-height: 160px;
+    }
+
+    p {
+      font-size: 0.98rem;
+    }
+  }
+}

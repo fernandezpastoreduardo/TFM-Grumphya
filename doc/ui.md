@@ -81,6 +81,8 @@ la lámina maestra está en
 - En modo oscuro, los controles y superficies claras conservan texto oscuro;
   los diálogos y paneles oscuros conservan texto claro. Se comprueba también
   la combinación de colores de popups, avisos y botones secundarios.
+- En modo oscuro, el detalle de error del panel de administración conserva
+  texto oscuro sobre su tarjeta clara y enlaces teal legibles.
 - Home refresca desde el servidor los intentos de la cuenta al finalizar cada
   evaluación; Roast los actualiza al completar un envío válido o detectar que
   se agotó la cuota. Cuando el contador diario del plan activo llega a cero,
@@ -92,6 +94,10 @@ la lámina maestra está en
   cuando el servidor confirma que liberó la reserva se informa que no se
   descontó el intento; en los casos inciertos, el mensaje no afirma qué ocurrió
   con la cuota.
+- El fallo confirmado de evaluación se presenta dentro del diálogo de
+  evaluación con una ilustración de Grumphya junto a café derramado. Los fallos
+  cuyo resultado o consumo es incierto mantienen un aviso textual sin esa
+  afirmación de cuota.
 - La revisión de contraste cubre Home (incluidos radio, notas y errores), los
   códigos de las páginas de error, la navegación y las vistas de Planes,
   Contacto, Buenas prácticas, Humanos notables, Descárgate, Peores ideas y

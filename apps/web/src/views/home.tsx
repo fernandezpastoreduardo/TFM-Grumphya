@@ -5,6 +5,7 @@ import "../shared/components/mobile-navigation.scss";
 import "../shared/components/shared-components.scss";
 import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
 import { EvaluationDialog } from "../features/idea-evaluation/components/EvaluationDialog";
+import { EvaluationFailureNotice } from "../features/idea-evaluation/components/EvaluationFailureNotice";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
 import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
 import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
@@ -194,6 +195,18 @@ export function Home() {
       }
     }
     setEvaluationError(EVALUATION_FAILURE_MESSAGE);
+  }
+
+  function renderEvaluationErrorContent() {
+    if (!evaluationError) return null;
+    if (evaluationError === EVALUATION_FAILURE_MESSAGE) {
+      return <EvaluationFailureNotice message={evaluationError} />;
+    }
+    return (
+      <p className="home-result-error" role="alert">
+        {evaluationError}
+      </p>
+    );
   }
 
   async function refreshUsage() {
@@ -399,11 +412,7 @@ export function Home() {
           isEvaluating={isEvaluating}
           onClose={handleEvaluationDialogClose}
         >
-          {!isEvaluating && evaluationError ? (
-            <p className="home-result-error" role="alert">
-              {evaluationError}
-            </p>
-          ) : null}
+          {!isEvaluating ? renderEvaluationErrorContent() : null}
           {!isEvaluating && evaluationResult ? (
             <EvaluationResult result={evaluationResult} />
           ) : null}

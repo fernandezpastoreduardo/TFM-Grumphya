@@ -9,6 +9,14 @@
   color: #172123;
 }
 
+.theme-dark .admin-error-detail {
+  color: #172123;
+}
+
+.theme-dark .admin-error-detail > a {
+  color: #087887;
+}
+
 .theme-dark .admin-dashboard-tabs button {
   color: #172123;
 }
@@ -229,6 +237,9 @@
   margin: 0;
   color: var(--color-ink-muted, #4b5860);
   font-size: 0.9rem;
+}
+.theme-dark .admin-ai-cost-note {
+  color: #fff;
 }
 .admin-table-scroll {
   max-width: 100%;

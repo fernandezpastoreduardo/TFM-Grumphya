@@ -10,6 +10,10 @@ Componente presentacional local a `get-user-idea`. Captura una idea escrita, peg
 
 Presenta veredicto, puntuación, riesgos, supuestos y próximos pasos. No calcula ni modifica el resultado.
 
+### EvaluationFailureNotice
+
+Componente presentacional local a `idea-evaluation`, mostrado dentro del diálogo de Home cuando una evaluación falla y el servidor confirma la liberación del intento. Presenta el mensaje y la ilustración `evaluation-error-spilled-coffee.png`; los resultados inciertos de transporte conservan su aviso textual neutro.
+
 ### RepeatedIdeaNotice
 
 Informa de que la idea es semánticamente similar a otra, muestra el título público seguro y el contador total ya incrementado, y ofrece «Evaluar igualmente». La frase valorativa sigue el tono seleccionado (`soft` o `hard`). No presenta el texto original ni datos de autor. El endpoint de usos anónimos devuelve el cupo restante; detectar la coincidencia no lo consume y continuar reserva una evaluación.

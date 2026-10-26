@@ -86,6 +86,9 @@ En pantallas estrechas, el panel reduce el relleno de las tarjetas y apila los
 desgloses de coste. Las tablas conservan un ancho mínimo y se desplazan dentro
 de su propio contenedor para evitar ensanchar la página.
 
+En modo oscuro, `AdminErrorDetail` mantiene tinta oscura sobre su tarjeta clara
+y enlaces teal legibles para conservar el contraste.
+
 ## Pestañas de análisis
 
 El panel `/panel-control` organiza el resumen y los mensajes de contacto en la

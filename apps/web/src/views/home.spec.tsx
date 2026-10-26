@@ -792,6 +792,14 @@ describe("Home", () => {
     expect(errorAlert).toHaveTextContent(
       /no se te ha descontado este intento/i,
     );
+    const failureIllustration = screen.getByRole("img", {
+      name: "Grumphya triste junto a una taza de café derramada",
+    });
+    expect(failureIllustration).toHaveAttribute(
+      "src",
+      "/assets/grumphya/evaluation-error-spilled-coffee.png",
+    );
+    expect(errorAlert).toContainElement(failureIllustration);
     expect(errorAlert.textContent).not.toContain(TEST_IDEA_TEXT);
     await waitFor(() => {
       expect(

@@ -359,7 +359,7 @@ function AdminDashboardOverview() {
                 )}
               />
             </section>
-            <p className="admin-dashboard-note">
+            <p className="admin-dashboard-note admin-ai-cost-note">
               El coste medio por cuenta incluye a usuarios registrados y admins
               activos ({data.estimatedAiCost.activeRegisteredAccountCount} y{" "}
               {data.estimatedAiCost.activeAdminAccountCount}, respectivamente).

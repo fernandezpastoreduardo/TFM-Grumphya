@@ -742,6 +742,10 @@ test("uses the section hero assets with transparent pixels", async ({
         .locator(".admin-dashboard")
         .evaluate((element) => getComputedStyle(element).color);
       expect(dashboardTextColor).toBe("rgb(23, 33, 35)");
+      const aiCostNoteColor = await page
+        .locator(".admin-ai-cost-note")
+        .evaluate((element) => getComputedStyle(element).color);
+      expect(aiCostNoteColor).toBe("rgb(255, 255, 255)");
 
       await page.setViewportSize({ width: 390, height: 844 });
       await expect(
