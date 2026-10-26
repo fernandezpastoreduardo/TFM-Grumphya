@@ -81,7 +81,7 @@ for (const jobName of ["quality-and-e2e", "supply-chain"]) {
     jobStart,
     nextJobStart === -1 ? undefined : nextJobStart,
   );
-  const actorGate = job.match(/if:\s*>-\s*([\s\S]*?)\n\s*runs-on:/)?.[1];
+  const actorGate = job.match(/^    if:\s*>-\s*\n((?:      .*\n)+)/m)?.[1];
   assert.equal(
     actorGate?.replace(/\s+/g, " ").trim(),
     expectedManualActorGate,
