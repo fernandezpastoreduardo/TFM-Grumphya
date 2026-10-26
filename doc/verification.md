@@ -304,7 +304,7 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 
 - El job `supply-chain` ahora construye y analiza la etapa `production` del Dockerfile, que excluye herramientas y dependencias de desarrollo. La imagen final usa `node:24.21.0-trixie-slim`; `docker build --pull --target production` terminó correctamente y `pnpm audit --prod --audit-level high` no encontró vulnerabilidades conocidas en las dependencias de producción.
 - Antes de Trivy, CI ejecuta `scripts/test-production-image.mjs` contra la imagen construida. La comprobación valida dependencias de runtime, migraciones incluidas, ejecución con usuario no-root y ausencia de ejecutables de gestores de paquetes; no inicia la API ni requiere PostgreSQL. El comando local está documentado en [`ci-cd.md`](ci-cd.md).
-- No se volvió a ejecutar Trivy localmente: la revisión automática rechazó montar `docker.sock` en un contenedor externo. La ejecución de Trivy posterior al cambio queda pendiente de un evento que active CI. El workflow se activa en pull requests y en pushes a `main`, no en pushes a otras ramas; véase [`ci-cd.md`](ci-cd.md).
+- No se volvió a ejecutar Trivy localmente: la revisión automática rechazó montar `docker.sock` en un contenedor externo. La ejecución de Trivy posterior al cambio queda pendiente de un evento que active CI. En esa fecha, el workflow se activaba en pull requests y pushes a `main`; los disparadores actuales se describen en [`ci-cd.md`](ci-cd.md).
 
 ## Verificación de correo para nuevas cuentas, 20 de octubre de 2026
 
