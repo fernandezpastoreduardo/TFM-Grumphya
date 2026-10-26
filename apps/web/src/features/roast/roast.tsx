@@ -133,8 +133,7 @@ export function Roast() {
         </div>
         {showDemoExchanges ? (
           <p className="prototype-stamp">
-            <span aria-hidden="true">✳</span> Conversaciones de ejemplo · vista
-            de demostración
+            <span aria-hidden="true">✳</span> Conversaciones de ejemplo
           </p>
         ) : null}
         <div className="roast-thread" ref={roastThreadRef}>
@@ -221,7 +220,7 @@ export function Roast() {
         />
         <p className="prototype-stamp">
           {showDemoExchanges
-            ? "Los intercambios iniciales son ejemplos. Tus mensajes reciben la respuesta configurada en el servidor."
+            ? "Los intercambios iniciales son ejemplos. Tus mensajes serán atendidas con el DEBIDO respeto por Grumphya."
             : "Los mensajes de roast no se guardan para futuras visitas. Los intercambios de esta sesión aparecen aquí."}
         </p>
       </section>

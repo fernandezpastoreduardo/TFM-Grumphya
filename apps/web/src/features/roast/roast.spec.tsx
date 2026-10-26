@@ -253,7 +253,7 @@ describe("Roast", () => {
 
     expect(
       screen.getByText(
-        /los intercambios iniciales son ejemplos\. tus mensajes reciben la respuesta configurada en el servidor/i,
+        /los intercambios iniciales son ejemplos\. tus mensajes serán atendidas con el debido respeto por grumphya/i,
       ),
     ).toBeInTheDocument();
   });
