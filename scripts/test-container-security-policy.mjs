@@ -98,7 +98,7 @@ assert.ok(
 
 assert.match(
   workflow,
-  /docker compose --builder "\$BUILDER" --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
+  /BUILDX_BUILDER: \$\{\{ steps\.buildx\.outputs\.name \}\}[\s\S]*?docker compose --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
   "CI must build all production images concurrently through Compose",
 );
 assert.match(

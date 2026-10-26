@@ -100,8 +100,8 @@ for (const jobName of [
 assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e, dependency-audit\]/);
 assert.match(
   releaseJob,
-  /docker compose --builder "\$BUILDER" --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
-  "production images must build concurrently through the configured Buildx builder",
+  /BUILDX_BUILDER: \$\{\{ steps\.buildx\.outputs\.name \}\}[\s\S]*?docker compose --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
+  "production images must use the configured Buildx builder through Compose",
 );
 assert.match(
   releaseJob,
@@ -372,7 +372,7 @@ assert.match(
 );
 assert.match(
   workflow,
-  /Build images while downloading the Trivy vulnerability database[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?2>&1 &\n[\s\S]*?docker compose --builder "\$BUILDER" --parallel 4[\s\S]*?build --pull api web db proxy/,
+  /Build images while downloading the Trivy vulnerability database[\s\S]*?BUILDX_BUILDER: \$\{\{ steps\.buildx\.outputs\.name \}\}[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?2>&1 &\n[\s\S]*?docker compose --parallel 4[\s\S]*?build --pull api web db proxy/,
   "Docker image builds and vulnerability database download must overlap",
 );
 const trivyDatabaseDownloadStart = workflow.indexOf(
@@ -391,9 +391,7 @@ const databaseDownloadWait = trivyDatabaseBuildStep.indexOf(
 assert.ok(databaseDownloadWait >= 0, "Trivy database download must be awaited");
 assert.ok(
   databaseDownloadWait >
-    trivyDatabaseBuildStep.indexOf(
-      'docker compose --builder "$BUILDER" --parallel 4',
-    ),
+    trivyDatabaseBuildStep.indexOf("docker compose --parallel 4"),
   "the database download should overlap image builds",
 );
 assert.match(
