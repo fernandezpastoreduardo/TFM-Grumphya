@@ -31,6 +31,12 @@ describe("GetUserIdea", () => {
 
     expect(screen.getByRole("textbox", { name: INPUT_LABEL })).toBeVisible();
     expect(
+      screen.getByText(/un título creado para ser seguro.*ranking educativo/i),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: /política de privacidad/i }),
+    ).toHaveAttribute("href", "/politica-de-privacidad");
+    expect(
       screen.queryByRole("radio", { name: /tengo la piel fina/i }),
     ).not.toBeInTheDocument();
 
@@ -402,6 +408,10 @@ describe("GetUserIdea", () => {
     ).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: /borrar idea/i })).toHaveFocus();
+    await user.tab();
+    expect(
+      screen.getByRole("link", { name: /política de privacidad/i }),
+    ).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: NEXT_STEP_LABEL })).toHaveFocus();
     await user.keyboard("{Enter}");

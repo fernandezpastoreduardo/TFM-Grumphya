@@ -147,7 +147,7 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
     const userInsert = clientQuery.mock.calls.find(([sql]) =>
       String(sql).includes("privacy_policy_version"),
     );
-    expect(userInsert?.[1]).toContain("v3");
+    expect(userInsert?.[1]).toContain("v4");
     expect(client.release).toHaveBeenCalledOnce();
   });
 });

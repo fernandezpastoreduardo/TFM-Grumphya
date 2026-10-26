@@ -30,9 +30,9 @@ Formularios accesibles. Los errores de autenticación deben ser genéricos y nun
 
 `CreateAccountForm` solicita email, alias, contraseña y una casilla inicialmente desmarcada con el texto «He leído la política de privacidad», enlazado a `/politica-de-privacidad`. La casilla obligatoria se envía como `privacyPolicyAcknowledged` y tiene error asociado y anuncio accesible. Un texto auxiliar cercano permite consultar `/terminos-y-condiciones`; no añade una aceptación separada. Email sintácticamente inválido puede dar mensaje específico; conflictos de email/alias comparten el mismo mensaje y respuesta genérica. El formulario distingue los estados de carga, error y alta pendiente, e informa que la cuenta no se activará hasta verificar el correo y confirmar el plan. Los enlaces llevan el token en el fragmento URL. La página lo lee y lo elimina de la barra de direcciones, pero no lo consume al abrirse: muestra «Confirmar correo» y solo tras pulsarlo envía la verificación. Sin SMTP en desarrollo se genera una vista previa local de correo, no un envío.
 
-La vista `/politica-de-privacidad` publica la versión 3, fechada el 24 de octubre de 2026. El consentimiento opcional gestionado desde el perfil cubre los rankings de cuentas y es independiente de la casilla de lectura del alta. El ranking público agregado de ideas rechazadas no usa esa preferencia; su base jurídica e identificabilidad requieren decisión y revisión separadas.
+La vista `/politica-de-privacidad` publica la versión 4, fechada el 26 de octubre de 2026. El consentimiento opcional gestionado desde el perfil cubre los rankings de cuentas y es independiente de la casilla de lectura del alta. El ranking de rechazos no usa esa preferencia; se basa en el interés legítimo elegido para publicar títulos generados para ser seguros y cantidades con finalidad educativa. El filtro no garantiza evitar la identificación contextual; véase la evaluación interna.
 
-`/terminos-y-condiciones` muestra el resumen sobre el tratamiento de las ideas y los dictados que antes aparecía en Home. No sustituye la versión 3 de `/politica-de-privacidad`.
+`/terminos-y-condiciones` muestra el resumen sobre el tratamiento de las ideas y los dictados que antes aparecía en Home. No sustituye la versión 4 de `/politica-de-privacidad`.
 
 ### ErrorPages
 

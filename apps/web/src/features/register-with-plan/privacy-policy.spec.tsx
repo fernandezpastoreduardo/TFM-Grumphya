@@ -12,9 +12,15 @@ describe("PrivacyPolicy", () => {
       screen.getByRole("heading", { name: /política de privacidad/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Versión 3 · 24 de octubre de 2026/i),
+      screen.getByText(/Versión 4 · 26 de octubre de 2026/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/borrador/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/fomentar el uso educativo de Grumphya/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no puede garantizar que un título o su contexto/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /uso de inteligencia artificial/i }),
     ).toBeInTheDocument();
@@ -29,13 +35,21 @@ describe("PrivacyPolicy", () => {
       screen.getByText(/no establece una edad mínima/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/nunca muestra el autor ni el texto original/i),
+      screen.getByText(/no muestra autor, cuenta, texto original/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/las ideas aprobadas no se publican/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/perfil seudónimo del navegador/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/revisaremos la solicitud manualmente y, si procede/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /retirar una idea puede afectar al título y al recuento compartidos/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(

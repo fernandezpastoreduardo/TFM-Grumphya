@@ -132,7 +132,7 @@ la lámina maestra está en
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
-  privacidad versión 3. Las mascotas de hero flotan suavemente, los bloques
+  privacidad versión 4. Las mascotas de hero flotan suavemente, los bloques
   entran al desplazarse y los controles responden al hover; las animaciones se
   desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
@@ -267,7 +267,7 @@ y pesa 202.657 B. Los tres conservan transparencia.
 
 ## Ranking público de ideas rechazadas
 
-La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Primero,
+La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Antes de enviar una idea, el formulario informa de que un título filtrado para ser seguro y su recuento pueden aparecer en el ranking, y enlaza a privacidad. Primero,
 `WorstIdeasAllTime` obtiene el ranking histórico de `GET /api/worst-ideas/all-time`;
 después, `WorstIdeasAll` obtiene el semanal de `GET /api/worst-ideas`. No incluyen
 filas de ejemplo. Cada fila muestra su puesto, título seguro y número de

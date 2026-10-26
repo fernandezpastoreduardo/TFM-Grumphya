@@ -22,7 +22,7 @@ export function PrivacyPolicy() {
           comparten y durante cuánto tiempo los conservamos.
         </p>
         <p className="privacy-policy-version">
-          Versión 3 · 24 de octubre de 2026
+          Versión 4 · 26 de octubre de 2026
         </p>
       </header>
 
@@ -64,10 +64,12 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Ideas aprobadas y rechazadas:</strong> para una cuenta, se
-            puede guardar el título de una idea aprobada de forma privada. Las
-            ideas rechazadas se agregan sin una relación con tu cuenta y se
-            conserva un título seguro y una representación semántica; el texto
-            original no se guarda en ese registro.
+            puede guardar el título de una idea aprobada de forma privada. De
+            las ideas rechazadas se conserva un título generado para ser seguro
+            y una representación semántica; el texto original no queda en el
+            corpus. Si envías una idea con tu cuenta, el historial privado
+            también relaciona esa idea con tu cuenta y muestra el título y el
+            número de recepciones solo a ti.
           </li>
           <li>
             <strong>Diagnóstico de errores de evaluación:</strong> si el
@@ -77,13 +79,16 @@ export function PrivacyPolicy() {
             pueden consultar ese detalle y se elimina a los 30 días.
           </li>
           <li>
-            <strong>Rankings:</strong> el ranking de ideas rechazadas puede
-            mostrar un título seguro y el número de veces que se ha recibido;
-            nunca muestra el autor ni el texto original. Otros rankings pueden
-            mostrar el alias y el número de aprobaciones o mensajes roast y,
-            según el ranking, el avatar. Esos alias, contadores y avatares son
-            visibles públicamente y no deben describirse como anónimos. Las
-            ideas aprobadas no se publican.
+            <strong>Rankings:</strong> el ranking educativo de ideas rechazadas
+            puede mostrar el título generado para ser seguro y el número de
+            veces que se ha recibido. No muestra autor, cuenta, texto original,
+            historial privado ni identificadores. El filtro automático reduce
+            datos de contacto y fragmentos literales, pero no puede garantizar
+            que un título o su contexto nunca permita reconocer a alguien. Otros
+            rankings pueden mostrar el alias y el número de aprobaciones o
+            mensajes roast y, según el ranking, el avatar. Esos alias,
+            contadores y avatares son visibles públicamente y no deben
+            describirse como anónimos. Las ideas aprobadas no se publican.
           </li>
           <li>
             <strong>Contacto:</strong> asunto y contenido de los mensajes que
@@ -161,21 +166,30 @@ export function PrivacyPolicy() {
         </p>
         <p>
           Según la información facilitada por el responsable, los datos no se
-          venden ni se usan para publicidad o analítica. Su uso es técnico y
-          está dirigido a prestar y proteger las funciones de Grumphya. Para
-          ejecutarlas, sí se comunican datos a proveedores técnicos, como OpenAI
-          para las funciones de inteligencia artificial; su intervención no
-          equivale a una venta de datos.
+          venden ni se usan para anuncios personalizados. El ranking de ideas
+          rechazadas tiene una finalidad educativa: mostrar ejemplos de
+          problemas que se repiten y fomentar el uso de Grumphya. Para prestar
+          otras funciones, sí se comunican datos a proveedores técnicos, como
+          OpenAI para las funciones de inteligencia artificial; su intervención
+          no equivale a una venta de datos.
         </p>
         <p>
           La base jurídica depende de cada finalidad. La ejecución de las
           funciones que solicitas y la gestión de la cuenta se basan en la
           prestación del servicio; la seguridad, la prevención del abuso y las
           métricas técnicas necesarias se basan en el interés legítimo del
-          responsable en mantener un servicio seguro y fiable. La participación
-          en rankings públicos requiere tu autorización expresa y voluntaria,
-          que puedes retirar desde tu perfil. Los campos opcionales se
-          identifican en la función correspondiente.
+          responsable en mantener un servicio seguro y fiable. Para fomentar el
+          uso educativo de Grumphya y mostrar ejemplos de ideas rechazadas que
+          se repiten, el ranking publica títulos generados para ser seguros y
+          recuentos agregados, sin autor ni relación pública con cuentas. Este
+          tratamiento se basa en el interés legítimo del responsable. El filtro
+          automático reduce algunos datos identificativos, pero no elimina por
+          completo el riesgo de identificación indirecta; la finalidad, la
+          ponderación y las salvaguardas se explican en la evaluación de
+          privacidad. Puedes oponerte por motivos relacionados con tu situación
+          particular escribiendo a contacto@grumphya.com. Los rankings que
+          muestran alias, avatares o actividad de cuentas sí requieren una
+          autorización expresa y voluntaria, revocable desde el perfil.
         </p>
       </section>
 
@@ -272,12 +286,12 @@ export function PrivacyPolicy() {
             hasta que se sobrescriban o eliminen conforme a ese ciclo.
           </li>
           <li>
-            El texto original de ideas rechazadas no queda en el registro de
-            rechazo. El título seguro y el vector usados para detectar
-            coincidencias se conservan hasta 24 meses desde la última recepción
-            y después se eliminan. El título seguro y el contador agregado del
-            ranking histórico, sin autor, texto original ni vector, también se
-            eliminan cuando esa idea alcanza 24 meses sin nuevas recepciones.
+            El texto original de ideas rechazadas no queda en el corpus de
+            similitud. El título generado para ser seguro y el vector usados
+            para detectar coincidencias, junto con el contador del ranking
+            histórico, se conservan hasta 24 meses desde la última recepción y
+            después se eliminan. El historial privado asociado a una cuenta
+            permanece mientras exista la cuenta y se elimina al darla de baja.
           </li>
           <li>
             Los mensajes de contacto y las métricas técnicas y de uso de IA se
@@ -352,6 +366,16 @@ export function PrivacyPolicy() {
           Solo se solicitará información adicional cuando sea necesaria para
           verificar tu identidad. El responsable responderá dentro de los plazos
           legales aplicables.
+        </p>
+        <p>
+          Si te opones a que un título aparezca en el ranking de ideas
+          rechazadas, incluye el título publicado o información suficiente para
+          localizarlo y escribe a contacto@grumphya.com. Revisaremos la
+          solicitud manualmente y, si procede, retiraremos el título y su
+          recuento del ranking público. El corpus no conserva el texto original
+          y el recuento público agrega ideas similares sin separar las
+          aportaciones individuales. Retirar una idea puede afectar al título y
+          al recuento compartidos.
         </p>
         <p>
           También puedes presentar una reclamación ante la Agencia Española de
