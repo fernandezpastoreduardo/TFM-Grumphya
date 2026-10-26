@@ -10,6 +10,7 @@ const REQUIRED_DEPLOY_GUARDS = [
   "github.ref == 'refs/heads/main'",
   "inputs.approve_production_deploy == true",
   "needs.quality-and-e2e.result == 'success'",
+  "needs.e2e.result == 'success'",
   "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
 ];
 const EXPECTED_DEPLOY_CONDITION = REQUIRED_DEPLOY_GUARDS.join(" && ");
@@ -71,7 +72,7 @@ assert.match(workflow, /approve_production_deploy:[\s\S]*?default:\s*false/);
 
 const expectedManualActorGate =
   "github.event_name != 'workflow_dispatch' || (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')";
-for (const jobName of ["quality-and-e2e", "supply-chain"]) {
+for (const jobName of ["quality-and-e2e", "e2e", "supply-chain"]) {
   const jobStart = workflow.indexOf(`  ${jobName}:`);
   const nextJobMatch = workflow
     .slice(jobStart + 1)
@@ -89,7 +90,11 @@ for (const jobName of ["quality-and-e2e", "supply-chain"]) {
   );
 }
 
-assert.match(releaseJob, /needs:\s*quality-and-e2e/);
+assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e\]/);
+assert.match(
+  workflow,
+  /container:\s*\n\s+image:\s*mcr\.microsoft\.com\/playwright:v1\.64\.0-noble/,
+);
 const conditionBlock = deploymentStep.match(
   /if:\s*>-\s*([\s\S]*?)\n\s*env:/,
 )?.[1];
@@ -146,6 +151,18 @@ const deploymentContexts = [
     triggeringActor: "fernandezpastoreduardo",
     approve: true,
     quality: "failure",
+    enabled: "true",
+    expected: false,
+  },
+  {
+    name: "failed browser end-to-end job",
+    event: "workflow_dispatch",
+    ref: "refs/heads/main",
+    actor: "fernandezpastoreduardo",
+    triggeringActor: "fernandezpastoreduardo",
+    approve: true,
+    quality: "success",
+    e2e: "failure",
     enabled: "true",
     expected: false,
   },
@@ -222,6 +239,8 @@ for (const context of deploymentContexts) {
     context.triggeringActor === "fernandezpastoreduardo" &&
     context.approve === true &&
     context.quality === "success" &&
+    (context.e2e ?? "success") === "success" &&
+    deploymentStep.includes("needs.e2e.result == 'success'") &&
     context.enabled === "true";
   assert.equal(allowed, context.expected, `deploy gate: ${context.name}`);
 }
