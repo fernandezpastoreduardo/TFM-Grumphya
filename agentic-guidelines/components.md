@@ -112,4 +112,4 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 
 ### AdminErrorDetail
 
-Vista local al panel de administración que carga un evento de error por ID desde la API protegida. Valida la respuesta antes de mostrarla; incluye estado HTTP, fecha, caso de uso y diagnóstico. Solo puede mostrar el texto de idea acotado que se conservó en eventos `INVALID_EVALUATION_RESPONSE`; los eventos sin contexto informan que no hay entrada guardada. El servidor exige sesión y rol admin.
+Vista local al panel de administración que carga un evento de error por ID desde la API protegida. Valida la respuesta antes de mostrarla; incluye estado HTTP, fecha, caso de uso y diagnóstico. Puede mostrar el texto de idea acotado conservado en errores 5xx de evaluación; los eventos sin contexto informan que no hay entrada guardada. El servidor exige sesión y rol admin.

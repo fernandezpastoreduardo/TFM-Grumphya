@@ -104,6 +104,10 @@ const MIGRATIONS = [
     version: "032_worst_ideas_all_time_ranking",
     file: "032_worst_ideas_all_time_ranking.sql",
   },
+  {
+    version: "033_admin_rankings_opt_in",
+    file: "033_admin_rankings_opt_in.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

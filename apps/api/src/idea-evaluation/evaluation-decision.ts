@@ -140,7 +140,17 @@ export type ModelDecisionValidationCode =
   | "criterion_value"
   | "decision_fields"
   | "visible_message"
-  | "decision_semantics";
+  | "decision_semantics"
+  | "semantic_safe_title_invalid"
+  | "semantic_rejected_criteria_incomplete"
+  | "semantic_rejected_without_failed_criterion"
+  | "semantic_rejection_stop_at_mismatch"
+  | "semantic_rejection_reason_code_mismatch"
+  | "semantic_rejection_basis_not_literal"
+  | "semantic_non_rejected_has_rejection_fields"
+  | "semantic_insufficient_has_criteria"
+  | "semantic_passing_criteria_incomplete"
+  | "semantic_passing_failed_criterion";
 const RESULT_HEADLINES: Record<
   EvaluationDecisionStatus,
   Record<EvaluationTone, string>
@@ -404,27 +414,34 @@ function parseDecisionFields(
   throw new InvalidModelDecisionError("decision_fields");
 }
 
-function validateRejectedDecision(
+function getRejectedDecisionError(
   decision: ModelDecision,
   ideaText: string,
-): boolean {
+): ModelDecisionValidationCode | null {
+  if (!isSafeTitle(decision.safeTitle, ideaText)) {
+    return "semantic_safe_title_invalid";
+  }
+  if (
+    decision.evaluated.length !== EVALUATION_CRITERION_IDS.length ||
+    decision.evaluated.at(-1)?.id !== "C10" ||
+    decision.evaluated.at(-1)?.state !== "PUNTUADO"
+  ) {
+    return "semantic_rejected_criteria_incomplete";
+  }
   const firstFailure = decision.evaluated.find(
     (criterion) =>
       criterion.state === "PUNTUADO" && criterion.score < REJECTION_THRESHOLD,
   );
-  if (
-    decision.evaluated.length !== EVALUATION_CRITERION_IDS.length ||
-    decision.evaluated.at(-1)?.id !== "C10" ||
-    decision.evaluated.at(-1)?.state !== "PUNTUADO" ||
-    !firstFailure ||
-    decision.stop_at !== firstFailure.id ||
-    !isReasonCodeForCriterion(firstFailure.id, decision.reason_code) ||
-    decision.basis === null ||
-    !ideaText.includes(decision.basis)
-  ) {
-    return false;
+  if (!firstFailure) {
+    return "semantic_rejected_without_failed_criterion";
   }
-  return true;
+  if (decision.stop_at !== firstFailure.id)
+    return "semantic_rejection_stop_at_mismatch";
+  if (!isReasonCodeForCriterion(firstFailure.id, decision.reason_code))
+    return "semantic_rejection_reason_code_mismatch";
+  if (decision.basis === null || !ideaText.includes(decision.basis))
+    return "semantic_rejection_basis_not_literal";
+  return null;
 }
 
 function isSafeTitle(value: unknown, ideaText: string): value is string {
@@ -490,15 +507,12 @@ function shouldExposeExistingProductExample(decision: ModelDecision): boolean {
   );
 }
 
-function isValidDecisionStatus(
+function getDecisionSemanticError(
   decision: ModelDecision,
   ideaText: string,
-): boolean {
+): ModelDecisionValidationCode | null {
   if (decision.status === "RECHAZADA") {
-    return (
-      isSafeTitle(decision.safeTitle, ideaText) &&
-      validateRejectedDecision(decision, ideaText)
-    );
+    return getRejectedDecisionError(decision, ideaText);
   }
   if (
     decision.stop_at !== null ||
@@ -506,21 +520,26 @@ function isValidDecisionStatus(
     decision.basis !== null ||
     decision.safeTitle !== null
   ) {
-    return false;
+    return "semantic_non_rejected_has_rejection_fields";
   }
   if (decision.status === "IDEA_INSUFICIENTE") {
-    return decision.evaluated.length === 0;
+    return decision.evaluated.length === 0
+      ? null
+      : "semantic_insufficient_has_criteria";
   }
-  return (
-    decision.evaluated.length === EVALUATION_CRITERION_IDS.length &&
-    decision.evaluated.at(-1)?.id === "C10" &&
-    decision.evaluated.at(-1)?.state === "PUNTUADO" &&
-    decision.evaluated.every(
-      (criterion) =>
-        criterion.state !== "PUNTUADO" ||
-        criterion.score >= REJECTION_THRESHOLD,
-    )
-  );
+  if (
+    decision.evaluated.length !== EVALUATION_CRITERION_IDS.length ||
+    decision.evaluated.at(-1)?.id !== "C10" ||
+    decision.evaluated.at(-1)?.state !== "PUNTUADO"
+  ) {
+    return "semantic_passing_criteria_incomplete";
+  }
+  return decision.evaluated.some(
+    (criterion) =>
+      criterion.state === "PUNTUADO" && criterion.score < REJECTION_THRESHOLD,
+  )
+    ? "semantic_passing_failed_criterion"
+    : null;
 }
 
 export function validateModelDecision(
@@ -583,8 +602,7 @@ export function validateModelDecision(
   ) {
     decision.existingProductExample = null;
   }
-  if (!isValidDecisionStatus(decision, ideaText)) {
-    throw new InvalidModelDecisionError("decision_semantics");
-  }
+  const semanticError = getDecisionSemanticError(decision, ideaText);
+  if (semanticError) throw new InvalidModelDecisionError(semanticError);
   return decision;
 }

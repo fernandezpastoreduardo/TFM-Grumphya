@@ -15,6 +15,7 @@ import { parseApplicationErrorContext } from "../infrastructure/observability/ap
 const SAFE_ERROR_CODE_PATTERN = /^[A-Z0-9_]{1,100}$/u;
 const SAFE_DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
 const FIRST_PERSISTED_ERROR_STATUS = 500;
+const IDEA_EVALUATION_PATH = "/api/evaluation-process";
 
 @Catch()
 export class ApplicationErrorFilter extends BaseExceptionFilter {
@@ -34,7 +35,9 @@ export class ApplicationErrorFilter extends BaseExceptionFilter {
     if (statusCode >= FIRST_PERSISTED_ERROR_STATUS) {
       const errorCode = readErrorCode(exception, statusCode);
       const diagnosticCode = readDiagnosticCode(exception);
-      const context = readApplicationErrorContext(exception);
+      const context =
+        readApplicationErrorContext(exception) ??
+        readEvaluationRequestContext(host);
       try {
         await this.repository.recordApplicationError(
           errorCode,
@@ -48,6 +51,29 @@ export class ApplicationErrorFilter extends BaseExceptionFilter {
     }
     super.catch(exception, host);
   }
+}
+
+function readEvaluationRequestContext(host: ArgumentsHost) {
+  const request = host.getArgByIndex(0);
+  if (typeof request !== "object" || request === null) return null;
+  const candidate = request as Record<string, unknown>;
+  const method = candidate.method;
+  const url = candidate.originalUrl ?? candidate.url;
+  if (
+    method !== "POST" ||
+    typeof url !== "string" ||
+    url.split("?", 1)[0] !== IDEA_EVALUATION_PATH
+  ) {
+    return null;
+  }
+  const body = candidate.body;
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return null;
+  }
+  return parseApplicationErrorContext({
+    useCase: "idea_evaluation",
+    inputText: (body as Record<string, unknown>).ideaText,
+  });
 }
 
 function readApplicationErrorContext(exception: unknown) {

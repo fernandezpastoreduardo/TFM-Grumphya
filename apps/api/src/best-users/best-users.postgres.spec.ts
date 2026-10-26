@@ -53,12 +53,20 @@ describe.skipIf(!DATABASE_URL)("best users ranking persistence", () => {
       "INSERT INTO approved_ideas (user_id, title) VALUES ($1, $2)",
       [optedOutUserId, "Idea de cuenta sin adhesión al ranking"],
     );
+    const jappyId = await createAdmin(testPool);
+    for (let idea = 0; idea < 13; idea += 1) {
+      await testPool.query(
+        "INSERT INTO approved_ideas (user_id, title) VALUES ($1, $2)",
+        [jappyId, `Idea de Jappy ${idea}`],
+      );
+    }
 
     const users = await repository.getBestListBestUsers();
 
     expect(users).toHaveLength(10);
-    expect(users[0]).toEqual({ username: "user-12", approvedIdeasCount: 12 });
-    expect(users.at(-1)).toEqual({ username: "user-3", approvedIdeasCount: 3 });
+    expect(users[0]).toEqual({ username: "jappy", approvedIdeasCount: 13 });
+    expect(users.at(-1)).toEqual({ username: "user-4", approvedIdeasCount: 4 });
+    expect(users.some((user) => user.username === "jappy")).toBe(true);
     expect(users.some((user) => user.username === "user-13")).toBe(false);
     expect(users.some((user) => user.username === "user-14")).toBe(false);
     expect(Object.keys(users[0] ?? {}).sort()).toEqual([
@@ -92,5 +100,22 @@ async function createUser(
   );
   const userId = result.rows[0]?.id;
   if (!userId) throw new Error("Test user insert returned no id.");
+  return userId;
+}
+
+async function createAdmin(pool: Pool): Promise<string> {
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO users (
+       email, email_normalized, username, username_normalized, password_hash,
+       privacy_policy_version, privacy_policy_acknowledged_at,
+       public_rankings_consent_at, public_rankings_consent_policy_version,
+       status, role
+       ) VALUES (
+       'jappy@example.invalid', 'jappy@example.invalid', 'jappy', 'jappy',
+       'test-hash', 'test-v1', now(), now(), 'v2', 'active', 'admin'
+     ) RETURNING id`,
+  );
+  const userId = result.rows[0]?.id;
+  if (!userId) throw new Error("Admin user insert returned no id.");
   return userId;
 }

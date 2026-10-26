@@ -172,27 +172,42 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
 
   it("allows admin idea and roast usage without plans or daily counters", async () => {
     const adminId = "123e4567-e89b-42d3-a456-426614174099";
+    const otherAdminId = "123e4567-e89b-42d3-a456-426614174098";
     await testPool.query(
       `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
          privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status,role)
        VALUES($1,$2,$2,'jappy','jappy','test-hash','test-v1',now(),now(),'active','admin')`,
       [adminId, `${adminId}@example.es`],
     );
-    const ideaHash = "a".repeat(64);
-    const roastHash = "b".repeat(64);
+    await testPool.query(
+      `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
+         privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status,role)
+       VALUES($1,$2,$2,'other-admin','other-admin','test-hash','test-v1',now(),now(),'active','admin')`,
+      [otherAdminId, `${otherAdminId}@example.es`],
+    );
 
     await expect(
-      repository.reserve(adminId, "ideas", ideaHash, REQUEST_HASH),
-    ).resolves.toEqual({ state: "reserved" });
+      repository.reserve(otherAdminId, "ideas", HASHES[10]!, REQUEST_HASH),
+    ).rejects.toThrow("ACTIVE_PLAN_REQUIRED");
     await expect(
-      repository.reserve(adminId, "roasts", roastHash, REQUEST_HASH),
+      repository.reserve(otherAdminId, "roasts", HASHES[11]!, REQUEST_HASH),
+    ).rejects.toThrow("ACTIVE_PLAN_REQUIRED");
+
+    const ideaHash = "a".repeat(64);
+    await expect(
+      repository.reserve(adminId, "ideas", ideaHash, REQUEST_HASH),
     ).resolves.toEqual({ state: "reserved" });
     await repository.commit(adminId, "ideas", ideaHash, REQUEST_HASH, {
       status: "ok",
     });
-    await repository.commit(adminId, "roasts", roastHash, REQUEST_HASH, {
-      reply: "ok",
-    });
+    for (const [index, roastHash] of HASHES.entries()) {
+      await expect(
+        repository.reserve(adminId, "roasts", roastHash, REQUEST_HASH),
+      ).resolves.toEqual({ state: "reserved" });
+      await repository.commit(adminId, "roasts", roastHash, REQUEST_HASH, {
+        reply: `ok-${index}`,
+      });
+    }
 
     const state = await testPool.query<{
       role: string;
@@ -210,7 +225,7 @@ describe.skipIf(!DATABASE_URL)("authenticated plan usage persistence", () => {
       role: "admin",
       ideas_used: 0,
       roasts_used: 0,
-      roast_messages_sent: "0",
+      roast_messages_sent: "12",
     });
   });
 });

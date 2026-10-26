@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../app.module";
 import type { ModelDecision } from "./evaluation-decision";
 import type { EvaluationPort } from "./evaluation-port";
+import { OpenAiEvaluationFailure } from "./openai-evaluation.port";
 import { EvaluationTestingModule } from "./evaluation-testing.module";
 import { FakeEvaluationPort } from "./fake-evaluation.port";
 import { EvaluationProcessService } from "./evaluation-process.service";
@@ -324,6 +325,13 @@ describe("EvaluationProcessService", () => {
 
     expect(caught).toBeInstanceOf(ServiceUnavailableException);
     expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "evaluator_not_configured",
+      applicationErrorContext: {
+        useCase: "idea_evaluation",
+        inputText: VALID_IDEA,
+      },
+    });
   });
 
   it("allows the Nest application to start without a production evaluator", async () => {
@@ -411,12 +419,85 @@ describe("EvaluationProcessService", () => {
     expect(JSON.stringify(loggerError.mock.calls)).not.toContain(VALID_IDEA);
   });
 
+  it("retries once when a structured decision has inconsistent semantics", async () => {
+    const inconsistentDecision = {
+      ...createCompleteDecision(),
+      evaluated: createCompleteDecision().evaluated.map((criterion) =>
+        criterion.id === "C04"
+          ? { id: "C04", state: "PUNTUADO", score: 10 }
+          : criterion,
+      ),
+    };
+    const port = createPort(inconsistentDecision);
+    vi.mocked(port.evaluate)
+      .mockResolvedValueOnce(inconsistentDecision)
+      .mockResolvedValueOnce(createCompleteDecision());
+    const service = new EvaluationProcessService(port);
+
+    const result = await service.evaluate({
+      ideaText: VALID_IDEA,
+      tone: "soft",
+    });
+
+    expect(result).toEqual({
+      status: "SIN_BLOQUEO_EVIDENTE",
+      score: 7.13,
+      headline: "¡Qué ilusión! Ha superado el primer repaso.",
+      message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+    });
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+    expect(port.evaluate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        ideaText: VALID_IDEA,
+        policyVersion: POLICY_VERSION,
+      }),
+    );
+  });
+
+  it("returns the semantic validation error after the single retry fails", async () => {
+    const inconsistentDecision = {
+      ...createCompleteDecision(),
+      evaluated: createCompleteDecision().evaluated.map((criterion) =>
+        criterion.id === "C04"
+          ? { id: "C04", state: "PUNTUADO", score: 10 }
+          : criterion,
+      ),
+    };
+    const loggerError = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    const port = createPort(inconsistentDecision);
+    const service = new EvaluationProcessService(port);
+    let caught: unknown;
+
+    try {
+      await service.evaluate({ ideaText: VALID_IDEA, tone: "soft" });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "semantic_passing_failed_criterion",
+      applicationErrorContext: {
+        useCase: "idea_evaluation",
+        inputText: VALID_IDEA,
+      },
+    });
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+    expect(loggerError).toHaveBeenCalledWith(
+      "INVALID_EVALUATION_RESPONSE validation=semantic_passing_failed_criterion",
+    );
+  });
+
   it("maps provider errors without exposing their messages", async () => {
     const loggerError = vi
       .spyOn(Logger.prototype, "error")
       .mockImplementation(() => undefined);
     const port = {
-      evaluate: vi.fn().mockRejectedValue(new Error(`${VALID_IDEA} secret`)),
+      evaluate: vi
+        .fn()
+        .mockRejectedValue(new OpenAiEvaluationFailure("OPENAI_HTTP_429")),
     } satisfies EvaluationPort;
     const service = new EvaluationProcessService(port);
     let caught: unknown;
@@ -428,12 +509,49 @@ describe("EvaluationProcessService", () => {
     }
 
     expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "openai_http_429",
+      applicationErrorContext: {
+        useCase: "idea_evaluation",
+        inputText: VALID_IDEA,
+      },
+    });
+    expect(String(caught)).not.toContain(VALID_IDEA);
+    expect(String(caught)).not.toContain("secret");
+    expect(loggerError).toHaveBeenCalledWith("OPENAI_HTTP_429");
+    expect(JSON.stringify(loggerError.mock.calls)).not.toContain(VALID_IDEA);
+    expect(JSON.stringify(loggerError.mock.calls)).not.toContain("secret");
+    expect(port.evaluate).toHaveBeenCalledTimes(1);
+  });
+
+  it("records an unexpected failure category without exposing provider details", async () => {
+    const loggerError = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => undefined);
+    const port = {
+      evaluate: vi.fn().mockRejectedValue(new Error(`${VALID_IDEA} secret`)),
+    } satisfies EvaluationPort;
+    const service = new EvaluationProcessService(port);
+
+    let caught: unknown;
+    try {
+      await service.evaluate({ ideaText: VALID_IDEA, tone: "soft" });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "unexpected_evaluation_failure",
+      applicationErrorContext: {
+        useCase: "idea_evaluation",
+        inputText: VALID_IDEA,
+      },
+    });
     expect(String(caught)).not.toContain(VALID_IDEA);
     expect(String(caught)).not.toContain("secret");
     expect(loggerError).toHaveBeenCalledWith("EVALUATOR_UNAVAILABLE");
     expect(JSON.stringify(loggerError.mock.calls)).not.toContain(VALID_IDEA);
-    expect(JSON.stringify(loggerError.mock.calls)).not.toContain("secret");
-    expect(port.evaluate).toHaveBeenCalledTimes(1);
   });
 
   it("aborts and returns a timeout response without retrying", async () => {
@@ -463,6 +581,13 @@ describe("EvaluationProcessService", () => {
 
     expect(caught).toBeInstanceOf(GatewayTimeoutException);
     expect(getExceptionResponse(caught)).toEqual(TIMEOUT_RESPONSE);
+    expect(caught).toMatchObject({
+      applicationErrorDiagnostic: "evaluation_timeout",
+      applicationErrorContext: {
+        useCase: "idea_evaluation",
+        inputText: VALID_IDEA,
+      },
+    });
     expect(loggerWarn).toHaveBeenCalledWith("EVALUATION_TIMEOUT");
     expect(requestSignal?.aborted).toBe(true);
     expect(port.evaluate).toHaveBeenCalledTimes(1);

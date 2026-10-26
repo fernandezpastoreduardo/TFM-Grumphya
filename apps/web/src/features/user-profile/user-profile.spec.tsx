@@ -124,7 +124,12 @@ describe("UserProfile", () => {
   it("shows Jappy's own account profile without replacing it with the admin dashboard", async () => {
     const adminProfile = {
       ...ACCOUNT_PROFILE,
-      user: { ...ACCOUNT_PROFILE.user, role: "admin", username: "jappy" },
+      user: {
+        ...ACCOUNT_PROFILE.user,
+        role: "admin",
+        username: "jappy",
+        publicRankingsOptIn: true,
+      },
     };
     vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
       if (String(input) === "/api/account/profile")
@@ -138,6 +143,18 @@ describe("UserProfile", () => {
     expect(await screen.findByRole("heading", { name: "jappy" })).toBeVisible();
     expect(screen.getByText("persona@example.es")).toBeVisible();
     expect(screen.getByRole("heading", { name: "Tus planes" })).toBeVisible();
+    expect(screen.getAllByText("Ilimitado")).toHaveLength(2);
+    expect(
+      screen.getAllByText("Acceso ilimitado para esta cuenta."),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByRole("button", { name: "Pagar un café" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", {
+        name: /quiero aparecer en los rankings públicos/i,
+      }),
+    ).toBeChecked();
     expect(screen.queryByText("Hola, Jappy.")).not.toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalledWith("/api/admin/dashboard", undefined);
     expect(fetch).not.toHaveBeenCalledWith(

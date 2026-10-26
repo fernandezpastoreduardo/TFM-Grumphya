@@ -26,6 +26,8 @@ El endpoint no devuelve criterios internos, fragmentos de la idea, puntuación 0
 
 Las cuotas se reservan en el servidor. Una suscripción Iluminado vigente permite 11 evaluaciones diarias; Faltón vigente permite 11 roasts diarios. La API comprueba sesión y suscripción activa en servidor y deriva el día de uso de `Europe/Madrid`; la fila diaria se bloquea transaccionalmente y se cuentan los usos confirmados más las reservas en curso. Si la cuenta no tiene activo el plan correspondiente, se aplica el cupo gratuito de ese ámbito asociado al perfil del navegador; tener activo el otro plan no lo consume ni lo elimina. Una coincidencia de idea que solo muestra el aviso libera la reserva; «Evaluar igualmente» reserva antes de evaluar. Solo una respuesta completa y válida confirma el uso; los fallos de búsqueda, evaluación, generación o validación liberan la reserva. La respuesta de roast se genera con OpenAI y se valida antes de confirmar el uso. Al agotarse la cuota diaria o gratuita, la API responde `429` con el código de límite, `scope` y `remaining: 0`.
 
+La cuenta administradora Jappy puede evaluar ideas y enviar roasts sin límite y sin consumir cuotas diarias. Sus evaluaciones aprobadas y sus roasts confirmados se contabilizan en «Humanos notables» y «Faltón máximo», respectivamente. Su alta queda adherida al consentimiento público v2, que puede retirarse desde el perfil; los rankings muestran únicamente el alias, los totales y el avatar elegido.
+
 Las solicitudes autenticadas requieren `Idempotency-Key` UUID. Se guarda el hash de la clave y una huella HMAC del payload. La misma clave y payload devuelve la respuesta cacheada sin volver a consumir; usar la clave con otro payload da `409`. El TTL lógico de la respuesta es de 24 horas desde la reserva original; los reintentos no amplían ese plazo. El `response_json` guarda el cuerpo íntegro devuelto por la API y puede contener salida generada derivada de la solicitud, aunque no guarda la idea o el roast fuente como campos independientes. Una reserva incompleta da `409` `REQUEST_IN_PROGRESS` durante 30 minutos y después puede recuperarse mediante un reintento. `DataRetentionService` elimina las filas caducadas por lotes al arrancar la API y cada hora; el borrado físico puede ocurrir hasta una hora después del TTL. Este mecanismo no es historial.
 
 ### Registration, session and account DTOs
@@ -64,7 +66,7 @@ Las solicitudes autenticadas requieren `Idempotency-Key` UUID. Se guarda el hash
 
 ### getRoastRanking
 
-- `GET /api/roast-ranking` es público y devuelve un array de hasta diez cuentas activas que hayan enviado al menos un roast.
+- `GET /api/roast-ranking` es público y devuelve un array de hasta diez cuentas activas con consentimiento que hayan enviado al menos un roast.
 - Cada elemento tiene `{ username: string, roastMessagesSent: number, avatarUrl?: string }`; el avatar es una URL relativa pública del formato descrito arriba. No expone correo, identificadores internos ni contenido de mensajes.
 - Orden: cantidad de mensajes descendente y nombre de usuario ascendente para desempatar. Si no hay participantes, devuelve `[]`.
 - La interfaz destaca el primer elemento como ganador separado de la tabla; los elementos restantes ocupan los puestos 2–10.
@@ -108,7 +110,7 @@ El aviso de similitud incluye el `safeTitle` validado y el total `submissionCoun
 
 ### BestUserItem
 
-- `GET /api/best-users` devuelve un array público de hasta diez cuentas activas, ordenado por aprobaciones descendentes y alias ascendente como desempate.
+- `GET /api/best-users` devuelve un array público de hasta diez cuentas activas con consentimiento, ordenado por aprobaciones descendentes y alias ascendente como desempate.
 - Cada elemento contiene `username: string`, `approvedIdeasCount: number` y `avatarUrl?: string`, el total de filas de ideas aprobadas almacenadas para esa cuenta y una URL relativa pública opcional del avatar. La repetición con la misma clave idempotente no crea otra fila.
 - No incluye títulos, resúmenes, evaluaciones, correo, identificadores de usuario ni texto original de las ideas.
 - La API comprueba que el alias cumple la lista permitida de caracteres y que el contador es un entero positivo seguro; ante datos inválidos falla con un error genérico en vez de publicarlos.
