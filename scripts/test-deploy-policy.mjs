@@ -300,19 +300,21 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
       `${scanName} must scan ${imageName} tagged with this commit SHA`,
     );
   }
-  assert.match(
-    scanStep,
-    /TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image/,
-  );
+  assert.match(scanStep, /TRIVY_SKIP_DB_UPDATE=true/);
+  assert.match(scanStep, /TRIVY_SKIP_JAVA_DB_UPDATE=true/);
   assert.match(scanStep, /--scanners vuln/);
   assert.match(scanStep, /--severity HIGH,CRITICAL/);
   assert.match(scanStep, /--ignore-unfixed/);
   assert.match(scanStep, /--exit-code 1/);
-  assert.match(scanStep, /&\s*$/m);
-  assert.match(scanStep, /wait "\$pid" \|\| scan_status=1/);
   assert.match(scanStep, /--cache-dir "\$scan_dir\/\$name-cache"/);
   assert.match(scanStep, /cp -R "\$RUNNER_TEMP\/trivy-db\/db"/);
-  assert.match(scanStep, /cp -R "\$RUNNER_TEMP\/trivy-db\/java-db"/);
+  assert.doesNotMatch(
+    scanStep,
+    /java-db|--download-java-db-only/,
+    "production images do not need Trivy's Java index database",
+  );
+  assert.match(scanStep, /&\s*$/m);
+  assert.match(scanStep, /wait "\$pid" \|\| scan_status=1/);
 }
 assert.match(
   workflow,
@@ -321,8 +323,42 @@ assert.match(
 );
 assert.match(
   workflow,
-  /Download Trivy databases once[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-java-db-only/,
-  "Trivy databases must be downloaded once before parallel scans",
+  /Build images while downloading the Trivy vulnerability database[\s\S]*?trivy --cache-dir "\$RUNNER_TEMP\/trivy-db" image --download-db-only[\s\S]*?2>&1 &\n[\s\S]*?docker compose --parallel 4 --file compose\.production\.yaml build --pull api web db proxy/,
+  "Docker image builds and vulnerability database download must overlap",
+);
+const trivyDatabaseDownloadStart = workflow.indexOf(
+  "- name: Build images while downloading the Trivy vulnerability database",
+);
+const imageScanStart = workflow.indexOf(
+  "- name: Scan all production images concurrently",
+);
+const trivyDatabaseBuildStep = workflow.slice(
+  trivyDatabaseDownloadStart,
+  imageScanStart,
+);
+const databaseDownloadWait = trivyDatabaseBuildStep.indexOf(
+  'if ! wait "$database_pid"; then',
+);
+assert.ok(databaseDownloadWait >= 0, "Trivy database download must be awaited");
+assert.ok(
+  databaseDownloadWait >
+    trivyDatabaseBuildStep.indexOf("docker compose --parallel 4"),
+  "the database download should overlap image builds",
+);
+assert.match(
+  trivyDatabaseBuildStep.slice(databaseDownloadWait),
+  /exit 1/,
+  "a failed vulnerability database download must fail the supply-chain job",
+);
+assert.match(
+  trivyDatabaseBuildStep,
+  /if \(\( build_status != 0 \)\); then[\s\S]*?kill "\$database_pid"[\s\S]*?exit "\$build_status"/,
+  "a failed image build must stop the concurrent database download and fail CI",
+);
+assert.doesNotMatch(
+  workflow,
+  /--download-java-db-only/,
+  "production scans must not download the unnecessary Java index database",
 );
 
 const packageStart = workflow.indexOf(

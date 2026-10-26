@@ -132,7 +132,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Build production images concurrently
+      - name: Install the pinned Trivy scanner
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241 # v0.2.6
+        with:
+          version: v0.76.0
+      - name: Build images while downloading the Trivy vulnerability database
         env:
           DOMAIN: ci.invalid
           DEPLOY_SHA: ${{ github.sha }}
@@ -140,17 +144,27 @@ jobs:
           WEB_IMAGE: grumphya-web:${{ github.sha }}
           DATABASE_IMAGE: grumphya-database:${{ github.sha }}
           PROXY_IMAGE: grumphya-proxy:${{ github.sha }}
-        run: docker compose --parallel 4 --file compose.production.yaml build --pull api web db proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+          trivy --cache-dir "$RUNNER_TEMP/trivy-db" image --download-db-only \
+            > "$RUNNER_TEMP/trivy-db-download.log" 2>&1 &
+          database_pid=$!
+          build_status=0
+          docker compose --parallel 4 --file compose.production.yaml build --pull api web db proxy || build_status=$?
+          if (( build_status != 0 )); then
+            kill "$database_pid" 2>/dev/null || true
+            wait "$database_pid" 2>/dev/null || true
+            cat "$RUNNER_TEMP/trivy-db-download.log"
+            exit "$build_status"
+          fi
+          if ! wait "$database_pid"; then
+            cat "$RUNNER_TEMP/trivy-db-download.log"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/trivy-db-download.log"
       - name: Test production image contract
         run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
-      - name: Install the pinned Trivy scanner
-        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241 # v0.2.6
-        with:
-          version: v0.76.0
-      - name: Download Trivy databases once
-        run: |
-          trivy --cache-dir "$RUNNER_TEMP/trivy-db" image --download-db-only
-          trivy --cache-dir "$RUNNER_TEMP/trivy-db" image --download-java-db-only
       - name: Scan all production images concurrently
         shell: bash
         env:
@@ -162,11 +176,11 @@ jobs:
           set -euo pipefail
           scan_dir=$(mktemp -d "$RUNNER_TEMP/trivy-scans.XXXXXX")
           pids=()
+          scan_status=0
           for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
             name=${image%%:*}
             mkdir -p "$scan_dir/$name-cache"
             cp -R "$RUNNER_TEMP/trivy-db/db" "$scan_dir/$name-cache/db"
-            cp -R "$RUNNER_TEMP/trivy-db/java-db" "$scan_dir/$name-cache/java-db"
             TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image \
               --cache-dir "$scan_dir/$name-cache" \
               --scanners vuln \
@@ -176,7 +190,6 @@ jobs:
               "$image" > "$scan_dir/$name.log" 2>&1 &
             pids+=("$!")
           done
-          scan_status=0
           for pid in "${pids[@]}"; do
             wait "$pid" || scan_status=1
           done
