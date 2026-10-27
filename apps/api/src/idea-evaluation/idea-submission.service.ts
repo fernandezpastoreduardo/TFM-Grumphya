@@ -16,8 +16,14 @@ import type { PlanUsageReservation } from "../register-with-plan/plan-usage.mode
 import type { ReservationResult } from "../manage-user-unknow/anonymous-usage.models";
 import {
   InvalidEvaluationInputError,
+  MAX_IDEA_LENGTH,
   normalizeAndValidateRequest,
 } from "./evaluation-process";
+import {
+  detectSpecialIdeaCase,
+  parseSpecialIdeaCaseResponse,
+  type SpecialIdeaCase,
+} from "./special-idea-cases";
 import {
   EvaluationProcessService,
   type EvaluationProcessResponse,
@@ -49,6 +55,18 @@ const APPROVED_IDEA_TITLE_LIMIT = 160;
 const APPROVED_IDEA_WHITESPACE_PATTERN = /\s+/gu;
 const USER_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+const MAX_CACHED_EVALUATION_HEADLINE_LENGTH = 120;
+const MAX_CACHED_EVALUATION_MESSAGE_LENGTH = 1_000;
+const MAX_CACHED_EVALUATION_TITLE_LENGTH = 160;
+const MIN_CACHED_EVALUATION_TITLE_LENGTH = 8;
+const MIN_CACHED_PRODUCT_EXAMPLE_LENGTH = 2;
+const MAX_CACHED_PRODUCT_EXAMPLE_LENGTH = 80;
+const MAX_CACHED_FAILED_CRITERIA = 10;
+const EVALUATION_STATUSES = new Set([
+  "RECHAZADA",
+  "SIN_BLOQUEO_EVIDENTE",
+  "IDEA_INSUFICIENTE",
+]);
 
 type EvaluationRequest = ReturnType<typeof normalizeAndValidateRequest>;
 type UsageReservation =
@@ -61,6 +79,7 @@ export type IdeaSubmissionResponse =
       safeTitle: string;
       submissionCount: number;
     }
+  | SpecialIdeaCase
   | { status: "evaluated"; result: EvaluationProcessResponse };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -80,18 +99,20 @@ function parseRequest(input: unknown): EvaluationRequest & {
     throw new BadRequestException(INVALID_REQUEST_RESPONSE);
   }
 
-  try {
-    return {
-      ...normalizeAndValidateRequest({
-        ideaText: input.ideaText,
-        tone: input.tone,
-      }),
-      continueAnyway: input.continueAnyway === true,
-    };
-  } catch (error) {
-    if (!(error instanceof InvalidEvaluationInputError)) throw error;
+  if (
+    typeof input.ideaText !== "string" ||
+    (input.tone !== "soft" && input.tone !== "hard")
+  ) {
     throw new BadRequestException(INVALID_REQUEST_RESPONSE);
   }
+  const ideaText = input.ideaText.trim();
+  if (ideaText.length === 0 || ideaText.length > MAX_IDEA_LENGTH)
+    throw new BadRequestException(INVALID_REQUEST_RESPONSE);
+  return {
+    ideaText,
+    tone: input.tone,
+    continueAnyway: input.continueAnyway === true,
+  };
 }
 
 function hashIdempotencyKey(idempotencyKey: string): string {
@@ -284,6 +305,44 @@ export class IdeaSubmissionService {
     anonymousVisitorToken: unknown,
     authenticatedUserId: string | undefined,
   ): Promise<IdeaSubmissionResponse> {
+    const specialCase = detectSpecialIdeaCase(request.ideaText);
+    if (specialCase) {
+      const reservation = await this.reserveUsage(
+        anonymousVisitorToken,
+        idempotencyHash,
+        requestHash,
+        authenticatedUserId,
+      );
+      if (reservation?.result?.state === "cached")
+        return readCachedSubmission(reservation.result.response);
+
+      try {
+        await this.commitUsage(
+          anonymousVisitorToken,
+          idempotencyHash,
+          requestHash,
+          specialCase,
+          reservation,
+        );
+        return specialCase;
+      } catch {
+        await this.releaseUsage(
+          anonymousVisitorToken,
+          idempotencyHash,
+          reservation,
+        );
+        this.logger.error("IDEA_SPECIAL_CASE_COMMIT_FAILED");
+        throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
+      }
+    }
+
+    try {
+      normalizeAndValidateRequest(request);
+    } catch (error) {
+      if (!(error instanceof InvalidEvaluationInputError)) throw error;
+      throw new BadRequestException(INVALID_REQUEST_RESPONSE);
+    }
+
     try {
       const previousMatch = await this.repository.getIdempotentMatch(
         idempotencyHash,
@@ -549,14 +608,77 @@ function isControlCharacter(character: string): boolean {
 }
 
 function readCachedSubmission(input: unknown): IdeaSubmissionResponse {
+  const specialCase = parseSpecialIdeaCaseResponse(input);
+  if (specialCase) return specialCase;
   if (
-    typeof input === "object" &&
-    input !== null &&
-    "status" in input &&
+    isRecord(input) &&
     input.status === "evaluated" &&
-    "result" in input
+    isEvaluationProcessResponse(input.result)
   ) {
-    return input as IdeaSubmissionResponse;
+    return { status: "evaluated", result: input.result };
   }
   throw new ConflictException(INVALID_CONTINUATION_RESPONSE);
+}
+
+function isEvaluationProcessResponse(
+  input: unknown,
+): input is EvaluationProcessResponse {
+  if (
+    !isRecord(input) ||
+    typeof input.status !== "string" ||
+    !EVALUATION_STATUSES.has(input.status) ||
+    typeof input.headline !== "string" ||
+    input.headline.trim().length === 0 ||
+    input.headline.length > MAX_CACHED_EVALUATION_HEADLINE_LENGTH ||
+    typeof input.message !== "string" ||
+    input.message.trim().length === 0 ||
+    input.message.length > MAX_CACHED_EVALUATION_MESSAGE_LENGTH ||
+    !isValidCachedScore(input.score, input.status)
+  ) {
+    return false;
+  }
+  if (Object.hasOwn(input, "safeTitle")) {
+    if (
+      input.status !== "RECHAZADA" ||
+      typeof input.safeTitle !== "string" ||
+      input.safeTitle.trim().length < MIN_CACHED_EVALUATION_TITLE_LENGTH ||
+      input.safeTitle.length > MAX_CACHED_EVALUATION_TITLE_LENGTH
+    ) {
+      return false;
+    }
+  } else if (input.status === "RECHAZADA") {
+    return false;
+  }
+  if (Object.hasOwn(input, "existingProductExample")) {
+    if (
+      input.status !== "RECHAZADA" ||
+      typeof input.existingProductExample !== "string" ||
+      input.existingProductExample.length < MIN_CACHED_PRODUCT_EXAMPLE_LENGTH ||
+      input.existingProductExample.length > MAX_CACHED_PRODUCT_EXAMPLE_LENGTH
+    ) {
+      return false;
+    }
+  }
+  if (Object.hasOwn(input, "failedCriteria")) {
+    if (
+      input.status !== "RECHAZADA" ||
+      !Array.isArray(input.failedCriteria) ||
+      input.failedCriteria.length === 0 ||
+      input.failedCriteria.length > MAX_CACHED_FAILED_CRITERIA ||
+      input.failedCriteria.some((criterion) => typeof criterion !== "string")
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isValidCachedScore(score: unknown, status: string): boolean {
+  if (status === "IDEA_INSUFICIENTE") return score === null;
+  return (
+    typeof score === "number" &&
+    Number.isFinite(score) &&
+    score >= 0 &&
+    score <= 10
+  );
 }

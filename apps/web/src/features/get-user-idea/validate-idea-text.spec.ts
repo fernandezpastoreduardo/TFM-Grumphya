@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_IDEA_LENGTH, MIN_IDEA_LENGTH } from "./idea-input-rules";
+import { MAX_IDEA_LENGTH } from "./idea-input-rules";
 import { validateIdeaText } from "./validate-idea-text";
 
 describe("validateIdeaText", () => {
@@ -14,23 +14,23 @@ describe("validateIdeaText", () => {
     });
   });
 
-  it("rejects empty text and text shorter than the minimum after trimming", () => {
+  it("rejects empty text after trimming", () => {
     expect(validateIdeaText(" \n ")).toEqual({ valid: false, reason: "empty" });
-    expect(validateIdeaText(" 123456789 ")).toEqual({
-      valid: false,
-      reason: "too_short",
-    });
   });
 
-  it("accepts trimmed text at the minimum and maximum lengths", () => {
-    expect(validateIdeaText(` ${"a".repeat(MIN_IDEA_LENGTH)} `)).toEqual({
+  it("accepts trimmed text below the server minimum and at the maximum", () => {
+    expect(validateIdeaText(" 123456789 ")).toEqual({
       valid: true,
-      value: "a".repeat(MIN_IDEA_LENGTH),
+      value: "123456789",
     });
     expect(validateIdeaText("b".repeat(MAX_IDEA_LENGTH))).toEqual({
       valid: true,
       value: "b".repeat(MAX_IDEA_LENGTH),
     });
+  });
+
+  it("accepts non-empty short text so the server can classify special cases", () => {
+    expect(validateIdeaText("hola")).toEqual({ valid: true, value: "hola" });
   });
 
   it("rejects text beyond the maximum length", () => {

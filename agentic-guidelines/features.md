@@ -21,12 +21,48 @@ This only captures the text content from `IdeaInput`. It can be added by the use
 - using device's microphone. In this case we have to call transcriptUserIdea
 
 En Home, el contenedor `GetUserIdea` presenta la captura en dos pasos. El
-primero muestra el campo de texto y «Adelante»; esa acción valida entre 10 y
-2.000 caracteres y solo avanza a la selección de tono, sin llamar a la API ni
-consumir intentos. El segundo paso permite elegir `soft` o `hard` y ofrece
-«Evaluar idea», que envía `ideaText` y `tone` al flujo `evaluateIdea`. «Cambiar
-idea» vuelve al campo conservando el texto y el tono seleccionado. Al cambiar
-de paso, el foco se mueve al primer control interactivo de la nueva vista.
+primero muestra el campo de texto y «Adelante»; esa acción valida texto no vacío
+y un máximo de 2.000 caracteres y solo avanza a la selección de tono, sin llamar
+a la API ni consumir intentos. El segundo paso permite elegir `soft` o `hard` y
+ofrece «Evaluar idea», que envía `ideaText` y `tone` a `IdeaSubmissionService`.
+«Cambiar idea» vuelve al campo conservando el texto y el tono seleccionado. Al
+cambiar de paso, el foco se mueve al primer control interactivo de la nueva
+vista.
+
+Antes de buscar similitudes o llamar al evaluador, la API aplica una
+clasificación local determinista para cuatro respuestas especiales, en este
+orden: equivalencia léxica con Grumphya, frase completa «Un/Una X pero con IA»,
+insulto breve aislado y entrada muy breve. Esta clasificación no usa OpenAI,
+embeddings ni búsqueda semántica. La comprobación
+de Grumphya es léxica: el nombre debe aparecer junto a vocabulario explícito de
+equivalencia (como, clon, copia, igual, similar, parecida/o, réplica, recrear,
+copiar, imitar o alternativa), o el texto debe combinar términos de
+evaluar/analizar/revisar ideas con una negación explícita de
+desarrollar/construir/crear/hacerlas. Mencionar Grumphya junto a «app» sin
+equivalencia no basta; el detector no hace una comparación semántica del
+producto. El detector de insultos se limita a un texto de hasta 96 caracteres,
+con un término de una lista cerrada y sin señales léxicas de propuesta. Excluye
+reportes o citas del insulto, como «Me llamó idiota»; no debe ampliarse a
+críticas o ideas que contengan palabras ofensivas junto con una señal de
+producto. El patrón de IA solo intercepta una frase completa con
+la forma «Un/Una X pero con IA» y un X corto; no clasifica automáticamente
+propuestas desarrolladas ni toda idea que use IA. El caso de texto muy breve
+se activa con 1–19 caracteres normalizados solo si no hay una señal léxica de
+idea; si la hay, el texto sigue el flujo ordinario y debe cumplir su mínimo de
+10 caracteres. Los cuatro casos devuelven
+`special_case`, no un veredicto de rúbrica.
+
+El servidor comprueba primero que la clave idempotente no se haya ligado a otro
+payload. En un envío inicial, estos casos especiales se clasifican antes de
+similitud y evaluación; reservan y confirman una unidad de cuota. Una
+repetición con la misma clave y payload recupera la respuesta fija de la caché
+durante 24 horas desde la reserva original, sin ampliar el TTL ni consumir otra
+unidad; reutilizar la clave con otro payload se rechaza. Los casos
+especiales no actualizan el ranking ni crean historial privado. El resto de
+entradas aplica el mínimo general de 10 caracteres antes de la búsqueda de
+similitud; una respuesta de error de validación no reserva cuota. La ruta de
+continuación de una coincidencia previa conserva su flujo idempotente y no
+vuelve a ejecutar la clasificación inicial.
 
 La Home may show a brief, temporary client-side synthesis beside the mascot while the idea is being written. This preview is presentation only: it is not evaluated, sent, or persisted.
 

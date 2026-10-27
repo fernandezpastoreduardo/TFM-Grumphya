@@ -32,8 +32,8 @@ export type EvaluationProcessResult = EvaluationScore & {
   rubricVersion: "v1";
 };
 
-const MIN_IDEA_LENGTH = 10;
-const MAX_IDEA_LENGTH = 2000;
+export const MIN_IDEA_LENGTH = 10;
+export const MAX_IDEA_LENGTH = 2000;
 const INVALID_CRITERIA_MESSAGE = "Criterios de evaluación no válidos.";
 const INVALID_IDEA_MESSAGE = "Idea no válida para evaluación.";
 const DEMO_UNKNOWN_RATING = 2;

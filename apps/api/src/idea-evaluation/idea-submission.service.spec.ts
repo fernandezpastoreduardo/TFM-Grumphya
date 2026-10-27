@@ -12,6 +12,7 @@ const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const GRASSHOPPER_PARAPHRASE =
   "hacer un tinder pero en lugar de para personas para saltamontes";
 const IDEMPOTENCY_KEY = "d54e74e8-4d23-46d4-9944-0b39bcda0914";
+const TOO_BRIEF_SPECIAL_IDEA = "hola";
 const UPPERCASE_IDEMPOTENCY_KEY = IDEMPOTENCY_KEY.toUpperCase();
 const SAFE_TITLE = "Coordinación sin salvaguardas verificables";
 const EVALUATION_RESULT = {
@@ -24,7 +25,7 @@ const EVALUATION_RESULT = {
 };
 const PROMISING_EVALUATION_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE" as const,
-  score: 82,
+  score: 8.2,
   headline: "La idea supera el primer filtro.",
   message: "Los riesgos principales se pueden comprobar con pruebas pequeñas.",
 };
@@ -91,6 +92,107 @@ function createDependencies(
 }
 
 describe("IdeaSubmissionService", () => {
+  it("reserves and caches a special-case response without searching or evaluating", async () => {
+    const { service, repository, search, evaluation, anonymousUsage } =
+      createDependencies();
+    const expectedResponse = {
+      status: "special_case",
+      caseId: "too_brief",
+      title: expect.any(String),
+      message: expect.any(String),
+    };
+
+    const response = await service.submit(
+      { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
+      IDEMPOTENCY_KEY,
+      "visitor-token",
+    );
+
+    expect(response).toMatchObject(expectedResponse);
+    expect(repository.getIdempotentMatch).not.toHaveBeenCalled();
+    expect(anonymousUsage.reserve).toHaveBeenCalledOnce();
+    expect(anonymousUsage.commit).toHaveBeenCalledWith(
+      "visitor-token",
+      "ideas",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+      response,
+    );
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("replays a cached special-case response without committing or evaluating again", async () => {
+    const { service, search, evaluation, anonymousUsage } =
+      createDependencies();
+    const request = {
+      ideaText: "Un Uber pero con IA",
+      tone: "soft" as const,
+    };
+
+    const firstResponse = await service.submit(
+      request,
+      IDEMPOTENCY_KEY,
+      "visitor-token",
+    );
+    vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
+      state: "cached",
+      response: firstResponse,
+      usage: {
+        ideas: { limit: 3, used: 1, remaining: 2 },
+        roasts: { limit: 3, used: 0, remaining: 3 },
+      },
+    });
+    const replayedResponse = await service.submit(
+      request,
+      IDEMPOTENCY_KEY,
+      "visitor-token",
+    );
+
+    expect(firstResponse).toMatchObject({ status: "special_case" });
+    expect(replayedResponse).toEqual(firstResponse);
+    expect(anonymousUsage.reserve).toHaveBeenCalledTimes(2);
+    expect(anonymousUsage.commit).toHaveBeenCalledOnce();
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed cached evaluation result at runtime", async () => {
+    const { service, search, evaluation, anonymousUsage } =
+      createDependencies();
+    vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
+      state: "cached",
+      response: { status: "evaluated", result: { status: "UNKNOWN" } },
+      usage: {
+        ideas: { limit: 3, used: 1, remaining: 2 },
+        roasts: { limit: 3, used: 0, remaining: 3 },
+      },
+    });
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+    ).rejects.toThrow(ConflictException);
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("rejects empty text before reserving usage", async () => {
+    const { service, search, evaluation, anonymousUsage } =
+      createDependencies();
+
+    await expect(
+      service.submit(
+        { ideaText: "   ", tone: "soft" },
+        IDEMPOTENCY_KEY,
+        "visitor-token",
+      ),
+    ).rejects.toThrow();
+
+    expect(anonymousUsage.reserve).not.toHaveBeenCalled();
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
   it("uses the browser free quota for an authenticated user without Iluminado", async () => {
     const planUsage = {
       reserve: vi.fn(),

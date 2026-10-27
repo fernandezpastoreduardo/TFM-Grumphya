@@ -9,6 +9,7 @@ import {
 import { Home } from "./home";
 
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
+const SHORT_INSULT_IDEA_TEXT = "idiota";
 const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
 const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
@@ -187,7 +188,8 @@ describe("Home", () => {
 
   it("opens the café dialog after exhausted anonymous users submit and shows it again after closing", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn((url: unknown) => {
+    const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
+      void _init;
       if (url === "/api/auth/refresh")
         return Promise.resolve({
           ok: false,
@@ -248,7 +250,8 @@ describe("Home", () => {
     const refreshResponse = new Promise<Response>((resolve) => {
       resolveRefresh = resolve;
     });
-    const fetchMock = vi.fn((url: unknown) => {
+    const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
+      void _init;
       if (url === "/api/auth/refresh") return refreshResponse;
       if (url === "/api/anonymous-usage") {
         return Promise.resolve({
@@ -697,6 +700,126 @@ describe("Home", () => {
     expect(
       screen.getByRole("dialog", { name: /resultado de la evaluación/i }),
     ).toBeVisible();
+  });
+
+  it("shows the special insult response without rendering an evaluation", async () => {
+    const user = userEvent.setup();
+    const specialCaseResponse = {
+      status: "special_case",
+      caseId: "insult",
+      title: "Ese insulto pide una respuesta a la altura",
+      message: "Si te apetece, puedes descargar la tensión aquí.",
+      action: { label: "Me atrevo", href: "/descargate" },
+    };
+    const fetchMock = vi.fn((url: unknown) => {
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
+      if (url === "/api/evaluation-process") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => specialCaseResponse,
+        });
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      SHORT_INSULT_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const specialCaseTitle = await screen.findByRole("heading", {
+      level: 2,
+      name: specialCaseResponse.title,
+    });
+    expect(specialCaseTitle).toBeVisible();
+    expect(screen.getByText(specialCaseResponse.message)).toBeVisible();
+    expect(
+      screen.getByRole("img", {
+        name: "Grumphya toma café con zapatillas de andar por casa con corazones",
+      }),
+    ).toHaveAttribute(
+      "src",
+      "/assets/grumphya/special-idea-coffee-slippers.png",
+    );
+    expect(screen.getByRole("link", { name: "Me atrevo" })).toHaveAttribute(
+      "href",
+      "/descargate",
+    );
+    expect(screen.queryByText("7,15/10")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        level: 2,
+        name: EVALUATION_RESPONSE.headline,
+      }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/evaluation-process",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          ideaText: SHORT_INSULT_IDEA_TEXT,
+          tone: "soft",
+        }),
+      }),
+    );
+  });
+
+  it("reuses the idempotency key when retrying an uncertain submission unchanged", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn((url: unknown, _init?: RequestInit) => {
+      void _init;
+      const usageResponse = respondToUsageInitialization(url);
+      if (usageResponse) return usageResponse;
+      if (url === "/api/evaluation-process") {
+        if (
+          fetchMock.mock.calls.filter(
+            ([callUrl]) => callUrl === "/api/evaluation-process",
+          ).length === 1
+        ) {
+          return Promise.reject(new Error("Connection lost"));
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "evaluated",
+            result: EVALUATION_RESPONSE,
+          }),
+        });
+      }
+      return new Promise(() => undefined);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+    expect(
+      await screen.findByText(
+        /no hemos podido confirmar si la evaluación terminó/i,
+      ),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: /cerrar resultado/i }));
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+    expect(await screen.findByText("7,15/10")).toBeInTheDocument();
+
+    const evaluationCalls = fetchMock.mock.calls.filter(
+      ([url]) => url === "/api/evaluation-process",
+    );
+    expect(evaluationCalls).toHaveLength(2);
+    expect(evaluationCalls[1][1]?.headers).toEqual(
+      evaluationCalls[0][1]?.headers,
+    );
   });
 
   it("does not start scoring when the idea fails form validation", async () => {

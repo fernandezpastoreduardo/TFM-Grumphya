@@ -39,8 +39,6 @@ const TONE_OPTIONS: { tone: IdeaTone; label: string; description: string }[] = [
 ];
 const EMPTY_IDEA_MESSAGE =
   "Hay aire. Mucho aire. Escribe la idea y lo intentamos de nuevo.";
-const SHORT_IDEA_MESSAGE =
-  "Nueve caracteres: ni una idea ni un haiku. Añade al menos 10 caracteres.";
 const LONG_IDEA_MESSAGE = `Son más de ${MAX_IDEA_LENGTH} caracteres y aún no aterriza. Recorta el rodeo.`;
 const DICTATION_SEPARATOR = " ";
 const INVALID_IDEA_MESSAGE =
@@ -56,7 +54,6 @@ const PUBLIC_RANKING_NOTICE =
 const VALIDATION_MESSAGES: Record<InvalidIdeaTextReason, string> = {
   not_text: INVALID_IDEA_MESSAGE,
   empty: EMPTY_IDEA_MESSAGE,
-  too_short: SHORT_IDEA_MESSAGE,
   too_long: LONG_IDEA_MESSAGE,
 };
 

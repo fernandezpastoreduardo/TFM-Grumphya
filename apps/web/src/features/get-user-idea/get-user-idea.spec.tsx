@@ -330,7 +330,7 @@ describe("GetUserIdea", () => {
     expect(screen.getByRole("alert")).toBeVisible();
   });
 
-  it("requires at least 10 characters and limits input to 2,000 characters", async () => {
+  it("allows short non-empty text for server classification and limits to 2,000 characters", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<GetUserIdea onSubmit={onSubmit} />);
@@ -339,14 +339,16 @@ describe("GetUserIdea", () => {
     await user.type(input, "demasiado");
     await continueToToneStep(user);
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /al menos 10 caracteres/i,
-    );
+    expect(
+      screen.getByRole("radio", { name: /tengo la piel fina/i }),
+    ).toBeVisible();
 
-    await user.clear(input);
-    await user.type(input, "a".repeat(MAX_IDEA_LENGTH + 1));
-    expect(input).toHaveValue("a".repeat(MAX_IDEA_LENGTH));
-    expect(input).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
+    await user.click(screen.getByRole("button", { name: BACK_TO_IDEA_LABEL }));
+    const ideaInput = screen.getByRole("textbox", { name: INPUT_LABEL });
+    await user.clear(ideaInput);
+    await user.type(ideaInput, "a".repeat(MAX_IDEA_LENGTH + 1));
+    expect(ideaInput).toHaveValue("a".repeat(MAX_IDEA_LENGTH));
+    expect(ideaInput).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
   }, 15_000);
 
   it("treats markup as literal user text and never renders it as HTML", async () => {

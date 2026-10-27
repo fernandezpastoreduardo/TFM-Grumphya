@@ -30,6 +30,7 @@ More examples of copy directly in spanish:
 - Decir «Tus buenas ideas, las aprobadas, son tuyas». No prometer que ninguna idea se publica: de las rechazadas se puede mostrar solo un título breve y su número de recepciones, jamás el autor o el texto original.
 - Antes de enviar una idea, avisar de que el título generado y el número de recepciones pueden aparecer en el ranking; explicar que el filtro reduce el riesgo, pero no garantiza anonimato, y enlazar a la política de privacidad.
 - En «Humanos notables» se muestra el alias y cuántas ideas se le han aprobado, sin información de esas ideas.
+- Excepción explícita solicitada por producto: los títulos, mensajes y acción de los cuatro casos de `SpecialIdeaCaseNotice` se conservan literalmente como copy fijo aprobado para esta feature, aunque se aparten de las recomendaciones generales sobre sarcasmo, juicios personales o afirmaciones sobre mercado y economía. La excepción se limita a esas cuatro respuestas; no amplía el tono permitido en otros flujos.
 - La sección de ideas rechazadas se titula «El muro de la vergüenza»; su humor
   se dirige a las ideas y conserva la protección de datos descrita arriba.
 - Los datos de muestra se usan solo en desarrollo, pruebas y entregables de maquetación; no aparecen ante usuarios finales.

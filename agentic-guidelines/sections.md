@@ -5,17 +5,45 @@ if you need more info about any feature of any section refer to ./agentic-guidel
 
 - Path: /
 - Layout:
-  - There´s a field where user can text, paste or speak to give user´s idea to the app
-  - There´s a mode chooser with two possibilities:
-    - "Dame tu mejor golpe": Fully rude response after evaluation
-    - "Tengo la piel fina": Much less rude response after evaluation
-  - A button to submit idea to the app
-  - In both cases results should be the same (the result of idea analysis) but with different rudeness.
-  - When user click on submit button prompt (typed, pasted or transcrypted from speech) should be sanitized for security.
-
+  - A field lets the user write, paste, or dictate an idea.
+  - A mode chooser offers `soft` and `hard`; tone changes presentation, not the evaluation.
+  - A button submits the idea.
 - Features:
-  Here, the feature is only capturing the input content from user. It can be added pasting text, writing or using a microphone. This one will require speech-to-text conversion in order to add user speech as text in the layout input. - Case use: User is insulting instead proposing idea. In this case a popup appears with main character illustration with a lanthern pointed from low angle to his face (as campament kids do when they tell themselves escary stories near to firecamp) with this copy: "A llorar a la llorería" Para esto tenemos la sección "Descárgate a gusto". A ver si me haces sudar... - Case use: User inputs same app idea as Grumphya. In this case a popup appears with main character illustration laughing in a sinister way with this copy: Sería muy triste que tuviese que hacerte desaparecer por querer copiar una app que me da ni para pagarme un café... Por esta vez lo dejo pasar.
-  Error path: User does not submit any content put presses the submit button. Warn user with a popup in same style as the rest of the app. - Case use: User submits an idea which is not any of the other prior cases but is not an app or business idea or system is unable to identify what submit means. Show popup with copy: Anda, aclárate primero y luego me cuentas. Si yo no puedo entenderte nadie lo hará. - Flujo implementado: `IdeaSubmissionService` valida la idea y ejecuta `searchSimilarIdea` contra el corpus de rechazadas antes de `evaluationProcess`. OpenAI crea una firma semántica efímera; pgvector obtiene hasta 20 candidatas más cercanas, sin corte coseno fijo; el comparador confirma misma finalidad y público/objeto. Con match, `updateWorstIdea` cuenta la recepción una sola vez y la UI muestra título seguro y contador; si la evaluación posterior también rechaza, no vuelve a sumar. La UI ofrece continuar. Una cuenta autenticada con Iluminado vigente consume hasta 11 evaluaciones por día local de Madrid; la reserva se libera al mostrar solo el aviso y se confirma al terminar con una respuesta válida. Los errores liberan la reserva. La misma clave/payload devuelve la respuesta cacheada durante 24 horas desde la reserva original (TTL lógico); los reintentos no amplían ese plazo. La tarea horaria elimina físicamente las respuestas vencidas; el borrado puede ocurrir hasta una hora después del TTL. Una reserva en curso devuelve `409` hasta que pasen 30 minutos. Sin match, se evalúa y un rechazo nuevo llama `addToWorstIdeas` con título seguro y embedding, sin guardar texto fuente. No se leen evaluaciones previas. Los perfiles anónimos mantienen contadores independientes de 3/3, que se purgan tras 400 días sin actividad.
+  `GetUserIdea` captures and validates the text. On an initial submission,
+  `IdeaSubmissionService` checks the idempotency key and then classifies four
+  special cases locally, before semantic similarity and the evaluator: a
+  contextual lexical Grumphya signal (the name plus explicit equivalence terms
+  such as `como`, `clon`, `copia`, `igual`, `similar`, `parecida/o`, `réplica`,
+  `recrear`, `copiar`, `imitar`, or `alternativa`; an app mention alone does
+  not qualify; or evaluate/review + ideas + an
+  explicit negation of developing/building/creating/doing them), the complete short pattern «Un/Una X
+  pero con IA», a short standalone insult, and text too brief to evaluate.
+  The Grumphya check is lexical, not semantic. The insult detector uses a
+  bounded closed list, excludes reported or quoted insults such as «Me llamó
+  idiota», and must not absorb proposals or broader criticism; the AI pattern
+  must not become a general rejection of AI ideas.
+  The brief-text case matches 1–19 normalized characters only when no lexical
+  idea signal is present; otherwise the ordinary 10-character minimum applies.
+  These responses are fixed `special_case`
+  results, not rubric verdicts. Each consumes one quota unit. The same
+  idempotency key and payload replay the cached response for 24 hours from the
+  original reservation without another charge or extending the TTL; a
+  different payload under that key is rejected. Special cases do not
+  invoke OpenAI or similarity search and do not add the submitted text to
+  history or Worst Ideas. Product explicitly requested the four fixed case
+  copy strings; that request is a narrow exception to the general copy-style
+  guidance and does not authorize extending those lines to other flows.
+
+  If no special case matches, a normal submission must contain 10–2,000
+  characters before similarity search. `searchSimilarIdea` compares only
+  against rejected ideas; a match updates its reception count once and offers
+  an explicit continuation. Showing the notice alone does not consume an
+  evaluation; continuing reserves one. Without a match, the evaluator runs and
+  a new rejection may add a safe title to Worst Ideas. The evaluator receives
+  the idea and policy version, not the selected tone. The same key/payload
+  replays the response for 24 hours; errors release a reservation. Anonymous
+  idea and roast counters are independent, each with three lifetime uses per
+  browser profile and server-side enforcement.
 
 2. Worst Ideas
 

@@ -220,9 +220,31 @@ a cada feature, de acuerdo con la regla de alcance del proyecto.
 
 ## Evaluación de ideas
 
-`POST /api/evaluation-process` valida la idea y delega en el `EvaluationPort`.
-Sin proveedor configurado, el endpoint mantiene el comportamiento seguro
-actual y responde `503`; el fake solo está registrado en pruebas.
+`POST /api/evaluation-process` valida la solicitud en la API. Tras comprobar la
+clave idempotente, `IdeaSubmissionService` clasifica cuatro casos especiales
+localmente y antes de la búsqueda semántica; reserva y confirma un intento y
+cachea la respuesta fija durante 24 horas desde la reserva original. No llama a
+OpenAI, embeddings ni al evaluador. La misma clave y payload recuperan la
+respuesta sin extender el TTL ni un segundo consumo. Las demás
+entradas pasan por similitud y, si no hay coincidencia, por `EvaluationPort`.
+Sin proveedor configurado, ese tramo responde `503`; el fake solo está
+registrado en pruebas.
+
+Los casos especiales son: Grumphya junto a vocabulario explícito de equivalencia
+(como, clon, copia, igual, similar, parecida/o, réplica, recrear, copiar, imitar
+o alternativa; nombrar una app no basta), o términos de evaluar/analizar/revisar
+
+- ideas + una negación explícita de desarrollar/construir/crear/hacerlas; un
+  insulto independiente de hasta 96 caracteres con un término de una lista
+  cerrada y sin señales de idea (se excluyen reportes o citas como «Me llamó
+  idiota»); texto de 1–19 caracteres sin señales léxicas de idea; y la
+  forma completa y breve «Un/Una X pero con IA».
+  Son heurísticas de servidor, no equivalencia semántica. El detector de insultos
+  no debe abarcar propuestas, citas o críticas más amplias; el patrón de IA no
+  debe extenderse a toda idea que use IA ni a propuestas desarrolladas. Una
+  entrada especial consume un intento y no se envía a OpenAI ni a similitud. El
+  resto de entradas debe tener al menos 10 caracteres; si no, la API rechaza el
+  envío antes de reservar cuota.
 
 La evaluación configurable está integrada en la aplicación. Para activarla en
 desarrollo, añade estas variables al archivo local ignorado `.env.openai` y
@@ -269,8 +291,11 @@ de enviar ideas reales.
 La validación semántica del backend sigue siendo autoritativa: JSON bien
 formado no garantiza que la decisión respete la rúbrica. Si falta la
 configuración del proveedor, el endpoint responde `503`; el fake solo se
-registra en pruebas. La API envía a OpenAI el texto de la idea y la versión de
-política, pero no el tono. El proveedor devuelve una evaluación neutral y el
+registra en pruebas. En el flujo ordinario, la API envía a OpenAI el texto de la
+idea y la versión de política, pero no el tono. Las cuatro respuestas
+especiales deterministas se clasifican localmente y no envían el texto a OpenAI
+ni a la búsqueda de similitud. Para el flujo ordinario, el proveedor devuelve
+una evaluación neutral y el
 servidor compone el titular y el mensaje visibles según el tono elegido. El
 resultado del front presenta titular, puntuación y explicación específica; la
 UI no etiqueta los defectos como «bloqueos».

@@ -307,13 +307,13 @@ describe("evaluation process HTTP endpoint", () => {
 
     try {
       const response = await postEvaluation(application, {
-        ideaText: "short",
+        ideaText: "",
         tone: "soft",
       });
       const body = await response.text();
 
       expect(response.status).toBe(400);
-      expect(body).not.toContain("short");
+      expect(body).not.toContain("ideaText");
     } finally {
       await application.close();
     }

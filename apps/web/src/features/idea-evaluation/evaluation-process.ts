@@ -22,8 +22,16 @@ export type SimilarIdeaMatchResult = {
   submissionCount: number;
 };
 
+export type SpecialIdeaCaseResult = {
+  status: "special_case";
+  caseId: "grumphya_equivalent" | "insult" | "too_brief" | "generic_ai_clone";
+  title: string;
+  message: string;
+  action?: { label: "Me atrevo"; href: "/descargate" };
+};
+
 export type EvaluationSubmissionResult =
-  EvaluationProcessResult | SimilarIdeaMatchResult;
+  EvaluationProcessResult | SimilarIdeaMatchResult | SpecialIdeaCaseResult;
 
 const EVALUATION_ENDPOINT = "/api/evaluation-process";
 const EVALUATION_UNAVAILABLE_MESSAGE =
@@ -59,6 +67,18 @@ const MIN_PUBLIC_SAFE_TITLE_LENGTH = 8;
 const MIN_PUBLIC_PRODUCT_EXAMPLE_LENGTH = 2;
 const MAX_PUBLIC_PRODUCT_EXAMPLE_LENGTH = 80;
 const MAX_PUBLIC_FAILED_CRITERIA = 10;
+const SPECIAL_CASE_IDS = new Set([
+  "grumphya_equivalent",
+  "insult",
+  "too_brief",
+  "generic_ai_clone",
+]);
+
+function isSpecialIdeaCaseId(
+  value: unknown,
+): value is SpecialIdeaCaseResult["caseId"] {
+  return typeof value === "string" && SPECIAL_CASE_IDS.has(value);
+}
 const PUBLIC_FAILED_CRITERION_COPY = [
   "La idea deja la puerta abierta a tus datos.",
   "Hay una parte de la idea que juega con fuego.",
@@ -221,6 +241,43 @@ function parseSubmissionResponse(
   input: unknown,
 ): EvaluationSubmissionResult | null {
   if (!isRecord(input)) return null;
+  if (input.status === "special_case") {
+    if (
+      !isSpecialIdeaCaseId(input.caseId) ||
+      typeof input.title !== "string" ||
+      input.title.trim().length === 0 ||
+      input.title.length > 120 ||
+      typeof input.message !== "string" ||
+      input.message.trim().length === 0 ||
+      input.message.length > MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
+    ) {
+      return null;
+    }
+    if (input.action !== undefined) {
+      if (
+        input.caseId !== "insult" ||
+        !isRecord(input.action) ||
+        input.action.label !== "Me atrevo" ||
+        input.action.href !== "/descargate"
+      ) {
+        return null;
+      }
+      return {
+        status: "special_case",
+        caseId: input.caseId,
+        title: input.title.trim(),
+        message: input.message.trim(),
+        action: { label: "Me atrevo", href: "/descargate" },
+      };
+    }
+    if (input.caseId === "insult") return null;
+    return {
+      status: "special_case",
+      caseId: input.caseId,
+      title: input.title.trim(),
+      message: input.message.trim(),
+    };
+  }
   if (input.status === "similar_idea_match") {
     if (
       typeof input.safeTitle !== "string" ||

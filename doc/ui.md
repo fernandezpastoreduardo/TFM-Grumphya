@@ -30,6 +30,20 @@ la lámina maestra está en
   texto de la idea; al cerrar el diálogo del resultado, la persona puede
   escribir o editar otra idea directamente. Tras recibir un resultado, la
   acción para volver a él dice «Volver a ver la evaluación».
+- En el envío inicial, la API puede devolver una respuesta especial fija para
+  una señal léxica contextual de Grumphya (nombre más vocabulario explícito de
+  equivalencia, no basta mencionar una app, o evaluar/analizar/revisar + ideas
+  - negación explícita de desarrollarlas), la frase completa «Un/Una X pero
+    con IA», un insulto breve aislado no reportado/citado o un texto muy breve.
+    Home presenta
+    esas respuestas en un diálogo con `SpecialIdeaCaseNotice`; no son resultados
+    de la rúbrica. La clasificación ocurre en el servidor antes de similitud y
+    del evaluador. Cada respuesta consume un intento; un reintento idempotente
+    con la misma clave y el mismo contenido recupera la respuesta durante 24
+    horas desde la reserva original, sin extender el TTL ni consumir otro. El
+    diálogo se cierra con su acción de continuar. El copy de los cuatro casos es
+    una excepción literal solicitada por producto a las recomendaciones
+    generales de estilo.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - El favicon apunta directamente a `/assets/grumphya/mascot-isotype.png`, el

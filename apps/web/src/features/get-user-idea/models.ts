@@ -9,7 +9,7 @@ export type IdeaTextValidation =
   | { valid: true; value: string }
   | {
       valid: false;
-      reason: "not_text" | "empty" | "too_short" | "too_long";
+      reason: "not_text" | "empty" | "too_long";
     };
 
 export type InvalidIdeaTextReason = Extract<

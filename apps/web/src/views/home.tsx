@@ -7,6 +7,7 @@ import { GetUserIdea } from "../features/get-user-idea/get-user-idea";
 import { EvaluationDialog } from "../features/idea-evaluation/components/EvaluationDialog";
 import { EvaluationFailureNotice } from "../features/idea-evaluation/components/EvaluationFailureNotice";
 import { EvaluationResult } from "../features/idea-evaluation/components/EvaluationResult";
+import { SpecialIdeaCaseNotice } from "../features/idea-evaluation/components/SpecialIdeaCaseNotice";
 import { SimilarIdeaNotice } from "../features/repeated-ideas/components/SimilarIdeaNotice";
 import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../features/error-pages/error-pages";
@@ -21,6 +22,7 @@ import {
   type EvaluationSubmissionResult,
   type SimilarIdeaMatchResult,
   type EvaluationProcessResult,
+  type SpecialIdeaCaseResult,
 } from "../features/idea-evaluation/evaluation-process";
 
 const EVALUATION_FAILURE_MESSAGE =
@@ -51,6 +53,10 @@ type HeroRayPlacement =
   | "hero-rays-stage-start"
   | "hero-rays-stage-end";
 const HERO_RAY_MARKS = ["short", "middle", "long"] as const;
+type HomeEvaluationRequest = {
+  ideaText: string;
+  tone: "soft" | "hard";
+};
 
 function getIdeaAttemptsRemaining(
   isAuthenticated: boolean | null,
@@ -82,8 +88,10 @@ export function Home() {
     useState<EvaluationProcessResult | null>(null);
   const [similarIdeaMatch, setSimilarIdeaMatch] =
     useState<SimilarIdeaMatchResult | null>(null);
+  const [specialIdeaCase, setSpecialIdeaCase] =
+    useState<SpecialIdeaCaseResult | null>(null);
   const [pendingEvaluation, setPendingEvaluation] = useState<{
-    request: { ideaText: string; tone: "soft" | "hard" };
+    request: HomeEvaluationRequest;
     idempotencyKey: string;
   } | null>(null);
   const [evaluationError, setEvaluationError] = useState("");
@@ -101,6 +109,10 @@ export function Home() {
   const [isDailyQuotaDialogOpen, setIsDailyQuotaDialogOpen] = useState(false);
   const quotaDialogRef = useRef<HTMLDialogElement>(null);
   const isEvaluationSubmittingRef = useRef(false);
+  const retryableSubmissionRef = useRef<{
+    request: HomeEvaluationRequest;
+    idempotencyKey: string;
+  } | null>(null);
   const anonymousUsage = useAnonymousUsage();
   const session = useSessionStatus();
   const isAdmin = session.accountAttempts?.isAdmin === true;
@@ -123,21 +135,26 @@ export function Home() {
     }
   }, [isQuotaDialogOpen]);
 
-  async function handleEvaluation(request: {
-    ideaText: string;
-    tone: "soft" | "hard";
-  }) {
+  async function handleEvaluation(request: HomeEvaluationRequest) {
     if (isEvaluationSubmittingRef.current) return;
     isEvaluationSubmittingRef.current = true;
     setEvaluationResult(null);
     setSimilarIdeaMatch(null);
+    setSpecialIdeaCase(null);
     setEvaluationError("");
     setIsEvaluating(true);
     setIsEvaluationDialogOpen(true);
-    const idempotencyKey = crypto.randomUUID();
+    const pendingSubmission = retryableSubmissionRef.current;
+    const idempotencyKey =
+      pendingSubmission &&
+      hasSameEvaluationRequest(pendingSubmission.request, request)
+        ? pendingSubmission.idempotencyKey
+        : crypto.randomUUID();
+    retryableSubmissionRef.current = { request, idempotencyKey };
     try {
       const result = await evaluationProcess(request, idempotencyKey);
       applySubmissionResult(result, request, idempotencyKey);
+      retryableSubmissionRef.current = null;
     } catch (error: unknown) {
       handleEvaluationError(error);
     } finally {
@@ -229,15 +246,25 @@ export function Home() {
 
   function applySubmissionResult(
     result: EvaluationSubmissionResult,
-    request: { ideaText: string; tone: "soft" | "hard" },
+    request: HomeEvaluationRequest,
     idempotencyKey: string,
   ) {
+    if (result.status === "special_case") {
+      setEvaluationResult(null);
+      setSimilarIdeaMatch(null);
+      setSpecialIdeaCase(result);
+      setPendingEvaluation(null);
+      return;
+    }
     if (result.status === "similar_idea_match") {
+      setEvaluationResult(null);
+      setSpecialIdeaCase(null);
       setSimilarIdeaMatch(result);
       setPendingEvaluation({ request, idempotencyKey });
       return;
     }
     setSimilarIdeaMatch(null);
+    setSpecialIdeaCase(null);
     setPendingEvaluation(null);
     setEvaluationResult(result);
   }
@@ -394,7 +421,8 @@ export function Home() {
           (isEvaluating ||
             evaluationError ||
             evaluationResult ||
-            similarIdeaMatch) ? (
+            similarIdeaMatch ||
+            specialIdeaCase) ? (
             <button
               className="evaluation-reopen-button"
               type="button"
@@ -415,6 +443,9 @@ export function Home() {
           {!isEvaluating ? renderEvaluationErrorContent() : null}
           {!isEvaluating && evaluationResult ? (
             <EvaluationResult result={evaluationResult} />
+          ) : null}
+          {!isEvaluating && specialIdeaCase ? (
+            <SpecialIdeaCaseNotice result={specialIdeaCase} />
           ) : null}
           {!isEvaluating && similarIdeaMatch ? (
             <SimilarIdeaNotice
@@ -537,4 +568,11 @@ export function Home() {
         : null}
     </div>
   );
+}
+
+function hasSameEvaluationRequest(
+  first: HomeEvaluationRequest,
+  second: HomeEvaluationRequest,
+): boolean {
+  return first.ideaText === second.ideaText && first.tone === second.tone;
 }

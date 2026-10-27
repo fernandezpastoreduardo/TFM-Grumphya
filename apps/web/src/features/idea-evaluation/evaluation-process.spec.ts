@@ -53,6 +53,59 @@ describe("evaluationProcess frontend adapter", () => {
     );
   });
 
+  it("parses the insult special-case response with its exact action", async () => {
+    const specialCase = {
+      status: "special_case",
+      caseId: "insult",
+      title: "Una respuesta especial",
+      message: "Puedes probar otra idea.",
+      action: {
+        label: "Me atrevo",
+        href: "/descargate",
+      },
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => specialCase,
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toEqual(specialCase);
+  });
+
+  it.each(["grumphya_equivalent", "too_brief", "generic_ai_clone"] as const)(
+    "parses the %s special-case response without an action",
+    async (caseId) => {
+      const specialCase = {
+        status: "special_case",
+        caseId,
+        title: "Una respuesta especial",
+        message: "Puedes probar otra idea.",
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => specialCase,
+        }),
+      );
+
+      await expect(
+        evaluationProcess(
+          { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+          IDEMPOTENCY_KEY,
+        ),
+      ).resolves.toEqual(specialCase);
+    },
+  );
+
   it("preserves an optional known product example from the API", async () => {
     const resultWithExample = {
       ...EVALUATION_RESULT,

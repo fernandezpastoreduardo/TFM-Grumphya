@@ -4,7 +4,7 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 ### EvaluateIdeaRequest
 
-- `ideaText: string`, entre 10 y 2.000 caracteres.
+- `ideaText: string`, no vacío y hasta 2.000 unidades UTF-16 después de `trim`. En envíos iniciales, los cuatro casos especiales se reconocen antes del mínimo general de 10; el resto debe tener entre 10 y 2.000.
 - `tone: 'soft' | 'hard'`.
 - La orquestación requiere `Idempotency-Key` aleatoria por envío lógico, conservada en la detección y continuación durante 24 horas. La tabla no almacena texto fuente: vincula la clave al payload normalizado `ideaText` + `tone` mediante `request_hash`, una huella HMAC-SHA-256 cuya clave es la propia `Idempotency-Key`. Reutilizarla con otro payload se rechaza; `continueAnyway` debe conservar el payload inicial.
 
@@ -21,6 +21,7 @@ El endpoint no devuelve los criterios internos ni sus puntuaciones, fragmentos d
 
 ### EvaluateIdeaResponse
 
+- `status: 'special_case'` devuelve un `caseId` estable (`grumphya_equivalent`, `generic_ai_clone`, `insult` o `too_brief`), un título y mensaje fijos y, solo para `insult`, una acción opcional. No incluye veredicto ni datos de rúbrica. El servidor clasifica estos casos localmente tras comprobar la idempotencia y antes de similitud; Grumphya requiere el nombre junto a vocabulario explícito de equivalencia (como, clon, copia, igual, similar, parecida/o, réplica, recrear, copiar, imitar o alternativa), no basta con nombrar una app, o términos de evaluar/analizar/revisar + ideas + negación explícita de desarrollar/construir/crear/hacerlas. El insulto independiente excluye reportes/citas como «Me llamó idiota». El caso breve requiere 1–19 caracteres y ausencia de señales léxicas de idea. Cada caso consume un intento. Repetir la misma clave y payload recupera la respuesta cacheada hasta 24 horas desde la reserva original; el replay no extiende el TTL ni consume otra unidad.
 - `status: 'similar_idea_match'` devuelve `safeTitle` verificado y `submissionCount` total después del incremento. No devuelve el identificador interno de la idea, embedding, texto original ni autor. Los usos restantes se consultan por el endpoint de `manageUserUnknow`; detectar la coincidencia no consume una evaluación y continuar reserva un uso anónimo.
 - `status: 'evaluated'` devuelve el resultado público de evaluación y, solo para `RECHAZADA` con título validado, `safeTitle`. Puede incluir `existingProductExample` únicamente cuando C10 sea el primer veto (`stop_at: 'C10'`) y el modelo reconozca con alta confianza un producto con las mismas funciones esenciales. Los valores inseguros, no aplicables o los marcadores literales `"null"` y `"undefined"` se omiten sin invalidar la puntuación. El título y el ejemplo no alteran score ni veredicto.
 - Reenviar la misma `Idempotency-Key` y el mismo payload para continuar conserva la recepción ya contada aunque la evaluación posterior también dé `RECHAZADA`; cambiar `ideaText` o `tone` con esa clave se rechaza. Si falla la evaluación de una continuación antes de guardar su resultado, el servidor libera la reserva de uso y el claim de continuación. Tras liberarlos, se puede reintentar con la misma clave: se reutiliza la coincidencia ya registrada, sin repetir la búsqueda semántica ni incrementar otra vez el contador.
