@@ -43,6 +43,13 @@ describe("detectSpecialIdeaCase", () => {
     expect(detectSpecialIdeaCase(NORMAL_IDEA)).toBeNull();
   });
 
+  it.each(["", "   ", "\n\t"])(
+    "does not classify empty or whitespace-only input as too brief: %j",
+    (ideaText) => {
+      expect(detectSpecialIdeaCase(ideaText)).toBeNull();
+    },
+  );
+
   it.each([
     SHORT_IDEA_WITH_PRODUCT_SIGNAL,
     GRUMPHYA_NAME_MENTION_WITHOUT_EQUIVALENCE,

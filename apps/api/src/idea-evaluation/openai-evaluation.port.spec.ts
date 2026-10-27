@@ -368,6 +368,23 @@ describe("OpenAiEvaluationPort", () => {
     },
   );
 
+  it("keeps quoted basis unchanged when the quote is not literal idea text", async () => {
+    const basis = '"not present in the idea"';
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          createOpenAiResponse({ ...QUOTED_BASIS_DECISION, basis }),
+        ),
+    );
+    const port = new OpenAiEvaluationPort({ apiKey: API_KEY });
+
+    await expect(
+      port.evaluate({ ...createInput(), ideaText: IDEA_TEXT }),
+    ).resolves.toMatchObject({ basis });
+  });
+
   it("passes the evaluation cancellation signal to the provider request", async () => {
     const fetchMock = vi
       .fn()
@@ -412,6 +429,96 @@ describe("OpenAiEvaluationPort", () => {
     expect(caught).toBeInstanceOf(OpenAiEvaluationFailure);
     expect(caught).toMatchObject({ code: "OPENAI_HTTP_401" });
     expect(caught.message).not.toContain(providerSecret);
+  });
+
+  it.each([
+    ["permission failures", 403, "OPENAI_HTTP_403"],
+    ["rate limits", 429, "OPENAI_HTTP_429"],
+    ["provider outages", 503, "OPENAI_HTTP_5XX"],
+    ["other client failures", 400, "OPENAI_HTTP_4XX"],
+  ] as const)(
+    "classifies %s without exposing the provider response",
+    async (_label, status, code) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            createResponse(
+              { error: { message: "private provider details" } },
+              status,
+            ),
+          ),
+      );
+      const port = new OpenAiEvaluationPort({ apiKey: API_KEY });
+
+      await expect(port.evaluate(createInput())).rejects.toMatchObject({
+        name: "OpenAiEvaluationFailure",
+        code,
+        message: code,
+      });
+    },
+  );
+
+  it("classifies transport failures and preserves caller cancellation", async () => {
+    const networkError = new Error("private network details");
+    const fetchMock = vi.fn().mockRejectedValue(networkError);
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiEvaluationPort({ apiKey: API_KEY });
+
+    await expect(port.evaluate(createInput())).rejects.toMatchObject({
+      code: "OPENAI_TRANSPORT_FAILURE",
+      message: "OPENAI_TRANSPORT_FAILURE",
+    });
+
+    const controller = new AbortController();
+    controller.abort();
+    await expect(port.evaluate(createInput(controller.signal))).rejects.toBe(
+      networkError,
+    );
+  });
+
+  it("classifies invalid JSON bodies and malformed decision text safely", async () => {
+    const invalidJsonResponse = new Response("not-json", {
+      headers: { "Content-Type": "application/json" },
+    });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(invalidJsonResponse));
+    const port = new OpenAiEvaluationPort({ apiKey: API_KEY });
+
+    await expect(port.evaluate(createInput())).rejects.toMatchObject({
+      code: "OPENAI_RESPONSE_INVALID",
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createResponse({
+          output: [
+            { type: "message", content: [{ type: "output_text", text: "{" }] },
+          ],
+        }),
+      ),
+    );
+    await expect(port.evaluate(createInput())).rejects.toThrow(
+      "OpenAI evaluation response is invalid.",
+    );
+  });
+
+  it("classifies incomplete responses that stopped for reasons other than token limits", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        createResponse({
+          status: "incomplete",
+          incomplete_details: { reason: "provider" },
+        }),
+      ),
+    );
+    const port = new OpenAiEvaluationPort({ apiKey: API_KEY });
+
+    await expect(port.evaluate(createInput())).rejects.toMatchObject({
+      code: "OPENAI_OUTPUT_INCOMPLETE",
+    });
   });
 
   it("classifies output truncated by the token limit without exposing response text", async () => {

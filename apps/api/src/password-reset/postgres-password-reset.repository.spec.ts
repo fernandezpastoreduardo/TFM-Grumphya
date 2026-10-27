@@ -69,4 +69,61 @@ describe("PostgresPasswordResetRepository", () => {
     );
     expect(statement).toContain("request_count < 3");
   });
+
+  it("returns no target when the email cannot receive a reset token", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const repository = new PostgresPasswordResetRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(
+      repository.replaceToken(
+        "inactive@example.com",
+        "hashed-token",
+        new Date(Date.now() + 20 * 60 * 1000),
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("invalidates only the matching user's current token", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    const repository = new PostgresPasswordResetRepository({
+      query,
+    } as unknown as Pool);
+
+    await repository.invalidateToken("user-id", "hashed-token");
+
+    expect(query).toHaveBeenCalledWith(
+      "UPDATE password_reset_tokens SET token_hash=NULL, expires_at=now() WHERE user_id=$1 AND token_hash=$2",
+      ["user-id", "hashed-token"],
+    );
+  });
+
+  it("rolls back and releases the client when password persistence fails", async () => {
+    const persistenceError = new Error("password store unavailable");
+    const query = vi.fn(async (statement: string) => {
+      if (statement.startsWith("SELECT reset.user_id")) {
+        return { rows: [{ user_id: "user-id" }], rowCount: 1 };
+      }
+      if (statement.startsWith("UPDATE users")) throw persistenceError;
+      return { rows: [], rowCount: 1 };
+    });
+    const client = { query, release: vi.fn() };
+    const pool = {
+      connect: vi.fn().mockResolvedValue(client),
+    } as unknown as Pool;
+    const repository = new PostgresPasswordResetRepository(pool);
+
+    await expect(
+      repository.consumeToken("token-hash", "password-hash"),
+    ).rejects.toBe(persistenceError);
+
+    expect(query.mock.calls.map(([statement]) => statement)).toEqual([
+      "BEGIN",
+      expect.stringContaining("SELECT reset.user_id"),
+      expect.stringContaining("UPDATE users"),
+      "ROLLBACK",
+    ]);
+    expect(client.release).toHaveBeenCalledOnce();
+  });
 });

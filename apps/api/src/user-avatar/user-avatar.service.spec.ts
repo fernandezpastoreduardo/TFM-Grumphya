@@ -113,6 +113,20 @@ describe("UserAvatarService", () => {
     expect(storage.save).not.toHaveBeenCalled();
   });
 
+  it("rejects undecodable images before moderation or storage", async () => {
+    const { service, processor, moderator, storage } = createService();
+    vi.mocked(processor.toPublicAvatar).mockRejectedValueOnce(
+      new Error("private image decoder detail"),
+    );
+
+    await expect(service.update(USER_ID, VALID_FILE)).rejects.toMatchObject({
+      code: "INVALID_AVATAR",
+    });
+
+    expect(moderator.isSuitableForAllAges).not.toHaveBeenCalled();
+    expect(storage.save).not.toHaveBeenCalled();
+  });
+
   it("returns a sanitized 503 when avatar storage cannot save the image", async () => {
     const { service, storage, repository } = createService();
     vi.mocked(storage.save).mockRejectedValueOnce(

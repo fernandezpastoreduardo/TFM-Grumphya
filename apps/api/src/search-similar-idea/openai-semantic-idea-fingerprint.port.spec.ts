@@ -89,6 +89,18 @@ describe("OpenAiSemanticIdeaFingerprintPort", () => {
     );
   });
 
+  it("hides a malformed provider JSON body behind the response error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("private malformed body")),
+    );
+    const port = new OpenAiSemanticIdeaFingerprintPort({ apiKey: API_KEY });
+
+    await expect(port.createFingerprint(IDEA_TEXT)).rejects.toThrow(
+      "OpenAI idea normalization response is invalid.",
+    );
+  });
+
   it("allows up to 30 seconds for a long idea to be normalized", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(

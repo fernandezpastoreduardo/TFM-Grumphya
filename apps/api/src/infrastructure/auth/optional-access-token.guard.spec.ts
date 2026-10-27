@@ -14,6 +14,19 @@ describe("optional access token guard", () => {
     expect(request).not.toHaveProperty("user");
   });
 
+  it("rejects malformed bearer authorization without looking up a session", async () => {
+    const lookup = { isActive: vi.fn() };
+    const guard = new OptionalAccessTokenGuard(lookup);
+    const request = { get: () => "Bearer token with spaces" };
+
+    await expect(guard.canActivate(httpContext(request))).rejects.toMatchObject(
+      {
+        response: { code: "SESSION_REQUIRED" },
+      },
+    );
+    expect(lookup.isActive).not.toHaveBeenCalled();
+  });
+
   it("rejects an invalid bearer token and attaches a valid active user", async () => {
     process.env.ACCESS_TOKEN_SECRET = SECRET;
     const issued = issueAccessToken(USER_ID);

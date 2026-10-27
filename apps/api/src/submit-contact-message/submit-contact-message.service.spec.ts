@@ -139,6 +139,23 @@ describe("SubmitContactMessage", () => {
     expect(repository.createForUser).not.toHaveBeenCalled();
   });
 
+  it("stops confirmation retries after the repository reaches its retry limit", async () => {
+    const repository = createRepository();
+    vi.mocked(repository.claimConfirmation).mockResolvedValue("retry_limit");
+    const mailer = { sendConfirmation: vi.fn() };
+    const feature = new SubmitContactMessage(repository, mailer);
+
+    await expect(
+      feature.retryConfirmation(USER_ID, MESSAGE_ID),
+    ).rejects.toMatchObject({
+      code: "CONTACT_CONFIRMATION_RETRY_LIMIT",
+      status: 429,
+    });
+
+    expect(mailer.sendConfirmation).not.toHaveBeenCalled();
+    expect(repository.createForUser).not.toHaveBeenCalled();
+  });
+
   it.each([
     null,
     { subject: "x", message: VALID_MESSAGE },

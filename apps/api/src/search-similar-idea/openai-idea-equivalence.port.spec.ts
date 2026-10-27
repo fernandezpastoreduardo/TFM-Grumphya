@@ -134,6 +134,40 @@ describe("OpenAiIdeaEquivalencePort", () => {
     ).resolves.toEqual({ decisions: [false], headline: null });
   });
 
+  it.each([
+    { safeTitles: [] },
+    { safeTitles: Array.from({ length: 21 }, (_, index) => `Título ${index}`) },
+  ])(
+    "rejects candidate batches outside the supported range before calling the provider",
+    async ({ safeTitles }) => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      const port = new OpenAiIdeaEquivalencePort({ apiKey: API_KEY });
+
+      await expect(
+        port.classifyIdeas(IDEA_TEXT, FINGERPRINT, safeTitles),
+      ).rejects.toThrow("OpenAI semantic comparison response is invalid.");
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("accepts the maximum supported candidate batch", async () => {
+    const safeTitles = Array.from(
+      { length: 20 },
+      (_, index) => `Título ${index}`,
+    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createJudgeResponse(Array(20).fill(false)));
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiIdeaEquivalencePort({ apiKey: API_KEY });
+
+    await expect(
+      port.classifyIdeas(IDEA_TEXT, FINGERPRINT, safeTitles),
+    ).resolves.toEqual({ decisions: Array(20).fill(false), headline: null });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("aborts provider requests after the configured timeout", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(

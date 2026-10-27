@@ -24,4 +24,12 @@ describe("AI usage metrics", () => {
     ).toBeNull();
     expect(readTokenUsage({ usage: "secret payload" })).toBeNull();
   });
+
+  it.each([
+    { input_tokens: 1.5, output_tokens: 3 },
+    { input_tokens: 2, output_tokens: -1 },
+    { input_tokens: Number.MAX_SAFE_INTEGER + 1, output_tokens: 3 },
+  ])("rejects unsafe or negative token counts: %j", (usage) => {
+    expect(readTokenUsage({ usage })).toBeNull();
+  });
 });

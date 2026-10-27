@@ -3,7 +3,10 @@ import type { Pool } from "pg";
 import { DataRetentionService } from "./data-retention.service";
 
 describe("DataRetentionService", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it("runs the initial bounded cleanup and stops its hourly timer on shutdown", async () => {
     const pool = {
@@ -50,5 +53,28 @@ describe("DataRetentionService", () => {
     await service.onApplicationShutdown();
 
     expect(pool.end).toHaveBeenCalledOnce();
+  });
+
+  it("retries schema initialization and cleanup on the next hourly interval", async () => {
+    vi.useFakeTimers();
+    const pool = {
+      query: vi.fn().mockResolvedValue({ rowCount: 0 }),
+      end: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Pool;
+    const migrationRunner = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("migration temporarily unavailable"))
+      .mockResolvedValue(undefined);
+    const service = new DataRetentionService(pool, migrationRunner);
+
+    await service.onApplicationBootstrap();
+    expect(migrationRunner).toHaveBeenCalledOnce();
+    expect(pool.query).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+
+    expect(migrationRunner).toHaveBeenCalledTimes(2);
+    expect(pool.query).toHaveBeenCalled();
+    await service.onApplicationShutdown();
   });
 });

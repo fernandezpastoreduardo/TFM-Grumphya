@@ -60,4 +60,12 @@ describe("access JWT", () => {
       issueAccessToken("00000000-0000-4000-8000-000000000001"),
     ).toThrow(AccessTokenConfigurationError);
   });
+
+  it("rejects invalid user identifiers before reading the signing secret", () => {
+    delete process.env.ACCESS_TOKEN_SECRET;
+
+    expect(() => issueAccessToken("not-a-user-id")).toThrow(
+      "Invalid user identifier.",
+    );
+  });
 });

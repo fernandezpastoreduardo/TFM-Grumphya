@@ -577,6 +577,16 @@ describe("PostgresWorstIdeasRepository", () => {
     );
   });
 
+  it("rejects a blank idempotency hash before querying for a match", async () => {
+    const pool = new FakePgPool();
+    const repository = makeRepository(pool);
+
+    await expect(
+      repository.getIdempotentMatch("   ", REQUEST_HASH),
+    ).rejects.toThrow("Rejected idea idempotency hash is invalid.");
+    expect(pool.queries).toHaveLength(0);
+  });
+
   it("limits similarity search to ideas received within the last 24 months", async () => {
     const pool = new FakePgPool();
     const repository = makeRepository(pool);
