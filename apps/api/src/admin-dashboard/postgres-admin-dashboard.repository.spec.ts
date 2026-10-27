@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { runMigrations } from "../infrastructure/database/run-migrations";
 import { PostgresAdminDashboardRepository } from "./postgres-admin-dashboard.repository";
 
 vi.mock("../infrastructure/database/run-migrations", () => ({
@@ -87,6 +88,8 @@ const TREND_ROWS = [
     total_usd: "2.25",
   },
 ];
+const CONTACT_MESSAGE_ID = "message-id";
+const CONTACT_CREATED_AT = new Date("2026-10-18T12:00:00.000Z");
 
 describe("PostgresAdminDashboardRepository", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -353,6 +356,134 @@ describe("PostgresAdminDashboardRepository", () => {
     expect(query).toHaveBeenCalledTimes(3);
   });
 
+  it("returns zero account averages and an empty error and trend list", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            ...SUMMARY_ROW,
+            registered_user_count: "0",
+            admin_user_count: "0",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getSnapshot()).resolves.toMatchObject({
+      estimatedAiCost: {
+        weeklyAveragePerAccountUsd: 0,
+        totalAveragePerAccountUsd: 0,
+        weeklyTrend: [],
+      },
+      errors: [],
+    });
+  });
+
+  it("throws when the dashboard summary query returns no row", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getSnapshot()).rejects.toThrow(
+      "Admin dashboard summary unavailable.",
+    );
+  });
+
+  it("lists contact messages with reply retry state and null timestamps", async () => {
+    const attemptedAt = new Date("2026-10-20T10:00:00.000Z");
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          id: "new-message",
+          subject: "Sin respuesta",
+          message: "Consulta inicial",
+          created_at: CONTACT_CREATED_AT,
+          username: "persona",
+          email: "owner@example.es",
+          reply_status: null,
+          reply_attempt_count: null,
+          reply_last_attempt_at: null,
+        },
+        {
+          id: "retryable-message",
+          subject: "Revisar respuesta",
+          message: "¿Llegó mi correo?",
+          created_at: CONTACT_CREATED_AT,
+          username: "otra-persona",
+          email: "other@example.es",
+          reply_status: "uncertain",
+          reply_attempt_count: 1,
+          reply_last_attempt_at: attemptedAt,
+        },
+        {
+          id: "exhausted-message",
+          subject: "Sin más intentos",
+          message: "Gracias",
+          created_at: CONTACT_CREATED_AT,
+          username: "tercera-persona",
+          email: "third@example.es",
+          reply_status: "uncertain",
+          reply_attempt_count: 2,
+          reply_last_attempt_at: attemptedAt,
+        },
+        {
+          id: "sent-message",
+          subject: "Enviado",
+          message: "Recibido",
+          created_at: CONTACT_CREATED_AT,
+          username: "cuarta-persona",
+          email: "fourth@example.es",
+          reply_status: "sent",
+          reply_attempt_count: 1,
+          reply_last_attempt_at: attemptedAt,
+        },
+      ],
+    });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.listContactMessages()).resolves.toMatchObject([
+      {
+        id: "new-message",
+        createdAt: CONTACT_CREATED_AT.toISOString(),
+        sender: { username: "persona", email: "owner@example.es" },
+        reply: {
+          status: "not_replied",
+          attemptedAt: null,
+          retryAllowed: false,
+        },
+      },
+      {
+        id: "retryable-message",
+        reply: {
+          status: "uncertain",
+          attemptedAt: attemptedAt.toISOString(),
+          retryAllowed: true,
+        },
+      },
+      {
+        id: "exhausted-message",
+        reply: { status: "uncertain", retryAllowed: false },
+      },
+      { id: "sent-message", reply: { status: "sent", retryAllowed: false } },
+    ]);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("LIMIT $1"),
+      [100],
+    );
+  });
+
   it("claims a reply atomically and obtains its recipient from the joined user row", async () => {
     const query = vi
       .fn()
@@ -424,5 +555,139 @@ describe("PostgresAdminDashboardRepository", () => {
     expect(query.mock.calls[0]?.[0]).toContain(
       "ON CONFLICT (contact_message_id) DO NOTHING",
     );
+  });
+
+  it("claims an uncertain reply again only after webmail has been reviewed", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ contact_message_id: CONTACT_MESSAGE_ID }],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: CONTACT_MESSAGE_ID,
+            subject: "Consulta",
+            created_at: CONTACT_CREATED_AT,
+            email: "owner@example.es",
+            status: "sending",
+            attempt_count: 2,
+            last_attempt_at: CONTACT_CREATED_AT,
+          },
+        ],
+      });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(
+      repository.claimContactMessageReply(CONTACT_MESSAGE_ID, "admin-id", true),
+    ).resolves.toMatchObject({ claimed: true, attemptCount: 2 });
+    expect(query.mock.calls[1]?.[0]).toContain("attempt_count < $3");
+    expect(query.mock.calls[1]?.[1]).toEqual([
+      CONTACT_MESSAGE_ID,
+      "admin-id",
+      2,
+    ]);
+  });
+
+  it("returns null when a reply claim refers to a missing contact message", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(
+      repository.claimContactMessageReply(
+        CONTACT_MESSAGE_ID,
+        "admin-id",
+        false,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it.each(["sent", "previewed", "uncertain"] as const)(
+    "completes a reply with status %s",
+    async (status) => {
+      const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+      const repository = new PostgresAdminDashboardRepository({
+        query,
+      } as unknown as Pool);
+
+      await repository.completeContactMessageReply(CONTACT_MESSAGE_ID, status);
+
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining("sent_at=CASE WHEN $2='sent'"),
+        [CONTACT_MESSAGE_ID, status],
+      );
+    },
+  );
+
+  it.each([
+    ["gpt-5.4-mini", 1000, 500, 0.003],
+    ["unlisted-test-model", 1000, 500, null],
+  ] as const)(
+    "records AI usage and its estimated cost for model %s",
+    async (model, inputTokens, outputTokens, expectedCost) => {
+      const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+      const repository = new PostgresAdminDashboardRepository({
+        query,
+      } as unknown as Pool);
+
+      await repository.recordAiUsage({
+        userId: "admin-user-id",
+        operation: "idea_evaluation",
+        model,
+        inputTokens,
+        outputTokens,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.stringContaining("CASE"), [
+        "admin-user-id",
+        "idea_evaluation",
+        model,
+        inputTokens,
+        outputTokens,
+        expectedCost,
+      ]);
+    },
+  );
+
+  it("records unclassified application errors and ignores invalid HTTP status codes", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await repository.recordApplicationError(
+      "Bad error code with private data",
+      599,
+      "UPPERCASE_DIAGNOSTIC",
+    );
+    await repository.recordApplicationError("HTTP_400", 399);
+    await repository.recordApplicationError("HTTP_400", 600);
+    await repository.recordApplicationError("HTTP_400", 503.5);
+
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO application_error_events"),
+      ["UNCLASSIFIED_ERROR", 599, null, null],
+    );
+  });
+
+  it("reuses the schema migration promise across repository operations", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1, rows: [] });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+    await repository.completeContactMessageReply(CONTACT_MESSAGE_ID, "sent");
+    await repository.recordApplicationError("HTTP_503", 503);
+
+    expect(runMigrations).toHaveBeenCalledTimes(1);
   });
 });
