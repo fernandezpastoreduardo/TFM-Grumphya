@@ -10,6 +10,7 @@
     "start": "node dist/main.js",
     "benchmark:evaluator": "tsx scripts/evaluator-benchmark.ts",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --ignoreConfig --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --esModuleInterop --skipLibCheck scripts/evaluator-benchmark.ts scripts/prepare-test-database.ts",
     "lint": "eslint src scripts --max-warnings=0"
   },
@@ -29,6 +30,7 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^24.5.2",
     "@types/pg": "^8.15.5",
+    "@vitest/coverage-v8": "4.1.12",
     "eslint": "^10.0.1",
     "tsx": "^4.20.5",
     "typescript": "~6.0.3",
