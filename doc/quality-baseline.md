@@ -8,7 +8,7 @@ solos.
 
 | Paquete | Pruebas aprobadas | Omitidas | Statements | Branches | Functions |   Lines |
 | ------- | ----------------: | -------: | ---------: | -------: | --------: | ------: |
-| API     |               747 |       21 |    89,55 % |  83,62 % |   94,47 % | 91,05 % |
+| API     |               750 |       21 |    89,63 % |  83,70 % |   94,47 % | 91,14 % |
 | Web     |               321 |        0 |    86,98 % |  84,01 % |   87,42 % | 89,66 % |
 
 Repite la medición con:
@@ -29,16 +29,19 @@ funciones, y 94,74 % de ramas. `MailService` llega a 96,77 % de líneas,
 comprueba que los fallos SMTP no se conviertan en previsualizaciones locales ni
 que detalles de persistencia se filtren en respuestas 503. Los incrementos
 cubren además persistencia de registro, uso anónimo, mensajería de contacto,
-SMTP y cuotas.
+SMTP y cuotas. `UserDeleteController` alcanza 100 % de líneas, ramas y
+funciones, con pruebas para una petición sin usuario autenticado, una cuenta
+que el repositorio no encuentra y un fallo inesperado de persistencia, además
+del borrado correcto.
 
 Vitest aplica ahora umbrales globales iniciales para frenar regresiones sin
 exigir que cada archivo alcance esos niveles: API, 80 % de sentencias, 75 % de
 ramas, 85 % de funciones y 85 % de líneas; web, 82 %, 78 %, 80 % y 85 %,
 respectivamente. Los umbrales quedan por debajo de la medición actual y deberán
 revisarse y elevarse por fases. El siguiente foco recomendado es
-`UserDeleteController`, con 75 % de líneas; protege una operación de cuenta
-sensible. Se dejan fuera del objetivo el arranque y las herramientas CLI, que
-no se benefician de pruebas unitarias artificiales.
+`PasswordResetController`, con 66,67 % de líneas; protege el flujo de
+recuperación de cuenta. Se dejan fuera del objetivo el arranque y las
+herramientas CLI, que no se benefician de pruebas unitarias artificiales.
 
 Las 21 pruebas omitidas en API incluyen pruebas condicionadas a bases de datos
 aisladas. La cobertura de estas pruebas no representa una comprobación del
