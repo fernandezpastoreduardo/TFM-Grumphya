@@ -365,3 +365,10 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - `existingProductExample` ya no puede mostrar los marcadores literales `"null"` o `"undefined"`. La API y el adaptador web omiten esos valores y cualquier ejemplo inseguro/no aplicable sin invalidar una evaluación válida.
 - Si falla una evaluación que continuaba un aviso de similitud, el servidor libera la reserva de uso y también el claim de continuación. El usuario puede reintentar la misma solicitud con su clave de idempotencia; una continuación simultánea sigue estando limitada a una.
 - Las pruebas cubren el marcador `null`, ejemplos inválidos, resultado de scoring conservado y reintento de continuación. Falta confirmar la causa concreta de un `INVALID_EVALUATION_RESPONSE` observado en producción: se necesita el campo agregado `latestDiagnosticCode` (`visible_message`, `decision_semantics`, etc.). No se envían ideas ni salidas del modelo a los logs.
+
+## Ampliación de cobertura de persistencia y correo, 27 de octubre de 2026
+
+- Se ampliaron las pruebas de `PostgresRegistrationRepository` y `PostgresContactMessageRepository`; se añadieron pruebas del repositorio PostgreSQL de uso anónimo, de cuotas de planes y del transporte SMTP.
+- El transporte SMTP ahora destruye el socket cuando la conexión TCP/TLS falla o vence antes de iniciar el envío, evitando dejar sockets abiertos en esos errores.
+- En la corrida completa de API con permiso para enlazar `127.0.0.1`, pasaron 688 pruebas y 21 quedaron omitidas por requisitos de base de datos. La cobertura API resultante y la cobertura web de referencia están registradas en [`quality-baseline.md`](quality-baseline.md). Sin permiso de loopback, las pruebas HTTP que abren sockets fallan con `listen EPERM`, por lo que esa corrida restringida no sirve para medir la suite completa.
+- El siguiente foco de cobertura es `PostgresAdminDashboardRepository` (75,86 % statements, 55,31 % branches, 69,23 % functions y 79,24 % lines en esa medición). Después se pueden definir umbrales graduales con excepciones justificadas para arranque y adaptadores externos.
