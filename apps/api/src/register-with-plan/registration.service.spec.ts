@@ -485,6 +485,103 @@ describe("register with plan", () => {
     expect(errors[0]).toEqual(errors[1]);
     expect(errors[0]).toMatchObject({ code: "LOGIN_UNAVAILABLE" });
   });
+
+  it("rejects unsupported plans and requires an active registration intent", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+
+    await expect(service.createIntent("FREE")).rejects.toMatchObject({
+      code: "INVALID_PLAN",
+    });
+    await expect(
+      service.register(undefined, validRegistration),
+    ).rejects.toMatchObject({ code: "REGISTRATION_INTENT_REQUIRED" });
+    await expect(
+      service.register("unknown-intent", validRegistration),
+    ).rejects.toMatchObject({ code: "REGISTRATION_INTENT_REQUIRED" });
+    expect(repository.users).toHaveLength(0);
+  });
+
+  it("rejects malformed registration input before hashing or storing it", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const intent = await service.createIntent("ILUMINADO");
+
+    await expect(service.register(intent.token, null)).rejects.toMatchObject({
+      code: "INVALID_REGISTRATION",
+    });
+    await expect(
+      service.register(intent.token, { ...validRegistration, email: 42 }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL" });
+    await expect(
+      service.resendVerification({ email: "not-an-email", extra: true }),
+    ).rejects.toMatchObject({ code: "INVALID_EMAIL" });
+    expect(repository.users).toHaveLength(0);
+  });
+
+  it("keeps registration pending and releases resend cooldown when the web origin is invalid", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const send = vi.fn().mockResolvedValue("sent");
+    const service = new RegistrationService(repository, { send });
+    const intent = await service.createIntent("ILUMINADO");
+    const releaseCooldown = vi.spyOn(
+      repository,
+      "releaseVerificationResendCooldown",
+    );
+    process.env.WEB_ORIGIN = "https://example.com/unexpected-path";
+
+    await expect(
+      service.register(intent.token, validRegistration),
+    ).resolves.toEqual({ status: "verification_pending" });
+
+    expect(send).not.toHaveBeenCalled();
+    expect(releaseCooldown).toHaveBeenCalledWith(
+      repository.registrations[0]?.id,
+    );
+    expect(repository.registrations[0]?.lastSentAt).toBeLessThan(
+      Date.now() - 60_000,
+    );
+  });
+
+  it("maps unexpected registration persistence failures to a generic unavailable error", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const intent = await service.createIntent("FALTON");
+    const persistenceError = new Error("private database detail");
+    vi.spyOn(repository, "consumeIntentAndRegister").mockRejectedValue(
+      persistenceError,
+    );
+
+    await expect(
+      service.register(intent.token, validRegistration),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "REGISTRATION_UNAVAILABLE",
+      message: "No se ha podido completar el alta ahora.",
+    });
+  });
+
+  it("rejects invalid verification and session tokens before repository access", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const revokeSession = vi.spyOn(repository, "revokeSession");
+
+    await expect(service.verify("bad-token")).rejects.toMatchObject({
+      code: "INVALID_VERIFICATION",
+    });
+    await expect(service.confirm(undefined)).rejects.toMatchObject({
+      code: "VERIFICATION_REQUIRED",
+    });
+    await expect(service.refresh("bad-token")).rejects.toMatchObject({
+      code: "SESSION_REQUIRED",
+    });
+    await expect(service.accountProfile(undefined)).rejects.toMatchObject({
+      code: "SESSION_REQUIRED",
+    });
+    await service.logout("bad-token");
+
+    expect(revokeSession).not.toHaveBeenCalled();
+  });
 });
 
 function makeService(repository: InMemoryRegistrationRepository) {

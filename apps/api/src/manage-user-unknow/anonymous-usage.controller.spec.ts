@@ -5,7 +5,10 @@ import type { Response } from "express";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AnonymousUsageService } from "./anonymous-usage.service";
+import {
+  AnonymousProfileRateLimitException,
+  type AnonymousUsageService,
+} from "./anonymous-usage.service";
 import { AnonymousUsageController } from "./anonymous-usage.controller";
 import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import { PlanUsageService as PlanUsageServiceToken } from "../register-with-plan/plan-usage.service";
@@ -135,6 +138,52 @@ describe("AnonymousUsageController roast endpoint", () => {
     expect(response.cookie).not.toHaveBeenCalled();
   });
 
+  it("sets Retry-After when profile initialization is rate limited", async () => {
+    const { controller, usage } = createController();
+    const retryAfterSeconds = 90;
+    const rateLimitError = new AnonymousProfileRateLimitException(
+      retryAfterSeconds,
+    );
+    usage.initialize.mockRejectedValue(rateLimitError);
+    const request = { headers: {}, socket: {} } as never;
+    const response = {
+      cookie: vi.fn(),
+      setHeader: vi.fn(),
+    } as unknown as Response;
+
+    await expect(controller.initialize(request, {}, response)).rejects.toBe(
+      rateLimitError,
+    );
+
+    expect(usage.initialize).toHaveBeenCalledWith(undefined, "unknown");
+    expect(response.setHeader).toHaveBeenCalledWith(
+      "Retry-After",
+      String(retryAfterSeconds),
+    );
+    expect(response.cookie).not.toHaveBeenCalled();
+  });
+
+  it("does not add Retry-After to unrelated profile initialization errors", async () => {
+    const { controller, usage } = createController();
+    const unexpectedError = new Error("profile store unavailable");
+    usage.initialize.mockRejectedValue(unexpectedError);
+    const request = {
+      headers: {},
+      socket: { remoteAddress: "192.0.2.26" },
+    } as never;
+    const response = {
+      cookie: vi.fn(),
+      setHeader: vi.fn(),
+    } as unknown as Response;
+
+    await expect(controller.initialize(request, {}, response)).rejects.toBe(
+      unexpectedError,
+    );
+
+    expect(usage.initialize).toHaveBeenCalledWith(undefined, "192.0.2.26");
+    expect(response.setHeader).not.toHaveBeenCalled();
+  });
+
   it("validates the bounded text and reserves and commits a server-side use", async () => {
     const { controller, usage } = createController();
     const request = {
@@ -232,6 +281,160 @@ describe("AnonymousUsageController roast endpoint", () => {
       controller.roast(request, { message: "x".repeat(401) }, IDEMPOTENCY_KEY),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-object messages, control characters and invalid idempotency keys", async () => {
+    const { controller, usage } = createController();
+    const request = { headers: {} } as never;
+
+    await expect(
+      controller.roast(request, null, IDEMPOTENCY_KEY),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      controller.roast(request, [], IDEMPOTENCY_KEY),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      controller.roast(request, { message: "   " }, IDEMPOTENCY_KEY),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      controller.roast(request, { message: "Hola\u0000" }, IDEMPOTENCY_KEY),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, undefined),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, "not-a-uuid"),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("allows line breaks in a roast message and trims its outer whitespace", async () => {
+    const roastReply = { reply: vi.fn().mockResolvedValue(REPLY) };
+    const { controller, usage } = createController(undefined, roastReply);
+    const request = { headers: {} } as never;
+    const message = "  Primera línea\nSegunda línea\t  ";
+
+    await expect(
+      controller.roast(request, { message }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+
+    expect(roastReply.reply).toHaveBeenCalledWith(
+      "Primera línea\nSegunda línea",
+      undefined,
+    );
+    expect(usage.reserve).toHaveBeenCalledOnce();
+  });
+
+  it("returns a generic unavailable response when the roast provider is missing", async () => {
+    const usage = {
+      initialize: vi.fn(),
+      reserve: vi.fn(),
+      commit: vi.fn(),
+      release: vi.fn(),
+    } as unknown as AnonymousUsageService;
+    const controller = new AnonymousUsageController(
+      usage,
+      undefined,
+      undefined,
+    );
+    const request = { headers: {} } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: {
+        code: "ROAST_REPLY_UNAVAILABLE",
+        message: "No se ha podido preparar la respuesta ahora.",
+      },
+    });
+    expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic unavailable response when an authenticated user has no plan usage service", async () => {
+    const { controller, usage } = createController(undefined);
+    const request = {
+      headers: {},
+      user: { userId: AUTHENTICATED_USER_ID },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: {
+        code: "PLAN_USAGE_UNAVAILABLE",
+        message: "No se ha podido comprobar el uso de tu plan ahora.",
+      },
+    });
+    expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("releases an authenticated plan reservation when roast generation fails", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn(),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const roastReply = {
+      reply: vi.fn().mockRejectedValue(new Error("OpenAI request failed.")),
+    };
+    const { controller, usage } = createController(planUsage, roastReply);
+    const request = {
+      headers: {},
+      user: { userId: AUTHENTICATED_USER_ID },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: { code: "ROAST_REPLY_UNAVAILABLE" },
+    });
+
+    expect(planUsage.release).toHaveBeenCalledWith(
+      AUTHENTICATED_USER_ID,
+      "roasts",
+      IDEMPOTENCY_HASH,
+    );
+    expect(usage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("propagates authenticated persistence errors after releasing the plan reservation", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn(),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const persistenceError = new Error("plan store unavailable");
+    const roastReply = {
+      reply: vi.fn().mockResolvedValue(REPLY),
+    };
+    planUsage.commit.mockRejectedValue(persistenceError);
+    const { controller } = createController(planUsage, roastReply);
+    const request = {
+      headers: {},
+      user: { userId: AUTHENTICATED_USER_ID },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).rejects.toBe(persistenceError);
+
+    expect(planUsage.release).toHaveBeenCalledWith(
+      AUTHENTICATED_USER_ID,
+      "roasts",
+      IDEMPOTENCY_HASH,
+    );
   });
 
   it("releases a reservation when storing the roast response fails", async () => {
@@ -396,6 +599,44 @@ describe("AnonymousUsageController roast endpoint", () => {
       AUTHENTICATED_USER_ID,
       IDEMPOTENCY_HASH,
     );
+  });
+
+  it("replays a committed free roast and retries ranking persistence after a failure", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn().mockResolvedValue(null),
+      recordHistoricalRoastMessage: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("ranking store unavailable"))
+        .mockResolvedValueOnce(undefined),
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+      recordHistoricalRoastMessage: ReturnType<typeof vi.fn>;
+    };
+    const { controller, usage } = createController(planUsage);
+    usage.reserve.mockResolvedValueOnce(RESERVED).mockResolvedValueOnce({
+      state: "cached",
+      response: { reply: REPLY },
+      usage: RESERVED.usage,
+    });
+    const request = {
+      headers: { cookie: `grumphya_anon=${"a".repeat(43)}` },
+      user: { userId: AUTHENTICATED_USER_ID },
+    } as never;
+
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).rejects.toThrow("ranking store unavailable");
+    await expect(
+      controller.roast(request, { message: ROAST_MESSAGE }, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({ reply: REPLY });
+
+    expect(usage.commit).toHaveBeenCalledOnce();
+    expect(usage.release).toHaveBeenCalledWith(
+      "a".repeat(43),
+      "roasts",
+      IDEMPOTENCY_HASH,
+    );
+    expect(planUsage.recordHistoricalRoastMessage).toHaveBeenCalledTimes(2);
   });
 
   it("returns the cached authenticated roast response without a second commit", async () => {

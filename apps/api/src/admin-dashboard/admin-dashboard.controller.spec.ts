@@ -1,11 +1,15 @@
 import "reflect-metadata";
+import { HttpException } from "@nestjs/common";
 import { GUARDS_METADATA } from "@nestjs/common/constants";
 import { describe, expect, it, vi } from "vitest";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 import { AdminRoleGuard } from "./admin-role.guard";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
-import { AdminContactMessageReply } from "./admin-contact-message-reply.service";
+import {
+  AdminContactMessageReply,
+  AdminContactReplyError,
+} from "./admin-contact-message-reply.service";
 
 describe("AdminDashboardController", () => {
   it("protects diagnostic details with session and administrator guards", () => {
@@ -70,5 +74,49 @@ describe("AdminDashboardController", () => {
       "contact-id",
       body,
     );
+  });
+
+  it("maps known reply errors to their safe HTTP response", async () => {
+    const service = {} as AdminDashboardService;
+    const replyError = new AdminContactReplyError(
+      "INVALID_CONTACT_REPLY",
+      400,
+      "Escribe una respuesta válida.",
+    );
+    const reply = {
+      execute: vi.fn().mockRejectedValue(replyError),
+    } as unknown as AdminContactMessageReply;
+    const controller = new AdminDashboardController(service, reply);
+    const request = { user: { userId: "admin-from-auth" } } as never;
+
+    await expect(
+      controller.replyToContactMessage(request, "contact-id", {
+        response: "Respuesta suficientemente larga.",
+      }),
+    ).rejects.toMatchObject({
+      constructor: HttpException,
+      response: {
+        statusCode: 400,
+        code: "INVALID_CONTACT_REPLY",
+        message: "Escribe una respuesta válida.",
+      },
+      status: 400,
+    });
+  });
+
+  it("propagates unexpected reply failures without exposing new details", async () => {
+    const service = {} as AdminDashboardService;
+    const unexpectedError = new Error("database detail");
+    const reply = {
+      execute: vi.fn().mockRejectedValue(unexpectedError),
+    } as unknown as AdminContactMessageReply;
+    const controller = new AdminDashboardController(service, reply);
+    const request = { user: { userId: "admin-from-auth" } } as never;
+
+    await expect(
+      controller.replyToContactMessage(request, "contact-id", {
+        response: "Respuesta suficientemente larga.",
+      }),
+    ).rejects.toBe(unexpectedError);
   });
 });

@@ -1,4 +1,8 @@
-import { ConflictException, BadRequestException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { createHash, createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
@@ -45,6 +49,7 @@ function createDependencies(
   evaluationResult: unknown = EVALUATION_RESULT,
   planUsage?: PlanUsageService,
   anonymousUsage?: AnonymousUsageService,
+  includeSearch = true,
 ) {
   const search = {
     executeDetailed: vi.fn().mockResolvedValue({
@@ -76,7 +81,7 @@ function createDependencies(
   };
   return {
     service: new IdeaSubmissionService(
-      search,
+      includeSearch ? search : undefined,
       repository,
       evaluation,
       anonymousQuota as AnonymousUsageService,
@@ -926,5 +931,129 @@ describe("IdeaSubmissionService", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(search.executeDetailed).not.toHaveBeenCalled();
     expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid authenticated owner before checking idempotency", async () => {
+    const { service, repository, anonymousUsage } = createDependencies();
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token", "bad-id"),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(repository.hasDifferentIdempotentRequest).not.toHaveBeenCalled();
+    expect(anonymousUsage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic failure when the idempotency lookup is unavailable", async () => {
+    const { service, repository, anonymousUsage } = createDependencies();
+    vi.mocked(repository.hasDifferentIdempotentRequest).mockRejectedValue(
+      new Error("private persistence detail"),
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: { code: "SIMILARITY_UNAVAILABLE" },
+    });
+
+    expect(anonymousUsage.reserve).not.toHaveBeenCalled();
+  });
+
+  it("releases the quota reservation when similarity search is not configured", async () => {
+    const { service, anonymousUsage, search, evaluation } = createDependencies(
+      { kind: "no-match" },
+      EVALUATION_RESULT,
+      undefined,
+      undefined,
+      false,
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: { code: "SIMILARITY_UNAVAILABLE" },
+    });
+
+    expect(anonymousUsage.reserve).toHaveBeenCalledOnce();
+    expect(anonymousUsage.release).toHaveBeenCalledWith(
+      "visitor-token",
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("releases the quota reservation and hides similarity provider failures", async () => {
+    const { service, anonymousUsage, search, evaluation } =
+      createDependencies();
+    vi.mocked(search.executeDetailed).mockRejectedValue(
+      new Error("private embedding provider detail"),
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: { code: "SIMILARITY_UNAVAILABLE" },
+    });
+
+    expect(anonymousUsage.release).toHaveBeenCalledWith(
+      "visitor-token",
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic failure when counting a matched idea cannot be persisted", async () => {
+    const { service, repository, anonymousUsage, evaluation } =
+      createDependencies({
+        kind: "match",
+        headline: GENERATED_MATCH_HEADLINE,
+        ideaId: "idea-1",
+        semanticTitle: SAFE_TITLE,
+        similarity: 0.92,
+        submissionCount: 23,
+      });
+    vi.mocked(repository.updateWorstIdea).mockRejectedValue(
+      new Error("private database detail"),
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: { code: "SIMILARITY_UNAVAILABLE" },
+    });
+
+    expect(anonymousUsage.release).toHaveBeenCalledWith(
+      "visitor-token",
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("returns a generic failure when reading the previous match for continuation fails", async () => {
+    const { service, repository, anonymousUsage } = createDependencies();
+    vi.mocked(repository.getIdempotentMatch).mockRejectedValue(
+      new Error("private continuation detail"),
+    );
+
+    await expect(
+      service.submit(
+        { ...VALID_REQUEST, continueAnyway: true },
+        IDEMPOTENCY_KEY,
+        "visitor-token",
+      ),
+    ).rejects.toMatchObject({
+      status: 503,
+      response: { code: "SIMILARITY_UNAVAILABLE" },
+    });
+
+    expect(anonymousUsage.reserve).not.toHaveBeenCalled();
   });
 });

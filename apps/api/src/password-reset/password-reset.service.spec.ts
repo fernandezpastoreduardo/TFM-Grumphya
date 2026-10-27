@@ -191,4 +191,65 @@ describe("PasswordResetService", () => {
       service.complete({ token: "0".repeat(64), password: PASSWORD }),
     ).rejects.toMatchObject({ code: "INVALID_RESET_LINK" });
   });
+
+  it("rejects malformed completion payloads before consuming a token", async () => {
+    const repository = new MemoryPasswordResetRepository();
+    const service = makeService(repository);
+
+    await expect(service.complete(null)).rejects.toMatchObject({
+      code: "INVALID_RESET_REQUEST",
+    });
+    await expect(
+      service.complete({ token: "not-a-token", password: PASSWORD }),
+    ).rejects.toMatchObject({ code: "INVALID_RESET_REQUEST" });
+    await expect(
+      service.complete({
+        token: "0".repeat(64),
+        password: PASSWORD,
+        unexpected: true,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_RESET_REQUEST" });
+
+    expect(repository.passwordHashes.size).toBe(0);
+  });
+
+  it("completes a valid password reset and stores only the password hash", async () => {
+    const repository = new MemoryPasswordResetRepository();
+    let sentToken: string | undefined;
+    const send = vi.fn(async ({ text }: { text: string }) => {
+      sentToken = /#([a-f0-9]{64})/u.exec(text)?.[1];
+      return "sent" as const;
+    });
+    const service = makeService(repository, send);
+
+    await service.request({ email: ACTIVE_EMAIL });
+    await vi.waitFor(() => expect(sentToken).toBeDefined());
+    await expect(
+      service.complete({ token: sentToken, password: PASSWORD }),
+    ).resolves.toEqual({
+      message:
+        "La contraseña se ha actualizado. Inicia sesión con la nueva contraseña.",
+    });
+
+    expect(repository.passwordHashes.get("user-1")).toMatch(
+      /^bcrypt-sha256\$/u,
+    );
+    expect(repository.passwordHashes.get("user-1")).not.toContain(PASSWORD);
+    expect(repository.revokedSessions.has("user-1")).toBe(true);
+    expect(repository.tokens.size).toBe(0);
+  });
+
+  it("invalidates the reset token without sending mail when the web origin is unsafe", async () => {
+    const repository = new MemoryPasswordResetRepository();
+    const send = vi.fn().mockResolvedValue("sent");
+    const invalidateToken = vi.spyOn(repository, "invalidateToken");
+    const service = makeService(repository, send);
+    vi.stubEnv("WEB_ORIGIN", "https://grumphya.example/unexpected-path");
+
+    await service.request({ email: ACTIVE_EMAIL });
+    await vi.waitFor(() => expect(repository.tokens.size).toBe(0));
+
+    expect(send).not.toHaveBeenCalled();
+    expect(invalidateToken).toHaveBeenCalledOnce();
+  });
 });
