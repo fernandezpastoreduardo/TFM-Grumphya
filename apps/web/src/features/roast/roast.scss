@@ -331,7 +331,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: clamp(22px, 3vw, 28px);
 }
 
 .roast-ranking-heading h2 {

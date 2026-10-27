@@ -10,6 +10,9 @@
   min-width: 0;
   gap: 18px;
 }
+.ranking-card > .content-card-heading {
+  margin-bottom: clamp(22px, 3vw, 28px);
+}
 .idea-ranking {
   display: grid;
   gap: 7px;

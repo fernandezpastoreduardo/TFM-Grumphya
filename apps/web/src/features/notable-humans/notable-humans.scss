@@ -15,6 +15,9 @@
   background: #dfa92f;
   color: var(--color-ink);
 }
+.humans-card > .content-card-heading {
+  margin-bottom: clamp(22px, 3vw, 28px);
+}
 .humans-ranking {
   display: grid;
   gap: 7px;
