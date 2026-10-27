@@ -6,6 +6,7 @@ const FAKE_MESSAGE =
 function createFakeDecision() {
   return {
     status: "SIN_BLOQUEO_EVIDENTE",
+    headline: "La idea pasa este primer repaso, con confeti prudente.",
     evaluated: [
       { id: "C01", state: "PUNTUADO", score: 71 },
       { id: "C02", state: "PUNTUADO", score: 72 },

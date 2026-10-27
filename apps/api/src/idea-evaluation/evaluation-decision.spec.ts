@@ -61,6 +61,7 @@ const CRITERION_REASON_CODES = {
 function createCompleteDecision() {
   return {
     status: "SIN_BLOQUEO_EVIDENTE",
+    headline: "La propuesta supera el primer repaso, con prudencia.",
     evaluated: CRITERION_IDS.map((id) => ({
       id,
       state: "PUNTUADO",
@@ -80,6 +81,7 @@ function createCompleteDecision() {
 function createRejectedDecision() {
   return {
     status: "RECHAZADA",
+    headline: "La propuesta necesita replantear lo esencial.",
     evaluated: [
       { id: "C01", state: "NO_APLICA", score: null },
       { id: "C02", state: "NO_APLICA", score: null },
@@ -106,6 +108,7 @@ function createRejectedDecision() {
 function createInsufficientDecision() {
   return {
     status: "IDEA_INSUFICIENTE",
+    headline: "Faltan piezas para valorar esta propuesta.",
     evaluated: [],
     stop_at: null,
     reason_code: null,
@@ -121,6 +124,7 @@ function createInsufficientDecision() {
 function createGenericTrainingLogRejection() {
   return {
     status: "RECHAZADA",
+    headline: "La idea necesita un motivo para destacar.",
     evaluated: [
       ...CRITERION_IDS.slice(0, -1).map((id) => ({
         id,
@@ -144,6 +148,7 @@ function createGenericTrainingLogRejection() {
 function createUndefinedUserValueRejection() {
   return {
     status: "RECHAZADA",
+    headline: "La idea cuenta cosas, pero no explica para qué.",
     evaluated: CRITERION_IDS.map((id) => ({
       id,
       state: "PUNTUADO",
@@ -163,6 +168,7 @@ function createUndefinedUserValueRejection() {
 function createCorePromiseRejection() {
   return {
     status: "RECHAZADA",
+    headline: "La promesa se queda sin un mecanismo fiable.",
     evaluated: [
       { id: "C01", state: "PUNTUADO", score: 79 },
       { id: "C02", state: "PUNTUADO", score: 79 },

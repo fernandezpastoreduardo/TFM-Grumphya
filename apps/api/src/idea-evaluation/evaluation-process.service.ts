@@ -158,7 +158,7 @@ function toPublicResponse(
   const response: EvaluationProcessResponse = {
     status: decision.status,
     score: getPublicScore(decision),
-    headline: renderHeadline(decision.status, tone),
+    headline: renderHeadline(decision.status, tone, decision.headline),
     message: renderMessage(decision, tone),
   };
   if (decision.status === "RECHAZADA" && decision.safeTitle) {

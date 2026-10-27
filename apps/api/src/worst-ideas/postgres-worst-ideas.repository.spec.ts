@@ -4,6 +4,7 @@ import { PostgresWorstIdeasRepository } from "./postgres-worst-ideas.repository"
 
 const VALID_EMBEDDING = Array.from({ length: 1536 }, () => 0.25);
 const SAFE_TITLE = "La red social de las tostadoras";
+const GENERATED_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const REJECTION_SCORE = 2.4;
 const IDEMPOTENCY_HASH = "sha256:anonymized-hash";
 const REQUEST_HASH = "hmac:anonymized-request-hash";
@@ -46,7 +47,12 @@ class FakePgClient {
     }
     if (sql.includes("JOIN rejected_ideas AS ideas")) {
       return this.result([
-        { id: IDEA_ID, safe_title: SAFE_TITLE, count: this.currentCount },
+        {
+          id: IDEA_ID,
+          safe_title: SAFE_TITLE,
+          count: this.currentCount,
+          generated_headline: GENERATED_HEADLINE,
+        },
       ]) as unknown as QueryResult<Row>;
     }
     if (sql.includes("INSERT INTO rejected_ideas")) {
@@ -185,6 +191,22 @@ class FakePgPool {
     values?: unknown[],
   ): Promise<QueryResult<Row>> {
     this.queries.push({ sql, values });
+    if (sql.includes("FROM rejected_idea_idempotency AS requests")) {
+      return {
+        rows: [
+          {
+            id: IDEA_ID,
+            safe_title: SAFE_TITLE,
+            count: "4",
+            generated_headline: GENERATED_HEADLINE,
+          },
+        ] as unknown as Row[],
+        rowCount: 1,
+        command: "SELECT",
+        oid: 0,
+        fields: [],
+      };
+    }
     if (sql.includes("FROM rejected_idea_all_time_counts")) {
       return {
         rows: this.allTimeRankingRows as unknown as Row[],
@@ -427,7 +449,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+      repository.updateWorstIdea(
+        IDEA_ID,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+        GENERATED_HEADLINE,
+      ),
     ).resolves.toBe(5);
 
     expect(
@@ -451,7 +478,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+      repository.updateWorstIdea(
+        IDEA_ID,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+        GENERATED_HEADLINE,
+      ),
     ).resolves.toBe(21);
 
     const allTimeUpdate = pool.client.queries.find(({ sql }) =>
@@ -472,7 +504,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+      repository.updateWorstIdea(
+        IDEA_ID,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+        GENERATED_HEADLINE,
+      ),
     ).rejects.toThrow("Rejected idea all-time aggregate is unavailable.");
     expect(pool.client.queries.at(-1)?.sql).toBe("ROLLBACK");
     expect(pool.client.releaseCalled).toBe(true);
@@ -484,7 +521,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+      repository.updateWorstIdea(
+        IDEA_ID,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+        GENERATED_HEADLINE,
+      ),
     ).rejects.toThrow("Rejected idea is unavailable.");
     expect(pool.client.queries.at(-1)?.sql).toBe("ROLLBACK");
     expect(pool.client.releaseCalled).toBe(true);
@@ -497,7 +539,12 @@ describe("PostgresWorstIdeasRepository", () => {
     const repository = makeRepository(pool);
 
     await expect(
-      repository.updateWorstIdea(IDEA_ID, IDEMPOTENCY_HASH, REQUEST_HASH),
+      repository.updateWorstIdea(
+        IDEA_ID,
+        IDEMPOTENCY_HASH,
+        REQUEST_HASH,
+        GENERATED_HEADLINE,
+      ),
     ).resolves.toBe(8);
 
     expect(
@@ -514,7 +561,12 @@ describe("PostgresWorstIdeasRepository", () => {
 
     await expect(
       repository.getIdempotentMatch(IDEMPOTENCY_HASH, REQUEST_HASH),
-    ).resolves.toEqual({ id: IDEA_ID, safeTitle: SAFE_TITLE, count: 4 });
+    ).resolves.toEqual({
+      id: IDEA_ID,
+      safeTitle: SAFE_TITLE,
+      count: 4,
+      headline: GENERATED_HEADLINE,
+    });
 
     expect(pool.queries[0]?.sql).toContain(
       "requests.submission_type = 'match'",

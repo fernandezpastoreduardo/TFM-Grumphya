@@ -13,6 +13,7 @@ const VALID_IDEA = "Una app para coordinar voluntarios en el barrio";
 const SEMANTIC_FINGERPRINT =
   "Aplicación de coordinación de voluntariado para organizar personas y tareas en un barrio.";
 const QUERY_VECTOR = [0.1, 0.2, 0.3];
+const GENERATED_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const SAFE_REJECTED_IDEA = {
   ideaId: "idea-1",
   semanticTitle: "Servicio sin consentimiento para usar datos personales",
@@ -33,9 +34,10 @@ function createUseCase(results: unknown) {
     searchRejected: vi.fn().mockResolvedValue(results),
   };
   const equivalencePort: IdeaEquivalencePort = {
-    classifyIdeas: vi
-      .fn()
-      .mockResolvedValue(Array.isArray(results) ? results.map(() => true) : []),
+    classifyIdeas: vi.fn().mockResolvedValue({
+      decisions: Array.isArray(results) ? results.map(() => true) : [],
+      headline: GENERATED_HEADLINE,
+    }),
   };
   return {
     useCase: new SearchSimilarIdea(
@@ -61,7 +63,11 @@ describe("SearchSimilarIdea", () => {
       createEmbedding: vi.fn().mockResolvedValue(embedding),
     };
     const searchPort = { searchRejected: vi.fn().mockResolvedValue([]) };
-    const equivalencePort = { classifyIdeas: vi.fn().mockResolvedValue([]) };
+    const equivalencePort = {
+      classifyIdeas: vi
+        .fn()
+        .mockResolvedValue({ decisions: [], headline: null }),
+    };
     const search = new SearchSimilarIdea(
       fingerprintPort,
       embeddingPort,
@@ -89,7 +95,10 @@ describe("SearchSimilarIdea", () => {
     const query = "Una web tipo tinder pero para grillos";
     const fingerprint =
       "Servicio web de citas para que los grillos encuentren pareja.";
-    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([true]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+      decisions: [true],
+      headline: GENERATED_HEADLINE,
+    });
     const fingerprintPort = {
       createFingerprint: vi.fn().mockResolvedValue(fingerprint),
     };
@@ -110,6 +119,7 @@ describe("SearchSimilarIdea", () => {
 
     await expect(search.execute({ ideaText: query })).resolves.toMatchObject({
       kind: "match",
+      headline: GENERATED_HEADLINE,
       ideaId: "idea-1",
       semanticTitle: SAFE_REJECTED_IDEA.semanticTitle,
     });
@@ -117,6 +127,8 @@ describe("SearchSimilarIdea", () => {
       query,
       fingerprint,
       [SAFE_REJECTED_IDEA.semanticTitle],
+      undefined,
+      "hard",
     );
   });
 
@@ -124,7 +136,10 @@ describe("SearchSimilarIdea", () => {
     const { useCase, equivalencePort, searchPort } = createUseCase([
       { ...SAFE_REJECTED_IDEA, similarity: 0.01 },
     ]);
-    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([false]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+      decisions: [false],
+      headline: null,
+    });
 
     await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
       kind: "no-match",
@@ -141,16 +156,42 @@ describe("SearchSimilarIdea", () => {
       { ...SAFE_REJECTED_IDEA, similarity: 0.1 },
       { ...SAFE_REJECTED_IDEA, ideaId: "idea-2", similarity: 0.4 },
     ]);
-    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([true, false]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+      decisions: [true, false],
+      headline: GENERATED_HEADLINE,
+    });
 
     await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
       kind: "match",
+      headline: GENERATED_HEADLINE,
       ideaId: "idea-2",
       semanticTitle: SAFE_REJECTED_IDEA.semanticTitle,
       similarity: 0.4,
       submissionCount: 23,
     });
   });
+
+  it.each([
+    ["soft", "¡Con mucho cariño, esta idea nos vuelve a sonar!"],
+    ["hard", "La idea ha vuelto; el problema también."],
+  ] as const)(
+    "uses the %s tone fallback when the comparator returns an unsafe headline",
+    async (tone, expectedHeadline) => {
+      const { useCase, equivalencePort } = createUseCase([
+        { ...SAFE_REJECTED_IDEA, similarity: 0.4 },
+      ]);
+      vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+        decisions: [true],
+        headline: "Mira https://example.com",
+      });
+
+      await expect(
+        useCase.executeDetailed({ ideaText: VALID_IDEA }, undefined, tone),
+      ).resolves.toMatchObject({
+        result: { kind: "match", headline: expectedHeadline },
+      });
+    },
+  );
 
   it("sorts candidates by similarity before matching and ignores unsafe candidates", async () => {
     const { useCase, equivalencePort } = createUseCase([
@@ -163,7 +204,10 @@ describe("SearchSimilarIdea", () => {
         similarity: 0.99,
       },
     ]);
-    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue([true, false]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+      decisions: [true, false],
+      headline: GENERATED_HEADLINE,
+    });
 
     await expect(
       useCase.execute({ ideaText: VALID_IDEA }),
@@ -176,6 +220,8 @@ describe("SearchSimilarIdea", () => {
       VALID_IDEA,
       SEMANTIC_FINGERPRINT,
       [SAFE_REJECTED_IDEA.semanticTitle, SAFE_REJECTED_IDEA.semanticTitle],
+      undefined,
+      "hard",
     );
   });
 
@@ -195,7 +241,10 @@ describe("SearchSimilarIdea", () => {
     const { useCase, equivalencePort } = createUseCase([
       { ...SAFE_REJECTED_IDEA, similarity: 0.4 },
     ]);
-    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue(["same"]);
+    vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+      decisions: ["same"],
+      headline: GENERATED_HEADLINE,
+    });
 
     await expect(useCase.execute({ ideaText: VALID_IDEA })).rejects.toThrow(
       "Semantic comparison response is invalid.",

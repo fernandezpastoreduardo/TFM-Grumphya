@@ -15,6 +15,7 @@ const IDEMPOTENCY_KEY = "d54e74e8-4d23-46d4-9944-0b39bcda0914";
 const TOO_BRIEF_SPECIAL_IDEA = "hola";
 const UPPERCASE_IDEMPOTENCY_KEY = IDEMPOTENCY_KEY.toUpperCase();
 const SAFE_TITLE = "Coordinación sin salvaguardas verificables";
+const GENERATED_MATCH_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const EVALUATION_RESULT = {
   status: "RECHAZADA" as const,
   score: 1.3,
@@ -387,6 +388,7 @@ describe("IdeaSubmissionService", () => {
   it("attributes a matched rejected idea to the authenticated user", async () => {
     const { service, repository } = createDependencies({
       kind: "match",
+      headline: GENERATED_MATCH_HEADLINE,
       ideaId: "idea-1",
       semanticTitle: SAFE_TITLE,
       similarity: 0.92,
@@ -404,6 +406,7 @@ describe("IdeaSubmissionService", () => {
       "idea-1",
       IDEMPOTENCY_HASH,
       expect.stringMatching(/^[a-f0-9]{64}$/),
+      GENERATED_MATCH_HEADLINE,
       AUTHENTICATED_USER_ID,
     );
   });
@@ -411,6 +414,7 @@ describe("IdeaSubmissionService", () => {
   it("checks similarity first, counts the match once and returns only safe public fields", async () => {
     const { service, search, repository, evaluation } = createDependencies({
       kind: "match",
+      headline: GENERATED_MATCH_HEADLINE,
       ideaId: "idea-1",
       semanticTitle: SAFE_TITLE,
       similarity: 0.92,
@@ -421,18 +425,43 @@ describe("IdeaSubmissionService", () => {
       service.submit(VALID_REQUEST, IDEMPOTENCY_KEY),
     ).resolves.toEqual({
       status: "similar_idea_match",
+      headline: GENERATED_MATCH_HEADLINE,
       safeTitle: SAFE_TITLE,
       submissionCount: 24,
     });
 
-    expect(search.executeDetailed).toHaveBeenCalledWith({
-      ideaText: IDEA_TEXT,
-    });
+    expect(search.executeDetailed).toHaveBeenCalledWith(
+      { ideaText: IDEA_TEXT },
+      undefined,
+      "soft",
+    );
     expect(repository.updateWorstIdea).toHaveBeenCalledWith(
       "idea-1",
       IDEMPOTENCY_HASH,
       expect.stringMatching(/^[a-f0-9]{64}$/),
+      GENERATED_MATCH_HEADLINE,
     );
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("replays the generated repeated-idea headline for the same idempotency key", async () => {
+    const { service, repository, search, evaluation } = createDependencies();
+    vi.mocked(repository.getIdempotentMatch).mockResolvedValue({
+      id: "idea-1",
+      safeTitle: SAFE_TITLE,
+      count: 24,
+      headline: GENERATED_MATCH_HEADLINE,
+    });
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY),
+    ).resolves.toEqual({
+      status: "similar_idea_match",
+      headline: GENERATED_MATCH_HEADLINE,
+      safeTitle: SAFE_TITLE,
+      submissionCount: 24,
+    });
+    expect(search.executeDetailed).not.toHaveBeenCalled();
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
 
@@ -569,6 +598,7 @@ describe("IdeaSubmissionService", () => {
   it("shows a simulated >0.90 grasshopper match without evaluating and increments once", async () => {
     const { service, search, repository, evaluation } = createDependencies({
       kind: "match",
+      headline: GENERATED_MATCH_HEADLINE,
       ideaId: "grasshopper-idea",
       semanticTitle: "Tinder para saltamontes",
       similarity: 0.91,
@@ -582,18 +612,22 @@ describe("IdeaSubmissionService", () => {
       ),
     ).resolves.toEqual({
       status: "similar_idea_match",
+      headline: GENERATED_MATCH_HEADLINE,
       safeTitle: "Tinder para saltamontes",
       submissionCount: 24,
     });
 
-    expect(search.executeDetailed).toHaveBeenCalledWith({
-      ideaText: GRASSHOPPER_PARAPHRASE,
-    });
+    expect(search.executeDetailed).toHaveBeenCalledWith(
+      { ideaText: GRASSHOPPER_PARAPHRASE },
+      undefined,
+      "hard",
+    );
     expect(repository.updateWorstIdea).toHaveBeenCalledTimes(1);
     expect(repository.updateWorstIdea).toHaveBeenCalledWith(
       "grasshopper-idea",
       IDEMPOTENCY_HASH,
       expect.stringMatching(/^[a-f0-9]{64}$/),
+      GENERATED_MATCH_HEADLINE,
     );
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
@@ -773,6 +807,7 @@ describe("IdeaSubmissionService", () => {
       id: "idea-1",
       safeTitle: SAFE_TITLE,
       count: 24,
+      headline: GENERATED_MATCH_HEADLINE,
     });
 
     await expect(
@@ -828,6 +863,7 @@ describe("IdeaSubmissionService", () => {
       id: "idea-1",
       safeTitle: SAFE_TITLE,
       count: 24,
+      headline: GENERATED_MATCH_HEADLINE,
     });
     vi.mocked(repository.claimIdempotentContinuation).mockResolvedValue(false);
 
@@ -847,6 +883,7 @@ describe("IdeaSubmissionService", () => {
       id: "idea-1",
       safeTitle: SAFE_TITLE,
       count: 24,
+      headline: GENERATED_MATCH_HEADLINE,
     });
     vi.mocked(evaluation.evaluate)
       .mockRejectedValueOnce(evaluationFailure)

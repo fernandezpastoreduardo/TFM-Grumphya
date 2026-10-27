@@ -38,7 +38,7 @@ const HARD_REJECTION_MESSAGE_PREFIX =
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.13,
-  headline: "Sigue en pie. No es para celebrarlo.",
+  headline: "La idea pasa este primer repaso, con confeti prudente.",
   message: `${HARD_CLEAR_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
 };
 const UNAVAILABLE_RESPONSE = {
@@ -57,6 +57,7 @@ const TIMEOUT_RESPONSE = {
 function createCompleteDecision(): ModelDecision {
   return {
     status: "SIN_BLOQUEO_EVIDENTE",
+    headline: "La idea pasa este primer repaso, con confeti prudente.",
     evaluated: [
       { id: "C01", state: "PUNTUADO", score: 71 },
       { id: "C02", state: "PUNTUADO", score: 72 },
@@ -83,6 +84,7 @@ function createCompleteDecision(): ModelDecision {
 function createRejectedDecision(): ModelDecision {
   return {
     status: "RECHAZADA",
+    headline: "Esta idea necesita un cambio de rumbo.",
     evaluated: [
       { id: "C01", state: "PUNTUADO", score: 13 },
       { id: "C02", state: "PUNTUADO", score: 50 },
@@ -132,6 +134,7 @@ function createExistingProductDecision(): ModelDecision {
 function createUndefinedUserValueDecision(): ModelDecision {
   return {
     status: "RECHAZADA",
+    headline: "El contador se queda sin motivo de uso.",
     evaluated: [
       { id: "C01", state: "PUNTUADO", score: 60 },
       { id: "C02", state: "PUNTUADO", score: 60 },
@@ -159,6 +162,7 @@ function createUndefinedUserValueDecision(): ModelDecision {
 function createInsufficientDecision(): ModelDecision {
   return {
     status: "IDEA_INSUFICIENTE",
+    headline: "Faltan piezas para valorar esta idea.",
     evaluated: [],
     stop_at: null,
     reason_code: null,
@@ -229,7 +233,7 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual({
       status: "RECHAZADA",
       score: 1.3,
-      headline: "¡Un abrazo y confeti para esta pega importante!",
+      headline: "Esta idea necesita un cambio de rumbo.",
       message: `${SOFT_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
       failedCriteria: ["La idea deja la puerta abierta a tus datos."],
@@ -330,7 +334,7 @@ describe("EvaluationProcessService", () => {
     ).resolves.toEqual({
       status: "RECHAZADA",
       score: 1.3,
-      headline: "La propuesta se ha estampado contra lo esencial.",
+      headline: "Esta idea necesita un cambio de rumbo.",
       message: `${HARD_REJECTION_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
       failedCriteria: ["La idea deja la puerta abierta a tus datos."],
@@ -438,7 +442,7 @@ describe("EvaluationProcessService", () => {
       expect(result).toEqual({
         status: "SIN_BLOQUEO_EVIDENTE",
         score: 6.77,
-        headline: "¡Qué ilusión! Ha superado el primer repaso.",
+        headline: "La idea pasa este primer repaso, con confeti prudente.",
         message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
       });
       expect(fake.calls).toHaveLength(1);
@@ -508,7 +512,7 @@ describe("EvaluationProcessService", () => {
     expect(result).toEqual({
       status: "SIN_BLOQUEO_EVIDENTE",
       score: 7.13,
-      headline: "¡Qué ilusión! Ha superado el primer repaso.",
+      headline: "La idea pasa este primer repaso, con confeti prudente.",
       message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
     });
     expect(port.evaluate).toHaveBeenCalledTimes(2);

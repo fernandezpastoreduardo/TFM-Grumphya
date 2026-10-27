@@ -205,8 +205,9 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
       id: string;
       safe_title: string;
       count: number;
+      generated_headline: string | null;
     }>(
-      `SELECT ideas.id, ideas.safe_title, ideas.count
+      `SELECT ideas.id, ideas.safe_title, ideas.count, requests.generated_headline
        FROM rejected_idea_idempotency AS requests
        JOIN rejected_ideas AS ideas ON ideas.id = requests.rejected_idea_id
        WHERE requests.idempotency_hash = $1
@@ -218,7 +219,12 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     );
     const row = result.rows[0];
     return row
-      ? { id: row.id, safeTitle: row.safe_title, count: Number(row.count) }
+      ? {
+          id: row.id,
+          safeTitle: row.safe_title,
+          count: Number(row.count),
+          headline: row.generated_headline,
+        }
       : null;
   }
 
@@ -288,6 +294,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     ideaId: string,
     idempotencyHash: string,
     requestHash: string,
+    headline: string,
     userId?: string,
   ): Promise<number> {
     await this.ensureSchema();
@@ -316,7 +323,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
       );
       if (updated.rowCount !== 1)
         throw new Error("Rejected idea is unavailable.");
-      await this.attachIdempotency(client, idempotencyHash, ideaId);
+      await this.attachIdempotency(client, idempotencyHash, ideaId, headline);
       await this.incrementAllTimeAggregate(client, ideaId);
       await this.incrementWeeklyAggregate(client, ideaId);
       if (userId) await this.recordUserRejectedIdea(client, userId, ideaId);
@@ -352,7 +359,8 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
        ON CONFLICT (idempotency_hash) DO UPDATE SET submission_type = EXCLUDED.submission_type,
                                                     request_hash = EXCLUDED.request_hash,
                                                     expires_at = EXCLUDED.expires_at,
-                                                    rejected_idea_id = NULL
+                                                    rejected_idea_id = NULL,
+                                                    generated_headline = NULL
        WHERE rejected_idea_idempotency.expires_at <= now()
        RETURNING idempotency_hash`,
       [idempotencyHash, submissionType, requestHash],
@@ -388,10 +396,11 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     client: PoolClient,
     idempotencyHash: string,
     ideaId: string,
+    headline?: string,
   ): Promise<void> {
     const result = await client.query(
-      "UPDATE rejected_idea_idempotency SET rejected_idea_id = $2 WHERE idempotency_hash = $1",
-      [idempotencyHash, ideaId],
+      "UPDATE rejected_idea_idempotency SET rejected_idea_id = $2, generated_headline = $3 WHERE idempotency_hash = $1",
+      [idempotencyHash, ideaId, headline ?? null],
     );
     if (result.rowCount !== 1)
       throw new Error("Rejected idea idempotency record is unavailable.");

@@ -18,6 +18,7 @@ export type EvaluationProcessResult = {
 
 export type SimilarIdeaMatchResult = {
   status: "similar_idea_match";
+  headline: string;
   safeTitle: string;
   submissionCount: number;
 };
@@ -280,6 +281,15 @@ function parseSubmissionResponse(
   }
   if (input.status === "similar_idea_match") {
     if (
+      typeof input.headline !== "string" ||
+      input.headline.trim() !== input.headline ||
+      input.headline.length < 4 ||
+      input.headline.length > MAX_PUBLIC_HEADLINE_LENGTH ||
+      /[\p{Cc}\p{Cf}]/u.test(input.headline) ||
+      /\bC(?:0[1-9]|10)\b/iu.test(input.headline) ||
+      /(?:https?:\/\/|www\.)|\b[^\s@]+@[^\s@]+\.[^\s@]+\b/iu.test(
+        input.headline,
+      ) ||
       typeof input.safeTitle !== "string" ||
       input.safeTitle.trim().length < MIN_PUBLIC_SAFE_TITLE_LENGTH ||
       input.safeTitle.length > MAX_PUBLIC_SAFE_TITLE_LENGTH ||
@@ -290,6 +300,7 @@ function parseSubmissionResponse(
     }
     return {
       status: "similar_idea_match",
+      headline: input.headline,
       safeTitle: input.safeTitle.trim(),
       submissionCount: input.submissionCount as number,
     };

@@ -14,6 +14,7 @@ const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
 const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
 const LOADING_BUTTON_NAME = /evaluando/i;
+const SIMILAR_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const EVALUATION_RESPONSE = {
   status: "SIN_BLOQUEO_EVIDENTE",
   score: 7.15,
@@ -402,6 +403,7 @@ describe("Home", () => {
     const evaluationResponses = [
       {
         status: "similar_idea_match",
+        headline: SIMILAR_HEADLINE,
         safeTitle: "Una red social para mascotas",
         submissionCount: 4,
       },
@@ -448,7 +450,7 @@ describe("Home", () => {
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(
-      await screen.findByRole("heading", { name: /esta idea ya nos suena/i }),
+      await screen.findByRole("heading", { name: SIMILAR_HEADLINE }),
     ).toBeInTheDocument();
     await waitFor(() => expect(usageRequestCount).toBe(2));
     expect(screen.getByText(REDUCED_IDEA_QUOTA_COPY)).toBeInTheDocument();
@@ -1026,6 +1028,7 @@ describe("Home", () => {
     const responses = [
       {
         status: "similar_idea_match",
+        headline: SIMILAR_HEADLINE,
         safeTitle: "Una red social para mascotas",
         submissionCount: 24,
       },
@@ -1056,7 +1059,7 @@ describe("Home", () => {
     await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
 
     expect(
-      await screen.findByRole("heading", { name: /esta idea ya nos suena/i }),
+      await screen.findByRole("heading", { name: SIMILAR_HEADLINE }),
     ).toBeVisible();
     expect(
       screen.getByText(/una red social para mascotas/i),

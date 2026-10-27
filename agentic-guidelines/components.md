@@ -20,7 +20,7 @@ Componente presentacional local a `idea-evaluation`, mostrado en Home con una re
 
 ### RepeatedIdeaNotice
 
-Informa de que la idea es semánticamente similar a otra, muestra el título público seguro y el contador total ya incrementado, y ofrece «Evaluar igualmente». La frase valorativa sigue el tono seleccionado (`soft` o `hard`). No presenta el texto original ni datos de autor. El endpoint de usos anónimos devuelve el cupo restante; detectar la coincidencia no lo consume y continuar reserva una evaluación.
+Informa de que la idea es semánticamente similar a otra. Muestra un titular recién generado según el tono seleccionado, el título público seguro y el contador total ya incrementado, y ofrece «Evaluar igualmente». El titular se guarda para repetir la misma respuesta ante reintentos idempotentes. No presenta el texto original ni datos de autor. El endpoint de usos anónimos devuelve el cupo restante; detectar la coincidencia no lo consume y continuar reserva una evaluación.
 
 ### UsageLimitNotice
 

@@ -278,9 +278,10 @@ presupone honestidad ni buenas intenciones, analiza abuso, impacto, verificació
 contención y reparación, especialmente en interacciones presenciales entre
 desconocidos. No convierte riesgos exóticos ni detalles rutinarios en vetos.
 Cada envío se evalúa por separado y no pide aclaraciones. La interfaz envía la
-idea y el tono a la API; el adaptador no envía el tono al modelo. El servidor
-aplica el tono solo al redactar `headline` y `message`, nunca cambia el veredicto
-o la puntuación por el tono. Las respuestas se solicitan con JSON Schema estricto
+idea y el tono a la API. El adaptador pasa el tono al modelo con instrucciones
+que limitan su efecto al copy visible; el modelo genera un `headline` nuevo para
+cada resultado y el servidor compone `message`. El tono nunca cambia el
+veredicto ni la puntuación. Las respuestas se solicitan con JSON Schema estricto
 y `store: false`,
 pero esto **no equivale a Zero Data Retention**: según los controles vigentes de
 OpenAI, el uso ordinario de API puede generar logs de abuso que incluyan prompts
@@ -292,11 +293,12 @@ La validación semántica del backend sigue siendo autoritativa: JSON bien
 formado no garantiza que la decisión respete la rúbrica. Si falta la
 configuración del proveedor, el endpoint responde `503`; el fake solo se
 registra en pruebas. En el flujo ordinario, la API envía a OpenAI el texto de la
-idea y la versión de política, pero no el tono. Las cuatro respuestas
+idea, la versión de política y el tono limitado al copy. Las cuatro respuestas
 especiales deterministas se clasifican localmente y no envían el texto a OpenAI
 ni a la búsqueda de similitud. Para el flujo ordinario, el proveedor devuelve
-una evaluación neutral y el
-servidor compone el titular y el mensaje visibles según el tono elegido. El
+la evaluación y un titular generado según el tono elegido; el servidor valida
+el titular, usa un fallback seguro si no cumple y compone el mensaje visible.
+El
 resultado del front presenta titular, puntuación y explicación específica; la
 UI no etiqueta los defectos como «bloqueos».
 

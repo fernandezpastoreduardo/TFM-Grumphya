@@ -26,7 +26,7 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
     result: {
       status: "SIN_BLOQUEO_EVIDENTE",
       score: 6.77,
-      headline: "¡Qué ilusión! Ha superado el primer repaso.",
+      headline: "La idea pasa este primer repaso, con confeti prudente.",
       message: SOFT_MESSAGE,
     },
   });

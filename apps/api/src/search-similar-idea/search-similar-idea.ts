@@ -1,3 +1,6 @@
+import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
+import { REPEATED_IDEA_HEADLINE_FALLBACK } from "../infrastructure/copy/public-headlines";
+
 export const MAX_SEARCH_CANDIDATES = 20;
 const MIN_IDEA_LENGTH = 10;
 const MAX_IDEA_LENGTH = 2000;
@@ -24,6 +27,7 @@ export interface IdeaEquivalencePort {
     semanticFingerprint: string,
     safeTitles: readonly string[],
     userId?: string,
+    tone?: "soft" | "hard",
   ): Promise<unknown>;
 }
 
@@ -40,6 +44,7 @@ export type SimilarIdeaSearchResult =
   | { kind: "no-match" }
   | {
       kind: "match";
+      headline: string;
       ideaId: string;
       semanticTitle: string;
       similarity: number;
@@ -145,33 +150,39 @@ async function findBestEquivalentIdea(
   semanticFingerprint: string,
   equivalencePort: IdeaEquivalencePort,
   userId?: string,
+  tone: "soft" | "hard" = "hard",
 ): Promise<SimilarIdeaSearchResult> {
   const validCandidates = parseRejectedCandidates(candidates);
   if (validCandidates.length === 0) return NO_MATCH;
   const candidateTitles = validCandidates.map(
     ({ semanticTitle }) => semanticTitle,
   );
-  const classifications = userId
+  const rawClassifications = userId
     ? await equivalencePort.classifyIdeas(
         ideaText,
         semanticFingerprint,
         candidateTitles,
         userId,
+        tone,
       )
     : await equivalencePort.classifyIdeas(
         ideaText,
         semanticFingerprint,
         candidateTitles,
+        undefined,
+        tone,
       );
   if (
-    !Array.isArray(classifications) ||
-    classifications.length !== validCandidates.length ||
-    !classifications.every(
+    !isRecord(rawClassifications) ||
+    !Array.isArray(rawClassifications.decisions) ||
+    rawClassifications.decisions.length !== validCandidates.length ||
+    !rawClassifications.decisions.every(
       (classification) => typeof classification === "boolean",
     )
   ) {
     throw new Error("Semantic comparison response is invalid.");
   }
+  const classifications = rawClassifications.decisions as boolean[];
   const matchIndex = classifications.findIndex(
     (classification) => classification === true,
   );
@@ -179,6 +190,9 @@ async function findBestEquivalentIdea(
     const candidate = validCandidates[matchIndex]!;
     return {
       kind: "match",
+      headline: isSafeGeneratedHeadline(rawClassifications.headline, ideaText)
+        ? rawClassifications.headline
+        : REPEATED_IDEA_HEADLINE_FALLBACK[tone],
       ideaId: candidate.ideaId,
       semanticTitle: candidate.semanticTitle,
       similarity: candidate.similarity,
@@ -209,6 +223,7 @@ export class SearchSimilarIdea {
   async executeDetailed(
     input: unknown,
     userId?: string,
+    tone: "soft" | "hard" = "hard",
   ): Promise<DetailedSimilarIdeaSearchResult> {
     const ideaText = parseIdeaText(input);
     const fingerprintRequest = userId
@@ -232,6 +247,7 @@ export class SearchSimilarIdea {
         semanticFingerprint,
         this.equivalencePort,
         userId,
+        tone,
       ),
       embedding,
     };

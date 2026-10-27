@@ -14,6 +14,7 @@ const POLICY_VERSION = "grumphya-concept-v9";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
+  headline: "Faltan piezas para valorar esta idea.",
   evaluated: [],
   stop_at: null,
   reason_code: null,
@@ -27,6 +28,7 @@ const MODEL_DECISION = {
 };
 const QUOTED_BASIS_DECISION = {
   status: "RECHAZADA",
+  headline: "Esta idea necesita otro plan.",
   evaluated: [
     { id: "C01", state: "PUNTUADO", score: 79 },
     { id: "C02", state: "PUNTUADO", score: 79 },
@@ -88,7 +90,7 @@ afterEach(() => {
 });
 
 describe("OpenAiEvaluationPort", () => {
-  it("requests a strict tone-neutral structured decision", async () => {
+  it("requests a strict decision with a newly generated tone-aware headline", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(createOpenAiResponse(MODEL_DECISION));
@@ -127,9 +129,11 @@ describe("OpenAiEvaluationPort", () => {
     expect(JSON.stringify(requestBody)).toContain(IDEA_TEXT);
     expect(JSON.stringify(requestBody)).toContain(POLICY_VERSION);
     const request = JSON.stringify(requestBody);
-    expect(request).not.toContain('"tone":"hard"');
+    expect(request).toContain('\\"tone\\":\\"hard\\"');
     expect(request).toContain("ideaText");
     expect(request).toContain("existingProductExample");
+    expect(request).toContain('"headline":{"type":"string"}');
+    expect(request).toContain("Redáctalo desde cero para esta respuesta");
     expect(request).toContain(
       '"existingProductExample":{"anyOf":[{"type":"string"},{"type":"null"}]}',
     );
@@ -282,6 +286,7 @@ describe("OpenAiEvaluationPort", () => {
               text: JSON.stringify({
                 ideaText: maliciousIdea,
                 policyVersion: POLICY_VERSION,
+                tone: "hard",
               }),
             },
           ],

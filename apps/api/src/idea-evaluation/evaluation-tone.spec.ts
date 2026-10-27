@@ -12,6 +12,7 @@ const HARD_REJECTION_MESSAGE_PREFIX =
 const SOFT_MESSAGE_PREFIX_WORD_COUNT = 8;
 const DECISION: ModelDecision = {
   status: "SIN_BLOQUEO_EVIDENTE",
+  headline: "La idea sigue entera, tampoco te emociones.",
   evaluated: [
     { id: "C01", state: "PUNTUADO", score: 50 },
     { id: "C02", state: "INDETERMINADO", score: null },
@@ -37,6 +38,30 @@ const LONG_VALID_MESSAGE =
   "Con lo que cuentas todavía no veo contradicción alguna en tu planteamiento, aunque eso no demuestra que haya gente dispuesta a usarlo en condiciones reales.";
 
 describe("renderMessage", () => {
+  it("uses a fresh model-generated headline for each evaluation outcome", () => {
+    expect(
+      renderHeadline(
+        "SIN_BLOQUEO_EVIDENTE",
+        "hard",
+        "La idea sigue entera, tampoco te emociones.",
+      ),
+    ).toBe("La idea sigue entera, tampoco te emociones.");
+    expect(
+      renderHeadline(
+        "RECHAZADA",
+        "soft",
+        "¡Con todo mi cariño, esta idea necesita otro plan!",
+      ),
+    ).toBe("¡Con todo mi cariño, esta idea necesita otro plan!");
+    expect(
+      renderHeadline(
+        "IDEA_INSUFICIENTE",
+        "hard",
+        "Faltan piezas para montar este invento.",
+      ),
+    ).toBe("Faltan piezas para montar este invento.");
+  });
+
   it("preserves the factual explanation while applying a distinct tone", () => {
     expect(renderMessage(DECISION, "soft")).toBe(
       `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,

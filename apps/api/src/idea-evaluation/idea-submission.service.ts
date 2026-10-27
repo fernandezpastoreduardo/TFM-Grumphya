@@ -10,6 +10,8 @@ import {
 import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
 import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import type { AnonymousUsageService } from "../manage-user-unknow/anonymous-usage.service";
+import { REPEATED_IDEA_HEADLINE_FALLBACK } from "../infrastructure/copy/public-headlines";
+import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
 import type { RegistrationRepository } from "../register-with-plan/registration.repository";
 import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import type { PlanUsageReservation } from "../register-with-plan/plan-usage.models";
@@ -76,6 +78,7 @@ type UsageReservation =
 export type IdeaSubmissionResponse =
   | {
       status: "similar_idea_match";
+      headline: string;
       safeTitle: string;
       submissionCount: number;
     }
@@ -351,6 +354,12 @@ export class IdeaSubmissionService {
       if (previousMatch) {
         return {
           status: "similar_idea_match",
+          headline: isSafeGeneratedHeadline(
+            previousMatch.headline,
+            request.ideaText,
+          )
+            ? previousMatch.headline
+            : REPEATED_IDEA_HEADLINE_FALLBACK[request.tone],
           safeTitle: previousMatch.safeTitle,
           submissionCount: previousMatch.count,
         };
@@ -379,8 +388,16 @@ export class IdeaSubmissionService {
     try {
       const searchInput = { ideaText: request.ideaText };
       detailedSearch = authenticatedUserId
-        ? await this.search.executeDetailed(searchInput, authenticatedUserId)
-        : await this.search.executeDetailed(searchInput);
+        ? await this.search.executeDetailed(
+            searchInput,
+            authenticatedUserId,
+            request.tone,
+          )
+        : await this.search.executeDetailed(
+            searchInput,
+            undefined,
+            request.tone,
+          );
     } catch {
       await this.releaseUsage(
         anonymousVisitorToken,
@@ -403,15 +420,18 @@ export class IdeaSubmissionService {
               detailedSearch.result.ideaId,
               idempotencyHash,
               requestHash,
+              detailedSearch.result.headline,
               authenticatedUserId,
             )
           : await this.repository.updateWorstIdea(
               detailedSearch.result.ideaId,
               idempotencyHash,
               requestHash,
+              detailedSearch.result.headline,
             );
         return {
           status: "similar_idea_match",
+          headline: detailedSearch.result.headline,
           safeTitle: detailedSearch.result.semanticTitle,
           submissionCount,
         };

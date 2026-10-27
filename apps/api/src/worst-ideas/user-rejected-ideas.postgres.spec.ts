@@ -50,8 +50,20 @@ describe.skipIf(!DATABASE_URL)("user rejected ideas persistence", () => {
       REQUEST_HASH,
       ownerId,
     );
-    await repository.updateWorstIdea(firstId, HASH_B, REQUEST_HASH, ownerId);
-    await repository.updateWorstIdea(firstId, HASH_B, REQUEST_HASH, ownerId);
+    await repository.updateWorstIdea(
+      firstId,
+      HASH_B,
+      REQUEST_HASH,
+      "La idea vuelve con el mismo equipaje.",
+      ownerId,
+    );
+    await repository.updateWorstIdea(
+      firstId,
+      HASH_B,
+      REQUEST_HASH,
+      "La idea vuelve con el mismo equipaje.",
+      ownerId,
+    );
 
     await expect(repository.getIdeaListWorstUser(ownerId)).resolves.toEqual([
       { safeTitle: "La app que vende paraguas en el desierto", count: 2 },
