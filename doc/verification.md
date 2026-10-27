@@ -461,3 +461,32 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 
 - Se añaden dos pruebas de `AnonymousUsageController`: la validación del mensaje y de la clave de idempotencia ocurre antes de reservar uso (incluye arrays, valores vacíos y UUID inválidos, y conserva saltos de línea válidos); además, un roast cacheado puede reintentarse si falla la escritura del ranking después de consumir el uso.
 - La corrida final de API pasa con 827 pruebas aprobadas y 21 omitidas por requisitos de bases PostgreSQL aisladas. Las 827 aprobadas incluyen estos dos casos. La cobertura se mantiene en 91,86 % de sentencias, 86,00 % de ramas, 95,82 % de funciones y 93,41 % de líneas; la tabla de [`quality-baseline.md`](quality-baseline.md) refleja el total final.
+
+## Cobertura del repositorio de recuperación de contraseña, 27 de octubre de 2026
+
+- Se añaden tres pruebas unitarias de `PostgresPasswordResetRepository`: devuelve `null` si no hay una cuenta elegible, invalida únicamente el token asociado al usuario y revierte la transacción/libera la conexión si falla el cambio de contraseña. El repositorio llega a 100 % de sentencias, líneas, ramas y funciones sin necesitar una base de datos.
+- `pnpm --filter @grumphya/api exec vitest run src/password-reset/postgres-password-reset.repository.spec.ts` pasa con 5 pruebas.
+
+## Cobertura de fallos del proveedor de evaluación OpenAI, 27 de octubre de 2026
+
+- Se amplía `OpenAiEvaluationPort` con casos para errores HTTP 403, 429, 5xx y otros 4xx; errores de transporte frente a cancelación solicitada por el llamador; JSON malformado; texto de decisión inválido; respuestas incompletas sin truncamiento por tokens; y citas que no aparecen literalmente en la idea. El adaptador queda en 97,8 % de sentencias, 100 % de líneas y funciones, y 95 % de ramas.
+- La corrida final de API pasa con 838 pruebas aprobadas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura global sube a 92,31 % de sentencias, 86,52 % de ramas, 95,95 % de funciones y 93,79 % de líneas; se actualiza [`quality-baseline.md`](quality-baseline.md).
+- `pnpm test` pasa con 838 pruebas API aprobadas, 21 omitidas y 321 pruebas web aprobadas. También pasan `pnpm lint`, `pnpm typecheck`, `pnpm format:check` y `git diff --check`.
+- El siguiente foco recomendado es `OpenAiIdeaEquivalencePort` (87,5 % de líneas); la medición completa de API necesitó permiso para enlazar `127.0.0.1` en las pruebas HTTP.
+
+## Diez incrementos de cobertura del código de producción, 27 de octubre de 2026
+
+1. `OpenAiIdeaEquivalencePort`: rechaza lotes sin candidatas o por encima de 20 antes de llamar al proveedor y acepta un lote válido de 20 candidatas.
+2. `SubmitContactMessage`: detiene y traduce los reintentos de correo al alcanzar el límite, sin crear otro mensaje ni enviar correo.
+3. `PostgresWorstIdeasRepository`: rechaza hashes de idempotencia vacíos antes de consultar la base de datos.
+4. `UserAvatarService`: descarta imágenes que no puede decodificar antes de moderar o almacenar.
+5. `DataRetentionService`: vuelve a inicializar el esquema y reintenta la limpieza tras un fallo temporal de migración.
+6. `readTokenUsage`: ignora cantidades fraccionarias, negativas o superiores al entero seguro.
+7. `OpenAiSemanticIdeaFingerprintPort`: oculta el cuerpo privado cuando el proveedor devuelve JSON malformado.
+8. `detectSpecialIdeaCase`: no confunde texto vacío o compuesto solo por espacios con una idea demasiado breve.
+9. `issueAccessToken`: rechaza identificadores de usuario inválidos antes de leer el secreto de firma.
+10. `OptionalAccessTokenGuard`: rechaza cabeceras bearer malformadas sin consultar la sesión.
+
+- Las diez suites focalizadas suman 101 pruebas aprobadas; los 12 archivos de pruebas focales de este bloque suman 125. La suite completa de API pasa con 854 pruebas aprobadas y 21 omitidas, e incluye el caso válido de 20 candidatas. Su cobertura global queda en 92,63 % de sentencias, 86,76 % de ramas, 96,36 % de funciones y 94,07 % de líneas. Web pasa 321 pruebas.
+- También pasan `pnpm lint`, `pnpm typecheck`, `pnpm format:check` y `git diff --check`. La corrida de cobertura de API necesitó permiso para abrir listeners locales en `127.0.0.1`.
+- El siguiente paso es evaluar el cableado de proveedores de `app.module.ts` con pruebas de integración que verifiquen configuración observable, no detalles internos de Nest.

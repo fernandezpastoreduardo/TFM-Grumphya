@@ -1,15 +1,15 @@
 # Línea base de calidad y cobertura
 
 Medición con Vitest 4.1.12 y el proveedor V8. La API se actualizó el 27 de
-octubre de 2026 tras ampliar pruebas de persistencia, servicios de cuotas,
-correo, recuperación de contraseña, contacto, avatares, registro y el panel
-administrativo; web refleja la última corrida completa. Son porcentajes del
-código bajo `src/`; no son un umbral exigido ni una garantía de calidad por sí
-solos.
+octubre de 2026 tras ampliar pruebas de persistencia, cuotas, correo,
+recuperación de contraseña, contacto, avatares, registro, administración,
+autenticación, retención de datos y adaptadores de IA; web refleja su última
+corrida completa. Son porcentajes del código bajo `src/`; no son un umbral
+exigido ni una garantía de calidad por sí solos.
 
 | Paquete | Pruebas aprobadas | Omitidas | Statements | Branches | Functions |   Lines |
 | ------- | ----------------: | -------: | ---------: | -------: | --------: | ------: |
-| API     |               827 |       21 |    91,86 % |  86,00 % |   95,82 % | 93,41 % |
+| API     |               854 |       21 |    92,63 % |  86,76 % |   96,36 % | 94,07 % |
 | Web     |               321 |        0 |    86,98 % |  84,01 % |   87,42 % | 89,66 % |
 
 Repite la medición con:
@@ -59,8 +59,8 @@ más reciente verifican que se validen el mensaje y la clave antes de reservar
 uso (incluidos arrays, valores vacíos y UUID inválidos, sin rechazar saltos de
 línea válidos), y que un roast con idempotency key pueda reintentarse si falla
 la escritura del ranking después de consumir el uso. El utilitario compartido
-`read-cookie.ts` alcanza 100 % en las cuatro métricas con pruebas de nombres exactos,
-decodificación, valores con `=` y codificación inválida.
+`read-cookie.ts` alcanza 100 % en las cuatro métricas con pruebas de nombres
+exactos, decodificación, valores con `=` y codificación inválida.
 `InMemoryVerificationDelivery` y `DevelopmentVerificationDelivery` alcanzan
 100 % en las cuatro métricas. `RegistrationService` queda en 87,27 % de
 sentencias, 81,69 % de ramas, 97,14 % de funciones y 89,8 % de líneas tras
@@ -73,17 +73,24 @@ y carga de la coincidencia previa durante una continuación.
 `PasswordResetService` alcanza 92,2 % de sentencias, 83,33 % de ramas, 93,75 %
 de funciones y 95,65 % de líneas, con cobertura de payloads inválidos, cambio
 exitoso de contraseña y anulación del token cuando el origen web no es seguro.
-
+`PostgresPasswordResetRepository` alcanza 100 % de sentencias, líneas, ramas y
+funciones. Las pruebas cubren la ausencia de cuenta elegible, invalidación del
+token ligado al usuario y rollback/liberación de la conexión si falla el cambio
+de contraseña. `OpenAiIdeaEquivalencePort` rechaza lotes sin candidatas o con
+más de 20 antes de llamar al proveedor; las pruebas confirman que acepta el
+límite máximo de 20. `OpenAiEvaluationPort` alcanza 97,8 % de sentencias, 100 %
+de líneas y funciones, y 95 % de ramas; los casos cubren clasificación de
+fallos HTTP, errores de transporte y cancelación, respuestas incompletas o
+malformadas y preservación literal del texto citado.
 Vitest aplica ahora umbrales globales iniciales para frenar regresiones sin
 exigir que cada archivo alcance esos niveles: API, 80 % de sentencias, 75 % de
 ramas, 85 % de funciones y 85 % de líneas; web, 82 %, 78 %, 80 % y 85 %,
 respectivamente. Los umbrales quedan por debajo de la medición actual y deberán
-revisarse y elevarse por fases. Excluyendo entrypoints y módulos de preparación
-de pruebas, el siguiente foco recomendado es `PostgresPasswordResetRepository`
-(86,96 % de líneas); maneja tokens de un solo uso, expiración y revocación de
-sesiones, por lo que conviene revisar las ramas aún no cubiertas sin depender de
-la base de datos de producción. Se dejan fuera del objetivo el arranque y las
-herramientas CLI, que no se benefician de pruebas unitarias artificiales.
+revisarse y elevarse por fases. El siguiente foco recomendado es `app.module.ts`
+(86,36 % de líneas), revisando el cableado de proveedores con una prueba de
+integración y sin fabricar pruebas unitarias de detalles internos. Se dejan
+fuera del objetivo el arranque y las herramientas CLI, que no se benefician de
+pruebas unitarias artificiales.
 
 Las 21 pruebas omitidas en API incluyen pruebas condicionadas a bases de datos
 aisladas. La cobertura de estas pruebas no representa una comprobación del
