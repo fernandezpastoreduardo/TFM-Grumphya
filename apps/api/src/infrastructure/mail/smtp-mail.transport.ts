@@ -90,9 +90,15 @@ export class SmtpMailTransport {
           timeout: 10_000,
         });
         socket.once("secureConnect", () => resolve(socket));
-        socket.once("error", reject);
+        socket.once("error", (error) =>
+          rejectAndDestroy(socket, error, reject),
+        );
         socket.once("timeout", () =>
-          reject(new Error("SMTP connection timed out.")),
+          rejectAndDestroy(
+            socket,
+            new Error("SMTP connection timed out."),
+            reject,
+          ),
         );
       });
     }
@@ -103,12 +109,25 @@ export class SmtpMailTransport {
         timeout: 10_000,
       });
       socket.once("connect", () => resolve(socket));
-      socket.once("error", reject);
+      socket.once("error", (error) => rejectAndDestroy(socket, error, reject));
       socket.once("timeout", () =>
-        reject(new Error("SMTP connection timed out.")),
+        rejectAndDestroy(
+          socket,
+          new Error("SMTP connection timed out."),
+          reject,
+        ),
       );
     });
   }
+}
+
+function rejectAndDestroy(
+  socket: SocketLike,
+  error: Error,
+  reject: (error: Error) => void,
+): void {
+  socket.destroy();
+  reject(error);
 }
 
 class SmtpReplyReader {
