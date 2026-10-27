@@ -7,13 +7,18 @@ import {
 import type { Response } from "express";
 import { MulterError } from "multer";
 import { describe, expect, it, vi } from "vitest";
-import { UserAvatarController } from "./user-avatar.controller";
+import {
+  avatarUploadFileFilter,
+  UserAvatarController,
+} from "./user-avatar.controller";
+import { UserAvatarError } from "./user-avatar.models";
 import { UserAvatarService } from "./user-avatar.service";
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const AVATAR_KEY = "00000000-0000-4000-8000-000000000099.webp";
 const AVATAR_URL = `/api/avatars/${AVATAR_KEY}`;
 const IMAGE_BYTES = Buffer.from("normalized webp");
+const ALLOWED_AVATAR_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function createController() {
   const avatars = {
@@ -105,6 +110,65 @@ describe("UserAvatarController", () => {
     ).resolves.toEqual({ avatarUrl: AVATAR_URL });
 
     expect(avatars.update).toHaveBeenCalledWith(USER_ID, file);
+  });
+
+  it.each(ALLOWED_AVATAR_MIME_TYPES)(
+    "accepts an allowed image type (%s)",
+    (mimetype) => {
+      const callback = vi.fn();
+
+      avatarUploadFileFilter(
+        {} as never,
+        { mimetype } as never,
+        callback as never,
+      );
+
+      expect(callback).toHaveBeenCalledWith(null, true);
+    },
+  );
+
+  it("rejects unsupported avatar image types", () => {
+    const callback = vi.fn();
+
+    avatarUploadFileFilter(
+      {} as never,
+      { mimetype: "image/svg+xml" } as never,
+      callback as never,
+    );
+
+    expect(callback).toHaveBeenCalledWith(null, false);
+  });
+
+  it("converts avatar service errors to sanitized HTTP errors", async () => {
+    const { controller, avatars } = createController();
+    vi.mocked(avatars.update).mockRejectedValue(
+      new UserAvatarError(422, "AVATAR_REJECTED", "La imagen no es adecuada."),
+    );
+
+    await expect(
+      controller.uploadAvatar({ user: { userId: USER_ID } } as never, {
+        mimetype: "image/png",
+      }),
+    ).rejects.toMatchObject({
+      status: 422,
+      response: {
+        statusCode: 422,
+        code: "AVATAR_REJECTED",
+        message: "La imagen no es adecuada.",
+      },
+    });
+  });
+
+  it("propagates unexpected avatar service errors unchanged", async () => {
+    const { controller, avatars } = createController();
+    const unexpectedError = new Error("private storage detail");
+    vi.mocked(avatars.update).mockRejectedValue(unexpectedError);
+
+    await expect(
+      controller.uploadAvatar({ user: { userId: USER_ID } } as never, {
+        mimetype: "image/png",
+      }),
+    ).rejects.toBe(unexpectedError);
   });
 
   it("refuses to upload if the authenticated identity is missing", async () => {

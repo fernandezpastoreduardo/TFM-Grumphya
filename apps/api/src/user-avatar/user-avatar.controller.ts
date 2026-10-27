@@ -16,6 +16,7 @@ import {
   UseFilters,
   UseInterceptors,
 } from "@nestjs/common";
+import type { MulterOptions } from "@nestjs/platform-express/multer/interfaces/multer-options.interface";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { Request, Response } from "express";
 import { memoryStorage } from "multer";
@@ -26,6 +27,11 @@ import { UserAvatarService } from "./user-avatar.service";
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+export const avatarUploadFileFilter: NonNullable<
+  MulterOptions["fileFilter"]
+> = (_request, file, callback) => {
+  callback(null, IMAGE_MIME_TYPES.has(file.mimetype));
+};
 type AuthenticatedRequest = Request & { user?: { userId: string } };
 
 @Catch(MulterError)
@@ -68,9 +74,7 @@ export class UserAvatarController {
         fieldNameSize: 100,
         headerPairs: 100,
       },
-      fileFilter: (_request, file, callback) => {
-        callback(null, IMAGE_MIME_TYPES.has(file.mimetype));
-      },
+      fileFilter: avatarUploadFileFilter,
     }),
   )
   async uploadAvatar(
