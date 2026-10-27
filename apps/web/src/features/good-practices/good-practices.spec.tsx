@@ -12,6 +12,15 @@ describe("GoodPractices", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/contenido editorial en revisión/i)).toBeNull();
+    expect(
+      screen.getByText(/te hace perder el control del proyecto/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/fallos de seguridad.*difícil de mantener/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no pongas ese código en manos de usuarios/i),
+    ).toBeInTheDocument();
     expect(container.querySelector(".calm-mascot")).toHaveAttribute(
       "src",
       "/assets/grumphya/good-practices-validate-idea.png",

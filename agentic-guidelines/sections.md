@@ -63,9 +63,12 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    the time and technical knowledge required, and the issues around
    vibe-coding. This is the only part of the app whose copy avoids the
    rude/sarcastic tone. Current content guides people to find the real
-   problem, check assumptions and build the smallest useful test; a note says
-   generative tools do not replace product judgment, technical review,
-   security or user testing, and each use has a cost. There is no editorial
+   problem, check assumptions and build the smallest useful test. Its note
+   warns that vibe-coding without understanding or reviewing generated code
+   means losing control of the project, and can leave security flaws, breakage,
+   hard-to-maintain software and unexpected limits or costs as usage grows. It
+   tells people to understand, review and test changes before publishing, and
+   not to put code in users' hands if they cannot do that. There is no editorial
    review stamp. Grumphya keeps the established
    grumpy, skeptical face and recognizable proportions. A section-specific
    pose or accessory may signal practical support without making the mascot

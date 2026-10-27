@@ -61,9 +61,15 @@ export function GoodPractices() {
         <div>
           <strong>Sobre IA y vibe-coding</strong>
           <p>
-            Las herramientas generativas aceleran algunas tareas, pero no
-            sustituyen criterio de producto, revisión técnica, seguridad ni
-            pruebas con usuarios. Y cada uso tiene un coste.
+            El vibe-coding —pedir código a la IA y pegarlo sin entenderlo ni
+            revisarlo— te hace perder el control del proyecto. Puede dejar
+            fallos de seguridad, romper otras partes cuando cambies algo y
+            producir un programa difícil de mantener. Si crece el número de
+            usuarios, también pueden aparecer límites y costes que nadie previó.
+            La IA no se hace responsable: tendrás que encontrar y arreglar esos
+            problemas tú. Antes de publicar, entiende cada cambio, revísalo y
+            prueba qué ocurre cuando algo falla. Si no puedes hacerlo, no pongas
+            ese código en manos de usuarios.
           </p>
         </div>
       </aside>
