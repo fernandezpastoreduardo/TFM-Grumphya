@@ -418,3 +418,46 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 ## Corrección de expiración inmediata de cookies, 27 de octubre de 2026
 
 - `privateCookieOptions` omitía `maxAge: 0` porque trataba cualquier valor falsy como si no se hubiera proporcionado. Ahora solo omite `maxAge` cuando es `undefined`, por lo que conserva la expiración inmediata usada para borrar cookies.
+
+## Cobertura del panel administrativo y nueva línea base, 27 de octubre de 2026
+
+- Se añaden dos pruebas de `AdminDashboardController`: una verifica que los errores de dominio al responder mensajes de contacto se convierten en una excepción HTTP con código, estado y mensaje previstos; la otra confirma que un fallo inesperado se propaga sin que el controlador fabrique una respuesta con detalles internos. El controlador alcanza 100 % de sentencias, ramas, funciones y líneas (7 pruebas).
+- La cobertura completa de API pasa con 792 pruebas y 21 omitidas, estas últimas condicionadas a bases de datos aisladas. La cobertura es 90,40 % de sentencias, 84,43 % de ramas, 95,41 % de funciones y 91,95 % de líneas; se actualiza [`quality-baseline.md`](quality-baseline.md).
+- La cobertura por archivo identifica `HealthController` y `LocalMailPreviewController` como los controladores con menor cobertura de líneas (37,5 % cada uno). El siguiente paso es valorar pruebas para las respuestas de disponibilidad del health check y para las restricciones de entorno/sin previsualización del endpoint local de correo.
+- Pasan `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check`. La cobertura completa necesitó permiso para abrir servidores HTTP en `127.0.0.1`; dentro del sandbox esas pruebas fallaban con `listen EPERM`.
+
+## Cobertura de health check y previsualización local de correo, 27 de octubre de 2026
+
+- Se añaden cuatro pruebas de `HealthController`: estado saludable con revisión local o desplegada, extensión pgvector ausente y error de consulta. La respuesta de fallo sigue siendo 503 genérico. Se añaden tres pruebas de `LocalMailPreviewController`: endpoint oculto en producción, previsualización ausente y previsualización local disponible. Ambos controladores alcanzan 100 % de sentencias, ramas, funciones y líneas.
+- La cobertura completa de API pasa con 798 pruebas y 21 omitidas, condicionadas a bases PostgreSQL aisladas. La cobertura es 90,72 % de sentencias, 84,75 % de ramas, 95,68 % de funciones y 92,23 % de líneas; la línea base se actualiza en [`quality-baseline.md`](quality-baseline.md).
+- Al excluir entrypoints y módulos de preparación de pruebas, el siguiente foco recomendado es `AnonymousUsageController` (85,71 % de líneas), que maneja cuotas y errores expuestos por la API.
+- La cobertura de API se ejecutó con permiso para abrir servidores HTTP en `127.0.0.1`; dentro del sandbox esas pruebas fallaban con `listen EPERM`.
+
+## Cobertura de uso anónimo y lectura de cookies, 27 de octubre de 2026
+
+- `AnonymousUsageController` amplía su suite de 14 a 21 pruebas. Se cubren el encabezado `Retry-After` ante límites temporales, el fallback de IP, proveedores ausentes, errores del flujo autenticado y validación adicional del mensaje e idempotency key. Llega a 100 % de sentencias, líneas y funciones, y 98,27 % de ramas.
+- Se añaden cinco pruebas a `read-cookie.ts`, utilitario compartido por evaluación, registro y uso anónimo: ausencia de cabecera, espacios, decodificación, valores con `=` y codificación inválida. Alcanza 100 % de sentencias, ramas, funciones y líneas.
+- La cobertura completa de API pasa con 810 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura es 91,06 % de sentencias, 85,15 % de ramas, 95,68 % de funciones y 92,61 % de líneas; la línea base se actualiza en [`quality-baseline.md`](quality-baseline.md).
+- El siguiente foco de cobertura es `InMemoryVerificationDelivery` (`verification-delivery.ts`), con 83,33 % de líneas; su adaptador conserva el token en memoria para los flujos de prueba.
+- La corrida completa necesitó permiso para enlazar `127.0.0.1`; las pruebas HTTP fallan con `listen EPERM` dentro del sandbox.
+
+## Cobertura de entrega de verificación y registro, 27 de octubre de 2026
+
+- Se añade una prueba que confirma que `InMemoryVerificationDelivery` conserva el token más reciente para los flujos de prueba. El archivo `verification-delivery.ts` alcanza 100 % de sentencias, ramas, funciones y líneas.
+- `RegistrationService` amplía su suite de 18 a 23 pruebas. Se cubren planes e intents inválidos, payloads mal formados, origen web no válido con liberación del cooldown, errores de persistencia traducidos a respuesta genérica y rechazo de tokens inválidos antes de consultar el repositorio. La cobertura focal del servicio es 87,27 % de sentencias, 81,69 % de ramas, 97,14 % de funciones y 89,8 % de líneas.
+- La cobertura completa de API pasa con 816 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura global es 91,43 % de sentencias, 85,72 % de ramas, 95,82 % de funciones y 92,98 % de líneas; la tabla de [`quality-baseline.md`](quality-baseline.md) queda actualizada.
+- El siguiente foco recomendado es `IdeaSubmissionService` (86,14 % de líneas), que orquesta las reservas de uso, la evaluación y la persistencia del resultado.
+- La corrida completa necesitó permiso para enlazar `127.0.0.1`; las pruebas HTTP fallan con `listen EPERM` dentro del sandbox.
+
+## Cobertura de envío de ideas y recuperación de contraseña, 27 de octubre de 2026
+
+- Se añaden seis pruebas de `IdeaSubmissionService` para validar el usuario autenticado antes de consultar, traducir fallos de idempotencia y búsqueda semántica, liberar cuota si el buscador no está configurado o falla, ocultar errores al actualizar el contador de similitudes y responder de forma segura si falla la consulta previa de una continuación. La suite focal queda en 37 pruebas y el servicio alcanza 89,52 % de sentencias, 76,51 % de ramas, 95,65 % de funciones y 90,59 % de líneas.
+- Se añaden tres pruebas de `PasswordResetService`: validación de solicitudes mal formadas, finalización correcta con almacenamiento solo del hash y anulación del token sin envío si `WEB_ORIGIN` contiene una ruta inesperada. La suite focal queda en 10 pruebas y el servicio alcanza 92,2 % de sentencias, 83,33 % de ramas, 93,75 % de funciones y 95,65 % de líneas.
+- La cobertura completa de API pasa con 825 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura global es 91,86 % de sentencias, 86,00 % de ramas, 95,82 % de funciones y 93,41 % de líneas; se actualiza [`quality-baseline.md`](quality-baseline.md).
+- El siguiente foco recomendado es `PostgresPasswordResetRepository` (86,96 % de líneas), priorizando ramas que puedan comprobarse con su suite unitaria aislada.
+- La corrida completa necesitó permiso para enlazar `127.0.0.1`; dentro del sandbox las pruebas HTTP fallan con `listen EPERM`.
+
+## Reintentos y validación de uso anónimo, 27 de octubre de 2026
+
+- Se añaden dos pruebas de `AnonymousUsageController`: la validación del mensaje y de la clave de idempotencia ocurre antes de reservar uso (incluye arrays, valores vacíos y UUID inválidos, y conserva saltos de línea válidos); además, un roast cacheado puede reintentarse si falla la escritura del ranking después de consumir el uso.
+- La corrida final de API pasa con 827 pruebas aprobadas y 21 omitidas por requisitos de bases PostgreSQL aisladas. Las 827 aprobadas incluyen estos dos casos. La cobertura se mantiene en 91,86 % de sentencias, 86,00 % de ramas, 95,82 % de funciones y 93,41 % de líneas; la tabla de [`quality-baseline.md`](quality-baseline.md) refleja el total final.
