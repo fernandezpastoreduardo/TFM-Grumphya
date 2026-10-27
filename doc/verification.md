@@ -400,3 +400,21 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - La suite completa de API pasa con 758 pruebas y 21 omitidas por requisitos de base aislada. La cobertura es 89,87 % de sentencias, 83,86 % de ramas, 94,87 % de funciones y 91,40 % de líneas.
 - `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check` pasan. La cobertura completa se ejecutó con permiso para enlazar `127.0.0.1`; el sandbox bloquea las pruebas HTTP con `listen EPERM`.
 - El siguiente foco recomendado es `UserAvatarController`, con 83,33 % de líneas y 66,67 % de funciones en esta medición.
+
+## Cobertura del controlador de avatar, 27 de octubre de 2026
+
+- Se amplían las pruebas de `UserAvatarController` para cubrir los tres MIME permitidos, el rechazo de SVG, la conversión de `UserAvatarError` a una respuesta HTTP segura y la propagación de errores inesperados. El controlador alcanza 100 % de sentencias, líneas, funciones y ramas.
+- La suite completa de API pasa con 764 pruebas y 21 omitidas por requisitos de base aislada. La cobertura es 90,00 % de sentencias, 83,95 % de ramas, 95,14 % de funciones y 91,54 % de líneas.
+- `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check` pasan. La cobertura completa se ejecutó con permiso para enlazar `127.0.0.1`; el sandbox bloquea las pruebas HTTP con `listen EPERM`.
+- El siguiente foco recomendado es `RegistrationController`, con 85,71 % de líneas y 89,47 % de funciones en esta medición.
+
+## Cobertura del controlador de registro, 27 de octubre de 2026
+
+- La suite unitaria de `RegistrationController` se amplía a 26 pruebas que cubren todas sus rutas, incluidos errores de sesión, validación de payloads y respuestas delegadas al servicio. El controlador alcanza 100 % de sentencias, líneas y funciones, y 87,09 % de ramas en la cobertura global.
+- La suite completa de API pasa con 790 pruebas y 21 omitidas por requisitos de base aislada. La cobertura es 90,32 % de sentencias, 84,35 % de ramas, 95,41 % de funciones y 91,86 % de líneas.
+- `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check` pasan. La cobertura completa se ejecutó con permiso para enlazar `127.0.0.1`; el sandbox bloquea las pruebas HTTP con `listen EPERM`.
+- El siguiente foco recomendado es `AdminDashboardController`, con 80 % de líneas en esta medición.
+
+## Corrección de expiración inmediata de cookies, 27 de octubre de 2026
+
+- `privateCookieOptions` omitía `maxAge: 0` porque trataba cualquier valor falsy como si no se hubiera proporcionado. Ahora solo omite `maxAge` cuando es `undefined`, por lo que conserva la expiración inmediata usada para borrar cookies.
