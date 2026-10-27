@@ -4,6 +4,6 @@ export function privateCookieOptions(maxAge?: number) {
     sameSite: "strict" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/api",
-    ...(maxAge ? { maxAge } : {}),
+    ...(maxAge !== undefined ? { maxAge } : {}),
   };
 }
