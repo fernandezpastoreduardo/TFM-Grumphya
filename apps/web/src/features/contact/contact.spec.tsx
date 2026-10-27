@@ -250,6 +250,20 @@ describe("Contact", () => {
     const dialog = screen.getByRole("dialog", {
       name: /a nadie le importa lo que tengas que decir/i,
     });
+    expect(
+      screen.getByRole("img", {
+        name: /grumphya señala un formulario que se desvanece/i,
+      }),
+    ).toBeVisible();
+    expect(dialog).toHaveTextContent(
+      /si ya tienes cuenta, inicia sesión y podrás escribirnos desde el formulario de contacto/i,
+    );
+    expect(dialog).not.toHaveTextContent(/cuando esté listo|plan activo/i);
+    expect(
+      screen.getByText(
+        /formulario de contacto completo está disponible al iniciar sesión/i,
+      ),
+    ).toBeVisible();
     expect(dialog).toHaveAttribute("open");
     expect(dialog).toHaveAttribute("aria-modal", "true");
   });

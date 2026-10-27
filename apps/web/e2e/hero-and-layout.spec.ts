@@ -983,6 +983,48 @@ test("keeps the contact illustration card white and uses the updated art", async
   });
 });
 
+test("shows the anonymous contact modal with its mascot above the copy on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.goto("/contacto");
+  await page.getByRole("textbox", { name: "Nombre" }).click();
+
+  const dialog = page.getByRole("dialog", {
+    name: /a nadie le importa lo que tengas que decir/i,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(
+    "El formulario se ha esfumado. Si ya tienes cuenta, inicia sesión y podrás escribirnos desde el formulario de contacto.",
+  );
+  await expect(dialog).not.toContainText(/cuando esté listo/i);
+
+  const mascot = dialog.getByRole("img", {
+    name: "Grumphya señala un formulario que se desvanece",
+  });
+  const title = dialog.getByRole("heading", {
+    name: /a nadie le importa lo que tengas que decir/i,
+  });
+  const copy = dialog.locator("p");
+  const [mascotBox, titleBox, copyBox] = await Promise.all([
+    mascot.boundingBox(),
+    title.boundingBox(),
+    copy.boundingBox(),
+  ]);
+  expect(mascotBox).not.toBeNull();
+  expect(titleBox).not.toBeNull();
+  expect(copyBox).not.toBeNull();
+  expect(mascotBox!.y + mascotBox!.height).toBeLessThanOrEqual(titleBox!.y);
+  expect(titleBox!.y + titleBox!.height).toBeLessThanOrEqual(copyBox!.y);
+
+  expect(
+    await assetHasTransparentPixels(
+      page,
+      "/assets/grumphya/contact-form-vanishing.png",
+    ),
+  ).toBe(true);
+});
+
 test("runs Home and section animations only when motion is allowed", async ({
   page,
 }) => {

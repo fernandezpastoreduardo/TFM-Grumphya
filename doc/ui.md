@@ -130,7 +130,8 @@ la lámina maestra está en
   figuras decorativas `good-practices-companion-pink.png`/
   `good-practices-companion-yellow.png`,
   `notable-humans-hero.png`/`notable-humans-callout.png`,
-  `contact-hero-phone.png`/`contact-message-tube.png`,
+  `contact-hero-phone.png`/`contact-message-tube.png` y
+  `contact-form-vanishing.png` para el popup del formulario de demostración,
   `descargate-boxing-bag.png`/`roast-plan-callout.png`,
   `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para
   Descárgate, Peores ideas y Login. El hero de Mi cuenta usa
@@ -138,7 +139,8 @@ la lámina maestra está en
   secciones Buenas prácticas, Humanos notables y Contacto usan posturas y
   siluetas distintas. La mascota del hero de Planes se refleja horizontalmente
   para mirar hacia el contenido. El widget lateral de Contacto aporta su fondo
-  blanco desde CSS; la ilustración mantiene su transparencia. Todas estas
+  blanco desde CSS; la ilustración mantiene su transparencia. En móvil, la
+  mascota del popup del formulario aparece encima del título y el texto. Todas estas
   ilustraciones conservan el fondo transparente y no incluyen copy incrustado;
   la UI mantiene el contenido legible en HTML. Las escenas de error existentes
   siguen siendo sus propios assets. Home usa `home-grumpy-judge.webp`: Grumphya

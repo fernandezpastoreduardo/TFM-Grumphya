@@ -74,7 +74,7 @@ function AnonymousContactDemo() {
           </button>
         </form>
         <p className="contact-plan-note">
-          El formulario completo estará disponible para cuentas con plan activo.
+          El formulario de contacto completo está disponible al iniciar sesión.
         </p>
       </section>
       <aside className="contact-side">
@@ -101,13 +101,18 @@ function AnonymousContactDemo() {
           >
             ×
           </button>
+          <img
+            className="contact-dialog-mascot"
+            src="/assets/grumphya/contact-form-vanishing.png"
+            alt="Grumphya señala un formulario que se desvanece"
+          />
           <span className="eyebrow">Grumphya tiene algo que decir</span>
           <h2 id="contact-dialog-title">
             Acéptalo: ahora mismo a nadie le importa lo que tengas que decir.
           </h2>
           <p>
-            El formulario se ha esfumado. Si tienes un plan activo, el contacto
-            real estará disponible cuando esté listo.
+            El formulario se ha esfumado. Si ya tienes cuenta, inicia sesión y
+            podrás escribirnos desde el formulario de contacto.
           </p>
         </dialog>
       ) : null}
