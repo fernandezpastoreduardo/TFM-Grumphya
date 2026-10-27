@@ -52,6 +52,7 @@ import {
   type AdminDashboardRepository,
 } from "./admin-dashboard/admin-dashboard.models";
 import type { AiUsageRecorder } from "./infrastructure/ai/ai-usage";
+import { CspReportController } from "./security/csp-report.controller";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createRoastReplyProvider(
@@ -166,6 +167,7 @@ function createIdeaSubmissionService(
   ],
   controllers: [
     HealthController,
+    CspReportController,
     EvaluationProcessController,
     AnonymousUsageController,
     GetIdeaListWorstAllController,

@@ -49,7 +49,14 @@ async function bootstrap() {
     maxAge: 600,
     credentials: true,
   });
-  app.useBodyParser("json", { limit: "8kb" });
+  app.useBodyParser("json", {
+    limit: "8kb",
+    type: [
+      "application/json",
+      "application/csp-report",
+      "application/reports+json",
+    ],
+  });
   app.use(createSecurityMiddleware());
   const port = Number(process.env.API_PORT ?? 3000);
   const host =

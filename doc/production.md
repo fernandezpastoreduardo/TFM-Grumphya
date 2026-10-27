@@ -23,6 +23,8 @@ de contar fallos, para tolerar la carga fría del contenedor.
 
 La red interna confía en el proxy Caddy por su dirección privada fija. Express usa `TRUST_PROXY=172.31.0.254/32`, la IP de Caddy en la red `backend`; Caddy determina la dirección remota del socket y la API no está expuesta a Internet. Si cambias las subredes o la IP de Caddy en Compose, actualiza esta allowlist. No configures `trust proxy=true` ni confíes en cabeceras reenviadas desde clientes.
 
+Caddy entrega la política CSP inicialmente como `Content-Security-Policy-Report-Only`. Los informes se reciben en `/api/csp-reports` y se escriben en los logs de API como `csp_violation`; el receptor descarta consultas, fragmentos y cargas de datos antes de registrarlos. Tras desplegar esta fase, revisa periódicamente los informes con `docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml logs --since=24h api | grep csp_violation`. Mantén Report-Only durante un periodo representativo que cubra inicio de sesión, perfil y avatar, dictado, evaluación, rankings y móvil/escritorio. Corrige cualquier recurso legítimo bloqueado y confirma que las infracciones restantes son esperadas. Después, cambia en `docker/Caddyfile` `Content-Security-Policy-Report-Only` a `Content-Security-Policy`, conserva temporalmente la recepción de informes para detectar regresiones y despliega de nuevo. No publiques la política en modo de bloqueo hasta revisar informes de tráfico real.
+
 Compose selecciona `PGSSL_MODE=disable-internal` únicamente con `PGHOST=db`; el pool rechaza ese modo para cualquier otro host. Las ejecuciones de producción que conecten a una base externa usan `verify-full` por defecto y exigen certificado válido.
 
 ## Preparar el VPS y los archivos
