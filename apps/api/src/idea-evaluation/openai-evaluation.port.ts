@@ -93,6 +93,8 @@ const SAFE_TITLE_AUDIENCE_INSTRUCTION =
   "Al redactar safeTitle, conserva el producto y el público u objeto concreto cuando sean seguros y relevantes para distinguir la idea. No generalices una especie u objeto concreto a una categoría amplia: por ejemplo, conserva grillos en lugar de sustituirlo por insectos. Evita nombres personales y datos identificativos.";
 const PROMISE_FIDELITY_INSTRUCTION =
   "Comprueba si el medio que propone la idea puede transmitir o demostrar la cualidad central que promete. Cuando una web prometa comparar la calidad de imagen de televisores mediante fotos de sus pantallas encendidas, vistas en la pantalla habitual de cada usuario, no aceptes esas fotos como prueba fiable: la cámara, la pantalla donde se ven y sus ajustes cambian el brillo, los colores y el contraste. Si la idea no propone una medición comparable o una forma de ver los televisores reales, considera que falta un mecanismo imprescindible para cumplir la promesa y rechaza por C04 o C07 explicando el límite en palabras comunes. Generaliza esta comprobación a otras promesas que dependan de reproducir propiedades físicas (imagen, sonido, tamaño, textura, sabor u otras): sigue la cadena de captura, transmisión y reproducción. No rechaces por una limitación menor; hazlo solo cuando el propio medio invalide el beneficio principal.";
+const GENERATED_HEADLINE_INSTRUCTION =
+  "Genera además headline: un título breve y nuevo para este resultado, en español de España, que refleje fielmente su estado sin prometer que la idea tendrá éxito. Redáctalo desde cero para esta respuesta; no uses una lista de títulos fijos ni copies frases largas del texto recibido. Con tono soft, sé exageradamente amable, cariñoso y luminoso, con humor tipo felicitación; con tono hard, sé gruñón y mordaz, sin insultar ni usar palabrotas. Debe ser claro, apto para todos los públicos, de 4 a 16 palabras y máximo 120 caracteres. No incluyas datos personales, contactos, enlaces, códigos internos ni detalles que identifiquen a quien envió la idea. El tono solo afecta a headline y no debe cambiar la evaluación.";
 
 const nullableStringSchema = {
   anyOf: [{ type: "string" }, { type: "null" }],
@@ -135,6 +137,7 @@ const evaluationDecisionSchema = {
     "reason_code",
     "basis",
     "safeTitle",
+    "headline",
     "existingProductExample",
     "message",
     "hardSetup",
@@ -179,6 +182,7 @@ const evaluationDecisionSchema = {
     },
     basis: nullableStringSchema,
     safeTitle: nullableStringSchema,
+    headline: { type: "string" },
     existingProductExample: nullableStringSchema,
     message: { type: "string" },
     hardSetup: nullableStringSchema,
@@ -293,7 +297,7 @@ export class OpenAiEvaluationPort implements EvaluationPort {
               content: [
                 {
                   type: "input_text",
-                  text: `${this.instructions}\n\n${SAFE_TITLE_AUDIENCE_INSTRUCTION}\n\n${PROMISE_FIDELITY_INSTRUCTION}`,
+                  text: `${this.instructions}\n\n${SAFE_TITLE_AUDIENCE_INSTRUCTION}\n\n${PROMISE_FIDELITY_INSTRUCTION}\n\n${GENERATED_HEADLINE_INSTRUCTION}`,
                 },
               ],
             },
@@ -305,6 +309,7 @@ export class OpenAiEvaluationPort implements EvaluationPort {
                   text: JSON.stringify({
                     ideaText: input.ideaText,
                     policyVersion: input.policyVersion,
+                    tone: input.tone,
                   }),
                 },
               ],

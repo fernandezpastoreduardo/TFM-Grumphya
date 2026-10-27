@@ -7,6 +7,7 @@ import type { IdeaTone } from "../get-user-idea/models";
 
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const IDEA_TONE: IdeaTone = "hard";
+const SIMILAR_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const EVALUATION_PATH = "/api/evaluation-process";
 const EVALUATION_RESULT: EvaluationProcessResult = {
   status: "SIN_BLOQUEO_EVIDENTE",
@@ -533,6 +534,7 @@ describe("evaluationProcess frontend adapter", () => {
       ok: true,
       json: async () => ({
         status: "similar_idea_match",
+        headline: SIMILAR_HEADLINE,
         safeTitle: "Una red social para mascotas",
         submissionCount: 24,
       }),
@@ -547,6 +549,7 @@ describe("evaluationProcess frontend adapter", () => {
       ),
     ).resolves.toEqual({
       status: "similar_idea_match",
+      headline: SIMILAR_HEADLINE,
       safeTitle: "Una red social para mascotas",
       submissionCount: 24,
     });
@@ -564,4 +567,38 @@ describe("evaluationProcess frontend adapter", () => {
       }),
     );
   });
+
+  it.each([
+    {
+      headline: "",
+      safeTitle: "Una red social para mascotas",
+      submissionCount: 24,
+    },
+    {
+      headline: "Abre https://example.com ahora",
+      safeTitle: "Una red social para mascotas",
+      submissionCount: 24,
+    },
+    {
+      headline: "C07 suspenso",
+      safeTitle: "Una red social para mascotas",
+      submissionCount: 24,
+    },
+  ])(
+    "rejects a repeated-idea response with an unsafe headline",
+    async (result) => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: "similar_idea_match", ...result }),
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      await expect(
+        evaluationProcess(
+          { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+          IDEMPOTENCY_KEY,
+        ),
+      ).rejects.toMatchObject({ code: "EVALUATION_OUTCOME_UNKNOWN" });
+    },
+  );
 });

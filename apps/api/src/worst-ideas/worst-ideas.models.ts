@@ -13,6 +13,7 @@ export interface IdempotentRejectedIdeaMatch {
   id: string;
   safeTitle: string;
   count: number;
+  headline: string | null;
 }
 
 export interface IdeaListItemWorstAll {
@@ -70,6 +71,7 @@ export interface WorstIdeasRepository {
     ideaId: string,
     idempotencyHash: string,
     requestHash: string,
+    headline: string,
     userId?: string,
   ): Promise<number>;
 }

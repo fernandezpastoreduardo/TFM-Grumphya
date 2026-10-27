@@ -4,6 +4,7 @@ import { SimilarIdeaNotice } from "./SimilarIdeaNotice";
 
 const SIMILAR_IDEA_MATCH = {
   status: "similar_idea_match" as const,
+  headline: "Esta idea vuelve al ruedo con las mismas pintas.",
   safeTitle: "Tinder para saltamontes",
   submissionCount: 1,
 };
@@ -19,6 +20,11 @@ describe("SimilarIdeaNotice", () => {
       />,
     );
 
+    expect(
+      screen.getByRole("heading", {
+        name: SIMILAR_IDEA_MATCH.headline,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/tinder para saltamontes/i)).toBeInTheDocument();
     expect(screen.getByText(/1 vez\./i)).toBeInTheDocument();
     expect(

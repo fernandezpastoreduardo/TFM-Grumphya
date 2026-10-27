@@ -26,7 +26,7 @@ export function SimilarIdeaNotice({
 }: SimilarIdeaNoticeProps) {
   return (
     <div className="similar-idea-notice" role="status">
-      <h2>Esta idea ya nos suena</h2>
+      <h2>{match.headline}</h2>
       <p>
         Se parece a «{match.safeTitle}», una idea rechazada que se ha enviado{" "}
         {match.submissionCount} {match.submissionCount === 1 ? "vez" : "veces"}.

@@ -1,3 +1,5 @@
+import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
+
 export const EVALUATION_CRITERION_IDS = [
   "C01",
   "C02",
@@ -42,6 +44,7 @@ export type EvaluatedCriterion =
 
 export type ModelDecision = {
   status: EvaluationDecisionStatus;
+  headline: string | null;
   evaluated: EvaluatedCriterion[];
   stop_at: EvaluationCriterionId | null;
   reason_code: EvaluationReasonCode | null;
@@ -385,11 +388,16 @@ export function renderMessage(decision: unknown, tone: unknown): string {
   return removeInternalRubricAliases(hardMessage);
 }
 
-export function renderHeadline(status: unknown, tone: unknown): string {
+export function renderHeadline(
+  status: unknown,
+  tone: unknown,
+  generatedHeadline?: unknown,
+): string {
   if (!isDecisionStatus(status)) throw new Error(INVALID_VISIBLE_MESSAGE);
   if (tone !== "soft" && tone !== "hard") {
     throw new Error(INVALID_TONE_MESSAGE);
   }
+  if (isSafeGeneratedHeadline(generatedHeadline)) return generatedHeadline;
   return RESULT_HEADLINES[status][tone];
 }
 
@@ -584,6 +592,9 @@ export function validateModelDecision(
 
   const decision: ModelDecision = {
     status: input.status,
+    headline: isSafeGeneratedHeadline(input.headline, ideaText)
+      ? input.headline
+      : null,
     evaluated,
     ...fields,
     safeTitle,

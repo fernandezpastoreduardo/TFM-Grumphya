@@ -8,6 +8,7 @@ const FINGERPRINT =
 const SAFE_TITLE = "Tinder para saltamontes";
 const RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const DEFAULT_EQUIVALENCE_TIMEOUT_MS = 30_000;
+const GENERATED_HEADLINE = "La idea vuelve con el mismo equipaje.";
 
 function createResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -29,6 +30,7 @@ function createJudgeResponse(decisions: readonly unknown[]): Response {
                 candidateIndex,
                 sameIdea,
               })),
+              headline: decisions.some(Boolean) ? GENERATED_HEADLINE : null,
             }),
           },
         ],
@@ -50,7 +52,10 @@ describe("OpenAiIdeaEquivalencePort", () => {
 
     await expect(
       port.classifyIdeas(IDEA_TEXT, FINGERPRINT, [SAFE_TITLE]),
-    ).resolves.toEqual([true]);
+    ).resolves.toEqual({
+      decisions: [true],
+      headline: GENERATED_HEADLINE,
+    });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(RESPONSES_ENDPOINT);
@@ -65,6 +70,8 @@ describe("OpenAiIdeaEquivalencePort", () => {
     expect(JSON.stringify(body)).toContain(IDEA_TEXT);
     expect(JSON.stringify(body)).toContain(FINGERPRINT);
     expect(JSON.stringify(body)).toContain(SAFE_TITLE);
+    expect(JSON.stringify(body)).toContain("headline");
+    expect(JSON.stringify(body)).toContain("tone");
   });
 
   it("rejects malformed provider data and provider failures without exposing content or credentials", async () => {

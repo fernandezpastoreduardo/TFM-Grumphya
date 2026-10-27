@@ -61,6 +61,7 @@ describe("anonymous idea quota orchestration", () => {
   it("reserves before semantic search, then releases when the request is only a match notice", async () => {
     const { service, search, usage, evaluation } = createService({
       kind: "match",
+      headline: "La idea vuelve con el mismo equipaje.",
       ideaId: "rejected-idea",
       semanticTitle: "Herramientas del barrio sin garantías de devolución",
       similarity: 0.93,
@@ -145,6 +146,7 @@ describe("anonymous idea quota orchestration", () => {
       id: "rejected-idea",
       safeTitle: "Herramientas del barrio sin garantías de devolución",
       count: 2,
+      headline: null,
     });
 
     await service.submit(

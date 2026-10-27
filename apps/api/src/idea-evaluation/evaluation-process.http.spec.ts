@@ -292,7 +292,7 @@ describe("evaluation process HTTP endpoint", () => {
         result: {
           status: "SIN_BLOQUEO_EVIDENTE",
           score: 6.77,
-          headline: "¡Qué ilusión! Ha superado el primer repaso.",
+          headline: "La idea pasa este primer repaso, con confeti prudente.",
           message:
             "¡Qué ilusión poder acompañarte con todo el cariño! Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
         },
