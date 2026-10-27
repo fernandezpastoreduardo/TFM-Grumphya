@@ -20,6 +20,7 @@ const SPANISH_SCORE_FORMAT = new Intl.NumberFormat("es-ES", {
 const NO_SCORE_LABEL = "Sin puntuación";
 const EXISTING_PRODUCT_EXAMPLE_LABEL =
   "Ejemplo conocido con funciones similares:";
+const FAILED_CRITERIA_TITLE = "Puntos que hacen suspender la idea";
 
 function formatPublicScore(score: number | null): string {
   if (score === null) return NO_SCORE_LABEL;
@@ -51,6 +52,29 @@ export function EvaluationResult({ result }: EvaluationResultProps) {
           <span>{EXISTING_PRODUCT_EXAMPLE_LABEL}</span>{" "}
           <strong>{existingProductExample}</strong>
         </p>
+      )}
+      {result.failedCriteria && result.failedCriteria.length > 0 && (
+        <section
+          className="evaluation-result-failed-criteria"
+          aria-labelledby="evaluation-result-failed-criteria-title"
+        >
+          <h3 id="evaluation-result-failed-criteria-title">
+            {FAILED_CRITERIA_TITLE}
+          </h3>
+          <ul>
+            {result.failedCriteria.map((criterion) => (
+              <li key={criterion}>
+                <span
+                  className="evaluation-result-failed-criterion-icon"
+                  aria-hidden="true"
+                >
+                  ×
+                </span>
+                <span>{criterion}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </article>
   );

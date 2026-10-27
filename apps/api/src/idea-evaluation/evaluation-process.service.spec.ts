@@ -232,7 +232,72 @@ describe("EvaluationProcessService", () => {
       headline: "¡Un abrazo y confeti para esta pega importante!",
       message: `${SOFT_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
+      failedCriteria: ["La idea deja la puerta abierta a tus datos."],
     });
+  });
+
+  it("returns every failed criterion as safe user-facing copy without exposing rubric IDs", async () => {
+    const decision = createRejectedDecision();
+    decision.evaluated = decision.evaluated.map((criterion) => ({
+      id: criterion.id,
+      state: "PUNTUADO",
+      score: 10,
+    }));
+    const service = new EvaluationProcessService(createPort(decision));
+
+    await expect(
+      service.evaluate({ ideaText: REJECTED_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({
+      failedCriteria: [
+        "La idea deja la puerta abierta a tus datos.",
+        "Hay una parte de la idea que juega con fuego.",
+        "El premio puede acabar empujando a hacer daño.",
+        "Las piezas de la idea no encajan.",
+        "Todo depende de una promesa difícil de comprobar.",
+        "Aquí puede saltar una bronca seria entre personas.",
+        "No se ve qué gana alguien al volver a usarla.",
+        "Las cuentas no salen ni con calculadora.",
+        "El plan solo funciona si todo el mundo sigue el guion.",
+        "A la idea le falta un giro propio que la saque del montón.",
+      ],
+    });
+  });
+
+  it("includes only scored criteria below the rejection threshold", async () => {
+    const decision = createRejectedDecision();
+    decision.evaluated = decision.evaluated.map((criterion, index) => {
+      if (index === 2) {
+        return { id: criterion.id, state: "INDETERMINADO", score: null };
+      }
+      let score = 50;
+      if (index === 0) score = 14;
+      if (index === 1) score = 15;
+      return {
+        id: criterion.id,
+        state: "PUNTUADO",
+        score,
+      };
+    });
+    const service = new EvaluationProcessService(createPort(decision));
+
+    await expect(
+      service.evaluate({ ideaText: REJECTED_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({
+      failedCriteria: ["La idea deja la puerta abierta a tus datos."],
+    });
+  });
+
+  it("does not expose failed criteria for an idea with no blocking result", async () => {
+    const service = new EvaluationProcessService(
+      createPort(createCompleteDecision()),
+    );
+
+    const response = await service.evaluate({
+      ideaText: VALID_IDEA,
+      tone: "hard",
+    });
+
+    expect(response).not.toHaveProperty("failedCriteria");
   });
 
   it("keeps a high novelty score from compensating for undefined user value", async () => {
@@ -268,6 +333,7 @@ describe("EvaluationProcessService", () => {
       headline: "La propuesta se ha estampado contra lo esencial.",
       message: `${HARD_REJECTION_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
+      failedCriteria: ["La idea deja la puerta abierta a tus datos."],
     });
   });
 

@@ -13,6 +13,7 @@ export type EvaluationProcessResult = {
   message: string;
   safeTitle?: string;
   existingProductExample?: string;
+  failedCriteria?: string[];
 };
 
 export type SimilarIdeaMatchResult = {
@@ -57,6 +58,22 @@ const MAX_PUBLIC_SAFE_TITLE_LENGTH = 160;
 const MIN_PUBLIC_SAFE_TITLE_LENGTH = 8;
 const MIN_PUBLIC_PRODUCT_EXAMPLE_LENGTH = 2;
 const MAX_PUBLIC_PRODUCT_EXAMPLE_LENGTH = 80;
+const MAX_PUBLIC_FAILED_CRITERIA = 10;
+const PUBLIC_FAILED_CRITERION_COPY = [
+  "La idea deja la puerta abierta a tus datos.",
+  "Hay una parte de la idea que juega con fuego.",
+  "El premio puede acabar empujando a hacer daño.",
+  "Las piezas de la idea no encajan.",
+  "Todo depende de una promesa difícil de comprobar.",
+  "Aquí puede saltar una bronca seria entre personas.",
+  "No se ve qué gana alguien al volver a usarla.",
+  "Las cuentas no salen ni con calculadora.",
+  "El plan solo funciona si todo el mundo sigue el guion.",
+  "A la idea le falta un giro propio que la saque del montón.",
+] as const;
+const PUBLIC_FAILED_CRITERION_COPY_SET = new Set<string>(
+  PUBLIC_FAILED_CRITERION_COPY,
+);
 const SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN =
   /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
 const PUBLIC_EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
@@ -119,6 +136,30 @@ function isValidPublicScore(value: unknown): value is number | null {
   );
 }
 
+function parseFailedCriteria(value: unknown): string[] | null {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.length > MAX_PUBLIC_FAILED_CRITERIA
+  ) {
+    return null;
+  }
+  const criteria: string[] = [];
+  for (const criterion of value) {
+    if (
+      typeof criterion !== "string" ||
+      criterion.trim() !== criterion ||
+      !PUBLIC_FAILED_CRITERION_COPY_SET.has(criterion) ||
+      PUBLIC_CONTROL_PATTERN.test(criterion) ||
+      criteria.includes(criterion)
+    ) {
+      return null;
+    }
+    criteria.push(criterion);
+  }
+  return criteria;
+}
+
 function parseEvaluationResponse(
   input: unknown,
 ): EvaluationProcessResult | null {
@@ -145,6 +186,13 @@ function parseEvaluationResponse(
     input.existingProductExample,
     status,
   );
+  const hasFailedCriteria = Object.hasOwn(input, "failedCriteria");
+  const failedCriteria = hasFailedCriteria
+    ? parseFailedCriteria(input.failedCriteria)
+    : undefined;
+  if (hasFailedCriteria && (status !== "RECHAZADA" || !failedCriteria)) {
+    return null;
+  }
 
   let safeTitle: string | undefined;
   if (status === "RECHAZADA") {
@@ -165,6 +213,7 @@ function parseEvaluationResponse(
     message,
     ...(safeTitle ? { safeTitle } : {}),
     ...(existingProductExample ? { existingProductExample } : {}),
+    ...(failedCriteria ? { failedCriteria } : {}),
   };
 }
 

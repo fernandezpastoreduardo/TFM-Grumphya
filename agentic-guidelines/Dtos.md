@@ -14,9 +14,10 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 - `score: number | null`; escala global 0–10. `RECHAZADA`: nota del aspecto de veto dividida entre 10. `SIN_BLOQUEO_EVIDENTE`: media aritmética de los criterios `PUNTUADO`, dividida entre 10 y redondeada a dos decimales; `null` si ninguno se puntuó. `IDEA_INSUFICIENTE`: `null`.
 - `message: string`; una frase visible. La UI presenta el score con dos decimales en `es-ES`.
 - El `message` público no incluye IDs de criterio (`C01`–`C10`) ni `reason_code`. El backend sustituye aliases internos que aparezcan accidentalmente por una descripción legible en español.
+- `failedCriteria?: string[]`; solo en `RECHAZADA`, incluye una frase breve y alegórica por cada criterio con nota inferior a 15. Son textos públicos predefinidos por el servidor: no contienen IDs ni nombres internos de la rúbrica. La UI los presenta al final con un aspa roja; en pantallas estrechas va uno por línea y en escritorio puede usar dos columnas.
 - Si C10 es el primer veto (`stop_at: 'C10'`), `existingProductExample` puede incluir el nombre de un producto conocido con las mismas funciones esenciales; es opcional, no se busca en la web y no modifica el score ni el veredicto.
 
-El endpoint no devuelve criterios internos, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos de persistencia. La orquestación de similitud/persistencia vive en `POST /api/evaluation-process`; no existe historial personal de evaluaciones en el contrato actual.
+El endpoint no devuelve los criterios internos ni sus puntuaciones, fragmentos de la idea, puntuación 0–100, ID de evaluación ni datos de persistencia. La orquestación de similitud/persistencia vive en `POST /api/evaluation-process`; no existe historial personal de evaluaciones en el contrato actual.
 
 ### EvaluateIdeaResponse
 

@@ -9,6 +9,10 @@ const SCORED_RESULT: EvaluationProcessResult = {
   headline: "La propuesta se ha estampado contra lo esencial.",
   message:
     "Ignorar el consentimiento no es una estrategia, aunque el formulario te deje intentarlo.",
+  failedCriteria: [
+    "La idea deja la puerta abierta a tus datos.",
+    "Las cuentas no salen ni con calculadora.",
+  ],
 };
 const EXISTING_PRODUCT_EXAMPLE = "Strava";
 
@@ -23,6 +27,46 @@ describe("EvaluationResult", () => {
     expect(screen.getByText("1,30/10")).toBeInTheDocument();
     expect(screen.getByText(SCORED_RESULT.message)).toBeInTheDocument();
     expect(screen.getAllByText(SCORED_RESULT.message)).toHaveLength(1);
+  });
+
+  it("lists every failed criterion with a red cross and user-facing wording", () => {
+    const { container } = render(<EvaluationResult result={SCORED_RESULT} />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Puntos que hacen suspender la idea",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("La idea deja la puerta abierta a tus datos."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Las cuentas no salen ni con calculadora."),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelectorAll(".evaluation-result-failed-criterion-icon"),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByText(/privacidad estructural|economía incompatible/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not render the failed-criteria section when there are no failed criteria", () => {
+    render(
+      <EvaluationResult
+        result={{
+          ...SCORED_RESULT,
+          status: "SIN_BLOQUEO_EVIDENTE",
+          failedCriteria: [],
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("heading", {
+        name: "Puntos que hacen suspender la idea",
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a known similar product when the evaluator identifies one", () => {

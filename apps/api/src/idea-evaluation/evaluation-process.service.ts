@@ -29,6 +29,7 @@ export type EvaluationProcessResponse = {
   message: string;
   safeTitle?: string;
   existingProductExample?: string;
+  failedCriteria?: string[];
 };
 
 const POLICY_VERSION = "grumphya-concept-v9";
@@ -39,6 +40,18 @@ const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
 const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
 const VISIBLE_SCORE_DECIMAL_SCALE = 100;
 const REJECTION_SCORE_THRESHOLD = 15;
+const FAILED_CRITERION_COPY = {
+  C01: "La idea deja la puerta abierta a tus datos.",
+  C02: "Hay una parte de la idea que juega con fuego.",
+  C03: "El premio puede acabar empujando a hacer daño.",
+  C04: "Las piezas de la idea no encajan.",
+  C05: "Todo depende de una promesa difícil de comprobar.",
+  C06: "Aquí puede saltar una bronca seria entre personas.",
+  C07: "No se ve qué gana alguien al volver a usarla.",
+  C08: "Las cuentas no salen ni con calculadora.",
+  C09: "El plan solo funciona si todo el mundo sigue el guion.",
+  C10: "A la idea le falta un giro propio que la saque del montón.",
+} as const;
 const INVALID_IDEA_RESPONSE = {
   code: "INVALID_IDEA",
   message: "La idea debe tener entre 10 y 2.000 caracteres y un tono válido.",
@@ -153,6 +166,15 @@ function toPublicResponse(
   }
   if (decision.existingProductExample !== null) {
     response.existingProductExample = decision.existingProductExample;
+  }
+  if (decision.status === "RECHAZADA") {
+    response.failedCriteria = decision.evaluated
+      .filter(
+        (criterion) =>
+          criterion.state === "PUNTUADO" &&
+          criterion.score < REJECTION_SCORE_THRESHOLD,
+      )
+      .map((criterion) => FAILED_CRITERION_COPY[criterion.id]);
   }
   return response;
 }

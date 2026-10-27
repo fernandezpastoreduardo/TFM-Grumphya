@@ -76,6 +76,62 @@ describe("evaluationProcess frontend adapter", () => {
     ).resolves.toMatchObject({ existingProductExample: "Strava" });
   });
 
+  it("preserves safe user-facing failed criteria from a rejected evaluation", async () => {
+    const resultWithFailedCriteria: EvaluationProcessResult = {
+      ...EVALUATION_RESULT,
+      status: "RECHAZADA",
+      safeTitle: "Registro deportivo sin propuesta propia",
+      failedCriteria: [
+        "Las piezas de la idea no encajan.",
+        "A la idea le falta un giro propio que la saque del montón.",
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: resultWithFailedCriteria,
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toMatchObject({
+      failedCriteria: resultWithFailedCriteria.failedCriteria,
+    });
+  });
+
+  it("rejects malformed failed-criteria data from the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: "evaluated",
+          result: {
+            ...EVALUATION_RESULT,
+            status: "RECHAZADA",
+            safeTitle: "Registro deportivo sin propuesta propia",
+            failedCriteria: ["C01", "<script>alert(1)</script>"],
+          },
+        }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).rejects.toMatchObject(OUTCOME_UNKNOWN_ERROR);
+  });
+
   it("omits an existing product example on an evaluation without rejection", async () => {
     vi.stubGlobal(
       "fetch",
