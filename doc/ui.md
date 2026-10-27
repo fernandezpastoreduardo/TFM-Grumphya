@@ -41,9 +41,10 @@ la lámina maestra está en
     del evaluador. Cada respuesta consume un intento; un reintento idempotente
     con la misma clave y el mismo contenido recupera la respuesta durante 24
     horas desde la reserva original, sin extender el TTL ni consumir otro. El
-    diálogo se cierra con su acción de continuar. El copy de los cuatro casos es
-    una excepción literal solicitada por producto a las recomendaciones
-    generales de estilo.
+    diálogo se cierra con el control habitual «Cerrar resultado»; el caso de
+    insulto añade el enlace «Me atrevo» a Descárgate. El copy de los cuatro
+    casos es una excepción literal solicitada por producto a las
+    recomendaciones generales de estilo.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - El favicon apunta directamente a `/assets/grumphya/mascot-isotype.png`, el
