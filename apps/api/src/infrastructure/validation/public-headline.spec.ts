@@ -14,6 +14,8 @@ describe("isSafeGeneratedHeadline", () => {
     "Mira https://example.com",
     "Escribe en mail@example.com",
     "Llama al 612 345 678",
+    "No hay bloqueo visible.",
+    "Criterios bloqueantes por todas partes.",
     "Una frase\ncon salto",
     "Este titular supera claramente el máximo de ciento veinte caracteres porque sigue añadiendo palabras sin ninguna necesidad y al final acaba siendo demasiado largo para la interfaz de usuario.",
     "Una idea que tiene demasiadas palabras y supera el límite máximo permitido para un titular generado claramente",

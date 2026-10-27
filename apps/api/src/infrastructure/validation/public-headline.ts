@@ -6,6 +6,7 @@ const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
 const CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
+const DISALLOWED_RESULT_LABEL_PATTERN = /\bbloque(?:o|os|ante|antes)\b/iu;
 const INTERNAL_EVALUATION_LABEL_PATTERN =
   /\b(?:C(?:0[1-9]|10)|PRIVACIDAD_ESTRUCTURAL|PELIGRO_ESTRUCTURAL|ETICA_ESTRUCTURAL|CONTRADICCION_NUCLEO|HONESTIDAD_ESTRUCTURAL|CONFLICTO_ESTRUCTURAL|UTILIDAD_ANULADA|VALOR_USUARIO_NO_DEFINIDO|ECONOMIA_INCOMPATIBLE|HAPPY_PATH_ESTRUCTURAL|DIFERENCIACION_AUSENTE)\b/iu;
 const PUBLIC_HEADLINE_CHARACTERS =
@@ -26,6 +27,7 @@ export function isSafeGeneratedHeadline(
     URL_PATTERN.test(value) ||
     PHONE_PATTERN.test(value) ||
     CONTROL_PATTERN.test(value) ||
+    DISALLOWED_RESULT_LABEL_PATTERN.test(value) ||
     INTERNAL_EVALUATION_LABEL_PATTERN.test(value)
   ) {
     return false;
