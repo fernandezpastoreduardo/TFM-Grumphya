@@ -17,7 +17,10 @@ function createResponse(body: unknown, status = 200): Response {
   });
 }
 
-function createJudgeResponse(decisions: readonly unknown[]): Response {
+function createJudgeResponse(
+  decisions: readonly unknown[],
+  headline: unknown = decisions.some(Boolean) ? GENERATED_HEADLINE : null,
+): Response {
   return createResponse({
     output: [
       {
@@ -30,7 +33,7 @@ function createJudgeResponse(decisions: readonly unknown[]): Response {
                 candidateIndex,
                 sameIdea,
               })),
-              headline: decisions.some(Boolean) ? GENERATED_HEADLINE : null,
+              headline,
             }),
           },
         ],
@@ -91,6 +94,44 @@ describe("OpenAiIdeaEquivalencePort", () => {
     await expect(
       port.classifyIdeas(IDEA_TEXT, FINGERPRINT, [SAFE_TITLE]),
     ).rejects.toThrow("OpenAI semantic comparison failed.");
+  });
+
+  it.each([
+    ["soft", "¡Con mucho cariño, esta idea nos vuelve a sonar!"],
+    ["hard", "La idea ha vuelto; el problema también."],
+  ] as const)(
+    "uses the %s tone fallback when a matched idea has an unsafe generated headline",
+    async (tone, expectedHeadline) => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          createJudgeResponse([true], "Mira https://example.com"),
+        );
+      vi.stubGlobal("fetch", fetchMock);
+      const port = new OpenAiIdeaEquivalencePort({ apiKey: API_KEY });
+
+      await expect(
+        port.classifyIdeas(
+          IDEA_TEXT,
+          FINGERPRINT,
+          [SAFE_TITLE],
+          undefined,
+          tone,
+        ),
+      ).resolves.toEqual({ decisions: [true], headline: expectedHeadline });
+    },
+  );
+
+  it("does not return a generated headline when no candidate matches", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJudgeResponse([false], GENERATED_HEADLINE));
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiIdeaEquivalencePort({ apiKey: API_KEY });
+
+    await expect(
+      port.classifyIdeas(IDEA_TEXT, FINGERPRINT, [SAFE_TITLE]),
+    ).resolves.toEqual({ decisions: [false], headline: null });
   });
 
   it("aborts provider requests after the configured timeout", async () => {

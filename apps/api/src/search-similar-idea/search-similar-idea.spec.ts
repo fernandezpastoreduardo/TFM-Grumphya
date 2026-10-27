@@ -171,6 +171,28 @@ describe("SearchSimilarIdea", () => {
     });
   });
 
+  it.each([
+    ["soft", "¡Con mucho cariño, esta idea nos vuelve a sonar!"],
+    ["hard", "La idea ha vuelto; el problema también."],
+  ] as const)(
+    "uses the %s tone fallback when the comparator returns an unsafe headline",
+    async (tone, expectedHeadline) => {
+      const { useCase, equivalencePort } = createUseCase([
+        { ...SAFE_REJECTED_IDEA, similarity: 0.4 },
+      ]);
+      vi.mocked(equivalencePort.classifyIdeas).mockResolvedValue({
+        decisions: [true],
+        headline: "Mira https://example.com",
+      });
+
+      await expect(
+        useCase.executeDetailed({ ideaText: VALID_IDEA }, undefined, tone),
+      ).resolves.toMatchObject({
+        result: { kind: "match", headline: expectedHeadline },
+      });
+    },
+  );
+
   it("sorts candidates by similarity before matching and ignores unsafe candidates", async () => {
     const { useCase, equivalencePort } = createUseCase([
       { ...SAFE_REJECTED_IDEA, ideaId: "lower-ranked", similarity: 0.2 },
