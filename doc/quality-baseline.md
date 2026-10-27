@@ -1,14 +1,14 @@
 # Línea base de calidad y cobertura
 
 Medición con Vitest 4.1.12 y el proveedor V8. La API se actualizó el 27 de
-octubre de 2026 tras ampliar pruebas de persistencia, servicios de cuotas y
-correo; API y web reflejan la última corrida completa. Son porcentajes del
-código bajo `src/`; no son un umbral exigido ni una garantía de calidad por sí
-solos.
+octubre de 2026 tras ampliar pruebas de persistencia, servicios de cuotas,
+correo, recuperación de contraseña y contacto; API y web reflejan la última
+corrida completa. Son porcentajes del código bajo `src/`; no son un umbral
+exigido ni una garantía de calidad por sí solos.
 
 | Paquete | Pruebas aprobadas | Omitidas | Statements | Branches | Functions |   Lines |
 | ------- | ----------------: | -------: | ---------: | -------: | --------: | ------: |
-| API     |               750 |       21 |    89,63 % |  83,70 % |   94,47 % | 91,14 % |
+| API     |               758 |       21 |    89,87 % |  83,86 % |   94,87 % | 91,40 % |
 | Web     |               321 |        0 |    86,98 % |  84,01 % |   87,42 % | 89,66 % |
 
 Repite la medición con:
@@ -33,15 +33,22 @@ SMTP y cuotas. `UserDeleteController` alcanza 100 % de líneas, ramas y
 funciones, con pruebas para una petición sin usuario autenticado, una cuenta
 que el repositorio no encuentra y un fallo inesperado de persistencia, además
 del borrado correcto.
+`PasswordResetController` también alcanza 100 % de sentencias, líneas,
+funciones y ramas; las pruebas verifican que ambos endpoints delegan el cuerpo
+recibido y devuelven el resultado del servicio.
+`SubmitContactMessageController` alcanza 100 % de sentencias, líneas,
+funciones y ramas; las pruebas cubren los resultados públicos de envío y reintento,
+la conversión de errores de dominio y la propagación de errores inesperados.
 
 Vitest aplica ahora umbrales globales iniciales para frenar regresiones sin
 exigir que cada archivo alcance esos niveles: API, 80 % de sentencias, 75 % de
 ramas, 85 % de funciones y 85 % de líneas; web, 82 %, 78 %, 80 % y 85 %,
 respectivamente. Los umbrales quedan por debajo de la medición actual y deberán
 revisarse y elevarse por fases. El siguiente foco recomendado es
-`PasswordResetController`, con 66,67 % de líneas; protege el flujo de
-recuperación de cuenta. Se dejan fuera del objetivo el arranque y las
-herramientas CLI, que no se benefician de pruebas unitarias artificiales.
+`UserAvatarController`, con 83,33 % de líneas y 66,67 % de funciones; gestiona
+la carga autenticada y la lectura pública del avatar de cuenta. Se dejan fuera
+del objetivo el arranque y las herramientas CLI, que no se benefician de
+pruebas unitarias artificiales.
 
 Las 21 pruebas omitidas en API incluyen pruebas condicionadas a bases de datos
 aisladas. La cobertura de estas pruebas no representa una comprobación del

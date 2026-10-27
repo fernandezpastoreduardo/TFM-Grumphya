@@ -386,3 +386,17 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - La suite completa de API pasa con 750 pruebas y 21 omitidas por requisitos de base aislada; la cobertura es 89,63 % de sentencias, 83,70 % de ramas, 94,47 % de funciones y 91,14 % de líneas. Web pasa 321 pruebas; cobertura: 86,98 %, 84,01 %, 87,42 % y 89,66 %, respectivamente. La comprobación de umbrales se valida con `pnpm --filter @grumphya/api test:coverage` y `pnpm --filter @grumphya/web test:coverage`.
 - También pasan `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check`.
 - El siguiente foco recomendado es `PasswordResetController`, con 66,67 % de líneas en esta corrida. Se dejan fuera del objetivo los entrypoints y comandos operativos que no se benefician de pruebas unitarias artificiales.
+
+## Cobertura del controlador de recuperación de contraseña, 27 de octubre de 2026
+
+- Se añaden dos pruebas de `PasswordResetController` para confirmar que los endpoints de solicitud y finalización delegan el cuerpo al servicio y devuelven su resultado. El controlador alcanza 100 % de sentencias, líneas, funciones y ramas.
+- La suite completa de API pasa con 752 pruebas y 21 omitidas por requisitos de base aislada. La cobertura es 89,68 % de sentencias, 83,70 % de ramas, 94,74 % de funciones y 91,20 % de líneas.
+- `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check` pasan. La medición de cobertura se ejecutó con permiso para enlazar `127.0.0.1`; el sandbox bloquea las pruebas HTTP con `listen EPERM`.
+- El siguiente foco recomendado es `SubmitContactMessageController`, con 66,67 % de líneas en esta medición.
+
+## Cobertura del controlador de mensajes de contacto, 27 de octubre de 2026
+
+- Se añaden seis pruebas de `SubmitContactMessageController`: envío y reintento exponen solo campos públicos; los errores de dominio se traducen a respuestas HTTP y los errores inesperados se propagan intactos. El controlador alcanza 100 % de sentencias, líneas, funciones y ramas.
+- La suite completa de API pasa con 758 pruebas y 21 omitidas por requisitos de base aislada. La cobertura es 89,87 % de sentencias, 83,86 % de ramas, 94,87 % de funciones y 91,40 % de líneas.
+- `pnpm --filter @grumphya/api lint`, `pnpm --filter @grumphya/api typecheck`, `pnpm format:check` y `git diff --check` pasan. La cobertura completa se ejecutó con permiso para enlazar `127.0.0.1`; el sandbox bloquea las pruebas HTTP con `listen EPERM`.
+- El siguiente foco recomendado es `UserAvatarController`, con 83,33 % de líneas y 66,67 % de funciones en esta medición.
