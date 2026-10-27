@@ -157,6 +157,122 @@ describe("IdeaSubmissionService", () => {
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
 
+  it("charges an active account plan for a special case without using anonymous quota", async () => {
+    const planUsage = {
+      reserveIfPlanActive: vi.fn().mockResolvedValue({ state: "reserved" }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as PlanUsageService & {
+      reserveIfPlanActive: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+    };
+    const {
+      service,
+      planUsage: planQuota,
+      anonymousUsage,
+      search,
+      evaluation,
+    } = createDependencies({ kind: "no-match" }, EVALUATION_RESULT, planUsage);
+    const userId = "123e4567-e89b-42d3-a456-426614174000";
+
+    const response = await service.submit(
+      { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
+      IDEMPOTENCY_KEY,
+      undefined,
+      userId,
+    );
+
+    expect(response).toMatchObject({
+      status: "special_case",
+      caseId: "too_brief",
+    });
+    expect(planQuota.reserveIfPlanActive).toHaveBeenCalledWith(
+      userId,
+      "ideas",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+    );
+    expect(planQuota.commit).toHaveBeenCalledWith(
+      userId,
+      "ideas",
+      IDEMPOTENCY_HASH,
+      expect.stringMatching(/^[a-f0-9]{64}$/u),
+      response,
+    );
+    expect(anonymousUsage.reserve).not.toHaveBeenCalled();
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("releases a special-case reservation when committing its usage fails", async () => {
+    const commitFailure = new Error("commit unavailable");
+    const anonymousUsage = {
+      reserve: vi.fn().mockResolvedValue({ state: "reserved", usage: {} }),
+      commit: vi.fn().mockRejectedValue(commitFailure),
+      release: vi.fn().mockResolvedValue(undefined),
+    } as unknown as AnonymousUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+      commit: ReturnType<typeof vi.fn>;
+      release: ReturnType<typeof vi.fn>;
+    };
+    const {
+      service,
+      anonymousUsage: quota,
+      search,
+      evaluation,
+    } = createDependencies(
+      { kind: "no-match" },
+      EVALUATION_RESULT,
+      undefined,
+      anonymousUsage,
+    );
+
+    await expect(
+      service.submit(
+        { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
+        IDEMPOTENCY_KEY,
+        "visitor-token",
+      ),
+    ).rejects.toMatchObject({ status: 503 });
+
+    expect(quota.release).toHaveBeenCalledWith(
+      "visitor-token",
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed cached special-case response", async () => {
+    const { service, search, evaluation, anonymousUsage } =
+      createDependencies();
+    vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
+      state: "cached",
+      response: {
+        status: "special_case",
+        caseId: "insult",
+        title: "Texto alterado",
+        message: "Texto que no coincide con la respuesta canónica.",
+        action: { label: "Me atrevo", href: "https://example.com" },
+      },
+      usage: {
+        ideas: { limit: 3, used: 1, remaining: 2 },
+        roasts: { limit: 3, used: 0, remaining: 3 },
+      },
+    });
+
+    await expect(
+      service.submit(
+        { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
+        IDEMPOTENCY_KEY,
+        "visitor-token",
+      ),
+    ).rejects.toThrow(ConflictException);
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
   it("rejects a malformed cached evaluation result at runtime", async () => {
     const { service, search, evaluation, anonymousUsage } =
       createDependencies();
@@ -187,6 +303,23 @@ describe("IdeaSubmissionService", () => {
         "visitor-token",
       ),
     ).rejects.toThrow();
+
+    expect(anonymousUsage.reserve).not.toHaveBeenCalled();
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("rejects short non-special idea text before reserving usage", async () => {
+    const { service, anonymousUsage, search, evaluation } =
+      createDependencies();
+
+    await expect(
+      service.submit(
+        { ideaText: "app taxi", tone: "soft" },
+        IDEMPOTENCY_KEY,
+        "visitor-token",
+      ),
+    ).rejects.toThrow(BadRequestException);
 
     expect(anonymousUsage.reserve).not.toHaveBeenCalled();
     expect(search.executeDetailed).not.toHaveBeenCalled();

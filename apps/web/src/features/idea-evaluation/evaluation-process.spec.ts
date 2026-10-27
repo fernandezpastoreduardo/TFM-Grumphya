@@ -80,6 +80,35 @@ describe("evaluationProcess frontend adapter", () => {
     ).resolves.toEqual(specialCase);
   });
 
+  it.each([
+    { label: "Me atrevo", href: "https://example.com" },
+    { label: "Abrir", href: "/descargate" },
+  ])(
+    "rejects an invalid action in a special-case response: %j",
+    async (action) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            status: "special_case",
+            caseId: "insult",
+            title: "Respuesta especial",
+            message: "Mensaje seguro.",
+            action,
+          }),
+        }),
+      );
+
+      await expect(
+        evaluationProcess(
+          { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+          IDEMPOTENCY_KEY,
+        ),
+      ).rejects.toMatchObject({ code: "EVALUATION_OUTCOME_UNKNOWN" });
+    },
+  );
+
   it.each(["grumphya_equivalent", "too_brief", "generic_ai_clone"] as const)(
     "parses the %s special-case response without an action",
     async (caseId) => {
