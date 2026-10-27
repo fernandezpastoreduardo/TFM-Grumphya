@@ -18,7 +18,7 @@ El informe agregado omite ideas, explicaciones, títulos y salidas del modelo. E
 
 Los límites del prompt deben coincidir con el validador de `message`: una respuesta sin rechazo admite 8–40 palabras y 280 caracteres; una respuesta rechazada admite 8–120 palabras y 900 caracteres. Dar al modelo el límite de 900 caracteres en todos los estados puede hacer que una explicación válida según el prompt supere el tope de 280 y termine como `INVALID_EVALUATION_RESPONSE` (`visible_message`).
 
-El roast pide al modelo una frase sencilla de hasta 200 caracteres, con palabras cotidianas y una broma comprensible ligada a un detalle inocuo del mensaje. La validación de servidor comprueba formato, longitud y lenguaje explícitamente abusivo; no puede garantizar automáticamente que el chiste sea claro o que aluda de forma pertinente al mensaje.
+El roast pide una pulla personalizada, mordaz y fácil de entender, en una frase de hasta 200 caracteres. Si el mensaje insulta, debe volver la pulla contra quien lo envió; si contiene un plan, una idea o una intención, debe usar un detalle concreto e inocuo para rematarlo con humor. No debe limitarse a juzgar el tono ni describir el mensaje. La respuesta sigue siendo apta para todos los públicos: sin insultos explícitos al usuario, palabrotas, ataques a terceros, amenazas ni lenguaje discriminatorio. El servidor comprueba el formato, la longitud y un conjunto de expresiones abusivas, pero no puede garantizar automáticamente la mordacidad, claridad ni pertinencia semántica del roast.
 
 ## Pruebas de seguridad de IA
 
