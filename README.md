@@ -2,25 +2,29 @@
 
 Grumphya es una aplicación web responsive, en español de España, que ayuda a evaluar ideas de aplicaciones web y móviles antes de invertir tiempo y dinero en desarrollarlas. Analiza riesgos, viabilidad y supuestos, y propone siguientes pasos con un tono configurable.
 
-## Alcance por entregas
+## Alcance del MVP y estado actual
+
+La primera entrega definió el alcance funcional inicial. Las secciones siguientes
+documentan ese alcance y las ampliaciones incorporadas después; no representan
+una lista de trabajo pendiente.
 
 ### Primera entrega
 
 - Entrada de idea por teclado o pegado, y dictado en navegadores que admiten reconocimiento local; el usuario revisa la transcripción antes de enviarla.
 - Evaluación según la rúbrica v1 documentada en [`agentic-guidelines/features.md`](agentic-guidelines/features.md).
-- Reutilización de una evaluación existente solo con similitud semántica estrictamente superior a `0,90`.
+- Detección de ideas rechazadas repetidas con coincidencia semántica estrictamente superior a `0,90`; no se reutilizan evaluaciones anteriores.
 - Tres usos anónimos de evaluación de ideas y tres de roast por perfil de navegador, en contadores independientes. El servidor purga el perfil tras 400 días sin actividad; cerrar el navegador no reinicia el cupo y no se crea historial personal anónimo.
 - Alta y acceso de cuentas asociadas a un plan Iluminado o Faltón; la contratación se simula y no procesa dinero real.
 - Cada plan dura un mes natural. Iluminado concede 11 evaluaciones de ideas al día; Faltón concede 11 envíos de roast al día. Los límites se reinician a las 00:00 de `Europe/Madrid`.
-- Historial privado para usuarios registrados.
+- Historial privado de ideas aprobadas y rechazadas para usuarios registrados; no es un registro completo de todas las evaluaciones.
 
-### Corto plazo
+### Ampliaciones ya disponibles
 
-Vistas completas de ideas rechazadas y roast, rankings, ROI y contacto.
+Ideas rechazadas y roast, rankings, ROI y contacto están implementados.
 
 Los rankings públicos de humanos muestran solo alias y número de ideas aprobadas. El ranking semanal de ideas rechazadas muestra solo un título genérico seguro y el número de recepciones; nunca muestra autor ni texto original. Los datos de muestra sirven para desarrollo, pruebas y revisión visual, y no se entregan a usuarios finales.
 
-### Medio plazo
+### Pendiente de medio plazo
 
 Integración de pagos reales para los planes.
 

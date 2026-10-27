@@ -15,6 +15,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 - [Dirección e implementación de la UI](ui.md)
 - [Stack instalado y versiones](stack.md)
 - [Desarrollo local](development.md)
+- [Línea base de calidad y cobertura](quality-baseline.md)
 - [Límites de uso anónimo](anonymous-usage.md)
 - [Producción](production.md)
 - [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md)
