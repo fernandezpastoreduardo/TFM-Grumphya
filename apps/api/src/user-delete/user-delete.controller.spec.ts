@@ -23,4 +23,59 @@ describe("UserDeleteController", () => {
       expect.objectContaining({ httpOnly: true, path: "/api" }),
     );
   });
+
+  it("returns the session error and keeps the refresh cookie when the request has no user", async () => {
+    const repository = { deleteUser: vi.fn().mockResolvedValue(true) };
+    const controller = new UserDeleteController(repository);
+    const response = { clearCookie: vi.fn() };
+
+    await expect(
+      controller.deleteAccount({ user: undefined } as never, response as never),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: {
+        statusCode: 401,
+        code: "SESSION_REQUIRED",
+        message: "Inicia sesión para darte de baja.",
+      },
+    });
+
+    expect(repository.deleteUser).not.toHaveBeenCalled();
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it("does not clear the refresh cookie when the repository finds no account", async () => {
+    const repository = { deleteUser: vi.fn().mockResolvedValue(false) };
+    const controller = new UserDeleteController(repository);
+    const response = { clearCookie: vi.fn() };
+
+    await expect(
+      controller.deleteAccount(
+        { user: { userId: USER_ID } } as never,
+        response as never,
+      ),
+    ).rejects.toMatchObject({
+      status: 401,
+      response: { code: "SESSION_REQUIRED" },
+    });
+
+    expect(repository.deleteUser).toHaveBeenCalledWith(USER_ID);
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it("propagates unexpected repository errors without clearing the refresh cookie", async () => {
+    const databaseError = new Error("database details");
+    const repository = { deleteUser: vi.fn().mockRejectedValue(databaseError) };
+    const controller = new UserDeleteController(repository);
+    const response = { clearCookie: vi.fn() };
+
+    await expect(
+      controller.deleteAccount(
+        { user: { userId: USER_ID } } as never,
+        response as never,
+      ),
+    ).rejects.toBe(databaseError);
+
+    expect(response.clearCookie).not.toHaveBeenCalled();
+  });
 });
