@@ -1,1 +1,2 @@
+pnpm migrations:check
 pnpm test:e2e

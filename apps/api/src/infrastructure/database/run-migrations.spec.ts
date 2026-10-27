@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(32);
+    ).toHaveLength(33);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -87,6 +87,28 @@ describe("controlled database migrations", () => {
     );
   });
 
+  it("adds the nullable generated headline column for rejected-idea matches", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes("ADD COLUMN IF NOT EXISTS generated_headline text"),
+    )?.[0];
+    expect(migrationSql).toContain("ALTER TABLE rejected_idea_idempotency");
+    expect(migrationSql).not.toMatch(/DEFAULT|NOT NULL|UPDATE|DELETE|DROP/i);
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["033_rejected_idea_match_headline"],
+    );
+  });
+
   it("does not automatically opt existing administrator accounts into public rankings", async () => {
     const query = vi.fn().mockImplementation(async (sql: string) => {
       if (sql.startsWith("SELECT version FROM schema_migrations")) {
@@ -113,7 +135,7 @@ describe("controlled database migrations", () => {
       )
       .map(([, values]) => values?.[0]);
     expect(recordedVersions).toContain("032_worst_ideas_all_time_ranking");
-    expect(recordedVersions).not.toContain("033_admin_rankings_opt_in");
+    expect(recordedVersions).toContain("033_rejected_idea_match_headline");
 
     const consentSchemaSql = query.mock.calls.find(([sql]) =>
       String(sql).includes("users_public_rankings_consent_pair_check"),

@@ -19,7 +19,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "check:react-runtime": "node scripts/check-react-runtime-versions.mjs",
-    "quality:check": "pnpm check:react-runtime && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "migrations:check": "node scripts/check-migration-registry.mjs",
+    "quality:check": "pnpm check:react-runtime && pnpm migrations:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md"
   },
