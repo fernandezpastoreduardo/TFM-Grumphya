@@ -9,7 +9,7 @@
 
 Esta revisión incorpora los cuatro requisitos: entrada conceptual, integración como feature, evaluación de todos los criterios aunque haya suspensos y especificación implementable mediante TDD, adaptándose al repositorio real.
 
-**Estado de implementación (24 de octubre de 2026):** la rúbrica `grumphya-concept-v9` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea y las instrucciones de política, no el tono; el servidor compone el titular y aplica el tono al redactar el mensaje. Si C10 es el primer veto (`stop_at: C10`), la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
+**Estado de implementación (27 de octubre de 2026):** la rúbrica `grumphya-concept-v9` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea, las instrucciones de política y el tono limitado al copy visible; genera un titular nuevo para cada resultado. El servidor valida el titular y usa un fallback seguro si no cumple las reglas; el tono no puede cambiar el veredicto ni la puntuación. Si C10 es el primer veto (`stop_at: C10`), la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
 
 **Orden de lectura para Luna:** resumen y alcance (secciones 1–3), rúbrica (4), contrato (8), prompt (9) y plan TDD (12). La sección 12 fija las decisiones de implementación; los ejemplos conceptuales de la sección 10 no sustituyen sus pruebas deterministas.
 
@@ -44,7 +44,7 @@ Se conserva la orientación pesimista: no aceptar como resueltos los problemas q
 ### 2.1 Entrada
 
 - `ideaText`: texto del textarea; se conserva el nombre de campo del contrato que ya usa el repositorio.
-- `tone`: modo existente de la interfaz, `soft` o `hard`. Se conserva sin cambios visuales; el servidor los presenta como `normal` o `borde` y **no envía el tono al evaluador LLM**.
+- `tone`: modo existente de la interfaz, `soft` o `hard`. Se envía al modelo como una instrucción limitada al copy visible (`headline` y `message`); no puede modificar el estado, los criterios ni el score.
 - La política y la versión del evaluador son configuración interna, no más información sobre la idea.
 
 No pedir un plan de negocio, entrevistas, costes, legislación, pruebas técnicas ni un formulario adicional. Si el texto contiene espontáneamente esos detalles, pueden ayudar a interpretar el concepto; no se verifican ni se convierten en hechos acreditados.
@@ -270,7 +270,7 @@ El primer criterio fallido conserva el papel de motivo principal y determina `st
 
 ### 5.2 Una llamada por idea como diseño inicial
 
-La implementación actual usa una única llamada al modelo para recorrer la rúbrica y devolver una salida estructurada. El proveedor no recibe el tono: devuelve una explicación neutral y, para rechazos, campos auxiliares de copy duro; después el servidor valida la decisión y aplica el tono al construir `headline` y `message`. No se hace una segunda llamada para cambiar el tono.
+La implementación actual usa una única llamada al modelo para recorrer la rúbrica y devolver una salida estructurada, incluido un `headline` nuevo para cada resultado. El payload incluye el tono con una instrucción que limita su efecto al copy visible; el servidor valida la decisión y el titular, y compone `message` según el tono. Si el titular no supera la validación, usa un titular local seguro. No se hace una segunda llamada para cambiar el tono.
 
 - No llamar a un LLM distinto por cada criterio.
 - No generar un informe para resumirlo después.
@@ -293,18 +293,18 @@ Un fallo comercial, ético o de privacidad normalmente necesita interpretar el m
 
 Valores de partida propuestos para la feature, sujetos a prueba; no son requisitos heredados del proyecto:
 
-| Control                    | Propuesta inicial                                                                                                                                                                                   | Objetivo                                            |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Tamaño del textarea        | Máximo 2.000 caracteres, visible al usuario                                                                                                                                                         | Acotar entrada y evitar convertirlo en un plan      |
-| Contexto                   | Idea actual + política compacta; el tono se aplica en el servidor                                                                                                                                   | Evitar historial y documentos innecesarios          |
-| Llamadas                   | Una por envío válido                                                                                                                                                                                | Evitar cascadas de modelos                          |
-| Tokens de salida           | Límite configurable bajo; empezar probando 500 tokens                                                                                                                                               | Cubrir JSON compacto y una frase                    |
-| Resultado                  | Titular de Grumphya + explicación factual neutral del proveedor, con introducción de tono en servidor (8–120 palabras al rechazar; 8–40 en otros estados) + score visible de 0–10 con dos decimales | Feedback con personalidad y motivos concretos       |
-| Modelo                     | El menos costoso que supere las pruebas de calidad                                                                                                                                                  | Ahorrar sin aumentar vetos inventados               |
-| Ejecución                  | Sin búsquedas, herramientas ni análisis externo                                                                                                                                                     | Coste acotado                                       |
-| Duplicación de solicitudes | Bloquear doble envío e identificar reintentos del mismo envío                                                                                                                                       | Evitar llamadas repetidas                           |
-| Reintentos                 | Cero reintentos LLM por defecto; no repetir ante timeout o JSON inválido                                                                                                                            | Impedir bucles de gasto                             |
-| Protección de uso          | Cuotas de negocio fuera de `evaluationProcess`, en un orquestador/feature posterior                                                                                                                 | Mantener separadas evaluación y autorización de uso |
+| Control                    | Propuesta inicial                                                                                                                                             | Objetivo                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Tamaño del textarea        | Máximo 2.000 caracteres, visible al usuario                                                                                                                   | Acotar entrada y evitar convertirlo en un plan      |
+| Contexto                   | Idea actual + política compacta + tono limitado al copy                                                                                                       | Evitar historial y documentos innecesarios          |
+| Llamadas                   | Una por envío válido                                                                                                                                          | Evitar cascadas de modelos                          |
+| Tokens de salida           | Límite configurable bajo; empezar probando 500 tokens                                                                                                         | Cubrir JSON compacto y una frase                    |
+| Resultado                  | Titular nuevo generado para estado y tono + explicación factual (8–120 palabras al rechazar; 8–40 en otros estados) + score visible de 0–10 con dos decimales | Feedback con personalidad y motivos concretos       |
+| Modelo                     | El menos costoso que supere las pruebas de calidad                                                                                                            | Ahorrar sin aumentar vetos inventados               |
+| Ejecución                  | Sin búsquedas, herramientas ni análisis externo                                                                                                               | Coste acotado                                       |
+| Duplicación de solicitudes | Bloquear doble envío e identificar reintentos del mismo envío                                                                                                 | Evitar llamadas repetidas                           |
+| Reintentos                 | Cero reintentos LLM por defecto; no repetir ante timeout o JSON inválido                                                                                      | Impedir bucles de gasto                             |
+| Protección de uso          | Cuotas de negocio fuera de `evaluationProcess`, en un orquestador/feature posterior                                                                           | Mantener separadas evaluación y autorización de uso |
 
 No truncar silenciosamente una idea larga: la restricción se comunica en el textarea. El servidor vuelve a validar. El límite de caracteres es una aproximación de coste, no una cuenta exacta de tokens.
 
@@ -316,11 +316,13 @@ La reutilización de resultados o caché es opcional y queda fuera del primer in
 
 ## 7. Feedback: titular con voz y explicación concreta
 
-El modelo recibe la idea, pero no el tono ni mantiene conversación. Devuelve
-una explicación neutral junto con los datos estructurados; el servidor aplica
-el tono al construir `headline` y `message`: `soft` antepone una frase
-afectuosa y `hard` usa prefijos fijos según el estado. En rechazos, el modelo
-también debe devolver `hardSetup` y `hardConsequence`, que se validan pero no
+El modelo recibe la idea y el tono, pero no mantiene conversación. Devuelve
+una explicación junto con los datos estructurados y un `headline` nuevo para
+el resultado actual. La instrucción permite que el tono afecte solo al copy:
+`soft` debe sonar exageradamente amable y luminoso; `hard`, gruñón y mordaz,
+sin insultos ni palabrotas. El servidor compone `message` según el tono y
+valida el titular antes de mostrarlo; si no es seguro, usa un fallback local.
+En rechazos, el modelo también debe devolver `hardSetup` y `hardConsequence`, que se validan pero no
 se muestran actualmente. La explicación conserva los hechos y consecuencias.
 El tono duro critica la idea y su mecanismo, nunca a la persona, y ambos tonos
 son aptos para todos los públicos. Estado, criterios, puntuaciones, motivo y
@@ -330,13 +332,11 @@ tendría que usar la propuesta y por qué eso limita su adopción. No inventa da
 no invita a concretar, no ofrece soluciones ni culpa a la persona. No debe usar
 «bloqueo» o «bloqueante» como etiqueta del resultado.
 
-El servidor presenta el score, compone `headline` con copy propio de Grumphya
-según estado y tono, y muestra `message` como explicación. El modo suave puede
-titular «¡Un abrazo y confeti para esta pega importante!»; el modo borde puede
-decir «La propuesta se ha estampado contra lo esencial.»
-Resultados sin veto y entradas insuficientes también tienen titulares propios;
-ningún titular afirma viabilidad. El estado técnico interno no se presenta con
-jerga de informe.
+El modelo genera `headline` en cada evaluación para reflejar el estado y el
+tono, incluidos los resultados sin veto y las entradas insuficientes. No se
+elige de una lista de titulares fijos; si la salida no pasa las validaciones,
+el servidor usa un fallback seguro. Ningún titular afirma viabilidad y el
+estado técnico interno no se presenta con jerga de informe.
 
 El mensaje explicativo debe ser factual, mordaz y útil; la pulla va dirigida al
 mecanismo, no a quien tuvo la idea. Debe explicar el defecto y el perjuicio previsible de cada criterio que
@@ -351,8 +351,11 @@ una explicación breve en español común antes de construir la respuesta públi
 **Límites de `message`:** si no hay rechazo, 8–40 palabras y ≤280 unidades
 UTF-16. En `RECHAZADA`, 8–120 palabras y ≤900 unidades UTF-16 para explicar
 todos los suspensos. En ambos casos, una frase, un solo párrafo, sin Markdown,
-listas, preguntas ni saltos de línea. Se renderiza como texto plano. `headline` se selecciona en el servidor y nunca
-contiene «bloqueo».
+listas, preguntas ni saltos de línea. Se renderiza como texto plano. `headline`
+debe ser breve, estar en español, respetar el tono y no contener «bloqueo» ni
+información identificativa. Se comprueban longitud, formato y fragmentos
+copiados de la idea; un titular inválido cae al fallback, sin invalidar una
+decisión válida.
 
 El servidor añade una introducción de tono a la explicación neutral. La
 respuesta visible puede ocupar hasta 360 unidades UTF-16 sin rechazo y 1.000
@@ -518,8 +521,10 @@ En RECHAZADA contiene los diez criterios y C10 queda puntuado; en SIN_BLOQUEO_EV
 En rechazo, basis es un fragmento corto literal de la idea que sostiene el fallo.
 En otros estados, stop_at, reason_code y basis son null.
 No devuelvas razonamiento extenso ni puntuación global; el servidor deriva la
-nota de rechazo del criterio que activa el veto y compone un titular de UI
-según estado y tono. La media de los demás estados se calcula en servidor.
+nota de rechazo del criterio que activa el veto. Genera además un `headline`
+nuevo, breve y acorde con estado y tono. El titular solo afecta a la
+presentación; no cambia la evaluación. La media de los demás estados se calcula
+en servidor.
 
 message: explicación clara, neutral y factual. Si no hay rechazo, 8-40 palabras y máximo 280 unidades UTF-16. Si hay rechazo, 8-120 palabras y máximo 900 unidades UTF-16; explica todos los criterios con score <15 y el perjuicio de cada uno. Sin llamarlo «bloqueo» ni usar jerga de informe.
 No incluyas en message IDs internos C01–C10 ni reason codes; explica el defecto
@@ -531,7 +536,9 @@ o «la idea se desarma». Por ejemplo, para citas para saltamontes: «Los
 saltamontes tendrían que aprender a usar un móvil o un ordenador, cosa que no
 va a pasar».
 Sin preguntas, listas ni saltos de línea; la pulla va dirigida al mecanismo,
-nunca a la persona. El titular se construye en el servidor según estado y tono.
+nunca a la persona. El titular lo genera el modelo según estado y tono; el
+servidor valida su formato y privacidad y recurre a un titular local si no
+supera las comprobaciones.
 Termina en un punto y no uses otros puntos, interrogaciones, exclamaciones
 ni puntos suspensivos; evita abreviaturas con puntos.
 No ataques a la persona, no uses amenazas ni presentes el resultado como
@@ -831,11 +838,12 @@ V21 comprueba aislamiento del payload; un fake no demuestra resistencia semánti
 ```text
 request
   -> validar y normalizar entrada
-  -> construir payload fijo SIN tone
+  -> construir payload con idea, política y tone limitado al copy
   -> ejecutar EvaluationPort UNA vez con timeout
   -> parsear salida del proveedor si procede
   -> validar ModelDecision contra idea normalizada
-  -> componer titular según status y tone; conservar message factual
+  -> validar el headline generado; usar fallback seguro si no pasa
+  -> componer message según tone, sin alterar status ni score
   -> devolver status, score, headline y message
 ```
 
@@ -843,7 +851,7 @@ Un fallo en parsing o validación termina en error técnico, no en una segunda l
 
 La idempotencia del envío evita repetir una misma petición lógica; no es una caché de decisiones para ideas aprobadas. La detección semántica de ideas ya rechazadas pertenece a `searchSimilarIdea`, antes de `evaluationProcess`, y se especifica en `features.md`.
 
-El modelo no recibe el tono. El servidor renderiza el tono sobre la explicación neutral; por tanto, evaluar la misma idea en dos tonos mantiene los datos de decisión de una misma respuesta, aunque dos llamadas independientes aún pueden diferir por variabilidad del modelo. Revisar la invariancia con pruebas del renderer y pares de evaluación, sin exigir igualdad absoluta entre ejecuciones nuevas como prueba unitaria.
+El modelo recibe el tono con instrucciones para limitarlo al copy visible. La comprobación de invariancia debe confirmar que el tono no cambie el estado, los criterios ni el score; `headline` y `message` sí pueden variar. Dos evaluaciones independientes también pueden diferir por variabilidad del modelo, así que las pruebas unitarias deben centrarse en el contrato y las reglas deterministas, no exigir igualdad literal entre ejecuciones nuevas.
 
 ### 12.9 Comprobación semántica separada del TDD
 
@@ -878,6 +886,6 @@ Si falta configuración externa, entregar el código y las pruebas completas de 
 
 ### 12.11 Instrucción de arranque copiable
 
-> Mantén el filtro conceptual de Grumphya descrito en este documento. Antes de cambiarlo, inspecciona AGENTS.md, scripts, arquitectura, formulario, modos y cliente actual. Reutiliza `evaluationProcess`, el adaptador OpenAI, la validación de salida y el renderer de tono existentes. El proveedor recibe la idea y la versión de política, pero no el tono: aplica `soft` / `hard` al redactar `message`, sin cambiar veredicto ni puntuaciones. Usa un fake sin red solo en pruebas. No añadas investigación, RAG dentro de `evaluationProcess`, almacenamiento, una arquitectura nueva, cuotas de uso ni un fake en producción. Si modificas la rúbrica o el contrato, actualiza sus pruebas y documentación relacionada; completa las verificaciones pertinentes e indica los límites pendientes.
+> Mantén el filtro conceptual de Grumphya descrito en este documento. Antes de cambiarlo, inspecciona AGENTS.md, scripts, arquitectura, formulario, modos y cliente actual. Reutiliza `evaluationProcess`, el adaptador OpenAI, la validación de salida y el renderer de tono existentes. El proveedor recibe la idea y el tono, con instrucciones que limitan el tono al copy visible: genera `headline` y el servidor compone `message`, sin cambiar veredicto, criterios ni puntuaciones. Usa un fake sin red solo en pruebas. No añadas investigación, RAG dentro de `evaluationProcess`, almacenamiento de ideas rechazadas, una arquitectura nueva, cuotas de uso ni un fake en producción. Si modificas la rúbrica o el contrato, actualiza sus pruebas y documentación relacionada; completa las verificaciones pertinentes e indica los límites pendientes.
 
 **Adecuación a Luna en esfuerzo medio:** las decisiones centrales están fijadas y las incógnitas se limitan al encaje verificable en el repositorio. No se presupone que el modelo deba inventar producto, contrato, arquitectura o pruebas para poder empezar.
