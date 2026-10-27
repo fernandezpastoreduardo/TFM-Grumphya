@@ -2570,10 +2570,6 @@
   }
 }
 
-.home-mobile-menu nav[hidden] {
-  display: none !important;
-}
-
 @media (max-width: 640px) {
   .home-page {
     --frame-dark: 6px;
@@ -2835,10 +2831,6 @@
   .home-footer {
     margin-top: 40px;
   }
-}
-
-.home-mobile-menu nav[hidden] {
-  display: none !important;
 }
 
 @media (max-width: 640px) {
