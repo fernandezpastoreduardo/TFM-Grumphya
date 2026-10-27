@@ -99,6 +99,23 @@ describe("security middleware", () => {
     expect(next).toHaveBeenCalledTimes(10);
   });
 
+  it("limits public CSP report ingestion to protect application logs", () => {
+    const middleware = createSecurityMiddleware();
+    const request = createRequest("/api/csp-reports", "POST");
+    const next = vi.fn() as NextFunction;
+
+    for (let index = 0; index < 20; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const limited = createResponse();
+
+    middleware(request, limited.response, next);
+
+    expect(limited.response.status).toHaveBeenCalledWith(429);
+    expect(limited.headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(20);
+  });
+
   it("applies a configured API request limit", () => {
     const middleware = createSecurityMiddleware({ apiRequestLimit: 1 });
     const request = createRequest();

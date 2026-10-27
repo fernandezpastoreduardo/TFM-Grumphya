@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const API_REQUEST_LIMIT = 120;
+const CSP_REPORT_REQUEST_LIMIT = 20;
 const EVALUATION_REQUEST_LIMIT = 10;
 const REGISTRATION_REQUEST_LIMIT = 8;
 const REGISTRATION_INTENT_REQUEST_LIMIT = 20;
@@ -136,6 +137,8 @@ export function createSecurityMiddleware(
       request.method === "POST" &&
       (request.path === "/api/evaluation-process" ||
         request.path === "/api/roast");
+    const isCspReport =
+      request.method === "POST" && request.path === "/api/csp-reports";
     const isWorstIdeasRead =
       request.method === "GET" &&
       (request.path === "/api/worst-ideas" ||
@@ -202,46 +205,33 @@ export function createSecurityMiddleware(
                         isRefreshPost
                       ? REGISTRATION_VERIFY_REQUEST_LIMIT
                       : REGISTRATION_REQUEST_LIMIT;
-    const limits: ReadonlyArray<readonly [string, number]> = isAdminRead
-      ? [
-          ["api", apiRequestLimit],
-          ["admin-read", ADMIN_READ_REQUEST_LIMIT],
-        ]
-      : isEvaluation
-        ? [
-            ["api", apiRequestLimit],
-            ["evaluation", EVALUATION_REQUEST_LIMIT],
-          ]
-        : isWorstIdeasRead
-          ? [
-              ["api", apiRequestLimit],
-              ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT],
-            ]
-          : isWorstIdeasUserRead
-            ? [
-                ["api", apiRequestLimit],
-                ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT],
-              ]
-            : isRoastRankingRead
-              ? [
-                  ["api", apiRequestLimit],
-                  ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT],
-                ]
-              : isBestUsersRead
-                ? [
-                    ["api", apiRequestLimit],
-                    ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT],
-                  ]
-                : isRegistrationPost ||
-                    isAuthPost ||
-                    isAccountPost ||
-                    isAccountDelete ||
-                    isContactMessagePost
-                  ? [
-                      ["api", apiRequestLimit],
-                      [registrationScope, registrationLimit],
-                    ]
-                  : [["api", apiRequestLimit]];
+    const limits: [string, number][] = [["api", apiRequestLimit]];
+    if (isCspReport) {
+      limits.push(["csp-report", CSP_REPORT_REQUEST_LIMIT]);
+    } else if (isAdminRead) {
+      limits.push(["admin-read", ADMIN_READ_REQUEST_LIMIT]);
+    } else if (isEvaluation) {
+      limits.push(["evaluation", EVALUATION_REQUEST_LIMIT]);
+    } else if (isWorstIdeasRead) {
+      limits.push(["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT]);
+    } else if (isWorstIdeasUserRead) {
+      limits.push([
+        "worst-ideas-user-read",
+        WORST_IDEAS_USER_READ_REQUEST_LIMIT,
+      ]);
+    } else if (isRoastRankingRead) {
+      limits.push(["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT]);
+    } else if (isBestUsersRead) {
+      limits.push(["best-users-read", BEST_USERS_READ_REQUEST_LIMIT]);
+    } else if (
+      isRegistrationPost ||
+      isAuthPost ||
+      isAccountPost ||
+      isAccountDelete ||
+      isContactMessagePost
+    ) {
+      limits.push([registrationScope, registrationLimit]);
+    }
 
     for (const [scope, limit] of limits) {
       const key = `${clientAddress}:${scope}`;
