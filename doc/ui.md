@@ -186,11 +186,16 @@ la lámina maestra está en
 - El navbar de Home es sticky, tiene el mismo fondo temático que la página y se
   apila por encima del formulario al desplazarse, manteniendo la separación del
   telón. Los diálogos globales conservan prioridad sobre toda la interfaz.
-- En escritorio (desde 980 px), la navegación de Home y de las páginas de
-  sección se coloca 16 px más arriba. En móvil se conserva la posición actual.
-- El menú móvil cambia entre icono de menú y X. Al abrirlo, aparece una capa que
-  atenúa y bloquea el contenido de fondo; el panel permanece por encima de esa
-  capa y puede recibir clics. Pulsar fuera cierra el menú sin activar el
+- En ventanas de hasta 979 px, Home y las páginas de sección usan el menú
+  compacto. Desde 980 px, muestran los enlaces mientras caben con la marca y
+  los controles del encabezado; cuando no caben, también cambian al menú
+  compacto. La comprobación usa el ancho disponible y se actualiza al cambiar
+  el tamaño de ventana o el zoom, cuando cambian los enlaces y cuando terminan
+  de cargarse las fuentes. En escritorio (desde 980 px), la navegación de Home
+  y de las páginas de sección se coloca 16 px más arriba.
+- El menú compacto cambia entre icono de menú y X. Al abrirlo, aparece una capa
+  que atenúa y bloquea el contenido de fondo; el panel permanece por encima de
+  esa capa y puede recibir clics. Pulsar fuera cierra el menú sin activar el
   contenido que queda debajo.
 - El panel y la capa se montan en un portal del documento para evitar que los
   contextos de apilado de la página los coloquen bajo el velo o las ilustraciones.
@@ -226,6 +231,12 @@ apilado de la mascota de sección y el tamaño mínimo de los campos. También
 comprueba la posición de la navegación a ambos lados del breakpoint (979 y
 980 px) y en escritorio a 1280 px. Estas aserciones de layout no sustituyen la
 revisión visual manual en esos viewports, que sigue pendiente.
+
+La navegación también se adapta al desbordamiento en escritorio: una prueba
+E2E comprueba Home y una página de sección al cambiar el ancho, y una prueba
+unitaria verifica el recálculo cuando cambia el espacio disponible o el texto
+de los enlaces. El menú compacto conserva el comportamiento de teclado descrito
+arriba.
 
 En la actualización del 24 de octubre se añadieron comprobaciones del viewport
 móvil de 390 px: el perfil, sus tarjetas y el documento no deben desbordar el
