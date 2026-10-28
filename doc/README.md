@@ -22,6 +22,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 - [CI/CD y seguridad de la imagen](ci-cd.md)
 - [Usuarios, credenciales y secretos](credentials.md)
 - [Panel de administración](admin-dashboard.md)
+- [Sello demostrativo de Desarrollo Seguro](desarrollo-seguro.md)
 - [Perfil, contratación de plan y avatar](user-profile.md)
 - [Recuperación de contraseña](password-reset.md)
 - [Baja física de cuenta](user-delete.md)
