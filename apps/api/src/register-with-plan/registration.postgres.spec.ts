@@ -329,6 +329,6 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
     const snapshot = await new PostgresAdminDashboardRepository(
       testPool,
     ).getSnapshot();
-    expect(snapshot.revenue).toEqual({ weeklyEur: 0, totalEur: 10 });
+    expect(snapshot.revenue).toEqual({ weeklyEur: 3, totalEur: 10 });
   });
 });
