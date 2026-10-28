@@ -51,7 +51,7 @@ El resultado esperado es la versión `2` y `root:root 755`.
 - `DEPLOY_VERSION` no está definido ni es requerido por el helper o el workflow actual.
 - El workflow `CI` se ejecuta manualmente desde `main`; el despliegue solo continúa si pasan calidad, E2E, auditoría, construcción, escaneo y las demás condiciones configuradas.
 
-La ejecución [CI #165](https://github.com/fernandezpastoreduardo/TFM-Grumphya/actions/runs/40723505200), iniciada para `a9fb1721a528ed9cb1bfeed8d282a0c5cc9566f2`, es una operación separada: su lanzamiento no demuestra por sí solo que se haya desplegado ni que el servicio esté sano. Registrar el resultado del run y la comprobación posterior de la versión pública cuando finalice.
+La ejecución [CI #165](https://github.com/fernandezpastoreduardo/TFM-Grumphya/actions/runs/40723505200), iniciada para `a9fb1721a528ed9cb1bfeed8d282a0c5cc9566f2`, finalizó correctamente el 28 de octubre de 2026. El job `Build, scan and deploy production release` y el paso `Deploy and verify, rolling back on failed public health checks` terminaron con éxito; también lo hizo `Production deployment confirmed`. Esto registra el resultado de esa ejecución, pero no sustituye la comprobación de salud después de cada despliegue posterior.
 
 ## Aprendizajes operativos
 

@@ -1,6 +1,6 @@
 # Producción en un único VPS
 
-Esta caja prepara Grumphya para un único VPS IONOS M+ con Docker Compose e incluye un despliegue manual desde GitHub Actions, protegido por una confirmación de la cuenta autorizada. No crea recursos, contrata servicios ni despliega durante esta tarea. Antes de arrancar, asigna un dominio al VPS y permite tráfico entrante TCP 80/443 y UDP 443 en el firewall de IONOS y del sistema. Caddy obtiene y renueva automáticamente el certificado cuando el DNS público apunta al servidor.
+Esta guía describe cómo operar Grumphya en un único VPS IONOS M+ con Docker Compose y cómo habilitar un despliegue manual desde GitHub Actions, protegido por una confirmación explícita de la cuenta autorizada. Leerla o seguir sus pasos de preparación no autoriza ni inicia un despliegue por sí solo: la publicación requiere la confirmación y las condiciones indicadas en la sección correspondiente. Antes de arrancar, asigna un dominio al VPS y permite tráfico entrante TCP 80/443 y UDP 443 en el firewall de IONOS y del sistema. Caddy obtiene y renueva automáticamente el certificado cuando el DNS público apunta al servidor.
 
 ## Topología
 
