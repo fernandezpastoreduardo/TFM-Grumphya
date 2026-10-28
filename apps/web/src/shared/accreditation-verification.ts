@@ -6,6 +6,14 @@ export const ACCREDITATION_VERIFICATION_URL = `/acreditaciones/${ACCREDITATION_I
 export type AccreditationStatus =
   "demonstration" | "suspended" | "revoked" | "expired" | "unknown";
 
+export type AccreditationAssurance = {
+  id: string;
+  title: string;
+  description: string;
+  evidence: string;
+  limitation: string;
+};
+
 export type AccreditationRecord = {
   id: string;
   issuer: string;
@@ -13,9 +21,12 @@ export type AccreditationRecord = {
   authorizedDomains: string[];
   status: AccreditationStatus;
   issuedAt: string | null;
+  validatedAt: string | null;
+  validationMethod: string;
   expiresAt: string | null;
   scope: string;
   criteria: string[];
+  assurances: AccreditationAssurance[];
   disclaimer: string;
 };
 
@@ -39,6 +50,25 @@ export function isSealDisplayAllowed(
 const DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
+function isIsoInstant(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+  )
+    return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString() === value;
+}
+
+function isAssurance(value: unknown): value is AccreditationAssurance {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return false;
+  const item = value as Record<string, unknown>;
+  return ["id", "title", "description", "evidence", "limitation"].every(
+    (key) => typeof item[key] === "string" && item[key].length > 0,
+  );
+}
+
 function isRecord(value: unknown): value is AccreditationRecord {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
@@ -59,13 +89,17 @@ function isRecord(value: unknown): value is AccreditationRecord {
       record.status === "revoked" ||
       record.status === "expired" ||
       record.status === "unknown") &&
-    (record.issuedAt === null || typeof record.issuedAt === "string") &&
-    (record.expiresAt === null || typeof record.expiresAt === "string") &&
+    (record.issuedAt === null || isIsoInstant(record.issuedAt)) &&
+    (record.validatedAt === null || isIsoInstant(record.validatedAt)) &&
+    typeof record.validationMethod === "string" &&
+    (record.expiresAt === null || isIsoInstant(record.expiresAt)) &&
     typeof record.scope === "string" &&
     Array.isArray(record.criteria) &&
     record.criteria.every(
       (criterion: unknown) => typeof criterion === "string",
     ) &&
+    Array.isArray(record.assurances) &&
+    record.assurances.every(isAssurance) &&
     typeof record.disclaimer === "string"
   );
 }

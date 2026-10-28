@@ -75,6 +75,10 @@ export function AccreditationVerification() {
         decoding="async"
       />
       <p className="accreditation-status">{STATUS_LABELS[record.status]}</p>
+      <p className="accreditation-intro">
+        Esta ficha resume una revisión técnica interna del proyecto. Cada medida
+        indica qué se observó y qué queda fuera de la comprobación.
+      </p>
       <dl className="accreditation-facts">
         <div>
           <dt>Entidad emisora</dt>
@@ -89,8 +93,16 @@ export function AccreditationVerification() {
           <dd>{record.id}</dd>
         </div>
         <div>
-          <dt>Fecha de emisión</dt>
+          <dt>Fecha de expedición de la ficha</dt>
           <dd>{formatDate(record.issuedAt)}</dd>
+        </div>
+        <div>
+          <dt>Última validación técnica interna</dt>
+          <dd>{formatDate(record.validatedAt)}</dd>
+        </div>
+        <div>
+          <dt>Método de validación</dt>
+          <dd>{record.validationMethod}</dd>
         </div>
         <div>
           <dt>Fecha de caducidad</dt>
@@ -111,13 +123,30 @@ export function AccreditationVerification() {
         </p>
       </section>
       <section aria-labelledby="accreditation-scope-title">
-        <h2 id="accreditation-scope-title">Alcance y criterios</h2>
+        <h2 id="accreditation-scope-title">Alcance de la revisión</h2>
         <p>{record.scope}</p>
         <ul>
           {record.criteria.map((criterion) => (
             <li key={criterion}>{criterion}</li>
           ))}
         </ul>
+      </section>
+      <section aria-labelledby="accreditation-assurances-title">
+        <h2 id="accreditation-assurances-title">Medidas y evidencias</h2>
+        <div className="accreditation-assurances">
+          {record.assurances.map((assurance) => (
+            <section className="accreditation-assurance" key={assurance.id}>
+              <h3>{assurance.title}</h3>
+              <p>{assurance.description}</p>
+              <p>
+                <strong>Evidencia:</strong> {assurance.evidence}
+              </p>
+              <p>
+                <strong>Límite:</strong> {assurance.limitation}
+              </p>
+            </section>
+          ))}
+        </div>
       </section>
       <p className="accreditation-disclaimer">{record.disclaimer}</p>
     </article>

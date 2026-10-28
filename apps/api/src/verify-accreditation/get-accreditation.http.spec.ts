@@ -48,8 +48,13 @@ describe("GET /api/accreditations/:id", () => {
       application: "Grumphya",
       authorizedDomains: ["grumphya.com"],
       status: "demonstration",
-      issuedAt: null,
+      issuedAt: "2026-10-28T09:38:54.000Z",
+      validatedAt: expect.stringMatching(/^2026-10-28T/),
+      validationMethod: "Revisión técnica interna de código y pruebas",
       expiresAt: null,
+      assurances: expect.arrayContaining([
+        expect.objectContaining({ id: "privacy" }),
+      ]),
     });
     expect(JSON.stringify(body)).not.toMatch(/secret|token|password/i);
   });

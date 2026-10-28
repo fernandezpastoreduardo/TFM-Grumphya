@@ -9,10 +9,21 @@ const record = {
   application: "Grumphya",
   authorizedDomains: ["grumphya.com"],
   status: "demonstration",
-  issuedAt: null,
+  issuedAt: "2026-10-28T09:38:54.000Z",
+  validatedAt: "2026-10-28T11:30:00.000Z",
+  validationMethod: "Revisión técnica interna de código y pruebas",
   expiresAt: null,
   scope: "Prototipo académico de buenas prácticas",
   criteria: ["Revisión de controles documentados"],
+  assurances: [
+    {
+      id: "privacy",
+      title: "Privacidad con controles documentados",
+      description: "Política y mecanismos de control de datos",
+      evidence: "Revisión de código y pruebas automatizadas",
+      limitation: "Revisión jurídica y operativa pendiente",
+    },
+  ],
   disclaimer:
     "Demostración académica; sin certificación oficial ni auditoría independiente.",
 };
@@ -41,6 +52,15 @@ describe("AccreditationVerification", () => {
       within(article).getByText(/sin certificación oficial/i),
     ).toBeVisible();
     expect(within(article).getByText(/compara este dominio/i)).toBeVisible();
+    expect(within(article).getAllByText("28 de octubre de 2026")).toHaveLength(
+      2,
+    );
+    expect(
+      within(article).getByText("Privacidad con controles documentados"),
+    ).toBeVisible();
+    expect(
+      within(article).getByText("Revisión jurídica y operativa pendiente"),
+    ).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/accreditations/${ACCREDITATION_ID}`,
       { credentials: "omit", cache: "no-store" },
@@ -74,6 +94,11 @@ describe("AccreditationVerification", () => {
       { ...record, authorizedDomains: ["https://evil.example/"] },
     ],
     ["unknown status", { ...record, status: "valid" }],
+    ["missing validation", { ...record, validatedAt: undefined }],
+    [
+      "malformed assurance",
+      { ...record, assurances: [{ id: "privacy", title: "Claim" }] },
+    ],
   ])("fails closed for %s", async (_case, body) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(body)));
 
