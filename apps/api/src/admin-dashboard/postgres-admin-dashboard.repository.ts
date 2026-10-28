@@ -21,6 +21,14 @@ import {
 const CONTACT_MESSAGE_LIMIT = 100;
 const MAX_ERROR_CODE_LENGTH = 100;
 const MAX_ADMIN_REPLY_ATTEMPTS = 2;
+const DAILY_PLAN_ATTEMPTS = 11;
+const ASSUMED_DAYS_PER_MONTH = 30;
+const HOSTING_MONTHLY_EUR = 12;
+const HOSTING_STARTS_MONTH = "2026-10";
+// BCE reference rate on 2026-10-27: 1 EUR = 1.1150 USD.
+// This is a fixed estimate, not the rate charged by the payment provider.
+const USD_TO_EUR_RATE = 1 / 1.115;
+const EXCHANGE_RATE_AS_OF = "2026-10-27";
 
 type SnapshotRow = {
   weekly_revenue_eur: string;
@@ -46,6 +54,24 @@ type CostTrendRow = {
   total_usd: string;
 };
 
+type MaximumCostRow = {
+  operation: "idea_evaluation" | "roast";
+  average_usd: string;
+  priced_attempts: string;
+};
+
+type ActivePlanRow = {
+  week_start: string;
+  iluminado: string;
+  falton: string;
+};
+
+type AnnualFinanceRow = {
+  month: string;
+  revenue_eur: string;
+  ai_cost_usd: string;
+};
+
 @Injectable()
 export class PostgresAdminDashboardRepository implements AdminDashboardRepository {
   private readonly pool: Pool;
@@ -57,7 +83,14 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
 
   async getSnapshot(): Promise<AdminDashboardSnapshot> {
     await this.ensureSchema();
-    const [summary, errorRows, trendRows] = await Promise.all([
+    const [
+      summary,
+      errorRows,
+      trendRows,
+      maximumCostRows,
+      activePlanRows,
+      financeRows,
+    ] = await Promise.all([
       this.pool.query<SnapshotRow>(`
         WITH boundaries AS (
           SELECT date_trunc('week', now() AT TIME ZONE 'Europe/Madrid')
@@ -156,6 +189,84 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         FROM weeks LEFT JOIN weekly_costs USING (week_start)
         ORDER BY weeks.week_start
       `),
+      this.pool.query<MaximumCostRow>(`
+        SELECT operation,
+          avg(estimated_cost_usd)::text AS average_usd,
+          count(*)::text AS priced_attempts
+        FROM admin_ai_usage_events
+        WHERE actor_type = 'registered_user'
+          AND operation IN ('idea_evaluation', 'roast')
+          AND estimated_cost_usd IS NOT NULL
+        GROUP BY operation
+      `),
+      this.pool.query<ActivePlanRow>(`
+        WITH bounds AS (
+          SELECT date_trunc('week', now() AT TIME ZONE 'Europe/Madrid') AS current_week
+        ), weeks AS (
+          SELECT generated.week_start
+          FROM bounds
+          CROSS JOIN LATERAL generate_series(
+            bounds.current_week - interval '7 weeks',
+            bounds.current_week,
+            interval '1 week'
+          ) AS generated(week_start)
+        )
+        SELECT to_char(weeks.week_start, 'YYYY-MM-DD') AS week_start,
+          count(DISTINCT subscription.user_id) FILTER (
+            WHERE subscription.plan_code = 'ILUMINADO'
+          )::text AS iluminado,
+          count(DISTINCT subscription.user_id) FILTER (
+            WHERE subscription.plan_code = 'FALTON'
+          )::text AS falton
+        FROM weeks
+        LEFT JOIN subscriptions subscription ON
+          subscription.status IN ('active', 'expired')
+          AND subscription.starts_at <= now()
+          AND subscription.starts_at < ((
+            weeks.week_start + interval '1 week'
+          ) AT TIME ZONE 'Europe/Madrid')
+          AND subscription.expires_at > (
+            weeks.week_start AT TIME ZONE 'Europe/Madrid'
+          )
+        GROUP BY weeks.week_start
+        ORDER BY weeks.week_start
+      `),
+      this.pool.query<AnnualFinanceRow>(`
+        WITH bounds AS (
+          SELECT date_trunc('year', now() AT TIME ZONE 'Europe/Madrid') AS year_start,
+            date_trunc('month', now() AT TIME ZONE 'Europe/Madrid') AS current_month
+        ), months AS (
+          SELECT generated.month_start
+          FROM bounds
+          CROSS JOIN LATERAL generate_series(
+            bounds.year_start,
+            bounds.current_month,
+            interval '1 month'
+          ) AS generated(month_start)
+        ), revenue AS (
+          SELECT date_trunc('month', confirmed_at AT TIME ZONE 'Europe/Madrid') AS month_start,
+            sum(amount_eur) AS revenue_eur
+          FROM simulated_purchases CROSS JOIN bounds
+          WHERE status = 'confirmed'
+            AND confirmed_at >= (bounds.year_start AT TIME ZONE 'Europe/Madrid')
+            AND confirmed_at <= now()
+          GROUP BY 1
+        ), ai_cost AS (
+          SELECT date_trunc('month', occurred_at AT TIME ZONE 'Europe/Madrid') AS month_start,
+            sum(estimated_cost_usd) AS ai_cost_usd
+          FROM admin_ai_usage_events CROSS JOIN bounds
+          WHERE occurred_at >= (bounds.year_start AT TIME ZONE 'Europe/Madrid')
+            AND occurred_at <= now()
+          GROUP BY 1
+        )
+        SELECT to_char(months.month_start, 'YYYY-MM') AS month,
+          COALESCE(revenue.revenue_eur, 0)::text AS revenue_eur,
+          COALESCE(ai_cost.ai_cost_usd, 0)::text AS ai_cost_usd
+        FROM months
+        LEFT JOIN revenue USING (month_start)
+        LEFT JOIN ai_cost USING (month_start)
+        ORDER BY months.month_start
+      `),
     ]);
     const row = summary.rows[0];
     if (!row) throw new Error("Admin dashboard summary unavailable.");
@@ -175,10 +286,72 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       adminsUsd: Number(adminsUsd),
       anonymousUsd: Number(anonymousUsd),
     });
+    const maximumFor = (operation: MaximumCostRow["operation"]) => {
+      const cost = maximumCostRows.rows.find(
+        (item) => item.operation === operation,
+      );
+      const averagePerAttemptUsd = cost ? Number(cost.average_usd) : null;
+      return {
+        averagePerAttemptUsd,
+        monthlyMaximumUsd:
+          averagePerAttemptUsd === null
+            ? null
+            : Math.round(
+                averagePerAttemptUsd *
+                  DAILY_PLAN_ATTEMPTS *
+                  ASSUMED_DAYS_PER_MONTH *
+                  1e10,
+              ) / 1e10,
+        pricedAttempts: cost ? Number(cost.priced_attempts) : 0,
+      };
+    };
+    const months = financeRows.rows.map((month) => {
+      const revenueEur = Number(month.revenue_eur);
+      const aiCostUsd = Number(month.ai_cost_usd);
+      const aiCostEur = aiCostUsd * USD_TO_EUR_RATE;
+      const hostingEur =
+        month.month >= HOSTING_STARTS_MONTH ? HOSTING_MONTHLY_EUR : 0;
+      const expensesEur = aiCostEur + hostingEur;
+      return {
+        month: month.month,
+        revenueEur,
+        aiCostUsd,
+        aiCostEur,
+        hostingEur,
+        expensesEur,
+        netEur: revenueEur - expensesEur,
+      };
+    });
     return {
       revenue: {
         weeklyEur: Number(row.weekly_revenue_eur),
         totalEur: Number(row.total_revenue_eur),
+      },
+      maximumMonthlyCost: {
+        iluminado: maximumFor("idea_evaluation"),
+        falton: maximumFor("roast"),
+        dailyAttempts: DAILY_PLAN_ATTEMPTS,
+        assumedDaysPerMonth: ASSUMED_DAYS_PER_MONTH,
+      },
+      weeklyActivePlans: activePlanRows.rows.map((week) => ({
+        weekStart: week.week_start,
+        iluminado: Number(week.iluminado),
+        falton: Number(week.falton),
+      })),
+      annualFinance: {
+        year: Number(
+          months[0]?.month.slice(0, 4) ??
+            new Intl.DateTimeFormat("en-GB", {
+              year: "numeric",
+              timeZone: "Europe/Madrid",
+            }).format(new Date()),
+        ),
+        hostingMonthlyEur: HOSTING_MONTHLY_EUR,
+        hostingStartsMonth: HOSTING_STARTS_MONTH,
+        usdToEurRate: USD_TO_EUR_RATE,
+        exchangeRateSource: "BCE",
+        exchangeRateAsOf: EXCHANGE_RATE_AS_OF,
+        months,
       },
       estimatedAiCost: {
         weeklyUsd: Number(row.weekly_ai_cost_usd),

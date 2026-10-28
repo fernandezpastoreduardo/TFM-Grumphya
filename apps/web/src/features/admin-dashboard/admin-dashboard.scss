@@ -153,6 +153,14 @@
     600 clamp(1.5rem, 3vw, 2rem)/1 "Fredoka",
     sans-serif;
 }
+.admin-maximum-cost small {
+  display: block;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+.admin-maximum-cost p {
+  overflow-wrap: anywhere;
+}
 .admin-ai-costs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -160,8 +168,14 @@
   min-width: 0;
 }
 .admin-ai-costs > .admin-dashboard-section-heading,
-.admin-ai-cost-chart {
+.admin-chart-pair {
   grid-column: 1 / -1;
+}
+.admin-chart-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  min-width: 0;
 }
 .admin-cost-breakdown h3 {
   margin: 0 0 8px;
@@ -197,7 +211,8 @@
 .admin-ai-cost-chart svg {
   display: block;
   width: 100%;
-  overflow: visible;
+  height: auto;
+  overflow: hidden;
 }
 .admin-ai-cost-chart svg text {
   fill: currentColor;
@@ -233,12 +248,74 @@
 .admin-ai-cost-legend .anonymous {
   background: #d94d7b;
 }
+.admin-ai-cost-legend .iluminado,
+.admin-ai-cost-legend .income {
+  background: #087f8c;
+}
+.admin-ai-cost-legend .falton,
+.admin-ai-cost-legend .expenses {
+  background: #d94d7b;
+}
+.admin-active-plans-chart > p {
+  margin-top: 10px;
+}
+.admin-chart-details {
+  min-width: 0;
+  margin-top: 12px;
+}
+.admin-chart-details summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 600;
+}
+.admin-chart-details summary:focus-visible {
+  outline: 3px solid var(--color-teal-dark);
+  outline-offset: 3px;
+}
+.admin-chart-details .admin-table-scroll {
+  margin-top: 10px;
+}
+.admin-chart-details table {
+  font-size: 0.85rem;
+}
+.admin-chart-details caption {
+  padding-bottom: 8px;
+  text-align: left;
+  font-weight: 600;
+}
+.admin-annual-net {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: baseline;
+  margin: 10px 0 16px;
+}
+.admin-annual-net strong {
+  font:
+    600 clamp(1.5rem, 3vw, 2rem)/1.1 "Fredoka",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.admin-annual-explanation {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.admin-annual-explanation p {
+  margin: 0;
+}
 .admin-dashboard-note {
   margin: 0;
   color: var(--color-ink-muted, #4b5860);
   font-size: 0.9rem;
 }
-.theme-dark .admin-ai-cost-note {
+.theme-dark .admin-ai-cost-note,
+.theme-dark .admin-maximum-cost-note {
+  color: #fff;
+}
+.theme-dark .admin-active-plans-chart .admin-dashboard-note {
   color: #fff;
 }
 .admin-table-scroll {
@@ -387,6 +464,9 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
+  .admin-chart-pair {
+    grid-template-columns: 1fr;
+  }
   .admin-cost-breakdown dl > div {
     align-items: baseline;
   }
@@ -401,5 +481,10 @@
   }
   .admin-contact-heading time {
     text-align: left;
+  }
+}
+@media (min-width: 561px) and (max-width: 850px) {
+  .admin-chart-pair {
+    grid-template-columns: 1fr;
   }
 }

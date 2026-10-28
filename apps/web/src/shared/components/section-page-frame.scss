@@ -1462,6 +1462,57 @@
   }
 }
 
+/* Keep nav content measurable while the compact menu takes its place. */
+.site-header.navigation-overflow {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+}
+
+.site-header.navigation-overflow .site-nav {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.site-nav a {
+  white-space: nowrap;
+}
+
+.site-header.navigation-overflow .site-theme-toggle {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.site-header.navigation-overflow .site-mobile-menu {
+  display: block;
+  grid-column: 4;
+  grid-row: 1;
+}
+
+@media (min-width: 980px) {
+  .site-header > .site-mobile-menu {
+    display: none;
+  }
+}
+
+.mobile-menu-portal.navigation-overflow {
+  position: fixed;
+  z-index: 9000;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.mobile-menu-portal.navigation-overflow .mobile-menu-backdrop {
+  z-index: 9000;
+  pointer-events: auto;
+}
+
+.mobile-menu-portal.navigation-overflow nav {
+  z-index: 9002;
+  pointer-events: auto;
+}
+
 @media (max-width: 979px) {
   .site-header {
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1625,5 +1676,15 @@
 @media (min-width: 980px) {
   .app-page .site-header {
     top: calc(var(--header-start) - 16px);
+  }
+}
+
+@media (min-width: 980px) {
+  .site-header:not(.navigation-overflow) > .site-mobile-menu {
+    display: none;
+  }
+
+  .site-header.navigation-overflow > .site-mobile-menu {
+    display: block;
   }
 }

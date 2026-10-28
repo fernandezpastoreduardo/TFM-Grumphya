@@ -3156,3 +3156,45 @@
     top: calc(var(--header-start) - 16px);
   }
 }
+
+/* Preserve the measured nav width while hiding its row, so resizing can reopen it. */
+.home-topbar.navigation-overflow .home-nav-links {
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding-block: 0;
+  visibility: hidden;
+}
+
+.home-nav-link {
+  white-space: nowrap;
+}
+
+.home-topbar.navigation-overflow .home-mobile-menu {
+  display: block;
+  z-index: 15;
+}
+
+@media (min-width: 980px) {
+  .home-mobile-menu {
+    display: none;
+  }
+}
+
+.mobile-menu-portal.navigation-overflow {
+  position: fixed;
+  z-index: 9000;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.mobile-menu-portal.navigation-overflow .mobile-menu-backdrop {
+  z-index: 9000;
+  pointer-events: auto;
+}
+
+.mobile-menu-portal.navigation-overflow nav {
+  z-index: 9002;
+  pointer-events: auto;
+}

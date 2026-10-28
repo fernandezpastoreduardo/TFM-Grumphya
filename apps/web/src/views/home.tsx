@@ -13,6 +13,7 @@ import { useAnonymousUsage } from "../shared/hooks/use-anonymous-usage";
 import { ErrorPages } from "../features/error-pages/error-pages";
 import { usePersistentTheme } from "../shared/hooks/use-persistent-theme";
 import { useMobileMenu } from "../shared/hooks/use-mobile-menu";
+import { useNavigationOverflow } from "../shared/hooks/use-navigation-overflow";
 import { useSessionStatus } from "../infrastructure/auth/use-session-status";
 import { AccountActions } from "../shared/components/account-actions";
 import { UsageLimitDialog } from "../shared/components/usage-limit-dialog";
@@ -97,6 +98,12 @@ export function Home() {
   const [evaluationError, setEvaluationError] = useState("");
   const [isEvaluationDialogOpen, setIsEvaluationDialogOpen] = useState(false);
   const [ideaStepResetKey, setIdeaStepResetKey] = useState(0);
+  const homeTopbarRef = useRef<HTMLElement>(null);
+  const homeNavigationRef = useRef<HTMLElement>(null);
+  const hasNavigationOverflow = useNavigationOverflow(
+    homeTopbarRef,
+    homeNavigationRef,
+  );
   const { theme, toggleTheme } = usePersistentTheme();
   const {
     isOpen: isMobileMenuOpen,
@@ -278,11 +285,18 @@ export function Home() {
       className={`home-page theme-${theme}${isMobileMenuOpen ? " menu-open" : ""}`}
     >
       <main className="home-shell">
-        <header className="home-topbar">
+        <header
+          ref={homeTopbarRef}
+          className={`home-topbar${hasNavigationOverflow ? " navigation-overflow" : ""}`}
+        >
           <a className="home-brand" href="/" aria-label="Grumphya, inicio">
             Grumphya
           </a>
-          <nav className="home-nav-links" aria-label="Secciones principales">
+          <nav
+            ref={homeNavigationRef}
+            className="home-nav-links"
+            aria-label="Secciones principales"
+          >
             <a
               className="home-nav-link is-current"
               href="/"
@@ -539,7 +553,7 @@ export function Home() {
               />
               <div
                 ref={mobileMenuRef}
-                className={`home-mobile-menu mobile-menu-portal theme-${theme}`}
+                className={`home-mobile-menu mobile-menu-portal theme-${theme}${hasNavigationOverflow ? " navigation-overflow" : ""}`}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Menú de navegación"

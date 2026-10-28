@@ -14,6 +14,30 @@ function getAdminRouteResponse(path: string): unknown {
   if (path.includes("contact-messages")) return { messages: [] };
   return {
     revenue: { weeklyEur: 0, totalEur: 0 },
+    maximumMonthlyCost: {
+      iluminado: {
+        averagePerAttemptUsd: null,
+        monthlyMaximumUsd: null,
+        pricedAttempts: 0,
+      },
+      falton: {
+        averagePerAttemptUsd: null,
+        monthlyMaximumUsd: null,
+        pricedAttempts: 0,
+      },
+      dailyAttempts: 11,
+      assumedDaysPerMonth: 30,
+    },
+    weeklyActivePlans: [],
+    annualFinance: {
+      year: 2026,
+      hostingMonthlyEur: 12,
+      hostingStartsMonth: "2026-10",
+      usdToEurRate: 0.9,
+      exchangeRateSource: "BCE",
+      exchangeRateAsOf: "2026-10-27",
+      months: [],
+    },
     estimatedAiCost: {
       weeklyUsd: 0,
       totalUsd: 0,
