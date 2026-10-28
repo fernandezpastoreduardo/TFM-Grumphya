@@ -53,6 +53,7 @@ import {
 } from "./admin-dashboard/admin-dashboard.models";
 import type { AiUsageRecorder } from "./infrastructure/ai/ai-usage";
 import { CspReportController } from "./security/csp-report.controller";
+import { VerifyAccreditationModule } from "./verify-accreditation/verify-accreditation.module";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createRoastReplyProvider(
@@ -164,6 +165,7 @@ function createIdeaSubmissionService(
     SubmitContactMessageModule,
     PasswordResetModule,
     AdminDashboardModule,
+    VerifyAccreditationModule,
   ],
   controllers: [
     HealthController,
