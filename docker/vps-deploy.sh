@@ -13,13 +13,16 @@ readonly EXPECTED_SECRETS=(
 )
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
+readonly HELPER_VERSION=2
 readonly DEFAULT_ROOT=/opt/grumphya
 readonly MIN_FREE_BYTES_DEFAULT=536870912
 
 if [[ ${GRUMPHYA_TESTING:-0} == 1 ]]; then
   ROOT=${GRUMPHYA_ROOT:-$DEFAULT_ROOT}
+  DEPLOY_HELPER_PATH=${GRUMPHYA_DEPLOY_HELPER_PATH:-"$ROOT/usr/local/sbin/grumphya-deploy"}
 else
   ROOT=$DEFAULT_ROOT
+  DEPLOY_HELPER_PATH=/usr/local/sbin/grumphya-deploy
 fi
 STATE_DIR="$ROOT/state"
 RELEASES_DIR="$ROOT/releases"
@@ -243,6 +246,28 @@ validate_release_env() {
     die 'release image tags do not match the requested SHA'
 }
 
+install_release_helper() {
+  local source=$1 version temporary
+  [[ -f $source && ! -L $source ]] || die 'release is missing its deployment helper'
+  bash -n "$source" || die 'release deployment helper has invalid shell syntax'
+  version=$(sed -nE 's/^readonly HELPER_VERSION=([0-9]+)$/\1/p' "$source")
+  [[ $version =~ ^[0-9]+$ ]] || die 'release deployment helper version is missing or invalid'
+  (( 10#$version >= HELPER_VERSION )) || die 'release deployment helper is older than the installed helper'
+
+  mkdir -p "${DEPLOY_HELPER_PATH%/*}"
+  temporary=$(mktemp "${DEPLOY_HELPER_PATH}.XXXXXXXX")
+  if [[ ${GRUMPHYA_TESTING:-0} == 1 ]]; then
+    install -m 0755 "$source" "$temporary" || die 'cannot stage the release deployment helper'
+  else
+    install -o root -g root -m 0755 "$source" "$temporary" || die 'cannot stage the release deployment helper'
+  fi
+  mv -f -- "$temporary" "$DEPLOY_HELPER_PATH" || {
+    rm -f -- "$temporary"
+    die 'cannot activate the release deployment helper'
+  }
+  log "deployment helper updated to version $version from the validated release"
+}
+
 is_approved_illuminado_repricing_migration() {
   local name=$1 content=$2 normalized_sql expected_sql
   local marker='-- deployment-data-rewrite: retroactive-illuminado-price'
@@ -455,6 +480,7 @@ deploy() {
   log "scanned release images loaded for $sha"
   mv "$candidate_dir" "$release_path"
   candidate_dir=$release_path
+  install_release_helper "$release_path/docker/vps-deploy.sh"
 
   write_state deploying_previous "$original_previous"
   write_state deploying "$sha"
@@ -518,6 +544,11 @@ status() {
   printf '%s\n' "${current:-none}"
 }
 
+helper_version() {
+  [[ $# -eq 0 ]] || die 'usage: helper-version'
+  printf '%s\n' "$HELPER_VERSION"
+}
+
 gateway() {
   [[ $# -eq 0 ]] || die 'usage: gateway'
   local command=${SSH_ORIGINAL_COMMAND:-}
@@ -538,6 +569,9 @@ gateway() {
   fi
   if [[ $command == status ]]; then
     exec "$0" status
+  fi
+  if [[ $command == helper-version ]]; then
+    exec "$0" helper-version
   fi
   die 'SSH command rejected by deployment gateway'
 }
@@ -611,7 +645,7 @@ EOF
 }
 
 main() {
-  [[ $# -ge 1 ]] || die 'usage: preflight|deploy|rollback|status|bootstrap|gateway'
+  [[ $# -ge 1 ]] || die 'usage: preflight|deploy|rollback|status|helper-version|bootstrap|gateway'
   local action=$1
   shift
   case "$action" in
@@ -619,6 +653,7 @@ main() {
     deploy) deploy "$@" ;;
     rollback) rollback "$@" ;;
     status) status "$@" ;;
+    helper-version) helper_version "$@" ;;
     bootstrap) bootstrap "$@" ;;
     gateway) gateway "$@" ;;
     *) die 'unknown action' ;;

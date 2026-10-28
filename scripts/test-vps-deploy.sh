@@ -140,6 +140,7 @@ MV_STUB
   chmod +x "$TEST_BIN/mv"
   export PATH="$TEST_BIN:$PATH"
   export GRUMPHYA_ROOT="$TEST_ROOT"
+  export GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy"
   export GRUMPHYA_TESTING=1
   unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_CURRENT_STATE_MOVE_ONCE || true
 }
@@ -152,6 +153,7 @@ seed_release() {
   local sha=$1 dir="$TEST_ROOT/releases/$1"
   mkdir -p "$dir/docker" "$dir/migrations"
   printf 'example.invalid {\n}\n' > "$dir/docker/Caddyfile"
+  cp "$DEPLOY_HELPER" "$dir/docker/vps-deploy.sh"
   printf 'services: {}\n' > "$dir/compose.production.yaml"
   printf 'CREATE TABLE baseline(id integer);\n' > "$dir/migrations/001_baseline.sql"
   : > "$dir/images.tar"
@@ -174,6 +176,7 @@ make_bundle() {
   rm -rf -- "$dir"
   mkdir -p "$dir/docker" "$dir/migrations"
   printf 'example.invalid {\n}\n' > "$dir/docker/Caddyfile"
+  cp "$DEPLOY_HELPER" "$dir/docker/vps-deploy.sh"
   printf 'services: {}\n' > "$dir/compose.production.yaml"
   printf 'CREATE TABLE baseline(id integer);\n' > "$dir/migrations/001_baseline.sql"
   if [[ -n $migration_content ]]; then
@@ -215,6 +218,8 @@ ALTER TABLE baseline ADD COLUMN note text;'
   assert_contains "$DOCKER_LOG" '--no-build --wait'
   assert_contains "$DOCKER_LOG" "image inspect grumphya-api:$NEW_SHA"
   assert_contains "$DOCKER_LOG" "image inspect grumphya-api:$OLD_SHA"
+  cmp -s "$DEPLOY_HELPER" "$GRUMPHYA_DEPLOY_HELPER_PATH" || fail 'successful deploy did not update the persistent helper'
+  [[ -x $GRUMPHYA_DEPLOY_HELPER_PATH ]] || fail 'updated helper is not executable'
   if grep -Fq "image rm grumphya-api:$OLD_SHA" "$DOCKER_LOG"; then
     fail 'successful deploy removed the last-known-good API image tag'
   fi
@@ -440,9 +445,12 @@ test_gateway_accepts_only_allowlisted_commands() {
   local status_output injection_file="$TEST_ROOT/injected"
   status_output=$(SSH_ORIGINAL_COMMAND=status "$DEPLOY_HELPER" gateway)
   assert_eq "$status_output" none 'gateway status command'
+  status_output=$(SSH_ORIGINAL_COMMAND=helper-version "$DEPLOY_HELPER" gateway)
+  assert_eq "$status_output" 2 'gateway helper version command'
   for command in \
     'status extra' \
     'rollback --volumes' \
+    'helper-version extra' \
     "status; touch $injection_file" \
     'deploy 2222222222222222222222222222222222222222 1 0000000000000000000000000000000000000000000000000000000000000000 extra'; do
     if SSH_ORIGINAL_COMMAND="$command" "$DEPLOY_HELPER" gateway >/dev/null 2>&1; then

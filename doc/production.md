@@ -105,7 +105,7 @@ Haz primero la instalación y una puesta en marcha manual siguiendo las seccione
    restrict,command="sudo -n /usr/local/sbin/grumphya-deploy gateway" ssh-ed25519 <clave-publica>
    ```
 
-   El gateway solo admite `preflight`, `deploy`, `rollback` y `status` con argumentos validados; no acepta comandos arbitrarios. La clave no permite iniciar una sesión interactiva ni usar forwarding.
+   El gateway solo admite `preflight`, `deploy`, `rollback`, `status` y `helper-version` con argumentos validados; no acepta comandos arbitrarios. La clave no permite iniciar una sesión interactiva ni usar forwarding.
 
 3. Arranca la versión manual con Compose y registra esa release inicial:
 
@@ -165,19 +165,23 @@ La declaración es una revisión explícita del desarrollador, no una prueba mat
 
 La migración `034_illuminado_price_retroactive.sql` es una excepción de datos deliberada: fija `plans.monthly_price_eur` de Iluminado en 3 € y reexpresa a 3 € todos los `simulated_purchases` asociados a suscripciones Iluminado, incluidos los importes históricos que alimentan los KPI. No modifica el estado ni las fechas de las suscripciones. Un rollback de código o de imágenes no revierte esos valores de PostgreSQL; además, la API anterior seguirá leyendo el precio de 3 € para compras nuevas aunque su UI antigua aún muestre 2 €. Si se vuelve a desplegar una release anterior, hay que mantener el copy del precio en 3 € con un cambio compatible antes de atender tráfico. Solo si se decide volver deliberadamente al precio de 2 €, prepara y revisa una migración correctiva explícita que actualice tanto `plans.monthly_price_eur` como los `amount_eur` históricos de las compras Iluminado; no intentes revertirlo restaurando la migración ni con un rollback de código.
 
-#### Actualizar el helper persistente del VPS
+#### Actualizar y recuperar el helper persistente del VPS
 
-`/usr/local/sbin/grumphya-deploy` es una copia root-owned independiente de los archivos de cada release. Publicar una versión nueva de `docker/vps-deploy.sh` en GitHub no actualiza esa copia. Si el helper instalado no contiene una excepción de compatibilidad para una migración de datos aprobada, rechazará la release con `migration compatibility blocked` y `migrations are not safe for application rollback`. Actualiza el helper mediante una sesión administrativa del VPS antes de reintentar el despliegue; la clave restringida de GitHub Actions no permite instalarlo.
+`/usr/local/sbin/grumphya-deploy` es root-owned. Desde la versión 2, el preflight comprueba su versión antes de transferir el bundle y cada despliegue validado instala atómicamente el helper incluido en esa misma release, antes de arrancar sus servicios. Así el helper se mantiene alineado con el código revisado en los despliegues normales. El usuario `grumphya-deploy` sigue sin shell interactiva y no puede instalar código root por su cuenta.
 
-Desde un checkout de confianza que contenga el helper revisado para la release que se va a desplegar, ejecuta como root:
+Si Actions informa que el helper está desactualizado o no puede consultarlo, ese es un bloqueo de recuperación del host: hace falta acceso administrativo root por SSH o por la consola remota del proveedor para instalar la versión revisada una vez. No vuelvas a transferir el bundle ni cambies la migración para esquivar el detector. Desde un checkout confiable que esté en el commit revisado deseado, ejecuta como root:
 
 ```sh
 cd /opt/grumphya
+git fetch origin main
+git checkout --detach <commit-revisado>
 bash -n docker/vps-deploy.sh
+grep -q 'is_approved_illuminado_repricing_migration' docker/vps-deploy.sh
 install -o root -g root -m 0755 docker/vps-deploy.sh /usr/local/sbin/grumphya-deploy
+/usr/local/sbin/grumphya-deploy helper-version
 ```
 
-Comprueba que el checkout corresponde al commit revisado que contiene la excepción esperada y conserva `root:root` y modo `0755`. Para `034_illuminado_price_retroactive.sql`, el helper debe validar el nombre, el marcador `retroactive-illuminado-price` y las dos actualizaciones exactas de precio; no relajes el detector general de operaciones destructivas. Después, vuelve a ejecutar el workflow de despliegue.
+El último comando debe mostrar `2` antes de reintentar Actions. Para `034_illuminado_price_retroactive.sql`, el helper valida el nombre, el marcador `retroactive-illuminado-price` y las dos actualizaciones exactas de precio; no relajes el detector general de operaciones destructivas. Una vez recuperada la versión 2, las siguientes releases actualizan el helper dentro del flujo normal.
 
 ### Errores y recuperación
 
