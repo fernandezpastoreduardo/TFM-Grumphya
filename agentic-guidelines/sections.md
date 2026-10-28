@@ -113,7 +113,7 @@ if you need more info about any feature of any section refer to ./agentic-guidel
    An standar princing plan page. Keeping copy, UI styles.
    Pricing Cards:
 
-   - Iluminado Plan: for €2 a month, it lets you submit eleven (yeah, eleven) ideas a day.
+   - Iluminado Plan: for €3 a month, it lets you submit eleven (yeah, eleven) ideas a day.
 
    - Faltón Plan: for 1€ per month lets you use the "Descárgate a gusto" feature eleven times a day (que si, ooonce). Includes a "Heckler of the Day" ranking if you make the AI sweat (leaving it speechless or without a good comeback for your insult).
 

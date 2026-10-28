@@ -44,8 +44,10 @@ comandos de cada entorno.
 ## Datos del panel
 
 - Ingresos simulados: total y semana actual en EUR, derivados de compras
-  confirmadas con el precio guardado al contratar. No representan cobros ni
-  contabilidad real.
+  confirmadas. La migración `034_illuminado_price_retroactive.sql` reexpresa
+  todos los importes históricos de Iluminado a 3 € para reflejar el precio
+  vigente también en los KPI anteriores; no cambia la vigencia de ninguna
+  suscripción. No representan cobros ni contabilidad real.
 - Coste de IA: estimación en USD a partir de tokens reportados por llamadas
   completadas a proveedores instrumentados. La semana empieza el lunes en
   `Europe/Madrid`. El histórico comienza con la migración `023`; no hay
