@@ -3,6 +3,8 @@ import { Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PostgresRegistrationRepository } from "./postgres-registration.repository";
 import { RegistrationService } from "./registration.service";
+import { runMigrations } from "../infrastructure/database/run-migrations";
+import { PostgresAdminDashboardRepository } from "../admin-dashboard/postgres-admin-dashboard.repository";
 
 const DATABASE_URL = process.env.REGISTRATION_TEST_DATABASE_URL;
 const TEST_WEB_ORIGIN = "http://127.0.0.1:5173";
@@ -176,5 +178,134 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       subscriptions: "1",
       sessions: sessionsBeforeConflict.rows[0]?.count,
     });
+  });
+
+  it("reprices historical Iluminado KPIs without changing current account or subscription state", async () => {
+    adminPool = new Pool({
+      connectionString: DATABASE_URL,
+      connectionTimeoutMillis: 2_000,
+    });
+    schemaName = `repricing_test_${randomUUID().replaceAll("-", "")}`;
+    await adminPool.query(`CREATE SCHEMA "${schemaName}"`);
+    testPool = new Pool({
+      connectionString: DATABASE_URL,
+      options: `-c search_path=${schemaName},public`,
+      connectionTimeoutMillis: 2_000,
+    });
+    await runMigrations(testPool);
+
+    const userId = randomUUID();
+    await testPool.query(
+      `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
+        privacy_policy_version,privacy_policy_acknowledged_at,status)
+       VALUES($1,$2,$2,$3,$3,'test-hash','v4',now(),'active')`,
+      [userId, `${userId}@example.test`, `User${userId}`],
+    );
+    const subscriptions = [
+      { plan: "ILUMINADO", status: "active", oldPrice: 2 },
+      { plan: "ILUMINADO", status: "expired", oldPrice: 2 },
+      { plan: "FALTON", status: "active", oldPrice: 1 },
+    ] as const;
+    for (const purchase of subscriptions) {
+      const subscriptionId = randomUUID();
+      const idempotencyKey = randomUUID();
+      await testPool.query(
+        `INSERT INTO subscriptions(id,user_id,plan_code,status,starts_at,expires_at,
+          activation_source,idempotency_key)
+         VALUES($1,$2,$3,$4,'2025-01-01T00:00:00Z','2025-02-01T00:00:00Z','simulated',$5)`,
+        [
+          subscriptionId,
+          userId,
+          purchase.plan,
+          purchase.status,
+          idempotencyKey,
+        ],
+      );
+      await testPool.query(
+        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at,amount_eur)
+         VALUES($1,$2,$3,'confirmed','2025-01-01T00:00:00Z',$4)`,
+        [userId, subscriptionId, idempotencyKey, purchase.oldPrice],
+      );
+    }
+    await testPool.query(
+      "UPDATE plans SET monthly_price_eur=2.00 WHERE code='ILUMINADO'",
+    );
+
+    await testPool.query("DELETE FROM schema_migrations WHERE version=$1", [
+      "034_illuminado_price_retroactive",
+    ]);
+    await runMigrations(testPool);
+
+    const persisted = await testPool.query<{
+      plan_code: string;
+      subscription_status: string;
+      starts_at: Date;
+      expires_at: Date;
+      amount_eur: string;
+      account_status: string;
+    }>(
+      `SELECT subscription.plan_code, subscription.status AS subscription_status,
+         subscription.starts_at, subscription.expires_at, purchase.amount_eur::text,
+         account.status AS account_status
+       FROM simulated_purchases purchase
+       JOIN subscriptions subscription ON subscription.id=purchase.subscription_id
+       JOIN users account ON account.id=purchase.user_id
+       ORDER BY subscription.plan_code, subscription.status`,
+    );
+    expect(persisted.rows).toMatchObject([
+      {
+        plan_code: "FALTON",
+        subscription_status: "active",
+        amount_eur: "1.00",
+        account_status: "active",
+      },
+      {
+        plan_code: "ILUMINADO",
+        subscription_status: "active",
+        amount_eur: "3.00",
+        account_status: "active",
+      },
+      {
+        plan_code: "ILUMINADO",
+        subscription_status: "expired",
+        amount_eur: "3.00",
+        account_status: "active",
+      },
+    ]);
+    for (const purchase of persisted.rows) {
+      expect(purchase.starts_at.toISOString()).toBe("2025-01-01T00:00:00.000Z");
+      expect(purchase.expires_at.toISOString()).toBe(
+        "2025-02-01T00:00:00.000Z",
+      );
+    }
+    const planPrice = await testPool.query<{ monthly_price_eur: string }>(
+      "SELECT monthly_price_eur::text FROM plans WHERE code='ILUMINADO'",
+    );
+    expect(planPrice.rows[0]?.monthly_price_eur).toBe("3.00");
+
+    const newUserId = randomUUID();
+    await testPool.query(
+      `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
+        privacy_policy_version,privacy_policy_acknowledged_at,status)
+       VALUES($1,$2,$2,$3,$3,'test-hash','v4',now(),'active')`,
+      [newUserId, `${newUserId}@example.test`, `User${newUserId}`],
+    );
+    await new PostgresRegistrationRepository(
+      testPool,
+    ).createSubscriptionPurchase(newUserId, "ILUMINADO", randomUUID());
+    const newPurchase = await testPool.query<{ amount_eur: string }>(
+      `SELECT amount_eur::text FROM simulated_purchases
+       WHERE user_id=$1 AND subscription_id IN (
+         SELECT id FROM subscriptions WHERE user_id=$1 AND plan_code='ILUMINADO'
+       )
+       ORDER BY confirmed_at DESC LIMIT 1`,
+      [newUserId],
+    );
+    expect(newPurchase.rows[0]?.amount_eur).toBe("3.00");
+
+    const snapshot = await new PostgresAdminDashboardRepository(
+      testPool,
+    ).getSnapshot();
+    expect(snapshot.revenue).toEqual({ weeklyEur: 0, totalEur: 10 });
   });
 });

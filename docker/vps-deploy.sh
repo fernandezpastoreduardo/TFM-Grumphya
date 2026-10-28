@@ -243,6 +243,17 @@ validate_release_env() {
     die 'release image tags do not match the requested SHA'
 }
 
+is_approved_illuminado_repricing_migration() {
+  local name=$1 content=$2 normalized_sql expected_sql
+  local marker='-- deployment-data-rewrite: retroactive-illuminado-price'
+  [[ $name == '034_illuminado_price_retroactive.sql' ]] || return 1
+  grep -Fq -- "$marker" <<< "$content" || return 1
+  normalized_sql=$(sed -E '/^[[:space:]]*(--|$)/d; s/[[:space:]]+/ /g' <<< "$content" |
+    tr '\n' ' ' | sed -E 's/ +/ /g; s/^ //; s/ $//')
+  expected_sql="UPDATE plans SET monthly_price_eur = 3.00 WHERE code = 'ILUMINADO'; UPDATE simulated_purchases purchase SET amount_eur = 3.00 FROM subscriptions subscription WHERE purchase.subscription_id = subscription.id AND subscription.plan_code = 'ILUMINADO';"
+  [[ $normalized_sql == "$expected_sql" ]]
+}
+
 migrations_compatible() {
   local previous_dir=$1 candidate_dir=$2 file name old_content new_content
   local marker='-- deployment-rollback-compatible: true'
@@ -274,6 +285,9 @@ migrations_compatible() {
       return 1
     fi
     if [[ $new_content =~ $destructive || $new_content =~ $alter_destructive ]]; then
+      if is_approved_illuminado_repricing_migration "$name" "$new_content"; then
+        continue
+      fi
       log "migration compatibility blocked: new migration $name contains a destructive operation"
       return 1
     fi

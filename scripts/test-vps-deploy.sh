@@ -169,7 +169,7 @@ EOF
 }
 
 make_bundle() {
-  local sha=$1 migration_content=$2
+  local sha=$1 migration_content=$2 migration_name=${3:-002_candidate.sql}
   local dir="$TEST_ROOT/payload"
   rm -rf -- "$dir"
   mkdir -p "$dir/docker" "$dir/migrations"
@@ -177,7 +177,7 @@ make_bundle() {
   printf 'services: {}\n' > "$dir/compose.production.yaml"
   printf 'CREATE TABLE baseline(id integer);\n' > "$dir/migrations/001_baseline.sql"
   if [[ -n $migration_content ]]; then
-    printf '%s\n' "$migration_content" > "$dir/migrations/002_candidate.sql"
+    printf '%s\n' "$migration_content" > "$dir/migrations/$migration_name"
   fi
   : > "$dir/images.tar"
   cat > "$dir/release.env" <<EOF
@@ -231,6 +231,31 @@ test_all_time_ranking_migration_is_rollback_compatible() {
   run_deploy "$NEW_SHA" >/dev/null ||
     fail 'the all-time ranking migration was incorrectly rejected'
   assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after compatible aggregate migration'
+  cleanup_fixture
+}
+
+test_approved_illuminado_repricing_migration_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" "$(<"$SCRIPT_DIR/../apps/api/migrations/034_illuminado_price_retroactive.sql")" \
+    '034_illuminado_price_retroactive.sql'
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'the explicitly approved Illuminado price backfill was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after Illuminado price backfill'
+  cleanup_fixture
+}
+
+test_illuminado_repricing_migration_rejects_extra_destructive_sql() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  local migration_content
+  migration_content=$(<"$SCRIPT_DIR/../apps/api/migrations/034_illuminado_price_retroactive.sql")
+  make_bundle "$NEW_SHA" "$migration_content
+DROP TABLE users;" '034_illuminado_price_retroactive.sql'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'the Illuminado pricing allowlist accepted extra destructive SQL'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after rejected repricing SQL'
   cleanup_fixture
 }
 
@@ -419,6 +444,8 @@ test_gateway_accepts_only_allowlisted_commands() {
 for test_case in \
   test_deploy_ok \
   test_all_time_ranking_migration_is_rollback_compatible \
+  test_approved_illuminado_repricing_migration_is_rollback_compatible \
+  test_illuminado_repricing_migration_rejects_extra_destructive_sql \
   test_failed_compose_restores_previous \
   test_bundle_digest_mismatch_is_rejected_before_image_load \
   test_release_retention_keeps_current_and_previous_only \

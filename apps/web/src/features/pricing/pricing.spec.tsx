@@ -37,6 +37,16 @@ function jsonResponse(body: unknown, status = 201): Response {
 }
 
 describe("Pricing registration intent", () => {
+  it("shows the current monthly price for Iluminado", () => {
+    render(<Pricing />);
+
+    const iluminadoCard = screen
+      .getByRole("heading", { name: "Iluminado" })
+      .closest("article");
+
+    expect(iluminadoCard).toHaveTextContent(/3 €\s*\/ mes/u);
+  });
+
   it("opens the UltraChachi lesson as a modal dialog", async () => {
     const user = userEvent.setup();
     render(<Pricing />);

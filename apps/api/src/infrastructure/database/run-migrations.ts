@@ -108,6 +108,10 @@ const MIGRATIONS = [
     version: "033_rejected_idea_match_headline",
     file: "033_rejected_idea_match_headline.sql",
   },
+  {
+    version: "034_illuminado_price_retroactive",
+    file: "034_illuminado_price_retroactive.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

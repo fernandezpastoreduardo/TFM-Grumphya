@@ -55,7 +55,7 @@ export function Pricing() {
           <span className="plan-tag">Para evaluar ideas</span>
           <h2>Iluminado</h2>
           <p className="price-value">
-            2 €<small> / mes</small>
+            3 €<small> / mes</small>
           </p>
           <p className="plan-description">
             Once oportunidades al día para poner tu idea a prueba. Sí, once.

@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(33);
+    ).toHaveLength(34);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -106,6 +106,32 @@ describe("controlled database migrations", () => {
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["033_rejected_idea_match_headline"],
+    );
+  });
+
+  it("reprices Iluminado and its historical purchases without changing subscriptions", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes("SET amount_eur = 3.00"),
+    )?.[0];
+    expect(migrationSql).toMatch(
+      /UPDATE plans\s+SET monthly_price_eur\s*=\s*3\.00\s+WHERE code\s*=\s*'ILUMINADO'/i,
+    );
+    expect(migrationSql).toMatch(/SET amount_eur\s*=\s*3\.00/i);
+    expect(migrationSql).toMatch(/subscription\.plan_code\s*=\s*'ILUMINADO'/i);
+    expect(migrationSql).not.toMatch(/UPDATE subscriptions/i);
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["034_illuminado_price_retroactive"],
     );
   });
 
