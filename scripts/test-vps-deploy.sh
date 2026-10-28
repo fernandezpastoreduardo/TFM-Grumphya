@@ -259,6 +259,18 @@ DROP TABLE users;" '034_illuminado_price_retroactive.sql'
   cleanup_fixture
 }
 
+test_illuminado_repricing_allowlist_requires_exact_migration_name() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" "$(<"$SCRIPT_DIR/../apps/api/migrations/034_illuminado_price_retroactive.sql")" \
+    '035_illuminado_price_retroactive.sql'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'the Illuminado repricing exception was accepted under a different migration name'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after renamed repricing migration'
+  cleanup_fixture
+}
+
 test_failed_compose_restores_previous() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -446,6 +458,7 @@ for test_case in \
   test_all_time_ranking_migration_is_rollback_compatible \
   test_approved_illuminado_repricing_migration_is_rollback_compatible \
   test_illuminado_repricing_migration_rejects_extra_destructive_sql \
+  test_illuminado_repricing_allowlist_requires_exact_migration_name \
   test_failed_compose_restores_previous \
   test_bundle_digest_mismatch_is_rejected_before_image_load \
   test_release_retention_keeps_current_and_previous_only \
