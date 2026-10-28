@@ -29,7 +29,13 @@ margin.
 - La jerarquía del hero prioriza una explicación breve de la utilidad y deja espacio visual para la mascota en escritorio. El copy del hero es texto HTML editable; no se incrusta en una ilustración.
 - La tipografía de display es Fredoka y la tipografía de lectura es Nunito Sans, con alternativas de sistema. Los pesos gruesos deben conservar formas abiertas y espaciado legible.
 - Los botones de selección de tono mantienen sus paneles azul y rosa, texto negro en ambos temas y las variantes de la mascota llorando y con guantes. La mascota nace del borde inferior izquierdo del botón, con aire por encima, y el texto queda a su derecha. El botón principal de evaluación conserva el formato aprobado; sus controles interactivos usan el turquesa como color de acción por defecto. La selección de tono es una excepción deliberada.
-- En móvil, el menú abre un panel legible por encima de la capa de atenuación. La capa bloquea la interacción con el fondo y se cierra al pulsar fuera; el botón del menú queda disponible para mostrar la X y cerrar el panel.
+- En ventanas de hasta 979 px se usa el menú compacto. En escritorio, también se
+  usa cuando los enlaces y controles del encabezado no caben en el ancho
+  disponible. El estado se recalcula al redimensionar o cambiar el zoom, y ante
+  cambios en los enlaces o la carga de fuentes. El menú abre un panel legible
+  por encima de la capa de atenuación; la capa bloquea la interacción con el
+  fondo y se cierra al pulsar fuera. El botón queda disponible para mostrar la
+  X y cerrar el panel.
 
 ### Contraste y assets por sección
 
@@ -101,10 +107,10 @@ margin.
 - Verifica contraste de texto normal (4,5:1), texto grande (3:1) y controles en
   sus superficies finales, incluidos estados hover, foco, selección, errores,
   overlays y fondos con ilustración. Los colores base por sí solos no bastan.
-- El menú móvil debe ser operable con teclado: foco inicial en el panel, foco
-  contenido mientras está abierto, cierre con Escape y devolución del foco al
-  disparador. Respeta `prefers-reduced-motion` y conserva targets táctiles
-  cómodos.
+- El menú compacto, también cuando aparece por desbordamiento en escritorio,
+  debe ser operable con teclado: foco inicial en el panel, foco contenido
+  mientras está abierto, cierre con Escape y devolución del foco al disparador.
+  Respeta `prefers-reduced-motion` y conserva targets táctiles cómodos.
 - Descubre tipografías desde el documento y prepara las conexiones necesarias
   antes de solicitarlas. Carga recursos de forma diferida cuando una ruta no
   los necesita; limita y optimiza las ilustraciones según sus dimensiones de
