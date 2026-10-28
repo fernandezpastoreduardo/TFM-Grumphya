@@ -165,6 +165,20 @@ La declaración es una revisión explícita del desarrollador, no una prueba mat
 
 La migración `034_illuminado_price_retroactive.sql` es una excepción de datos deliberada: fija `plans.monthly_price_eur` de Iluminado en 3 € y reexpresa a 3 € todos los `simulated_purchases` asociados a suscripciones Iluminado, incluidos los importes históricos que alimentan los KPI. No modifica el estado ni las fechas de las suscripciones. Un rollback de código o de imágenes no revierte esos valores de PostgreSQL; además, la API anterior seguirá leyendo el precio de 3 € para compras nuevas aunque su UI antigua aún muestre 2 €. Si se vuelve a desplegar una release anterior, hay que mantener el copy del precio en 3 € con un cambio compatible antes de atender tráfico. Solo si se decide volver deliberadamente al precio de 2 €, prepara y revisa una migración correctiva explícita que actualice tanto `plans.monthly_price_eur` como los `amount_eur` históricos de las compras Iluminado; no intentes revertirlo restaurando la migración ni con un rollback de código.
 
+#### Actualizar el helper persistente del VPS
+
+`/usr/local/sbin/grumphya-deploy` es una copia root-owned independiente de los archivos de cada release. Publicar una versión nueva de `docker/vps-deploy.sh` en GitHub no actualiza esa copia. Si el helper instalado no contiene una excepción de compatibilidad para una migración de datos aprobada, rechazará la release con `migration compatibility blocked` y `migrations are not safe for application rollback`. Actualiza el helper mediante una sesión administrativa del VPS antes de reintentar el despliegue; la clave restringida de GitHub Actions no permite instalarlo.
+
+Desde un checkout de confianza que contenga el helper revisado para la release que se va a desplegar, ejecuta como root:
+
+```sh
+cd /opt/grumphya
+bash -n docker/vps-deploy.sh
+install -o root -g root -m 0755 docker/vps-deploy.sh /usr/local/sbin/grumphya-deploy
+```
+
+Comprueba que el checkout corresponde al commit revisado que contiene la excepción esperada y conserva `root:root` y modo `0755`. Para `034_illuminado_price_retroactive.sql`, el helper debe validar el nombre, el marcador `retroactive-illuminado-price` y las dos actualizaciones exactas de precio; no relajes el detector general de operaciones destructivas. Después, vuelve a ejecutar el workflow de despliegue.
+
 ### Errores y recuperación
 
 Consulta el run de Actions para identificar qué control falló. Los fallos de tests, build o Trivy no abren SSH. Para errores del helper, revisa en el VPS `docker compose --project-name grumphya --env-file .env.production -f <release>/compose.production.yaml ps` y los logs de `migrate`, `api`, `web` y `proxy`; inspecciona también el estado y las últimas comprobaciones de salud del contenedor que falló con `docker inspect <id-del-contenedor>`. No compartas la salida de secretos. El helper solo informa estados, SHA y códigos de error.
