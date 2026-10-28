@@ -18,6 +18,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 - [Línea base de calidad y cobertura](quality-baseline.md)
 - [Límites de uso anónimo](anonymous-usage.md)
 - [Producción](production.md)
+- [Incidencia de acceso al VPS y despliegue (octubre de 2026)](incident-vps-access-and-deployment-2026-10.md)
 - [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md)
 - [CI/CD y seguridad de la imagen](ci-cd.md)
 - [Usuarios, credenciales y secretos](credentials.md)
@@ -38,6 +39,6 @@ Entorno y stack actuales:
 - PostgreSQL 17 con `pgvector` 0.8.7 en Docker Compose.
 - Las versiones de herramientas y sus decisiones de actualización están en [stack](stack.md). Las pruebas, compilaciones, lint y endpoints HTTP se documentan con sus resultados históricos en [verificación](verification.md).
 
-El entorno Docker local se verificó en macOS Apple Silicon. No se ha desplegado infraestructura remota.
+El entorno Docker local se verificó en macOS Apple Silicon. Existe un VPS IONOS real; la incidencia de recuperación de acceso y helper está en [su registro operativo](incident-vps-access-and-deployment-2026-10.md). La salud del VPS y la versión activa deben comprobarse después de cada despliegue.
 
 No guardes contraseñas reales, tokens de GitHub, claves SSH ni claves de proveedores en esta carpeta o en Git. Para la caja de producción de un VPS, prepara los archivos ignorados de `.secrets/` con permisos restringidos siguiendo [production.md](production.md); no hay un secret manager integrado. GitHub Actions no despliega automáticamente con cada push: la publicación se inicia desde `workflow_dispatch` en la rama `main`, exige confirmación explícita de la cuenta autorizada y requiere las credenciales SSH y la variable de repositorio descritas en [production.md](production.md).

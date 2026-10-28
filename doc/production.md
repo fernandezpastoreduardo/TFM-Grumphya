@@ -76,6 +76,8 @@ La respuesta de salud confirma PostgreSQL y pgvector. Comprueba también en el n
 
 Los pull requests ejecutan las pruebas, construcción y escaneos, pero nunca reciben credenciales SSH ni despliegan. Un push a `main` no inicia el workflow. Para publicar, la cuenta `fernandezpastoreduardo` debe abrir Actions, seleccionar el workflow `CI`, elegir la rama `main` y marcar `approve_production_deploy` antes de pulsar “Run workflow”. El workflow también verifica que quien reejecuta el run sea esa misma cuenta. La publicación requiere que pasen las comprobaciones y que `PRODUCTION_DEPLOY_ENABLED` valga exactamente `true`.
 
+La recuperación real del acceso SSH y del helper v2, incluida la vía live Grml y las comprobaciones posteriores, quedó registrada en [la incidencia del 28 de octubre de 2026](incident-vps-access-and-deployment-2026-10.md). Ese registro no sustituye la comprobación del resultado de cada ejecución de Actions ni la verificación de salud tras publicar.
+
 ### Preparación manual inicial del VPS
 
 Haz primero la instalación y una puesta en marcha manual siguiendo las secciones anteriores. Prueba la web, `/api/health`, migraciones y persistencia. La automatización exige esa versión inicial sana para tener una release anterior a la que volver.
@@ -191,7 +193,7 @@ Si el helper informa `new release failed; automatic rollback completed`, la acti
 
 ### Alcance que requiere el VPS real
 
-CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. No se activa el despliegue desde GitHub ni se conecta a ningún VPS real. Solo con el servidor y dominio contratados se podrán comprobar el usuario restringido y sudoers, su huella SSH real, disco disponible, firewall/DNS, emisión HTTPS pública de Caddy, salud pública, latencia de restauración y rollback extremo a extremo.
+CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. El 28 de octubre de 2026 se recuperó el acceso root por SSH y se verificó el helper v2 en el VPS real; esa recuperación no demuestra por sí sola que una release posterior se haya publicado. Para cada despliegue hay que comprobar el resultado de Actions, el SHA activo, la salud pública y, si procede, el comportamiento de rollback.
 
 Después de que la migración inicial haya terminado, aprovisiona Jappy explícitamente:
 

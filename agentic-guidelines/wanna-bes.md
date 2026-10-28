@@ -2,7 +2,9 @@
 
 Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un roadmap. Una entrada aquí no significa que esté aprobada ni planificada: conserva el contexto para priorizarla más adelante.
 
-## Punto de continuación: publicación en IONOS (22 de octubre de 2026)
+## Registro histórico: estado de publicación en IONOS (22 de octubre de 2026)
+
+Este apartado conserva la situación observada el 22 de octubre de 2026. Sus valores de variables, versión publicada y próximos pasos no describen el estado actual; para la incidencia más reciente consulta [el registro del 28 de octubre](../doc/incident-vps-access-and-deployment-2026-10.md).
 
 **Estado:** retomado. Las pruebas funcionales pendientes de Jappy y correo ya pasaron. No se ha integrado nada en `main` ni activado el despliegue automático. Antes de publicar, pedirle a Eduardo una decisión expresa sobre activar el despliegue y fusionar el PR.
 
