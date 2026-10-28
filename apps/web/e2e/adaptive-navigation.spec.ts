@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const WIDE_DESKTOP = { width: 1600, height: 1000 };
 const NARROW_DESKTOP = { width: 980, height: 1000 };
+const VISIBLE_MENU_ICON_STROKE = "rgb(18, 56, 61)";
 
 test("switches Home navigation when desktop content no longer fits after resizing", async ({
   page,
@@ -13,6 +14,7 @@ test("switches Home navigation when desktop content no longer fits after resizin
   const menuTrigger = page.locator(
     ".home-topbar .home-mobile-menu .mobile-menu-trigger",
   );
+  const menuIconPath = menuTrigger.locator(".menu-icon-open svg path").first();
   await expect(topbar).not.toHaveClass(/navigation-overflow/);
   await expect(menuTrigger).toBeHidden();
 
@@ -25,6 +27,7 @@ test("switches Home navigation when desktop content no longer fits after resizin
     });
   await expect(topbar).toHaveClass(/navigation-overflow/);
   await expect(menuTrigger).toBeVisible();
+  await expect(menuIconPath).toHaveCSS("stroke", VISIBLE_MENU_ICON_STROKE);
 
   await page
     .locator(".home-nav-link")
@@ -49,12 +52,15 @@ test("switches section navigation when desktop content no longer fits after resi
   const menuTrigger = page.locator(
     ".site-header .site-mobile-menu .mobile-menu-trigger",
   );
+  const menuIconPath = menuTrigger.locator(".menu-icon-open svg path").first();
   await expect(header).toHaveClass(/navigation-overflow/);
   await expect(menuTrigger).toBeVisible();
+  await expect(menuIconPath).toHaveCSS("stroke", VISIBLE_MENU_ICON_STROKE);
 
   await page.setViewportSize(NARROW_DESKTOP);
   await expect(header).toHaveClass(/navigation-overflow/);
   await expect(menuTrigger).toBeVisible();
+  await expect(menuIconPath).toHaveCSS("stroke", VISIBLE_MENU_ICON_STROKE);
   await menuTrigger.click();
   await expect(menuTrigger).toHaveAttribute("aria-expanded", "true");
   await expect(

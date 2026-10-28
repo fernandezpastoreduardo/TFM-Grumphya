@@ -71,6 +71,17 @@
   }
 }
 
+/* Keep the compact desktop navigation icon visible when it replaces an overflowing nav. */
+.mobile-menu-trigger svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.3;
+}
+
 .mobile-menu-trigger,
 .mobile-menu-backdrop {
   font-weight: 700;
