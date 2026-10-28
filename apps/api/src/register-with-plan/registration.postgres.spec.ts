@@ -16,16 +16,39 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
   let schemaName: string;
 
   beforeEach(() => {
+    adminPool = undefined;
+    testPool = undefined;
+    repository = undefined;
+    schemaName = "";
     vi.stubEnv("WEB_ORIGIN", TEST_WEB_ORIGIN);
   });
 
   afterEach(async () => {
     vi.unstubAllEnvs();
-    if (repository) await repository.close();
-    else if (testPool) await testPool.end();
-    if (adminPool && schemaName) {
-      await adminPool.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
-      await adminPool.end();
+    const closingRepository = repository;
+    const closingTestPool = testPool;
+    const closingAdminPool = adminPool;
+    const closingSchemaName = schemaName;
+    repository = undefined;
+    testPool = undefined;
+    adminPool = undefined;
+    schemaName = "";
+
+    try {
+      if (closingRepository) await closingRepository.close();
+      else if (closingTestPool) await closingTestPool.end();
+    } finally {
+      if (closingAdminPool) {
+        try {
+          if (closingSchemaName) {
+            await closingAdminPool.query(
+              `DROP SCHEMA IF EXISTS "${closingSchemaName}" CASCADE`,
+            );
+          }
+        } finally {
+          await closingAdminPool.end();
+        }
+      }
     }
   });
 
