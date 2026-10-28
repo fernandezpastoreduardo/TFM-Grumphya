@@ -1,0 +1,38 @@
+.accreditation-seal {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 7px 10px;
+  color: inherit;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.accreditation-seal img {
+  display: block;
+  width: clamp(72px, 8vw, 92px);
+  height: auto;
+  margin-inline: auto;
+}
+
+.accreditation-seal:hover,
+.accreditation-seal:focus-visible {
+  text-decoration: underline;
+}
+
+.accreditation-seal:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+
+.accreditation-seal-caption {
+  max-width: 140px;
+  font-weight: 600;
+  text-align: center;
+}
