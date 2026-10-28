@@ -652,6 +652,7 @@ test("uses the section hero assets with transparent pixels", async ({
 }) => {
   for (const hero of HERO_ASSETS) {
     if ("role" in hero && hero.role === "admin") {
+      await page.setViewportSize(DESKTOP_VIEWPORT);
       await page.addInitScript(() => {
         localStorage.setItem("grumphya-theme", "dark");
       });
@@ -675,6 +676,43 @@ test("uses the section hero assets with transparent pixels", async ({
           contentType: "application/json",
           body: JSON.stringify({
             revenue: { weeklyEur: 0, totalEur: 0 },
+            maximumMonthlyCost: {
+              iluminado: {
+                averagePerAttemptUsd: 0.02,
+                monthlyMaximumUsd: 6.6,
+                pricedAttempts: 2,
+              },
+              falton: {
+                averagePerAttemptUsd: 0.01,
+                monthlyMaximumUsd: 3.3,
+                pricedAttempts: 1,
+              },
+              dailyAttempts: 11,
+              assumedDaysPerMonth: 30,
+            },
+            weeklyActivePlans: [
+              { weekStart: "2026-10-19", iluminado: 2, falton: 1 },
+              { weekStart: "2026-10-26", iluminado: 3, falton: 2 },
+            ],
+            annualFinance: {
+              year: 2026,
+              hostingMonthlyEur: 12,
+              hostingStartsMonth: "2026-10",
+              usdToEurRate: 1 / 1.115,
+              exchangeRateSource: "BCE",
+              exchangeRateAsOf: "2026-10-27",
+              months: [
+                {
+                  month: "2026-10",
+                  revenueEur: 10,
+                  aiCostUsd: 1.115,
+                  aiCostEur: 1,
+                  hostingEur: 12,
+                  expensesEur: 13,
+                  netEur: -3,
+                },
+              ],
+            },
             estimatedAiCost: {
               weeklyUsd: 0,
               totalUsd: 0,
@@ -692,7 +730,15 @@ test("uses the section hero assets with transparent pixels", async ({
                 adminsUsd: 0,
                 anonymousUsd: 0,
               },
-              weeklyTrend: [],
+              weeklyTrend: [
+                {
+                  weekStart: "2026-10-26",
+                  registeredUsersUsd: 0.1,
+                  adminsUsd: 0.05,
+                  anonymousUsd: 0.05,
+                  totalUsd: 0.2,
+                },
+              ],
               unpricedUsageEvents: 0,
             },
             errors: [
@@ -738,6 +784,25 @@ test("uses the section hero assets with transparent pixels", async ({
     ).toBe(true);
 
     if ("role" in hero && hero.role === "admin") {
+      const activePlansChart = page.locator(".admin-active-plans-chart");
+      const actorCostChart = page
+        .locator(".admin-chart-pair .admin-ai-cost-chart")
+        .last();
+      await expect(activePlansChart).toBeVisible();
+      await expect(actorCostChart).toBeVisible();
+      await expect(page.getByText("Coste máximo iluminado")).toBeVisible();
+      const desktopColumns = await page
+        .locator(".admin-chart-pair")
+        .evaluate((element) =>
+          getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/),
+        );
+      expect(desktopColumns).toHaveLength(2);
+      const desktopLeft = await activePlansChart.boundingBox();
+      const desktopRight = await actorCostChart.boundingBox();
+      expect(desktopLeft).not.toBeNull();
+      expect(desktopRight).not.toBeNull();
+      expect(desktopRight!.x).toBeGreaterThan(desktopLeft!.x);
+      expect(Math.abs(desktopLeft!.y - desktopRight!.y)).toBeLessThanOrEqual(1);
       const dashboardTextColor = await page
         .locator(".admin-dashboard")
         .evaluate((element) => getComputedStyle(element).color);
@@ -748,6 +813,19 @@ test("uses the section hero assets with transparent pixels", async ({
       expect(aiCostNoteColor).toBe("rgb(255, 255, 255)");
 
       await page.setViewportSize({ width: 390, height: 844 });
+      const mobileColumns = await page
+        .locator(".admin-chart-pair")
+        .evaluate((element) =>
+          getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/),
+        );
+      expect(mobileColumns).toHaveLength(1);
+      const mobileLeft = await activePlansChart.boundingBox();
+      const mobileRight = await actorCostChart.boundingBox();
+      expect(mobileLeft).not.toBeNull();
+      expect(mobileRight).not.toBeNull();
+      expect(mobileRight!.y).toBeGreaterThanOrEqual(
+        mobileLeft!.y + mobileLeft!.height,
+      );
       await expect(
         page.getByRole("columnheader", { name: "Error y diagnóstico" }),
       ).toBeVisible();

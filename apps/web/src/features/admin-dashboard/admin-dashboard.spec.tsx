@@ -9,6 +9,43 @@ vi.mock("../../infrastructure/auth/session", () => ({
 
 const dashboard = {
   revenue: { weeklyEur: 4, totalEur: 8 },
+  maximumMonthlyCost: {
+    iluminado: {
+      averagePerAttemptUsd: 0.02,
+      monthlyMaximumUsd: 6.6,
+      pricedAttempts: 4,
+    },
+    falton: {
+      averagePerAttemptUsd: 0.01,
+      monthlyMaximumUsd: 3.3,
+      pricedAttempts: 2,
+    },
+    dailyAttempts: 11,
+    assumedDaysPerMonth: 30,
+  },
+  weeklyActivePlans: [
+    { weekStart: "2026-10-12", iluminado: 1, falton: 2 },
+    { weekStart: "2026-10-19", iluminado: 3, falton: 4 },
+  ],
+  annualFinance: {
+    year: 2026,
+    hostingMonthlyEur: 12,
+    hostingStartsMonth: "2026-10",
+    usdToEurRate: 0.9,
+    exchangeRateSource: "BCE",
+    exchangeRateAsOf: "2026-10-27",
+    months: [
+      {
+        month: "2026-10",
+        revenueEur: 10,
+        aiCostUsd: 1.5,
+        aiCostEur: 1.35,
+        hostingEur: 12,
+        expensesEur: 13.35,
+        netEur: -3.35,
+      },
+    ],
+  },
   estimatedAiCost: {
     weeklyUsd: 0.25,
     totalUsd: 1.5,
@@ -115,6 +152,154 @@ describe("AdminDashboard", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/no se leen desde esta aplicación/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows per-operation monthly maximums and accessible plan and finance charts", async () => {
+    const user = userEvent.setup();
+    render(<AdminDashboard />);
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+
+    expect(
+      screen.getByRole("heading", { name: "Coste máximo iluminado" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Coste máximo faltón" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/11 intentos al día.*30 días/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /usuarios activos por plan.*semana/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /ingresos y gastos.*2026/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/^-3,35\s*€$/u, { selector: "strong" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/12\s*€.*mes de hosting/i)).toBeInTheDocument();
+    expect(screen.getByText(/pagos simulados/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /referencia fija del BCE/i }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html",
+    );
+    await user.click(screen.getByText("Ver cifras por semana"));
+    expect(
+      screen.getByRole("table", { name: "Datos semanales por plan" }),
+    ).toHaveTextContent(/2026-10-19.*3.*4/u);
+    await user.click(screen.getByText("Ver cifras por mes"));
+    expect(
+      screen.getByRole("table", {
+        name: "Datos mensuales de ingresos y gastos",
+      }),
+    ).toHaveTextContent(/2026-10.*10,00.*13,35.*-3,35/u);
+  });
+
+  it("shows a positive year-to-date balance without a plus sign", async () => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    const positiveBalance = {
+      ...dashboard,
+      annualFinance: {
+        ...dashboard.annualFinance,
+        months: [
+          {
+            ...dashboard.annualFinance.months[0],
+            revenueEur: 22.47,
+            netEur: 9.12,
+          },
+        ],
+      },
+    };
+    vi.mocked(authenticatedFetch).mockImplementation(
+      async (input) =>
+        new Response(
+          JSON.stringify(
+            String(input).includes("contact-messages")
+              ? contacts
+              : positiveBalance,
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    render(<AdminDashboard />);
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+    expect(
+      screen.getByText(/^9,12\s*€$/u, { selector: "strong" }),
+    ).toBeInTheDocument();
+  });
+
+  it("adds every month into the year-to-date balance", async () => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    const twoMonthBalance = {
+      ...dashboard,
+      annualFinance: {
+        ...dashboard.annualFinance,
+        months: [
+          {
+            ...dashboard.annualFinance.months[0],
+            month: "2026-09",
+            revenueEur: 2,
+            aiCostUsd: 0,
+            aiCostEur: 0,
+            hostingEur: 0,
+            expensesEur: 0,
+            netEur: 2,
+          },
+          dashboard.annualFinance.months[0],
+        ],
+      },
+    };
+    vi.mocked(authenticatedFetch).mockImplementation(
+      async (input) =>
+        new Response(
+          JSON.stringify(
+            String(input).includes("contact-messages")
+              ? contacts
+              : twoMonthBalance,
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+
+    render(<AdminDashboard />);
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+    expect(
+      screen.getByText(/^-1,35\s*€$/u, { selector: "strong" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks monthly cost as unavailable when no priced attempt exists", async () => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    const noSamples = {
+      ...dashboard,
+      maximumMonthlyCost: {
+        ...dashboard.maximumMonthlyCost,
+        falton: {
+          averagePerAttemptUsd: null,
+          monthlyMaximumUsd: null,
+          pricedAttempts: 0,
+        },
+      },
+    };
+    vi.mocked(authenticatedFetch).mockImplementation(
+      async (input) =>
+        new Response(
+          JSON.stringify(
+            String(input).includes("contact-messages") ? contacts : noSamples,
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    render(<AdminDashboard />);
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+    expect(
+      screen.getByText(/Sin usos con precio registrado/i),
     ).toBeInTheDocument();
   });
 
