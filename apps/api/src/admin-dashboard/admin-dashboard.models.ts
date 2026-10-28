@@ -3,6 +3,14 @@ import type { ApplicationErrorContext } from "../infrastructure/observability/ap
 
 export type AdminDashboardSnapshot = {
   revenue: { weeklyEur: number; totalEur: number };
+  maximumMonthlyCost: {
+    iluminado: MaximumMonthlyPlanCost;
+    falton: MaximumMonthlyPlanCost;
+    dailyAttempts: 11;
+    assumedDaysPerMonth: 30;
+  };
+  weeklyActivePlans: Array<WeeklyActivePlans>;
+  annualFinance: AnnualFinance;
   estimatedAiCost: {
     weeklyUsd: number;
     totalUsd: number;
@@ -22,6 +30,36 @@ export type AdminDashboardSnapshot = {
     totalCount: number;
     lastOccurredAt: string;
     latestDiagnosticCode: string | null;
+  }>;
+};
+
+export type MaximumMonthlyPlanCost = {
+  averagePerAttemptUsd: number | null;
+  monthlyMaximumUsd: number | null;
+  pricedAttempts: number;
+};
+
+export type WeeklyActivePlans = {
+  weekStart: string;
+  iluminado: number;
+  falton: number;
+};
+
+export type AnnualFinance = {
+  year: number;
+  hostingMonthlyEur: 12;
+  hostingStartsMonth: "2026-10";
+  usdToEurRate: number;
+  exchangeRateSource: "BCE";
+  exchangeRateAsOf: "2026-10-27";
+  months: Array<{
+    month: string;
+    revenueEur: number;
+    aiCostUsd: number;
+    aiCostEur: number;
+    hostingEur: number;
+    expensesEur: number;
+    netEur: number;
   }>;
 };
 

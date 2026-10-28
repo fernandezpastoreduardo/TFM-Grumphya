@@ -88,6 +88,25 @@ const TREND_ROWS = [
     total_usd: "2.25",
   },
 ];
+const MAXIMUM_COST_ROWS = [
+  { operation: "idea_evaluation", average_usd: "0.004", priced_attempts: "5" },
+  { operation: "roast", average_usd: "0.001", priced_attempts: "2" },
+];
+const ACTIVE_PLAN_ROWS = [
+  { week_start: "2026-10-19", iluminado: "3", falton: "2" },
+];
+const ANNUAL_FINANCE_ROWS = [
+  {
+    month: "2026-01",
+    revenue_eur: "0",
+    ai_cost_usd: "0",
+  },
+  {
+    month: "2026-10",
+    revenue_eur: "5",
+    ai_cost_usd: "1.25",
+  },
+];
 const CONTACT_MESSAGE_ID = "message-id";
 const CONTACT_CREATED_AT = new Date("2026-10-18T12:00:00.000Z");
 
@@ -304,7 +323,10 @@ describe("PostgresAdminDashboardRepository", () => {
       .fn()
       .mockResolvedValueOnce({ rows: [SUMMARY_ROW] })
       .mockResolvedValueOnce({ rows: [ERROR_ROW] })
-      .mockResolvedValueOnce({ rows: TREND_ROWS });
+      .mockResolvedValueOnce({ rows: TREND_ROWS })
+      .mockResolvedValueOnce({ rows: MAXIMUM_COST_ROWS })
+      .mockResolvedValueOnce({ rows: ACTIVE_PLAN_ROWS })
+      .mockResolvedValueOnce({ rows: ANNUAL_FINANCE_ROWS });
     const repository = new PostgresAdminDashboardRepository({
       query,
     } as unknown as Pool);
@@ -350,10 +372,65 @@ describe("PostgresAdminDashboardRepository", () => {
           latestDiagnosticCode: "decision_semantics",
         },
       ],
+      maximumMonthlyCost: {
+        iluminado: {
+          averagePerAttemptUsd: 0.004,
+          monthlyMaximumUsd: 1.32,
+          pricedAttempts: 5,
+        },
+        falton: {
+          averagePerAttemptUsd: 0.001,
+          monthlyMaximumUsd: 0.33,
+          pricedAttempts: 2,
+        },
+        dailyAttempts: 11,
+        assumedDaysPerMonth: 30,
+      },
+      weeklyActivePlans: [{ weekStart: "2026-10-19", iluminado: 3, falton: 2 }],
+      annualFinance: {
+        year: 2026,
+        hostingMonthlyEur: 12,
+        hostingStartsMonth: "2026-10",
+        usdToEurRate: 1 / 1.115,
+        exchangeRateSource: "BCE",
+        exchangeRateAsOf: "2026-10-27",
+        months: [
+          {
+            month: "2026-01",
+            revenueEur: 0,
+            aiCostUsd: 0,
+            aiCostEur: 0,
+            hostingEur: 0,
+            expensesEur: 0,
+            netEur: 0,
+          },
+          {
+            month: "2026-10",
+            revenueEur: 5,
+            aiCostUsd: 1.25,
+            aiCostEur: 1.25 * (1 / 1.115),
+            hostingEur: 12,
+            expensesEur: 12 + 1.25 * (1 / 1.115),
+            netEur: 5 - (12 + 1.25 * (1 / 1.115)),
+          },
+        ],
+      },
     });
     expect(query.mock.calls[1]?.[0]).toContain("max(occurred_at)");
     expect(query.mock.calls[1]?.[0]).toContain("diagnostic_code");
-    expect(query).toHaveBeenCalledTimes(3);
+    expect(query.mock.calls[3]?.[0]).toContain(
+      "actor_type = 'registered_user'",
+    );
+    expect(query.mock.calls[3]?.[0]).toContain(
+      "estimated_cost_usd IS NOT NULL",
+    );
+    expect(query.mock.calls[4]?.[0]).toContain(
+      "count(DISTINCT subscription.user_id)",
+    );
+    expect(query.mock.calls[4]?.[0]).toContain("'expired'");
+    expect(query.mock.calls[5]?.[0]).toContain("FROM simulated_purchases");
+    expect(query.mock.calls[5]?.[0]).toContain("FROM admin_ai_usage_events");
+    expect(query).toHaveBeenCalledTimes(6);
   });
 
   it("returns zero account averages and an empty error and trend list", async () => {
@@ -369,6 +446,9 @@ describe("PostgresAdminDashboardRepository", () => {
         ],
       })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
     const repository = new PostgresAdminDashboardRepository({
       query,
@@ -381,12 +461,28 @@ describe("PostgresAdminDashboardRepository", () => {
         weeklyTrend: [],
       },
       errors: [],
+      maximumMonthlyCost: {
+        iluminado: {
+          averagePerAttemptUsd: null,
+          monthlyMaximumUsd: null,
+          pricedAttempts: 0,
+        },
+        falton: {
+          averagePerAttemptUsd: null,
+          monthlyMaximumUsd: null,
+          pricedAttempts: 0,
+        },
+      },
+      weeklyActivePlans: [],
     });
   });
 
   it("throws when the dashboard summary query returns no row", async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
