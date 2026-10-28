@@ -17,6 +17,7 @@ import { useNavigationOverflow } from "../shared/hooks/use-navigation-overflow";
 import { useSessionStatus } from "../infrastructure/auth/use-session-status";
 import { AccountActions } from "../shared/components/account-actions";
 import { UsageLimitDialog } from "../shared/components/usage-limit-dialog";
+import { AccreditationSeal } from "../shared/components/accreditation-seal";
 import {
   evaluationProcess,
   EvaluationProcessError,
@@ -539,6 +540,7 @@ export function Home() {
 
         <footer className="home-footer">
           <span className="home-footer-note">Será por malas ideas.</span>
+          <AccreditationSeal />
         </footer>
       </main>
       {isMobileMenuOpen

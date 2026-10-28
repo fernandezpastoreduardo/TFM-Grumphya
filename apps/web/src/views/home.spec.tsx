@@ -54,6 +54,45 @@ describe("Home", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  it("links to the public verification from the home footer", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) =>
+        url === "/api/accreditations/DS-GRUMPHYA-2026-001"
+          ? Promise.resolve(
+              Response.json({
+                id: "DS-GRUMPHYA-2026-001",
+                issuer: "Desarrollo Seguro",
+                application: "Grumphya",
+                authorizedDomains: ["grumphya.com"],
+                status: "demonstration",
+                issuedAt: null,
+                validatedAt: null,
+                validationMethod: "No indicada",
+                expiresAt: null,
+                assurances: [],
+                scope: "Prototipo académico",
+                criteria: [],
+                disclaimer: "Sin certificación oficial.",
+              }),
+            )
+          : new Promise(() => undefined),
+      ),
+    );
+    render(<Home />);
+
+    const seal = screen
+      .getByRole("contentinfo")
+      .querySelector("a[href^='/acreditaciones/']");
+    expect(seal).toHaveAccessibleName(
+      /verificar demostración de desarrollo seguro/i,
+    );
+    expect(
+      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
+    ).toHaveAttribute("src", "/assets/desarrollo-seguro/sello-s4.webp");
+    expect(seal).toHaveTextContent("Demostración académica");
+  });
+
   it("shows the admin control panel in the home navigation", async () => {
     setAccessToken("test-admin-token");
     vi.stubGlobal(

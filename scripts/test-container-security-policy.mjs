@@ -13,6 +13,7 @@ const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
 const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
 const CADDY_SOURCE_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37";
 const CADDY_X_NET_VERSION = "golang.org/x/net@v0.60.0";
+const CADDY_GO_JOSE_VERSION = "github.com/go-jose/go-jose/v4@v4.1.6";
 
 const [
   dependabot,
@@ -78,6 +79,10 @@ assert.ok(
 assert.ok(
   caddyDockerfile.includes(`go get ${CADDY_X_NET_VERSION}`),
   "the Caddy source build must retain the patched x/net version",
+);
+assert.ok(
+  caddyDockerfile.includes(CADDY_GO_JOSE_VERSION),
+  "the Caddy source build must use the patched go-jose version",
 );
 const runtimeStageStart = caddyDockerfile.lastIndexOf("FROM caddy:");
 assert.ok(runtimeStageStart >= 0, "a Caddy runtime stage must exist");

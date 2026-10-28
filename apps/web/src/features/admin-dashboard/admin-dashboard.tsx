@@ -12,6 +12,22 @@ import "./admin-dashboard.scss";
 
 type DashboardData = {
   revenue: { weeklyEur: number; totalEur: number };
+  maximumMonthlyCost: {
+    iluminado: MaximumPlanCost;
+    falton: MaximumPlanCost;
+    dailyAttempts: number;
+    assumedDaysPerMonth: number;
+  };
+  weeklyActivePlans: ActivePlanWeek[];
+  annualFinance: {
+    year: number;
+    hostingMonthlyEur: number;
+    hostingStartsMonth: string;
+    usdToEurRate: number;
+    exchangeRateSource: string;
+    exchangeRateAsOf: string;
+    months: FinanceMonth[];
+  };
   estimatedAiCost: {
     weeklyUsd: number;
     totalUsd: number;
@@ -32,6 +48,25 @@ type DashboardData = {
     lastOccurredAt: string;
     latestDiagnosticCode: string | null;
   }>;
+};
+type MaximumPlanCost = {
+  averagePerAttemptUsd: number | null;
+  monthlyMaximumUsd: number | null;
+  pricedAttempts: number;
+};
+type ActivePlanWeek = {
+  weekStart: string;
+  iluminado: number;
+  falton: number;
+};
+type FinanceMonth = {
+  month: string;
+  revenueEur: number;
+  aiCostUsd: number;
+  aiCostEur: number;
+  hostingEur: number;
+  expensesEur: number;
+  netEur: number;
 };
 type AiCostByActor = {
   registeredUsersUsd: number;
@@ -54,6 +89,20 @@ const USD = new Intl.NumberFormat("es-ES", {
   currency: "USD",
   maximumFractionDigits: 4,
 });
+const USD_PER_ATTEMPT = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 8,
+});
+const EUR_WHOLE = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+const DECIMAL_FOUR = new Intl.NumberFormat("es-ES", {
+  maximumFractionDigits: 4,
+});
 const DATE = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -64,6 +113,23 @@ const WEEK_LABEL = new Intl.DateTimeFormat("es-ES", {
   month: "short",
   timeZone: "UTC",
 });
+const MONTH_LABEL = new Intl.DateTimeFormat("es-ES", {
+  month: "short",
+  timeZone: "UTC",
+});
+const MONTH_YEAR_LABEL = new Intl.DateTimeFormat("es-ES", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const REFERENCE_DATE_LABEL = new Intl.DateTimeFormat("es-ES", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const BCE_EXCHANGE_RATES_URL =
+  "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html";
 const DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
 const ERROR_EVENT_ID_PATTERN = /^[1-9]\d{0,18}$/u;
 const ADMIN_TABS = [
@@ -89,6 +155,58 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function isNullableCount(value: unknown): value is number | null {
+  return value === null || isCount(value);
+}
+function isIsoDay(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/u.test(value))
+    return false;
+  const date = new Date(`${value}T12:00:00Z`);
+  return (
+    Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
+}
+function isMaximumPlanCost(value: unknown): value is MaximumPlanCost {
+  return (
+    isRecord(value) &&
+    isNullableCount(value.averagePerAttemptUsd) &&
+    isNullableCount(value.monthlyMaximumUsd) &&
+    isCount(value.pricedAttempts) &&
+    Number.isInteger(value.pricedAttempts) &&
+    ((value.pricedAttempts === 0 &&
+      value.averagePerAttemptUsd === null &&
+      value.monthlyMaximumUsd === null) ||
+      (value.pricedAttempts > 0 &&
+        value.averagePerAttemptUsd !== null &&
+        value.monthlyMaximumUsd !== null))
+  );
+}
+function isActivePlanWeek(value: unknown): value is ActivePlanWeek {
+  return (
+    isRecord(value) &&
+    isIsoDay(value.weekStart) &&
+    isCount(value.iluminado) &&
+    isCount(value.falton) &&
+    Number.isInteger(value.iluminado) &&
+    Number.isInteger(value.falton)
+  );
+}
+function isFinanceMonth(value: unknown): value is FinanceMonth {
+  return (
+    isRecord(value) &&
+    typeof value.month === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/u.test(value.month) &&
+    isCount(value.revenueEur) &&
+    isCount(value.aiCostUsd) &&
+    isCount(value.aiCostEur) &&
+    isCount(value.hostingEur) &&
+    isCount(value.expensesEur) &&
+    isFiniteNumber(value.netEur)
+  );
+}
 function isAiCostByActor(value: unknown): value is AiCostByActor {
   return (
     isRecord(value) &&
@@ -100,8 +218,7 @@ function isAiCostByActor(value: unknown): value is AiCostByActor {
 function isAiCostTrendWeek(value: unknown): value is AiCostTrendWeek {
   return (
     isRecord(value) &&
-    typeof value.weekStart === "string" &&
-    /^\d{4}-\d{2}-\d{2}$/u.test(value.weekStart) &&
+    isIsoDay(value.weekStart) &&
     isCount(value.totalUsd) &&
     isAiCostByActor(value)
   );
@@ -110,15 +227,38 @@ function isDashboardData(value: unknown): value is DashboardData {
   if (
     !isRecord(value) ||
     !isRecord(value.revenue) ||
+    !isRecord(value.maximumMonthlyCost) ||
+    !Array.isArray(value.weeklyActivePlans) ||
+    !isRecord(value.annualFinance) ||
     !isRecord(value.estimatedAiCost) ||
     !Array.isArray(value.errors)
   )
     return false;
   const revenue = value.revenue;
   const costs = value.estimatedAiCost;
+  const maximum = value.maximumMonthlyCost;
+  const finance = value.annualFinance;
   return (
     isCount(revenue.weeklyEur) &&
     isCount(revenue.totalEur) &&
+    isMaximumPlanCost(maximum.iluminado) &&
+    isMaximumPlanCost(maximum.falton) &&
+    isCount(maximum.dailyAttempts) &&
+    Number.isInteger(maximum.dailyAttempts) &&
+    isCount(maximum.assumedDaysPerMonth) &&
+    Number.isInteger(maximum.assumedDaysPerMonth) &&
+    value.weeklyActivePlans.every(isActivePlanWeek) &&
+    isCount(finance.year) &&
+    Number.isInteger(finance.year) &&
+    isCount(finance.hostingMonthlyEur) &&
+    typeof finance.hostingStartsMonth === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/u.test(finance.hostingStartsMonth) &&
+    isCount(finance.usdToEurRate) &&
+    finance.usdToEurRate > 0 &&
+    finance.exchangeRateSource === "BCE" &&
+    isIsoDay(finance.exchangeRateAsOf) &&
+    Array.isArray(finance.months) &&
+    finance.months.every(isFinanceMonth) &&
     isCount(costs.weeklyUsd) &&
     isCount(costs.totalUsd) &&
     isCount(costs.weeklyAveragePerAccountUsd) &&
@@ -358,7 +498,24 @@ function AdminDashboardOverview() {
                   data.estimatedAiCost.totalAveragePerAccountUsd,
                 )}
               />
+              <MaximumCostMetric
+                title="Coste máximo iluminado"
+                cost={data.maximumMonthlyCost.iluminado}
+              />
+              <MaximumCostMetric
+                title="Coste máximo faltón"
+                cost={data.maximumMonthlyCost.falton}
+              />
             </section>
+            <p className="admin-dashboard-note admin-maximum-cost-note">
+              Máximo estimado por cuenta: coste medio de entrada y salida de
+              cada operación con precio ×{" "}
+              {data.maximumMonthlyCost.dailyAttempts} intentos al día ×{" "}
+              {data.maximumMonthlyCost.assumedDaysPerMonth} días de media al
+              mes. Solo se cuentan evaluaciones de ideas para Iluminado y
+              mensajes de roast para Faltón; otras operaciones de IA quedan
+              fuera de este cálculo.
+            </p>
             <p className="admin-dashboard-note admin-ai-cost-note">
               El coste medio por cuenta incluye a usuarios registrados y admins
               activos ({data.estimatedAiCost.activeRegisteredAccountCount} y{" "}
@@ -385,8 +542,12 @@ function AdminDashboardOverview() {
                 title="Acumulado"
                 costs={data.estimatedAiCost.totalByActor}
               />
-              <AiCostChart weeks={data.estimatedAiCost.weeklyTrend} />
+              <div className="admin-chart-pair">
+                <ActivePlansChart weeks={data.weeklyActivePlans} />
+                <AiCostChart weeks={data.estimatedAiCost.weeklyTrend} />
+              </div>
             </section>
+            <AnnualFinanceChart finance={data.annualFinance} />
             <section
               className="admin-dashboard-card"
               aria-labelledby="admin-errors-title"
@@ -650,11 +811,12 @@ const CHART_COLORS = {
 function AiCostChart({ weeks }: { weeks: AiCostTrendWeek[] }) {
   const chartHeight = CHART.height - CHART.top - CHART.bottom;
   const maxCost = Math.max(...weeks.map((week) => week.totalUsd), 0.000001);
-  const slotWidth = (CHART.width - CHART.left - CHART.right) / weeks.length;
+  const slotWidth =
+    (CHART.width - CHART.left - CHART.right) / Math.max(weeks.length, 1);
   const barWidth = Math.min(48, slotWidth * 0.58);
   return (
     <figure className="admin-ai-cost-chart">
-      <figcaption>Coste de IA por semana · últimas 8 semanas</figcaption>
+      <figcaption>¿Quién genera el gasto? · últimas 8 semanas</figcaption>
       <div className="admin-ai-cost-legend" aria-hidden="true">
         <span>
           <i className="registered" />
@@ -723,6 +885,283 @@ function AiCostChart({ weeks }: { weeks: AiCostTrendWeek[] }) {
         })}
       </svg>
     </figure>
+  );
+}
+
+function MaximumCostMetric({
+  title,
+  cost,
+}: {
+  title: string;
+  cost: MaximumPlanCost;
+}) {
+  return (
+    <article className="admin-metric admin-maximum-cost">
+      <h3>{title}</h3>
+      <p>
+        {cost.monthlyMaximumUsd === null
+          ? "Sin usos con precio registrado"
+          : USD.format(cost.monthlyMaximumUsd)}
+      </p>
+      <small>
+        {cost.pricedAttempts} usos con precio · media por intento:{" "}
+        {cost.averagePerAttemptUsd === null
+          ? "sin datos"
+          : USD_PER_ATTEMPT.format(cost.averagePerAttemptUsd)}
+      </small>
+    </article>
+  );
+}
+
+function ActivePlansChart({ weeks }: { weeks: ActivePlanWeek[] }) {
+  const chartHeight = CHART.height - CHART.top - CHART.bottom;
+  const maxUsers = Math.max(
+    ...weeks.map((week) => Math.max(week.iluminado, week.falton)),
+    1,
+  );
+  const slotWidth =
+    (CHART.width - CHART.left - CHART.right) / Math.max(weeks.length, 1);
+  const barWidth = Math.min(24, slotWidth * 0.3);
+  return (
+    <figure className="admin-ai-cost-chart admin-active-plans-chart">
+      <figcaption>Usuarios activos por plan · últimas 8 semanas</figcaption>
+      <div className="admin-ai-cost-legend" aria-hidden="true">
+        <span>
+          <i className="iluminado" />
+          Iluminado
+        </span>
+        <span>
+          <i className="falton" />
+          Faltón
+        </span>
+      </div>
+      <svg
+        viewBox={`0 0 ${CHART.width} ${CHART.height}`}
+        role="img"
+        aria-label="Usuarios activos por plan y semana durante las últimas ocho semanas"
+      >
+        <line
+          x1={CHART.left}
+          x2={CHART.width - CHART.right}
+          y1={CHART.top + chartHeight}
+          y2={CHART.top + chartHeight}
+          className="admin-chart-axis"
+        />
+        {weeks.map((week, index) => {
+          const center = CHART.left + index * slotWidth + slotWidth / 2;
+          const iluminadoHeight = (week.iluminado / maxUsers) * chartHeight;
+          const faltonHeight = (week.falton / maxUsers) * chartHeight;
+          return (
+            <g key={week.weekStart}>
+              <title>{`${week.weekStart}: Iluminado ${week.iluminado}; Faltón ${week.falton}`}</title>
+              <rect
+                x={center - barWidth - 2}
+                y={CHART.top + chartHeight - iluminadoHeight}
+                width={barWidth}
+                height={iluminadoHeight}
+                fill="#087f8c"
+                rx="3"
+              />
+              <rect
+                x={center + 2}
+                y={CHART.top + chartHeight - faltonHeight}
+                width={barWidth}
+                height={faltonHeight}
+                fill="#d94d7b"
+                rx="3"
+              />
+              <text x={center} y={CHART.height - 13} textAnchor="middle">
+                {WEEK_LABEL.format(new Date(`${week.weekStart}T12:00:00Z`))}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <details className="admin-chart-details">
+        <summary>Ver cifras por semana</summary>
+        <div className="admin-table-scroll">
+          <table>
+            <caption>Datos semanales por plan</caption>
+            <thead>
+              <tr>
+                <th scope="col">Semana de</th>
+                <th scope="col">Iluminado</th>
+                <th scope="col">Faltón</th>
+              </tr>
+            </thead>
+            <tbody>
+              {weeks.map((week) => (
+                <tr key={week.weekStart}>
+                  <th scope="row">{week.weekStart}</th>
+                  <td>{week.iluminado}</td>
+                  <td>{week.falton}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <p className="admin-dashboard-note">
+        Se cuenta cada usuario con una suscripción vigente en algún momento de
+        la semana, aunque no haya usado el plan.
+      </p>
+    </figure>
+  );
+}
+
+function AnnualFinanceChart({
+  finance,
+}: {
+  finance: DashboardData["annualFinance"];
+}) {
+  const { months } = finance;
+  const netCents = Math.round(
+    months.reduce((sum, month) => sum + month.netEur, 0) * 100,
+  );
+  const net = netCents === 0 ? 0 : netCents / 100;
+  const chartHeight = CHART.height - CHART.top - CHART.bottom;
+  const plotWidth = CHART.width - CHART.left - CHART.right;
+  const maxAmount = Math.max(
+    ...months.flatMap((month) => [month.revenueEur, month.expensesEur]),
+    1,
+  );
+  const xFor = (index: number) =>
+    CHART.left + ((index + 0.5) * plotWidth) / Math.max(months.length, 1);
+  const yFor = (amount: number) =>
+    CHART.top + chartHeight - (amount / maxAmount) * chartHeight;
+  const incomePoints = months
+    .map((month, index) => `${xFor(index)},${yFor(month.revenueEur)}`)
+    .join(" ");
+  const expensePoints = months
+    .map((month, index) => `${xFor(index)},${yFor(month.expensesEur)}`)
+    .join(" ");
+  return (
+    <section
+      className="admin-dashboard-card admin-annual-finance"
+      aria-labelledby="admin-annual-finance-title"
+    >
+      <span className="eyebrow">Balance anual · EUR</span>
+      <h2 id="admin-annual-finance-title">
+        Ingresos y gastos · {finance.year}
+      </h2>
+      <p className="admin-annual-net">
+        Resultado acumulado hasta hoy: <strong>{EUR.format(net)}</strong>
+      </p>
+      <figure className="admin-ai-cost-chart">
+        <figcaption>Ingresos simulados frente a gastos por mes</figcaption>
+        <div className="admin-ai-cost-legend" aria-hidden="true">
+          <span>
+            <i className="income" />
+            Ingresos simulados
+          </span>
+          <span>
+            <i className="expenses" />
+            Gastos estimados
+          </span>
+        </div>
+        <svg
+          viewBox={`0 0 ${CHART.width} ${CHART.height}`}
+          role="img"
+          aria-label={`Ingresos y gastos por mes de ${finance.year} hasta la fecha actual`}
+        >
+          <line
+            x1={CHART.left}
+            x2={CHART.width - CHART.right}
+            y1={CHART.top + chartHeight}
+            y2={CHART.top + chartHeight}
+            className="admin-chart-axis"
+          />
+          <polyline
+            points={incomePoints}
+            fill="none"
+            stroke="#087f8c"
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          <polyline
+            points={expensePoints}
+            fill="none"
+            stroke="#d94d7b"
+            strokeWidth="3"
+            strokeLinejoin="round"
+          />
+          {months.map((month, index) => (
+            <g key={month.month}>
+              <title>{`${month.month}: ingresos simulados ${EUR.format(month.revenueEur)}; gastos estimados ${EUR.format(month.expensesEur)}; resultado ${EUR.format(month.netEur)}`}</title>
+              <circle
+                cx={xFor(index)}
+                cy={yFor(month.revenueEur)}
+                r="5"
+                fill="#087f8c"
+              />
+              <circle
+                cx={xFor(index)}
+                cy={yFor(month.expensesEur)}
+                r="5"
+                fill="#d94d7b"
+              />
+              <text x={xFor(index)} y={CHART.height - 13} textAnchor="middle">
+                {MONTH_LABEL.format(new Date(`${month.month}-15T12:00:00Z`))}
+              </text>
+            </g>
+          ))}
+        </svg>
+      </figure>
+      <details className="admin-chart-details">
+        <summary>Ver cifras por mes</summary>
+        <div className="admin-table-scroll">
+          <table>
+            <caption>Datos mensuales de ingresos y gastos</caption>
+            <thead>
+              <tr>
+                <th scope="col">Mes</th>
+                <th scope="col">Ingresos simulados</th>
+                <th scope="col">Gastos estimados</th>
+                <th scope="col">Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {months.map((month) => (
+                <tr key={month.month}>
+                  <th scope="row">{month.month}</th>
+                  <td>{EUR.format(month.revenueEur)}</td>
+                  <td>{EUR.format(month.expensesEur)}</td>
+                  <td>{EUR.format(month.netEur)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <div className="admin-annual-explanation">
+        <p>
+          <strong>Ingresos:</strong> pagos simulados de suscripciones
+          confirmadas; no son cobros reales.
+        </p>
+        <p>
+          <strong>Gastos:</strong> coste estimado de tokens consumidos,
+          convertido de USD a EUR con la{" "}
+          <a
+            href={BCE_EXCHANGE_RATES_URL}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            referencia fija del {finance.exchangeRateSource}
+          </a>{" "}
+          del{" "}
+          {REFERENCE_DATE_LABEL.format(
+            new Date(`${finance.exchangeRateAsOf}T12:00:00Z`),
+          )}{" "}
+          (1 USD = {DECIMAL_FOUR.format(finance.usdToEurRate)} EUR), más{" "}
+          {EUR_WHOLE.format(finance.hostingMonthlyEur)} al mes de hosting desde{" "}
+          {MONTH_YEAR_LABEL.format(
+            new Date(`${finance.hostingStartsMonth}-15T12:00:00Z`),
+          )}
+          . Los eventos de IA sin precio conocido quedan fuera; es una
+          estimación, no la factura del proveedor.
+        </p>
+      </div>
+    </section>
   );
 }
 

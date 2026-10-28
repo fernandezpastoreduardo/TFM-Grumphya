@@ -9,8 +9,15 @@ import {
   SkeletonBlock,
 } from "../shared/components/loading-skeleton";
 import { ErrorPages } from "../features/error-pages/error-pages";
+import { ACCREDITATION_VERIFICATION_URL } from "../shared/accreditation-verification";
 
 const PAGE_META: Record<string, SectionPageMeta> = {
+  [ACCREDITATION_VERIFICATION_URL]: {
+    title: "Ficha pública de verificación",
+    intro:
+      "Consulta el registro y comprueba qué dominio figura para esta demostración académica.",
+    theme: "calm",
+  },
   "/lo-peor-de-lo-peor": {
     title: "El muro de la vergüenza",
     intro:
@@ -116,6 +123,11 @@ const SECTION_CONTENT_BY_PATH: Record<
   string,
   LazyExoticComponent<ComponentType>
 > = {
+  [ACCREDITATION_VERIFICATION_URL]: lazy(() =>
+    import("../features/accreditation-verification/accreditation-verification").then(
+      (module) => ({ default: module.AccreditationVerification }),
+    ),
+  ),
   "/lo-peor-de-lo-peor": lazy(() =>
     import("../features/worst-ideas/worst-ideas").then((module) => ({
       default: module.WorstIdeas,

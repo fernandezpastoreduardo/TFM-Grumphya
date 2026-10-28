@@ -5,6 +5,7 @@ import {
   clearAccessToken,
   setAccessToken,
 } from "../infrastructure/auth/session";
+import { ACCREDITATION_VERIFICATION_URL } from "../shared/accreditation-verification";
 
 describe("SectionPage", () => {
   beforeEach(() => localStorage.clear());
@@ -136,5 +137,79 @@ describe("SectionPage", () => {
         name: "Primero el problema. Luego el código.",
       }),
     ).not.toBeInTheDocument();
+  });
+
+  it("links to the public verification from the section footer", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          Response.json({
+            id: "DS-GRUMPHYA-2026-001",
+            issuer: "Desarrollo Seguro",
+            application: "Grumphya",
+            authorizedDomains: ["grumphya.com"],
+            status: "demonstration",
+            issuedAt: null,
+            validatedAt: null,
+            validationMethod: "No indicada",
+            expiresAt: null,
+            assurances: [],
+            scope: "Prototipo académico",
+            criteria: [],
+            disclaimer: "Sin certificación oficial.",
+          }),
+        ),
+      ),
+    );
+    render(<SectionPage path="/precios" />);
+
+    const seal = screen
+      .getByRole("contentinfo")
+      .querySelector("a[href^='/acreditaciones/']");
+    expect(seal).toHaveAccessibleName(
+      /verificar demostración de desarrollo seguro/i,
+    );
+    expect(
+      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
+    ).toHaveAttribute("src", "/assets/desarrollo-seguro/sello-s4.webp");
+    expect(seal).toHaveTextContent("Demostración académica");
+  });
+
+  it("opens the public verification and rejects an unknown accreditation route", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          Response.json({
+            id: "DS-GRUMPHYA-2026-001",
+            issuer: "Desarrollo Seguro",
+            application: "Grumphya",
+            authorizedDomains: ["grumphya.com"],
+            status: "demonstration",
+            issuedAt: null,
+            validatedAt: null,
+            validationMethod: "No indicada",
+            expiresAt: null,
+            assurances: [],
+            scope: "Prototipo académico",
+            criteria: [],
+            disclaimer: "Sin certificación oficial ni auditoría independiente.",
+          }),
+        ),
+      ),
+    );
+    const { unmount } = render(
+      <SectionPage path={ACCREDITATION_VERIFICATION_URL} />,
+    );
+
+    expect(
+      await screen.findByRole("article", { name: /ficha de verificación/i }),
+    ).toBeVisible();
+    unmount();
+    render(<SectionPage path="/acreditaciones/DS-NO-EXISTE" />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "404" }),
+    ).toBeVisible();
   });
 });

@@ -64,8 +64,47 @@ comandos de cada entorno.
   evento para conservar la atribución tras borrar una cuenta. Los eventos
   antiguos cuyo `user_id` ya era nulo se clasifican como anónimos porque no hay
   datos para atribuirlos retrospectivamente. Los modelos sin tarifa registrada
-  aparecen como usos sin precio y no suman al importe estimado. No hay política
-  de retención para estos eventos todavía.
+  aparecen como usos sin precio y no suman al importe estimado. La telemetría
+  de IA se purga a los 12 meses mediante `DataRetentionService`.
+- **Coste máximo iluminado** y **Coste máximo faltón**: son proyecciones por
+  **una cuenta**, no un techo contractual ni el gasto total de todas las
+  cuentas. Para cada plan se obtiene la media de `estimated_cost_usd` de las
+  llamadas con precio de usuarios registrados: `idea_evaluation` para
+  Iluminado y `roast` para Faltón. Cada importe del evento ya incluye los tokens
+  de entrada y salida de esa llamada; no se suman otra vez. La fórmula es
+  `media por intento × 11 intentos/día × 30 días/mes`. No se incluyen llamadas
+  de Jappy, visitantes ni operaciones auxiliares como embeddings o búsqueda de
+  similitud. Tampoco se presupone que todos los usuarios agoten su cupo. Si no
+  hay llamadas con precio para un plan, el panel muestra «Sin usos con precio
+  registrado» en vez de cero. La media refleja solo los eventos disponibles
+  en el histórico retenido, actualmente hasta 12 meses.
+- **Usuarios activos por plan**: el gráfico de las últimas ocho semanas cuenta
+  usuarios distintos por plan cuya suscripción Iluminado o Faltón se solapó con
+  algún momento de cada semana natural de `Europe/Madrid`. Considera filas
+  `active` y `expired`; excluye `cancelled`, pues no se guarda la fecha de
+  cancelación para reconstruir su vigencia histórica. Una persona con ambos
+  planes puede figurar en ambas series. «Activo» describe la vigencia del plan
+  durante la semana, aunque no haya usado la aplicación; no son usuarios
+  activos diarios ni sesiones. La semana en curso se observa solo hasta ahora.
+  En escritorio aparece a la izquierda de «¿Quién genera el gasto?» y en móvil
+  se apilan. La tabla desplegable ofrece las cifras exactas por semana.
+- **Ingresos y gastos del año**: la gráfica mensual empieza en enero del año
+  actual y termina en el mes en curso, según `Europe/Madrid`. Los ingresos son
+  la suma de `simulated_purchases.amount_eur` con estado `confirmed`; no son
+  cobros reales. Los gastos suman todos los eventos de IA con coste estimado
+  disponible, sin filtrar por actor ni operación, más 12 € de hosting por cada
+  mes desde octubre de 2026. El mes actual también incluye los 12 € completos:
+  no hay prorrateo. Los costes de IA se convierten de USD a EUR con una
+  referencia **fija** del [BCE del 27 de octubre de 2026](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html):
+  `1 EUR = 1,1150 USD`, por lo que `USD × (1 / 1,1150) = EUR`. No es el tipo
+  aplicado por el proveedor y habrá que actualizarlo manualmente si se quiere
+  una estimación con otra fecha. El resultado acumulado hasta hoy es
+  `Σ ingresos mensuales − Σ gastos mensuales` y se muestra con signo en EUR.
+  La tabla desplegable contiene los importes de cada mes. Los eventos sin
+  tarifa quedan fuera; además, faltan gastos como dominio, IVA, correo y copias.
+  Por tanto, la curva y el balance son una simulación parcial, no contabilidad
+  ni facturación efectiva. Antes de la migración `023` no hay telemetría de IA,
+  y los eventos con más de 12 meses se purgan; eso limita los años históricos.
 - Errores: solo errores de servidor HTTP 5xx, agrupados por código y diagnóstico
   seguro. Las respuestas 4xx esperables —por ejemplo 401, 403, 404 y 429— no se
   cuentan. La tabla muestra conteo semanal y total, fecha de la última

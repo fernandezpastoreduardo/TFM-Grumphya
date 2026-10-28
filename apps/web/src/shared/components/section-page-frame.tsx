@@ -7,6 +7,7 @@ import { AccountActions } from "./account-actions";
 import { usePersistentTheme } from "../hooks/use-persistent-theme";
 import { useMobileMenu } from "../hooks/use-mobile-menu";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import { AccreditationSeal } from "./accreditation-seal";
 import { useNavigationOverflow } from "../hooks/use-navigation-overflow";
 
 export type SectionPageMeta = {
@@ -239,6 +240,7 @@ export function SectionPageFrame({
             Grumphya
           </a>
           <span>Será por malas ideas.</span>
+          <AccreditationSeal />
           <a href="/">
             Evaluar otra idea <span aria-hidden="true">↗</span>
           </a>
