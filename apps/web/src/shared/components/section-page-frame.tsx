@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref } from "react";
+import { type ReactNode, type Ref, useRef } from "react";
 import { createPortal } from "react-dom";
 import "./mobile-navigation.scss";
 import "./section-page-frame.scss";
@@ -7,6 +7,7 @@ import { AccountActions } from "./account-actions";
 import { usePersistentTheme } from "../hooks/use-persistent-theme";
 import { useMobileMenu } from "../hooks/use-mobile-menu";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import { useNavigationOverflow } from "../hooks/use-navigation-overflow";
 
 export type SectionPageMeta = {
   title: string;
@@ -45,6 +46,9 @@ function getSectionLinks(isAdmin: boolean) {
 }
 
 function SectionHeader({
+  headerRef,
+  navigationRef,
+  hasNavigationOverflow,
   theme,
   onThemeToggle,
   isMenuOpen,
@@ -56,6 +60,9 @@ function SectionHeader({
   avatarUrl,
   onSignOut,
 }: {
+  headerRef: Ref<HTMLElement>;
+  navigationRef: Ref<HTMLElement>;
+  hasNavigationOverflow: boolean;
   theme: "light" | "dark";
   onThemeToggle: () => void;
   isMenuOpen: boolean;
@@ -68,12 +75,19 @@ function SectionHeader({
   onSignOut: () => void;
 }) {
   return (
-    <header className="site-header">
+    <header
+      ref={headerRef}
+      className={`site-header${hasNavigationOverflow ? " navigation-overflow" : ""}`}
+    >
       <a className="site-brand" href="/" aria-label="Grumphya, inicio">
         <span className="brand-mark" aria-hidden="true" />
         <span>Grumphya</span>
       </a>
-      <nav className="site-nav" aria-label="Navegación principal">
+      <nav
+        ref={navigationRef}
+        className="site-nav"
+        aria-label="Navegación principal"
+      >
         <a href="/" className="site-nav-home">
           Inicio
         </a>
@@ -190,12 +204,18 @@ export function SectionPageFrame({
     triggerRef: menuTriggerRef,
     menuRef,
   } = useMobileMenu();
+  const headerRef = useRef<HTMLElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+  const hasNavigationOverflow = useNavigationOverflow(headerRef, navigationRef);
   const session = useSessionStatus();
   const isAdmin = session.accountAttempts?.isAdmin === true;
   return (
     <div className={`app-page theme-${theme}${isMenuOpen ? " menu-open" : ""}`}>
       <div className="app-frame">
         <SectionHeader
+          headerRef={headerRef}
+          navigationRef={navigationRef}
+          hasNavigationOverflow={hasNavigationOverflow}
           theme={theme}
           onThemeToggle={toggleTheme}
           isMenuOpen={isMenuOpen}
@@ -236,7 +256,7 @@ export function SectionPageFrame({
               />
               <div
                 ref={menuRef}
-                className={`site-mobile-menu mobile-menu-portal theme-${theme}`}
+                className={`site-mobile-menu mobile-menu-portal theme-${theme}${hasNavigationOverflow ? " navigation-overflow" : ""}`}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Menú de navegación"
