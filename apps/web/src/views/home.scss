@@ -3228,3 +3228,13 @@
   z-index: 9002;
   pointer-events: auto;
 }
+
+@media (max-width: 640px) {
+  .home-heading-copy,
+  .home-hero-stage .home-creature,
+  .home-result,
+  .home-marketing,
+  .home-footer {
+    animation: none;
+  }
+}

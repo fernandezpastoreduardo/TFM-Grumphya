@@ -1743,3 +1743,15 @@
     margin: 0;
   }
 }
+
+@media (max-width: 640px) {
+  .section-hero-copy,
+  .section-hero-mascot,
+  .section-mobile-mascot,
+  .section-content-grid > *,
+  .section-main > .contact-layout,
+  .section-main > .humans-layout,
+  .section-main > .practices-page {
+    animation: none;
+  }
+}
