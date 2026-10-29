@@ -20,8 +20,11 @@ bundles JavaScript y CSS con nombre versionado
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
-El healthcheck del servicio web permite 30 segundos de arranque inicial antes
-de contar fallos, para tolerar la carga fría del contenedor.
+El healthcheck del servicio web solicita `/index.html` directamente a Nginx,
+para comprobar que el HTML estático existe y puede servirse sin depender del
+fallback de `/`. Permite 30 segundos de arranque inicial antes de contar
+fallos, para tolerar la carga fría del contenedor. El smoke de CI comprueba
+además `/` y las rutas SPA a través del proxy público local.
 
 La red interna confía en el proxy Caddy por su dirección privada fija. Express usa `TRUST_PROXY=172.31.0.254/32`, la IP de Caddy en la red `backend`; Caddy determina la dirección remota del socket y la API no está expuesta a Internet. Si cambias las subredes o la IP de Caddy en Compose, actualiza esta allowlist. No configures `trust proxy=true` ni confíes en cabeceras reenviadas desde clientes.
 
@@ -195,7 +198,7 @@ Si el helper informa `new release failed; automatic rollback completed`, la acti
 
 ### Alcance que requiere el VPS real
 
-CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. El 28 de octubre de 2026 se recuperó el acceso root por SSH y se verificó el helper v2 en el VPS real; esa recuperación no demuestra por sí sola que una release posterior se haya publicado. Para cada despliegue hay que comprobar el resultado de Actions, el SHA activo, la salud pública y, si procede, el comportamiento de rollback.
+CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Si falla, el smoke imprime el estado de Compose, el estado de salud de `web` y sus últimos 100 registros para facilitar el diagnóstico. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. El 28 de octubre de 2026 se recuperó el acceso root por SSH y se verificó el helper v2 en el VPS real; esa recuperación no demuestra por sí sola que una release posterior se haya publicado. Para cada despliegue hay que comprobar el resultado de Actions, el SHA activo, la salud pública y, si procede, el comportamiento de rollback.
 
 Después de que la migración inicial haya terminado, aprovisiona Jappy explícitamente:
 
