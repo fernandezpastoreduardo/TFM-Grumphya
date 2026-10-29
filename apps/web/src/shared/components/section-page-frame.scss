@@ -1688,3 +1688,37 @@
     display: block;
   }
 }
+
+@media (min-width: 980px) {
+  .site-header {
+    background-color: transparent;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0 8px,
+      var(--color-mint) 8px calc(100% - 8px),
+      transparent calc(100% - 8px)
+    );
+    background-repeat: no-repeat;
+  }
+}
+
+@media (min-width: 980px) {
+  .site-header.navigation-overflow {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  }
+
+  .site-header.navigation-overflow > .account-actions-site {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .site-header.navigation-overflow > .site-theme-toggle {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .site-header.navigation-overflow > .site-mobile-menu {
+    grid-column: 5;
+    grid-row: 1;
+  }
+}

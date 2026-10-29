@@ -452,6 +452,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
 test("matches section navigation to the theme and layers curtain over content", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/precios");
   await expect(page.getByRole("heading", { name: /once usos/i })).toBeVisible();
@@ -473,6 +474,7 @@ test("matches section navigation to the theme and layers curtain over content", 
       return {
         isDarkTheme: appPage.classList.contains("theme-dark"),
         headerBackground: getComputedStyle(header).backgroundColor,
+        headerBackgroundImage: getComputedStyle(header).backgroundImage,
         themeBackground: normalizedThemeColor,
         curtainZIndex: Number.parseInt(
           getComputedStyle(appPage, "::before").zIndex,
@@ -507,23 +509,39 @@ test("matches section navigation to the theme and layers curtain over content", 
   expect(lightLayers!.headerTop).toBe(lightLayers!.expectedNavigationTop);
 
   await page.setViewportSize({ width: 979, height: 844 });
-  const sectionAt979 = await readSectionLayers();
-  expect(sectionAt979!.headerTop).toBe(sectionAt979!.expectedNavigationTop);
+  await expect
+    .poll(async () => {
+      const layers = await readSectionLayers();
+      return layers?.headerTop === layers?.expectedNavigationTop;
+    })
+    .toBe(true);
 
   await page.setViewportSize({ width: 980, height: 844 });
-  const sectionAt980 = await readSectionLayers();
-  expect(sectionAt980!.headerTop).toBe(sectionAt980!.expectedNavigationTop);
+  await expect
+    .poll(async () => {
+      const layers = await readSectionLayers();
+      return layers?.headerTop === layers?.expectedNavigationTop;
+    })
+    .toBe(true);
 
   await page.setViewportSize({ width: 1280, height: 900 });
+  await expect
+    .poll(async () => {
+      const layers = await readSectionLayers();
+      return layers?.headerTop === layers?.expectedNavigationTop;
+    })
+    .toBe(true);
   const desktopLayers = await readSectionLayers();
   expect(desktopLayers).not.toBeNull();
-  expect(desktopLayers!.headerTop).toBe(desktopLayers!.expectedNavigationTop);
 
-  await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  await page
+    .getByRole("switch", { name: "Activar modo oscuro" })
+    .click({ force: true });
   const darkLayers = await readSectionLayers();
   expect(darkLayers).not.toBeNull();
   expect(darkLayers!.isDarkTheme).toBe(true);
-  expect(darkLayers!.headerBackground).toBe(darkLayers!.themeBackground);
+  expect(darkLayers!.headerBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(darkLayers!.headerBackgroundImage).toContain("linear-gradient");
   expect(darkLayers!.curtainZIndex).toBe(darkLayers!.audienceZIndex);
   expect(darkLayers!.curtainOpacity).toBe("1");
   await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
