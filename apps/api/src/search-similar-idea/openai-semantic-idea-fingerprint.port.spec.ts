@@ -36,6 +36,46 @@ afterEach(() => {
 });
 
 describe("OpenAiSemanticIdeaFingerprintPort", () => {
+  it("records cached input tokens from the provider usage response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createResponse({
+        usage: {
+          input_tokens: 80,
+          input_tokens_details: { cached_tokens: 25 },
+          output_tokens: 10,
+        },
+        output: [
+          {
+            type: "message",
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({ semanticFingerprint: FINGERPRINT }),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const record = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiSemanticIdeaFingerprintPort({
+      apiKey: API_KEY,
+      usageRecorder: { record },
+    });
+
+    await port.createFingerprint(IDEA_TEXT, "registered-user");
+
+    expect(record).toHaveBeenCalledWith({
+      userId: "registered-user",
+      operation: "idea_fingerprint",
+      model: "gpt-5.4-mini",
+      inputTokens: 80,
+      cachedInputTokens: 25,
+      outputTokens: 10,
+    });
+  });
+
   it("requests a short canonical meaning and disables provider storage", async () => {
     const fetchMock = vi
       .fn()

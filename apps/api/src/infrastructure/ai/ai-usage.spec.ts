@@ -30,6 +30,9 @@ describe("AI usage metrics", () => {
     expect(
       calculateEstimatedCostUsd("gpt-5.4-mini", 1_000_000, 0, 1_000_000),
     ).toBe(0.075);
+    expect(
+      calculateEstimatedCostUsd("gpt-5.4-mini", 1_000_000, 0, 250_000),
+    ).toBe(0.58125);
   });
 
   it("reads cached token usage and rejects counts above total input", () => {
@@ -57,6 +60,21 @@ describe("AI usage metrics", () => {
     { input_tokens: 1.5, output_tokens: 3 },
     { input_tokens: 2, output_tokens: -1 },
     { input_tokens: Number.MAX_SAFE_INTEGER + 1, output_tokens: 3 },
+    {
+      input_tokens: 5,
+      input_tokens_details: { cached_tokens: -1 },
+      output_tokens: 1,
+    },
+    {
+      input_tokens: 5,
+      input_tokens_details: { cached_tokens: 1.5 },
+      output_tokens: 1,
+    },
+    {
+      input_tokens: 5,
+      input_tokens_details: { cached_tokens: "2" },
+      output_tokens: 1,
+    },
   ])("rejects unsafe or negative token counts: %j", (usage) => {
     expect(readTokenUsage({ usage })).toBeNull();
   });

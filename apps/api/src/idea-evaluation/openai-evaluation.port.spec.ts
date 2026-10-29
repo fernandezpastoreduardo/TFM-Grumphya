@@ -61,7 +61,11 @@ function createResponse(body: unknown, status = 200): Response {
 
 function createOpenAiResponse(
   decision: unknown,
-  usage?: { input_tokens: number; output_tokens: number },
+  usage?: {
+    input_tokens: number;
+    input_tokens_details?: { cached_tokens: number };
+    output_tokens: number;
+  },
 ): Response {
   return createResponse({
     output: [
@@ -90,6 +94,34 @@ afterEach(() => {
 });
 
 describe("OpenAiEvaluationPort", () => {
+  it("records cached input tokens from the provider usage response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createOpenAiResponse(MODEL_DECISION, {
+        input_tokens: 100,
+        input_tokens_details: { cached_tokens: 60 },
+        output_tokens: 20,
+      }),
+    );
+    const record = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiEvaluationPort({
+      apiKey: API_KEY,
+      model: MODEL_NAME,
+      usageRecorder: { record },
+    });
+
+    await port.evaluate({ ...createInput(), userId: "registered-user" });
+
+    expect(record).toHaveBeenCalledWith({
+      userId: "registered-user",
+      operation: "idea_evaluation",
+      model: MODEL_NAME,
+      inputTokens: 100,
+      cachedInputTokens: 60,
+      outputTokens: 20,
+    });
+  });
+
   it("requests a strict decision with a newly generated tone-aware headline", async () => {
     const fetchMock = vi
       .fn()

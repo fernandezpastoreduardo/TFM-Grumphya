@@ -48,6 +48,54 @@ afterEach(() => {
 });
 
 describe("OpenAiIdeaEquivalencePort", () => {
+  it("records cached input tokens from the provider usage response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createResponse({
+        usage: {
+          input_tokens: 90,
+          input_tokens_details: { cached_tokens: 45 },
+          output_tokens: 15,
+        },
+        output: [
+          {
+            type: "message",
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  decisions: [{ candidateIndex: 0, sameIdea: true }],
+                  headline: GENERATED_HEADLINE,
+                }),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const record = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiIdeaEquivalencePort({
+      apiKey: API_KEY,
+      usageRecorder: { record },
+    });
+
+    await port.classifyIdeas(
+      IDEA_TEXT,
+      FINGERPRINT,
+      [SAFE_TITLE],
+      "registered-user",
+    );
+
+    expect(record).toHaveBeenCalledWith({
+      userId: "registered-user",
+      operation: "idea_similarity",
+      model: "gpt-5.4-mini",
+      inputTokens: 90,
+      cachedInputTokens: 45,
+      outputTokens: 15,
+    });
+  });
+
   it("compares a semantic fingerprint with safe titles without storing provider state", async () => {
     const fetchMock = vi.fn().mockResolvedValue(createJudgeResponse([true]));
     vi.stubGlobal("fetch", fetchMock);
