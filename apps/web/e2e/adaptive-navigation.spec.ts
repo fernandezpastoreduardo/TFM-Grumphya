@@ -95,6 +95,108 @@ test("switches section navigation when desktop content no longer fits after resi
   await expect(menuTrigger).toHaveAttribute("aria-expanded", "false");
 });
 
+test("limits desktop nav hover to visible links and keeps the mobile menu interactive", async ({
+  page,
+}) => {
+  await page.setViewportSize(WIDE_DESKTOP);
+  await page.goto("/precios");
+  await expect(page.locator(".site-header")).not.toHaveClass(
+    /navigation-overflow/,
+  );
+  const visibleNavigationLink = page.locator('.site-nav a[href="/precios"]');
+  await expect(visibleNavigationLink).toBeVisible();
+  const visibleLinkBox = await visibleNavigationLink.boundingBox();
+  expect(visibleLinkBox).not.toBeNull();
+  if (visibleLinkBox) {
+    await page.mouse.move(
+      visibleLinkBox.x + visibleLinkBox.width / 2,
+      visibleLinkBox.y + visibleLinkBox.height / 2,
+    );
+  }
+  await expect
+    .poll(() =>
+      visibleNavigationLink.evaluate((link) => link.matches(":hover")),
+    )
+    .toBe(true);
+
+  await page.setViewportSize(NARROW_DESKTOP);
+  let role: "user" | "admin" = "user";
+  await page.route("**/api/auth/refresh", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ accessToken: "e2e-overflow-session" }),
+    }),
+  );
+  await page.route("**/api/account/profile", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(getAccountProfile(role)),
+    }),
+  );
+
+  for (const pagePath of [
+    "/lo-peor-de-lo-peor",
+    "/precios",
+    "/panel-control",
+  ]) {
+    role = pagePath === "/panel-control" ? "admin" : "user";
+    await page.goto(pagePath);
+
+    const header = page.locator(".site-header");
+    const navigation = header.locator(".site-nav");
+    const menuTrigger = header.locator(".mobile-menu-trigger");
+    await expect(header).toHaveClass(/navigation-overflow/);
+    await expect(navigation).toBeHidden();
+    await expect(navigation).toHaveCSS("pointer-events", "none");
+    await expect(menuTrigger).toBeVisible();
+
+    const headerBox = await header.boundingBox();
+    const navigationBox = await navigation.boundingBox();
+    expect(headerBox).not.toBeNull();
+    expect(navigationBox).not.toBeNull();
+    if (!headerBox || !navigationBox) continue;
+
+    const pointerPosition = {
+      x: navigationBox.x + navigationBox.width / 2,
+      y: headerBox.y + headerBox.height / 2,
+    };
+    await page.mouse.move(pointerPosition.x, pointerPosition.y);
+    const pointerTargetIsHiddenLink = await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.closest(".site-nav a"),
+      pointerPosition,
+    );
+    expect(pointerTargetIsHiddenLink).toBeNull();
+    await expect(menuTrigger).not.toHaveAttribute("aria-expanded", "true");
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/lo-peor-de-lo-peor");
+
+  const header = page.locator(".site-header");
+  const navigation = header.locator(".site-nav");
+  const menuTrigger = header.locator(".mobile-menu-trigger");
+  await expect(navigation).toBeHidden();
+  await expect(menuTrigger).toBeVisible();
+  await menuTrigger.click();
+
+  const mobileNavigation = page
+    .getByRole("navigation", { name: "Secciones principales" })
+    .last();
+  await expect(mobileNavigation).toBeVisible();
+  const mobileLinks = mobileNavigation.getByRole("link");
+  await mobileLinks.nth(2).hover();
+  await expect(mobileLinks.nth(2)).toHaveCSS(
+    "background-color",
+    "rgb(11, 176, 183)",
+  );
+  await expect(mobileLinks.nth(3)).not.toHaveCSS(
+    "background-color",
+    "rgb(11, 176, 183)",
+  );
+});
+
 test("keeps signed-in actions to the left of the theme switch during desktop overflow", async ({
   page,
 }) => {
