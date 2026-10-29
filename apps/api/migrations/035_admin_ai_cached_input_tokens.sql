@@ -1,3 +1,4 @@
+-- deployment-rollback-compatible: true
 ALTER TABLE admin_ai_usage_events
   ADD COLUMN IF NOT EXISTS cached_input_tokens integer NOT NULL DEFAULT 0;
 

@@ -239,6 +239,19 @@ test_all_time_ranking_migration_is_rollback_compatible() {
   cleanup_fixture
 }
 
+test_ai_cached_input_migration_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" \
+    "$(<"$SCRIPT_DIR/../apps/api/migrations/035_admin_ai_cached_input_tokens.sql")" \
+    '035_admin_ai_cached_input_tokens.sql'
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'the AI cached-input migration was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after compatible AI cached-input migration'
+  cleanup_fixture
+}
+
 test_approved_illuminado_repricing_migration_is_rollback_compatible() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -464,6 +477,7 @@ test_gateway_accepts_only_allowlisted_commands() {
 for test_case in \
   test_deploy_ok \
   test_all_time_ranking_migration_is_rollback_compatible \
+  test_ai_cached_input_migration_is_rollback_compatible \
   test_approved_illuminado_repricing_migration_is_rollback_compatible \
   test_illuminado_repricing_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_allowlist_requires_exact_migration_name \
