@@ -16,8 +16,14 @@ function readSavedTheme(): Theme {
   }
 }
 
-export function usePersistentTheme() {
-  const [theme, setTheme] = useState<Theme>(readSavedTheme);
+export function usePersistentTheme(deferInitialRead = false) {
+  const [theme, setTheme] = useState<Theme>(() =>
+    deferInitialRead ? DEFAULT_THEME : readSavedTheme(),
+  );
+
+  useEffect(() => {
+    if (deferInitialRead) setTheme(readSavedTheme());
+  }, [deferInitialRead]);
 
   useEffect(() => {
     try {

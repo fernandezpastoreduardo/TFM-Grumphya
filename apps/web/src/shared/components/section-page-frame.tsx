@@ -50,6 +50,7 @@ function SectionHeader({
   headerRef,
   navigationRef,
   hasNavigationOverflow,
+  currentPath,
   theme,
   onThemeToggle,
   isMenuOpen,
@@ -64,6 +65,7 @@ function SectionHeader({
   headerRef: Ref<HTMLElement>;
   navigationRef: Ref<HTMLElement>;
   hasNavigationOverflow: boolean;
+  currentPath: string;
   theme: "light" | "dark";
   onThemeToggle: () => void;
   isMenuOpen: boolean;
@@ -96,9 +98,7 @@ function SectionHeader({
           <a
             href={item.path}
             key={item.path}
-            aria-current={
-              item.path === window.location.pathname ? "page" : undefined
-            }
+            aria-current={item.path === currentPath ? "page" : undefined}
           >
             {item.label}
           </a>
@@ -190,14 +190,16 @@ function SectionHeroMascot({
 
 export function SectionPageFrame({
   page,
+  currentPath = typeof window === "undefined" ? "/" : window.location.pathname,
   children,
   showHero = true,
 }: {
   page: SectionPageMeta;
+  currentPath?: string;
   children: ReactNode;
   showHero?: boolean;
 }) {
-  const { theme, toggleTheme } = usePersistentTheme();
+  const { theme, toggleTheme } = usePersistentTheme(currentPath === "/precios");
   const {
     isOpen: isMenuOpen,
     toggle: toggleMenu,
@@ -217,6 +219,7 @@ export function SectionPageFrame({
           headerRef={headerRef}
           navigationRef={navigationRef}
           hasNavigationOverflow={hasNavigationOverflow}
+          currentPath={currentPath}
           theme={theme}
           onThemeToggle={toggleTheme}
           isMenuOpen={isMenuOpen}
@@ -266,9 +269,7 @@ export function SectionPageFrame({
                 <nav id="site-sections-menu" aria-label="Secciones principales">
                   <a
                     href="/"
-                    aria-current={
-                      window.location.pathname === "/" ? "page" : undefined
-                    }
+                    aria-current={currentPath === "/" ? "page" : undefined}
                   >
                     Inicio
                   </a>
@@ -277,9 +278,7 @@ export function SectionPageFrame({
                       href={item.path}
                       key={item.path}
                       aria-current={
-                        item.path === window.location.pathname
-                          ? "page"
-                          : undefined
+                        item.path === currentPath ? "page" : undefined
                       }
                     >
                       {item.label}

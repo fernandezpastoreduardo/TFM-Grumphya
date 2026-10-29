@@ -234,7 +234,7 @@ export function SectionPage({ path }: { path: string }) {
   const page = PAGE_META[path];
   if (!page) return <ErrorPages status="404" />;
   return (
-    <SectionPageFrame page={page}>
+    <SectionPageFrame page={page} currentPath={path}>
       <SectionContent path={path} />
     </SectionPageFrame>
   );

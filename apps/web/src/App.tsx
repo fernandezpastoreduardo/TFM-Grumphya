@@ -34,7 +34,9 @@ const PREVIEW_ERROR_PATHS: Record<string, ErrorPageStatus> = {
 
 type AuthenticatedRole = "user" | "admin";
 
-export function App() {
+export function App({ initialPath }: { initialPath?: string } = {}) {
+  const path = initialPath ?? window.location.pathname;
+
   useEffect(
     () =>
       subscribeToSessionChanges(() => {
@@ -63,16 +65,15 @@ export function App() {
             </LoadingSkeleton>
           }
         >
-          <AppRoute />
+          <AppRoute path={path} />
         </Suspense>
-        <CookieNotice />
+        <CookieNotice deferInitialStorage={path === "/precios"} />
       </>
     </ErrorPagesBoundary>
   );
 }
 
-function AppRoute() {
-  const path = window.location.pathname;
+function AppRoute({ path }: { path: string }) {
   if (import.meta.env.DEV && path in PREVIEW_ERROR_PATHS) {
     return <ErrorPages status={PREVIEW_ERROR_PATHS[path]} />;
   }

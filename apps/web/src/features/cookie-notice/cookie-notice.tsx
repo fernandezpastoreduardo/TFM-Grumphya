@@ -9,14 +9,25 @@ const SUPPORTS_NATIVE_MODAL =
   typeof HTMLDialogElement !== "undefined" &&
   typeof HTMLDialogElement.prototype.showModal === "function";
 
-export function CookieNotice() {
-  const [isOpen, setIsOpen] = useState(() => !hasAcknowledgedNotice());
+export function CookieNotice({
+  deferInitialStorage = false,
+}: {
+  deferInitialStorage?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(() =>
+    deferInitialStorage ? false : !hasAcknowledgedNotice(),
+  );
   const dialogRef = useRef<HTMLDialogElement>(null);
   const firstButtonRef = useRef<HTMLButtonElement>(null);
   const lastLinkRef = useRef<HTMLAnchorElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (deferInitialStorage && !hasAcknowledgedNotice()) setIsOpen(true);
+  }, [deferInitialStorage]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     previousFocusRef.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -35,7 +46,7 @@ export function CookieNotice() {
     return () => {
       if (dialog.open) closeDialog(dialog);
     };
-  }, []);
+  }, [isOpen]);
 
   function closeNotice() {
     recordNoticeAcknowledgement();
