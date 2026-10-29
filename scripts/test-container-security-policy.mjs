@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { runInNewContext } from "node:vm";
 
 const DEPENDABOT_PATH = ".github/dependabot.yml";
@@ -9,6 +9,7 @@ const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
+const MIGRATIONS_DIRECTORY = "apps/api/migrations";
 const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
 const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
 const CADDY_SOURCE_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37";
@@ -23,6 +24,7 @@ const [
   workflow,
   nginxSpa,
   productionComposeSmoke,
+  migrationFiles,
 ] = await Promise.all([
   readFile(DEPENDABOT_PATH, "utf8"),
   readFile(CADDY_DOCKERFILE_PATH, "utf8"),
@@ -31,6 +33,7 @@ const [
   readFile(WORKFLOW_PATH, "utf8"),
   readFile(NGINX_SPA_PATH, "utf8"),
   readFile(PRODUCTION_COMPOSE_SMOKE_PATH, "utf8"),
+  readdir(MIGRATIONS_DIRECTORY),
 ]);
 
 function readLocationBlock(configuration, location) {
@@ -146,8 +149,8 @@ assert.match(
 );
 assert.match(
   webHealthcheck,
-  /wget -q -O \/dev\/null http:\/\/127\.0\.0\.1:8080\/index\.html/,
-  "the static web healthcheck must probe the built SPA entry point directly",
+  /wget -q -O \/dev\/null http:\/\/127\.0\.0\.1:8080\//,
+  "the static web healthcheck must probe the public root route",
 );
 
 const smokeStepStart = workflow.indexOf(
@@ -165,6 +168,23 @@ assert.ok(
     .slice(smokeStepStart, packageStepStart)
     .includes('bash scripts/test-production-compose.sh "${{ github.sha }}"'),
   "the production Compose smoke must use the exact scanned revision",
+);
+const qualityJobStart = workflow.indexOf("  quality-and-e2e:");
+const e2eJobStart = workflow.indexOf("\n  e2e:", qualityJobStart);
+const qualityJob = workflow.slice(qualityJobStart, e2eJobStart);
+const earlyGuardStep = qualityJob.indexOf(
+  "- name: Run production source preflight guards",
+);
+const installStep = qualityJob.indexOf("- run: pnpm install --frozen-lockfile");
+assert.ok(
+  earlyGuardStep >= 0 && earlyGuardStep < installStep,
+  "production source guards must run before dependency installation",
+);
+assert.ok(
+  qualityJob
+    .slice(earlyGuardStep, installStep)
+    .includes("node scripts/test-container-security-policy.mjs"),
+  "early production source guards must execute the container security policy checks",
 );
 const webImageStageStart = dockerfile.indexOf(
   "FROM nginx:1.30-alpine AS web-production",
@@ -348,9 +368,33 @@ assert.match(
 );
 assert.match(
   homeLocation,
-  /alias \/usr\/share\/nginx\/html\/index\.html;/,
-  "the root route must serve the HTML entry directly with its route-specific preload",
+  /try_files \/index\.html =404;/,
+  "the root route must resolve the HTML entry through the configured document root",
 );
+assert.doesNotMatch(
+  homeLocation,
+  /\balias\b/,
+  "the root route must not use alias, which can append index.html twice",
+);
+
+const newConventionMigrations = migrationFiles
+  .filter((file) => /^\d{3}_.+\.sql$/.test(file))
+  .filter((file) => Number.parseInt(file.slice(0, 3), 10) >= 29);
+const newConventionMigrationSources = await Promise.all(
+  newConventionMigrations.map((file) =>
+    readFile(`${MIGRATIONS_DIRECTORY}/${file}`, "utf8"),
+  ),
+);
+for (const [
+  index,
+  migrationSource,
+] of newConventionMigrationSources.entries()) {
+  assert.match(
+    migrationSource,
+    /^-- deployment-rollback-compatible: true(?:\r?\n|$)/,
+    `migration ${newConventionMigrations[index]} must declare rollback compatibility`,
+  );
+}
 const hashedAssetsLocation = readLocationBlock(
   nginxSpa,
   'location ~* "^/assets/.+[.-][A-Za-z0-9_-]{8,}\\.(?:js|css)$"',

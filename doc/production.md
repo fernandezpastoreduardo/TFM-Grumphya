@@ -13,18 +13,19 @@ Esta guía describe cómo operar Grumphya en un único VPS IONOS M+ con Docker C
 - PostgreSQL mantiene separado el usuario bootstrap `postgres`, cuya contraseña está en `postgres_admin_settings` y solo se monta en `db`, del usuario de runtime configurado en `database_settings`. La inicialización crea el usuario de runtime como propietario de la base, sin privilegios de superusuario; API, migrador y aprovisionador Jappy usan solo este rol limitado. La contraseña bootstrap no se entrega a la API.
 - Los archivos de secretos permanecen `root:root` con modo `0600` en el VPS. Los entrypoints de API y migraciones los leen al arrancar como root y bajan inmediatamente al usuario `node` antes de ejecutar la aplicación. El entrypoint de PostgreSQL lee los secretos antes de ceder el proceso a `postgres`; el script inicial recibe solo los datos que necesita. No amplíes los permisos de los archivos para resolver errores de lectura.
 
-Nginx publica la web desde `docker/nginx-spa.conf`: `/` sirve directamente el
-HTML de la SPA y envía una precarga de la ilustración principal de Home solo a
-viewports de al menos 768 px; `/index.html` usa `Cache-Control: no-cache`; los
+Nginx publica la web desde `docker/nginx-spa.conf`: `/` sirve el HTML de la SPA
+mediante `try_files /index.html =404;` y envía una precarga de la ilustración
+principal de Home solo a viewports de al menos 768 px; `/index.html` usa
+`Cache-Control: no-cache`; los
 bundles JavaScript y CSS con nombre versionado
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
-El healthcheck del servicio web solicita `/index.html` directamente a Nginx,
-para comprobar que el HTML estático existe y puede servirse sin depender del
-fallback de `/`. Permite 30 segundos de arranque inicial antes de contar
-fallos, para tolerar la carga fría del contenedor. El smoke de CI comprueba
-además `/` y las rutas SPA a través del proxy público local.
+El healthcheck del servicio web solicita `/` directamente a Nginx, así detecta
+fallos de la portada además de que el proceso responda. Permite 30 segundos de
+arranque inicial antes de contar fallos, para tolerar la carga fría del
+contenedor. El smoke de CI comprueba también `/` a través de Caddy y las rutas
+SPA por el recorrido público local.
 
 La red interna confía en el proxy Caddy por su dirección privada fija. Express usa `TRUST_PROXY=172.31.0.254/32`, la IP de Caddy en la red `backend`; Caddy determina la dirección remota del socket y la API no está expuesta a Internet. Si cambias las subredes o la IP de Caddy en Compose, actualiza esta allowlist. No configures `trust proxy=true` ni confíes en cabeceras reenviadas desde clientes.
 
@@ -166,7 +167,7 @@ Tras arrancar, Actions consulta la web, una ruta SPA y `/api/health` por HTTPS y
 
 ### Migraciones y seguridad del rollback
 
-Una reversión de imágenes no revierte PostgreSQL. Para cada migración nueva, crea el archivo `apps/api/migrations/*.sql`, regístralo también en `apps/api/src/infrastructure/database/run-migrations.ts` y añade la declaración exacta `-- deployment-rollback-compatible: true`. `pnpm migrations:check` compara ambos inventarios y forma parte de `pnpm quality:check`; si el archivo SQL queda fuera del registro, las pruebas de PostgreSQL crearían esquemas sin el cambio de estructura requerido por el código. Usa el patrón expand/contract: primero añade elementos compatibles con las dos versiones; elimina o renombra datos/columnas solo en una release posterior cuando la versión antigua ya no sea objetivo de rollback. El helper bloquea migraciones eliminadas o editadas y rechaza operaciones SQL reconocidas como destructivas, además de exigir la declaración.
+Una reversión de imágenes no revierte PostgreSQL. Para cada migración nueva, crea el archivo `apps/api/migrations/*.sql`, regístralo también en `apps/api/src/infrastructure/database/run-migrations.ts` y añade la declaración exacta `-- deployment-rollback-compatible: true`. Desde la migración numerada `029_` inclusive, el preflight estático de CI verifica que todas las migraciones numeradas empiecen con esa declaración; se ejecuta justo después del checkout y antes de configurar pnpm o instalar dependencias. `pnpm migrations:check` compara ambos inventarios y forma parte de `pnpm quality:check`; si el archivo SQL queda fuera del registro, las pruebas de PostgreSQL crearían esquemas sin el cambio de estructura requerido por el código. Usa el patrón expand/contract: primero añade elementos compatibles con las dos versiones; elimina o renombra datos/columnas solo en una release posterior cuando la versión antigua ya no sea objetivo de rollback. El helper bloquea migraciones eliminadas o editadas y rechaza operaciones SQL reconocidas como destructivas, además de exigir la declaración.
 
 La declaración es una revisión explícita del desarrollador, no una prueba matemática de compatibilidad; un análisis estático no puede demostrar que el comportamiento de una migración preserve todos los usos de la versión anterior. Revisa cada diff SQL y prueba migración, healthcheck y rollback de ambas imágenes con una base desechable antes de integrar una migración. Si una migración no puede ser compatible con la release anterior, no la publiques con el despliegue de producción: divide el cambio en releases expand/contract y conserva una copia externa reciente. Un fallo de migración bloquea el inicio de la nueva API; no se intenta reparar con `down -v` ni restaurar encima de los datos actuales.
 
