@@ -2,6 +2,31 @@ import { expect, test, type Page } from "@playwright/test";
 
 const DESKTOP_VIEWPORT = { width: 1200, height: 1000 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
+const SECTION_HERO_ROUTES = [
+  "/acreditaciones/DS-GRUMPHYA-2026-001",
+  "/lo-peor-de-lo-peor",
+  "/descargate",
+  "/humanos-notables",
+  "/buenas-practicas",
+  "/precios",
+  "/contacto",
+  "/login",
+  "/crear-cuenta",
+  "/perfil",
+  "/panel-control",
+  "/recuperar-contrasena",
+  "/restablecer-contrasena",
+  "/verificar-cuenta",
+  "/politica-de-privacidad",
+  "/terminos-y-condiciones",
+] as const;
+
+function getSectionHeroRole(route: string): "guest" | "user" | "admin" {
+  if (route === "/perfil") return "user";
+  if (route === "/panel-control") return "admin";
+  return "guest";
+}
+
 const HERO_ASSETS = [
   {
     path: "/humanos-notables",
@@ -76,6 +101,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
       return null;
     return {
       headingMarginBottom: getComputedStyle(heading).marginBottom,
+      headingMinHeight: getComputedStyle(heading).minHeight,
       workspaceMarginTop: getComputedStyle(workspace).marginTop,
       copyPaddingTop: getComputedStyle(copy).paddingTop,
       copyGap: getComputedStyle(copy).gap,
@@ -87,6 +113,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
 
   expect(desktopSpacing).toEqual({
     headingMarginBottom: "0px",
+    headingMinHeight: "0px",
     workspaceMarginTop: "12px",
     copyPaddingTop: "0px",
     copyGap: "20px",
@@ -115,9 +142,14 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
     .locator(".home-hero-layout > .home-hero-stage .home-creature")
     .boundingBox();
   const homeStageBox = await homeStage.boundingBox();
+  const homeFunctionalBox = await page
+    .locator(".home-functional-column")
+    .boundingBox();
   expect(homeMascotBox).not.toBeNull();
   expect(homeStageBox).not.toBeNull();
+  expect(homeFunctionalBox).not.toBeNull();
   expect(homeMascotBox!.width / homeStageBox!.width).toBeGreaterThan(0.8);
+  expect(homeStageBox!.height).toBeCloseTo(homeFunctionalBox!.height, 0);
   const homeAssetPath = "/assets/grumphya/home-grumpy-judge.webp";
   const homeAssetResponse = await page.request.get(homeAssetPath);
   expect(homeAssetResponse.ok()).toBe(true);
@@ -149,6 +181,105 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
     expect(await assetHasTransparentPixels(page, illustration.asset)).toBe(
       true,
     );
+  }
+});
+
+test("sizes every section hero to its copy on desktop", async ({ page }) => {
+  let authenticatedRole: "guest" | "user" | "admin" = "guest";
+  await page.route("**/api/auth/refresh", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ accessToken: "e2e-hero-session" }),
+    }),
+  );
+  await page.route("**/api/account/profile", (route) => {
+    if (authenticatedRole === "guest") {
+      return route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: "{}",
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: {
+          role: authenticatedRole,
+          email: "persona@example.es",
+          username: "PersonaE2E",
+          emailVerified: true,
+          createdAt: "2026-10-29T12:00:00.000Z",
+          publicRankingsOptIn: false,
+        },
+        plans: [],
+      }),
+    });
+  });
+
+  const assertHeroFollowsCopy = async (
+    route: string,
+    viewportWidth: number,
+  ) => {
+    authenticatedRole = getSectionHeroRole(route);
+    await page.setViewportSize({ width: viewportWidth, height: 1000 });
+    await page.goto(route);
+    const hero = page.locator(".section-hero");
+    await expect(hero).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`${route}$`));
+    if (route === "/perfil") {
+      await expect(
+        page.getByRole("heading", {
+          name: "Tu cuenta. Tus planes. Tus intentos.",
+        }),
+      ).toBeVisible();
+    }
+    if (route === "/panel-control") {
+      await expect(
+        page.getByRole("heading", { name: "Panel de control" }),
+      ).toBeVisible();
+    }
+
+    const geometry = await hero.evaluate((element) => {
+      const copyElement = element.querySelector(".section-hero-copy");
+      if (!copyElement) return null;
+      const heroStyle = getComputedStyle(element);
+      const mascot = element.querySelector(".section-hero-mascot");
+      return {
+        height: element.getBoundingClientRect().height,
+        copyHeight: copyElement.getBoundingClientRect().height,
+        verticalPadding:
+          Number.parseFloat(heroStyle.paddingTop) +
+          Number.parseFloat(heroStyle.paddingBottom) +
+          Number.parseFloat(heroStyle.borderTopWidth) +
+          Number.parseFloat(heroStyle.borderBottomWidth),
+        mascotPosition: mascot ? getComputedStyle(mascot).position : null,
+        mascotHeight: mascot?.offsetHeight ?? null,
+      };
+    });
+
+    expect(geometry, `${route} should render hero copy`).not.toBeNull();
+    expect(geometry!.height - geometry!.copyHeight).toBeGreaterThanOrEqual(
+      geometry!.verticalPadding - 2,
+    );
+    expect(geometry!.height - geometry!.copyHeight).toBeLessThanOrEqual(
+      geometry!.verticalPadding + 2,
+    );
+    if (geometry!.mascotPosition !== null) {
+      expect(geometry!.mascotPosition).toBe("absolute");
+      expect(geometry!.mascotHeight).toBeGreaterThan(0);
+      expect(geometry!.height - geometry!.mascotHeight).toBeLessThanOrEqual(4);
+    }
+  };
+
+  for (const route of SECTION_HERO_ROUTES) {
+    await assertHeroFollowsCopy(route, 1200);
+  }
+  for (const viewportWidth of [980, 1600]) {
+    await assertHeroFollowsCopy("/crear-cuenta", viewportWidth);
+    await assertHeroFollowsCopy("/buenas-practicas", viewportWidth);
+    await assertHeroFollowsCopy("/politica-de-privacidad", viewportWidth);
   }
 });
 

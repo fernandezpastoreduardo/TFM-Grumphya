@@ -1722,3 +1722,28 @@
     grid-row: 1;
   }
 }
+
+@media (min-width: 980px) {
+  .section-hero,
+  .section-hero-rose,
+  .section-hero-blue,
+  .section-hero-mint,
+  .section-hero-calm {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .section-hero-copy {
+    max-width: min(780px, calc(100% - clamp(220px, 30vw, 360px)));
+  }
+
+  .section-hero-mascot {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    align-self: stretch;
+    width: clamp(220px, 30vw, 360px);
+    height: auto;
+    margin: 0;
+  }
+}

@@ -1050,8 +1050,8 @@
   bottom: 12px;
   width: min(56%, 195px);
   height: 77%;
-  background: url("/assets/grumphya/home-grumpy-judge.webp") center bottom / auto
-    100% no-repeat;
+  background: url("/assets/grumphya/home-grumpy-judge.webp") center bottom /
+    auto 100% no-repeat;
   filter: drop-shadow(2px 3px 0 #17212324);
   transform: translateX(50%) scaleX(-1);
 }
@@ -3187,6 +3187,17 @@
 .home-topbar.navigation-overflow .home-mobile-menu {
   display: block;
   z-index: 15;
+}
+
+@media (min-width: 980px) {
+  .home-heading {
+    min-height: 0;
+  }
+
+  .home-hero-stage {
+    align-self: stretch;
+    height: auto;
+  }
 }
 
 @media (min-width: 980px) {
