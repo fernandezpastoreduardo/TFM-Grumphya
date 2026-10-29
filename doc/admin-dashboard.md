@@ -48,8 +48,15 @@ comandos de cada entorno.
   todos los importes históricos de Iluminado a 3 € para reflejar el precio
   vigente también en los KPI anteriores; no cambia la vigencia de ninguna
   suscripción. No representan cobros ni contabilidad real.
-- Coste de IA: estimación en USD a partir de tokens reportados por llamadas
-  completadas a proveedores instrumentados. La semana empieza el lunes en
+- Coste de IA: estimación calculada en USD a partir de los tokens reportados
+  por llamadas completadas a proveedores instrumentados; el panel la convierte
+  y presenta en EUR con el tipo BCE fijo descrito abajo. Para `gpt-5.4-mini`,
+  los tokens de entrada cacheados usan la tarifa reducida oficial (0,075 USD por
+  millón frente a 0,75 USD por millón sin caché); la migración `035` empieza a
+  conservar ese contador. Eventos anteriores a `035` no guardan la separación y
+  mantienen su estimación antigua, sin posibilidad de recalcularlos fielmente.
+  Esta cifra no es la factura de OpenAI; el gasto confirmado en su consola es la
+  referencia para conciliarla. La semana empieza el lunes en
   `Europe/Madrid`. El histórico comienza con la migración `023`; no hay
   reconstrucción de llamadas anteriores. El gráfico muestra las últimas ocho
   semanas. El total y el gráfico incluyen a usuarios registrados, Jappy y

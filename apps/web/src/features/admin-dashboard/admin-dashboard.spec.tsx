@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminDashboard } from "./admin-dashboard";
@@ -145,14 +145,38 @@ describe("AdminDashboard", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Coste medio por cuenta · semana/),
+      screen.getByText(/Coste medio estimado por cuenta · semana/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/1,35\s*€/)).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Responder por correo" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/no se leen desde esta aplicación/),
     ).toBeInTheDocument();
+  });
+
+  it("converts Jappy's weekly and accumulated AI costs to euros", async () => {
+    render(<AdminDashboard />);
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+
+    const weeklyCosts = screen.getByRole("heading", {
+      name: "Esta semana",
+    }).parentElement;
+    const accumulatedCosts = screen.getByRole("heading", {
+      name: "Acumulado",
+    }).parentElement;
+
+    expect(weeklyCosts).not.toBeNull();
+    expect(accumulatedCosts).not.toBeNull();
+    expect(
+      within(weeklyCosts as HTMLElement).getByText("Jappy · admin")
+        .parentElement,
+    ).toHaveTextContent(/0,045\s*€/u);
+    expect(
+      within(accumulatedCosts as HTMLElement).getByText("Jappy · admin")
+        .parentElement,
+    ).toHaveTextContent(/0,18\s*€/u);
   });
 
   it("shows per-operation monthly maximums and accessible plan and finance charts", async () => {

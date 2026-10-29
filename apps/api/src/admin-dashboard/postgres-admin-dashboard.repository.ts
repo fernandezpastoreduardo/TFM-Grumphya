@@ -548,10 +548,11 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       record.model,
       record.inputTokens,
       record.outputTokens,
+      record.cachedInputTokens ?? 0,
     );
     await this.pool.query(
       `INSERT INTO admin_ai_usage_events
-        (user_id,actor_type,operation,model,input_tokens,output_tokens,estimated_cost_usd)
+        (user_id,actor_type,operation,model,input_tokens,cached_input_tokens,output_tokens,estimated_cost_usd)
        VALUES(
          $1,
          CASE
@@ -559,13 +560,14 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
            WHEN EXISTS (SELECT 1 FROM users WHERE id = $1::uuid AND role = 'admin') THEN 'admin'
            ELSE 'registered_user'
          END,
-         $2,$3,$4,$5,$6
+         $2,$3,$4,$5,$6,$7
        )`,
       [
         record.userId ?? null,
         record.operation,
         record.model,
         record.inputTokens,
+        record.cachedInputTokens ?? 0,
         record.outputTokens,
         estimatedCostUsd,
       ],

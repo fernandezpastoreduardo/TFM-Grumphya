@@ -17,6 +17,7 @@ describe("AI usage metrics", () => {
       readTokenUsage({ usage: { input_tokens: 2, output_tokens: 3 } }),
     ).toEqual({
       inputTokens: 2,
+      cachedInputTokens: 0,
       outputTokens: 3,
     });
     expect(
@@ -25,10 +26,55 @@ describe("AI usage metrics", () => {
     expect(readTokenUsage({ usage: "secret payload" })).toBeNull();
   });
 
+  it("estimates cached input tokens at the reduced cached rate", () => {
+    expect(
+      calculateEstimatedCostUsd("gpt-5.4-mini", 1_000_000, 0, 1_000_000),
+    ).toBe(0.075);
+    expect(
+      calculateEstimatedCostUsd("gpt-5.4-mini", 1_000_000, 0, 250_000),
+    ).toBe(0.58125);
+  });
+
+  it("reads cached token usage and rejects counts above total input", () => {
+    expect(
+      readTokenUsage({
+        usage: {
+          input_tokens: 5,
+          input_tokens_details: { cached_tokens: 3 },
+          output_tokens: 2,
+        },
+      }),
+    ).toEqual({ inputTokens: 5, cachedInputTokens: 3, outputTokens: 2 });
+    expect(
+      readTokenUsage({
+        usage: {
+          input_tokens: 2,
+          input_tokens_details: { cached_tokens: 3 },
+          output_tokens: 2,
+        },
+      }),
+    ).toBeNull();
+  });
+
   it.each([
     { input_tokens: 1.5, output_tokens: 3 },
     { input_tokens: 2, output_tokens: -1 },
     { input_tokens: Number.MAX_SAFE_INTEGER + 1, output_tokens: 3 },
+    {
+      input_tokens: 5,
+      input_tokens_details: { cached_tokens: -1 },
+      output_tokens: 1,
+    },
+    {
+      input_tokens: 5,
+      input_tokens_details: { cached_tokens: 1.5 },
+      output_tokens: 1,
+    },
+    {
+      input_tokens: 5,
+      input_tokens_details: { cached_tokens: "2" },
+      output_tokens: 1,
+    },
   ])("rejects unsafe or negative token counts: %j", (usage) => {
     expect(readTokenUsage({ usage })).toBeNull();
   });

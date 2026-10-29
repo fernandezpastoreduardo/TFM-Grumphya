@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(34);
+    ).toHaveLength(35);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -132,6 +132,33 @@ describe("controlled database migrations", () => {
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["034_illuminado_price_retroactive"],
+    );
+  });
+
+  it("preserves historical AI costs when adding cached input token counts", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes(
+        "ADD COLUMN IF NOT EXISTS cached_input_tokens integer",
+      ),
+    )?.[0];
+    expect(migrationSql).toContain("NOT NULL DEFAULT 0");
+    expect(migrationSql).toContain("cached_input_tokens <= input_tokens");
+    expect(migrationSql).not.toMatch(
+      /\b(?:UPDATE|DELETE|TRUNCATE|DROP)\b|estimated_cost_usd/i,
+    );
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["035_admin_ai_cached_input_tokens"],
     );
   });
 

@@ -14,6 +14,46 @@ afterEach(() => {
 });
 
 describe("OpenAiRoastReplyPort", () => {
+  it("records cached input tokens from the provider usage response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        status: "completed",
+        usage: {
+          input_tokens: 80,
+          input_tokens_details: { cached_tokens: 30 },
+          output_tokens: 12,
+        },
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({ reply: ROAST_REPLY }),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const record = vi.fn().mockResolvedValue(undefined);
+    globalThis.fetch = fetchMock;
+    const port = new OpenAiRoastReplyPort({
+      apiKey: "test-secret",
+      usageRecorder: { record },
+    });
+
+    await port.reply(ROAST_MESSAGE, "registered-user");
+
+    expect(record).toHaveBeenCalledWith({
+      operation: "roast",
+      model: "gpt-5.4-mini",
+      userId: "registered-user",
+      inputTokens: 80,
+      cachedInputTokens: 30,
+      outputTokens: 12,
+    });
+  });
+
   it("sends untrusted user text to the configured provider and returns a clean Spanish roast", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({

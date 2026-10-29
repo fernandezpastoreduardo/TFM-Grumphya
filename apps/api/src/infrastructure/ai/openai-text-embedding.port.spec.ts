@@ -31,6 +31,37 @@ afterEach(() => {
 });
 
 describe("OpenAiTextEmbeddingPort", () => {
+  it("records cached input tokens from the provider usage response", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createResponse({
+        model: MODEL,
+        data: [{ object: "embedding", index: 0, embedding: EMBEDDING }],
+        usage: {
+          input_tokens: 40,
+          input_tokens_details: { cached_tokens: 12 },
+          output_tokens: 0,
+        },
+      }),
+    );
+    const record = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", fetchMock);
+    const port = new OpenAiTextEmbeddingPort({
+      apiKey: API_KEY,
+      usageRecorder: { record },
+    });
+
+    await port.createEmbedding(IDEA_TEXT, "registered-user");
+
+    expect(record).toHaveBeenCalledWith({
+      userId: "registered-user",
+      operation: "idea_embedding",
+      model: MODEL,
+      inputTokens: 40,
+      cachedInputTokens: 12,
+      outputTokens: 0,
+    });
+  });
+
   it("posts the configured idea with the fixed model and explicit dimensions", async () => {
     const fetchMock = vi
       .fn()

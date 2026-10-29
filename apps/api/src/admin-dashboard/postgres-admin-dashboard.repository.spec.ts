@@ -740,6 +740,7 @@ describe("PostgresAdminDashboardRepository", () => {
         operation: "idea_evaluation",
         model,
         inputTokens,
+        cachedInputTokens: 0,
         outputTokens,
       });
 
@@ -748,11 +749,41 @@ describe("PostgresAdminDashboardRepository", () => {
         "idea_evaluation",
         model,
         inputTokens,
+        0,
         outputTokens,
         expectedCost,
       ]);
     },
   );
+
+  it("stores cached input tokens and discounts their estimated cost", async () => {
+    const query = vi.fn().mockResolvedValue({ rowCount: 1 });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await repository.recordAiUsage({
+      userId: "admin-user-id",
+      operation: "idea_evaluation",
+      model: "gpt-5.4-mini",
+      inputTokens: 1000,
+      cachedInputTokens: 1000,
+      outputTokens: 500,
+    });
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("cached_input_tokens,output_tokens"),
+      [
+        "admin-user-id",
+        "idea_evaluation",
+        "gpt-5.4-mini",
+        1000,
+        1000,
+        500,
+        0.002325,
+      ],
+    );
+  });
 
   it("records unclassified application errors and ignores invalid HTTP status codes", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
