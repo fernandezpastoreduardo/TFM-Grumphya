@@ -508,6 +508,11 @@ test("matches section navigation to the theme and layers curtain over content", 
   expect(lightLayers!.curtainOpacity).toBe("1");
   expect(lightLayers!.headerTop).toBe(lightLayers!.expectedNavigationTop);
 
+  const themeSwitch = page.locator(".site-theme-toggle");
+  await expect(themeSwitch).toHaveAttribute("aria-checked", "false");
+  await themeSwitch.click();
+  await expect(themeSwitch).toHaveAttribute("aria-checked", "true");
+
   await page.setViewportSize({ width: 979, height: 844 });
   await expect
     .poll(async () => {
@@ -534,9 +539,6 @@ test("matches section navigation to the theme and layers curtain over content", 
   const desktopLayers = await readSectionLayers();
   expect(desktopLayers).not.toBeNull();
 
-  await page
-    .getByRole("switch", { name: "Activar modo oscuro" })
-    .click({ force: true });
   const darkLayers = await readSectionLayers();
   expect(darkLayers).not.toBeNull();
   expect(darkLayers!.isDarkTheme).toBe(true);
@@ -548,7 +550,8 @@ test("matches section navigation to the theme and layers curtain over content", 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
-  await page.getByRole("switch", { name: "Activar modo claro" }).click();
+  await themeSwitch.click();
+  await expect(themeSwitch).toHaveAttribute("aria-checked", "false");
   await expect(page.locator(".site-header .theme-switch-thumb")).toBeEmpty();
 });
 
