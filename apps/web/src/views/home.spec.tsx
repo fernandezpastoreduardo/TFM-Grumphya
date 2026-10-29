@@ -13,6 +13,7 @@ const SHORT_INSULT_IDEA_TEXT = "idiota";
 const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
 const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
+const HOME_HERO_IMAGE_URL = "/assets/grumphya/home-grumpy-judge.webp";
 const LOADING_BUTTON_NAME = /evaluando/i;
 const SIMILAR_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const EVALUATION_RESPONSE = {
@@ -84,13 +85,39 @@ describe("Home", () => {
     const seal = screen
       .getByRole("contentinfo")
       .querySelector("a[href^='/acreditaciones/']");
-    expect(seal).toHaveAccessibleName(
-      /verificar demostración de desarrollo seguro/i,
+    const sealImage = await screen.findByAltText(
+      "Sello ilustrado de Desarrollo Seguro",
     );
-    expect(
-      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
-    ).toHaveAttribute("src", "/assets/desarrollo-seguro/sello-s4.webp");
+    expect(sealImage).toHaveAttribute(
+      "src",
+      "/assets/desarrollo-seguro/sello-s4.webp",
+    );
+    expect(sealImage).toHaveAttribute("width", "256");
     expect(seal).toHaveTextContent("Demostración académica");
+    expect(seal).toHaveAccessibleName(
+      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*ver ficha/i,
+    );
+  });
+
+  it("preloads the hero illustration at high priority", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
+    render(<Home />);
+
+    const imagePreload = document.head.querySelector(
+      `link[rel="preload"][as="image"][href="${HOME_HERO_IMAGE_URL}"]`,
+    );
+    const heroImages = document.querySelectorAll("img.home-creature-image");
+
+    expect(imagePreload).toHaveAttribute("fetchpriority", "high");
+    expect(heroImages.length).toBeGreaterThan(0);
+    heroImages.forEach((image) => {
+      expect(image).toHaveAttribute("src", HOME_HERO_IMAGE_URL);
+      expect(image).toHaveAttribute("fetchpriority", "high");
+      expect(image).toHaveAttribute("alt", "");
+    });
   });
 
   it("shows the admin control panel in the home navigation", async () => {

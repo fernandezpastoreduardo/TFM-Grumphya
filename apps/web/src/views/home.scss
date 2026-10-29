@@ -186,8 +186,6 @@
   width: 140px;
   height: 190px;
   flex: 0 0 140px;
-  background: url("/assets/grumphya/home-grumpy-judge.webp") center / contain
-    no-repeat;
   filter: drop-shadow(2px 3px 0 #286b7730);
   transform: scaleX(-1) rotate(3deg);
 }
@@ -1050,8 +1048,6 @@
   bottom: 12px;
   width: min(56%, 195px);
   height: 77%;
-  background: url("/assets/grumphya/home-grumpy-judge.webp") center bottom /
-    auto 100% no-repeat;
   filter: drop-shadow(2px 3px 0 #17212324);
   transform: translateX(50%) scaleX(-1);
 }
@@ -2288,9 +2284,18 @@
   bottom: 0;
   width: 92%;
   height: 100%;
-  background-position: center bottom;
-  background-size: contain;
   animation: mascot-float 5.8s ease-in-out 700ms infinite;
+}
+
+.home-creature-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.home-hero-stage .home-creature-image {
+  object-position: center bottom;
 }
 
 .home-page

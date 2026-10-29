@@ -123,20 +123,20 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   });
 
   const homeHero = await page
-    .locator(".home-hero-layout > .home-hero-stage .home-creature")
+    .locator(".home-hero-layout > .home-hero-stage .home-creature-image")
     .evaluate((element) => {
       const style = getComputedStyle(element);
       return {
-        backgroundImage: style.backgroundImage,
-        backgroundSize: style.backgroundSize,
-        backgroundPosition: style.backgroundPosition,
+        source: (element as HTMLImageElement).getAttribute("src"),
+        objectFit: style.objectFit,
+        objectPosition: style.objectPosition,
+        fetchPriority: (element as HTMLImageElement).fetchPriority,
       };
     });
-  expect(homeHero.backgroundImage).toContain(
-    "/assets/grumphya/home-grumpy-judge.webp",
-  );
-  expect(homeHero.backgroundSize).toBe("contain");
-  expect(homeHero.backgroundPosition).toBe("50% 100%");
+  expect(homeHero.source).toContain("/assets/grumphya/home-grumpy-judge.webp");
+  expect(homeHero.objectFit).toBe("contain");
+  expect(homeHero.objectPosition).toBe("50% 100%");
+  expect(homeHero.fetchPriority).toBe("high");
   const homeStage = page.locator(".home-hero-layout > .home-hero-stage");
   const homeMascotBox = await page
     .locator(".home-hero-layout > .home-hero-stage .home-creature")
