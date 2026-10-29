@@ -106,9 +106,9 @@ input:focus-visible {
 }
 
 .app-loading-skeleton .loading-skeleton-content {
-  width: min(100%, 1120px);
+  width: min(100% - 32px, 1216px);
   margin-inline: auto;
-  padding: 22px;
+  padding: 22px 0;
   gap: 20px;
 }
 
