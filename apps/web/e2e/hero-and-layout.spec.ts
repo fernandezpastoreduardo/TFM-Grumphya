@@ -308,6 +308,7 @@ test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
     "/assets/grumphya/audience-rounded.webp",
     "/assets/grumphya/stage-curtain-v2.webp",
     "/assets/grumphya/cookie-kick.webp",
+    "/assets/desarrollo-seguro/sello-s4-mobile.webp",
   ];
   for (const assetPath of webpAssets) {
     const response = await page.request.get(assetPath);

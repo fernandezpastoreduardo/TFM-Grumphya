@@ -9,6 +9,8 @@ import "./worst-ideas.scss";
 const WORST_IDEAS_ENDPOINT = "/api/worst-ideas";
 const WORST_IDEAS_ALL_TIME_ENDPOINT = "/api/worst-ideas/all-time";
 const ERROR_MESSAGE = "No se ha podido cargar el ranking. Prueba de nuevo.";
+// Keep in sync with the public ranking endpoint's maximum response size.
+const MAX_RANKING_ITEMS = 10;
 const EMPTY_WEEKLY_MESSAGE =
   "Esta semana no hay ideas en el ranking. Qué semana tan sospechosamente sensata.";
 const EMPTY_ALL_TIME_MESSAGE =
@@ -150,7 +152,7 @@ function RankingContent({
   if (state.status === "loading") {
     return (
       <LoadingSkeleton label={loadingLabel} className="idea-ranking-skeleton">
-        {Array.from({ length: 5 }, (_, index) => (
+        {Array.from({ length: MAX_RANKING_ITEMS }, (_, index) => (
           <div className="idea-ranking-skeleton-row" key={index}>
             <SkeletonBlock className="skeleton-ranking-position" />
             <SkeletonBlock className="skeleton-ranking-title" />

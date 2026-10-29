@@ -130,6 +130,9 @@ la lámina maestra está en
   mantiene al menos 4,5:1 de contraste con el fondo del textarea. Es una
   comprobación automatizada de ese par de texto y fondo; no amplía la revisión
   al resto de combinaciones visuales.
+- El enlace anónimo para crear una cuenta en Peores ideas conserva al menos
+  4,5:1 de contraste en ambos temas; la comprobación Playwright se ejecuta a
+  390 × 844 px.
 - En el panel de administración, los desgloses de coste se apilan en móvil y
   las tablas con muchas columnas se desplazan dentro de su propio contenedor,
   sin ampliar el ancho de la página.
@@ -143,7 +146,7 @@ la lámina maestra está en
   `contact-hero-phone.png`/`contact-message-tube.png` y
   `contact-form-vanishing.png` para el popup del formulario de demostración,
   `descargate-boxing-bag.png`/`roast-plan-callout.png`,
-  `worst-ideas-wall.png` y `login-credentials.png`/`login-privacy.png` para
+  `worst-ideas-wall.webp` y `login-credentials.png`/`login-privacy.png` para
   Descárgate, Peores ideas y Login. El hero de Mi cuenta usa
   `profile-account-shield.png`. Las dos ilustraciones de cada una de las
   secciones Buenas prácticas, Humanos notables y Contacto usan posturas y
@@ -272,13 +275,17 @@ rutas ni sustituyen la autenticación del servidor.
 
 Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
-El informe móvil de Lighthouse 13.5.0 de Home, capturado el 29 de octubre de
-2026, registró una puntuación de rendimiento de 0,76 y un LCP de 7,38 s. No se
-ha repetido la medición después de los cambios de optimización descritos aquí,
-así que no se afirma una mejora de métricas. Para completar la revisión, medir
-Home, Humanos notables, Contacto, Descárgate, alta y `/panel-control` con
-Lighthouse en escritorio y móvil, ambos temas y caché fría y caliente; revisar
-waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
+Los informes Lighthouse 13.5.0 de Home y Peores ideas capturados el 29 de
+octubre de 2026 entre las 15:34 y las 15:36 UTC son la línea base anterior a
+los cambios de assets, skeleton y contraste descritos aquí: Home registró
+rendimiento 0,79 y LCP 5,58 s; Peores ideas, rendimiento 0,56, LCP 6,63 s y
+CLS 0,458, con una contribución de 0,4509 atribuida al bloque del ranking. El
+informe móvil previo de Home, capturado ese día a las 14:05 UTC, registró
+rendimiento 0,76 y LCP 7,38 s. No hay una medición Lighthouse posterior a
+estos cambios, por lo que no se afirma una mejora en las métricas. Para
+completar la revisión, medir Home, Humanos notables, Contacto, Descárgate, alta
+y `/panel-control` con Lighthouse en escritorio y móvil, ambos temas y caché
+fría y caliente; revisar waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
 de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 900 px de lado máximo para su uso en interfaz y pesan 3.584.291 B en total
 (aproximadamente 3,58 MB). El nuevo
@@ -302,6 +309,13 @@ sigue siendo un PNG transparente de 900 × 900 px y 787.615 B (aprox. 769 KiB).
 En conjunto pesan 845.455 B (aprox. 0,85 MB / 0,81 MiB). El telón, el público,
 el hero de Home y el isotipo se optimizaron después del informe móvil citado;
 no se ha medido el efecto posterior en Lighthouse.
+`worst-ideas-wall.webp`, usado en el hero de Peores ideas, mide 600 × 480 px y
+pesa 44.232 B. El sello S4 del footer usa una variante móvil de 84 × 84 px y
+4.788 B para pantallas de hasta 767 px; en tamaños mayores usa la imagen
+principal de 128 × 128 px y 7.550 B. En el ranking público, el skeleton
+representa las diez filas máximas y conserva la altura de la tarjeta al recibir
+una respuesta con diez resultados; la comprobación E2E mide ese caso límite en
+móvil.
 `cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
 97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
 `cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de

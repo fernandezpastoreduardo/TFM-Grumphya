@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WorstIdeas, WorstIdeasAll, WorstIdeasAllTime } from "./worst-ideas";
@@ -54,6 +54,21 @@ describe("WorstIdeasAll", () => {
       }),
     );
     expect(screen.queryByText(/datos de ejemplo/i)).not.toBeInTheDocument();
+  });
+
+  it("reserves space for the maximum public ranking while loading", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    render(<WorstIdeasAll />);
+
+    await screen.findByRole("status");
+    await waitFor(() => {
+      expect(
+        document.querySelectorAll(".idea-ranking-skeleton-row"),
+      ).toHaveLength(10);
+    });
   });
 
   it("shows a useful error and a retry action when loading fails", async () => {

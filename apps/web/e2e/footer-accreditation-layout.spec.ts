@@ -148,6 +148,19 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
   await page.setViewportSize(MOBILE);
   await expect(seal).toBeVisible();
   await expect(caption).toBeVisible();
+  await seal.scrollIntoViewIfNeeded();
+  const mobileSealImage = seal.locator("img");
+  await expect
+    .poll(() => mobileSealImage.evaluate((image) => image.currentSrc))
+    .toContain("sello-s4-mobile.webp");
+  expect(
+    await page.evaluate(async () => {
+      const image = new Image();
+      image.src = "/assets/desarrollo-seguro/sello-s4-mobile.webp";
+      await image.decode();
+      return image.naturalWidth;
+    }),
+  ).toBe(84);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(MOBILE.width);
