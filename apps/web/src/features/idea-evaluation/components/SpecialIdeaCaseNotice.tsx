@@ -10,7 +10,7 @@ export function SpecialIdeaCaseNotice({ result }: SpecialIdeaCaseNoticeProps) {
     <section className={styles.notice} aria-labelledby="special-case-title">
       <img
         className={styles.mascot}
-        src="/assets/grumphya/special-idea-coffee-slippers.png"
+        src="/assets/grumphya/special-idea-coffee-slippers.svg"
         alt="Grumphya toma café con zapatillas de andar por casa con corazones"
       />
       <div className={styles.copy}>

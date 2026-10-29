@@ -10,7 +10,7 @@ export function EvaluationFailureNotice({
   return (
     <section className={styles.notice} role="alert">
       <img
-        src="/assets/grumphya/evaluation-error-spilled-coffee.png"
+        src="/assets/grumphya/evaluation-error-spilled-coffee.svg"
         alt="Grumphya triste junto a una taza de café derramada"
       />
       <p>{message}</p>

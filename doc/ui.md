@@ -53,8 +53,8 @@ la lámina maestra está en
 - En la Home de escritorio, el bloque de evaluación define la altura del hero y
   la ilustración se ajusta a ella. El titular no conserva una altura mínima
   propia.
-- El favicon apunta directamente a `/assets/grumphya/mascot-isotype.png`, el
-  mismo recurso PNG de Grumphya que ya sirve la navegación; no se mantiene una
+- El favicon apunta directamente a `/assets/grumphya/mascot-isotype.svg`, el
+  mismo recurso SVG de Grumphya que ya sirve la navegación; no se mantiene una
   copia de favicon con URL y caché separadas.
 - El texto del hero vive en HTML y sigue siendo editable. No forma parte de un
   asset gráfico.
@@ -71,11 +71,11 @@ la lámina maestra está en
 - El telón usa una cenefa horizontal en azul marino oscuro, a juego con las
   siluetas del público. Su borde inferior cae suavemente hacia los extremos y
   no incluye paños laterales ni el borde vertical de atado. Su volumen vertical
-  se redujo; el PNG conserva pliegues discretos y transparencia, sin filtros ni
+  se redujo; el WebP conserva pliegues discretos y transparencia, sin filtros ni
   desenfoque CSS. El público muestra
   más cabezas pequeñas vistas desde más lejos y ocupa una franja menos alta. El
   desenfoque de su borde superior y el desvanecido a transparencia forman parte
-  del PNG; CSS no aplica opacidad ni filtro al público.
+  del WebP; CSS no aplica opacidad ni filtro al público.
 - Los assets SVG revisados se guardan en
   `ideas-and-designs/revision-vectorial/revisados/`. Se colocan según la lámina
   maestra; no se autotracean ni se reinterpretan. El marco común usa el WebP
@@ -92,8 +92,8 @@ la lámina maestra está en
 - Las tarjetas de tono «Tengo la piel fina» y «Dame tu mejor golpe» son la
   excepción de color: mantienen sus fondos azul y rosa y texto negro también en
   modo oscuro. La tarjeta suave usa la pose con venda
-  `idea-tone-soft-bandage-v2.png`; la intensa, la pose de boxeo
-  `idea-tone-hard-boxing-v2.png`. Cada tarjeta integra la ilustración desde el
+  `idea-tone-soft-bandage-v2.svg`; la intensa, la pose de boxeo
+  `idea-tone-hard-boxing-v2.svg`. Cada tarjeta integra la ilustración desde el
   borde inferior izquierdo, dejando aire sobre la mascota y el texto a su
   derecha.
 - El cambio claro/oscuro se presenta como un switch con sol y luna en los
@@ -136,19 +136,19 @@ la lámina maestra está en
 - En el panel de administración, los desgloses de coste se apilan en móvil y
   las tablas con muchas columnas se desplazan dentro de su propio contenedor,
   sin ampliar el ancho de la página.
-- Las secciones tienen ilustraciones raster transparentes propias de Grumphya,
-  distintas entre sí y de los assets reutilizados del marco: `plans-coffee.png`
-  para Planes, `ultrachachi-reality-check.png` para su popup, y
-  `good-practices-checklist.png`/`good-practices-validate-idea.png` y las dos
-  figuras decorativas `good-practices-companion-pink.png`/
-  `good-practices-companion-yellow.png`,
-  `notable-humans-hero.png`/`notable-humans-callout.png`,
-  `contact-hero-phone.png`/`contact-message-tube.png` y
-  `contact-form-vanishing.png` para el popup del formulario de demostración,
-  `descargate-boxing-bag.png`/`roast-plan-callout.png`,
-  `worst-ideas-wall.webp` y `login-credentials.png`/`login-privacy.png` para
+- Las secciones tienen ilustraciones SVG transparentes propias de Grumphya,
+  distintas entre sí y de los assets reutilizados del marco: `plans-coffee.svg`
+  para Planes, `ultrachachi-reality-check.svg` para su popup, y
+  `good-practices-checklist.svg`/`good-practices-validate-idea.svg` y las dos
+  figuras decorativas `good-practices-companion-pink.svg`/
+  `good-practices-companion-yellow.svg`,
+  `notable-humans-hero.svg`/`notable-humans-callout.svg`,
+  `contact-hero-phone.svg`/`contact-message-tube.svg` y
+  `contact-form-vanishing.svg` para el popup del formulario de demostración,
+  `descargate-boxing-bag.svg`/`roast-plan-callout.svg`,
+  `worst-ideas-wall.webp` y `login-credentials.svg`/`login-privacy.svg` para
   Descárgate, Peores ideas y Login. El hero de Mi cuenta usa
-  `profile-account-shield.png`. Las dos ilustraciones de cada una de las
+  `profile-account-shield.svg`. Las dos ilustraciones de cada una de las
   secciones Buenas prácticas, Humanos notables y Contacto usan posturas y
   siluetas distintas. La mascota del hero de Planes se refleja horizontalmente
   para mirar hacia el contenido. El widget lateral de Contacto aporta su fondo
@@ -160,10 +160,10 @@ la lámina maestra está en
   aparece sentada como jueza con un mazo y sin bombilla tachada. Este asset
   reemplaza `home-idea-review.png`; el vestuario judicial es una excepción
   específica autorizada para esta escena y no modifica la regla general de
-  identidad. El hero de `/panel-control` usa `admin-dashboard-audit.png`, con
+  identidad. El hero de `/panel-control` usa `admin-dashboard-audit.svg`, con
   Grumphya examinando gráficas mediante una lupa. El hero de alta y su panel de
   plan usan
-  `create-account-hero.png` y `create-account-plan.png` respectivamente.
+  `create-account-hero.svg` y `create-account-plan.svg` respectivamente.
   La mascota del hero de Home se encuadra con `contain`, posición inferior y
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
@@ -173,14 +173,14 @@ la lámina maestra está en
   desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
   `ideas-and-designs/revision-vectorial/revisados/` y las escenas completas
-  `error-scene-404.png`, `error-scene-429.png` y `error-scene-500.png`. La
+  `error-scene-404.svg`, `error-scene-429.svg` y `error-scene-500.svg`. La
   especie, silueta, proporciones, cara gruñona, paleta turquesa y contorno
   grueso de Grumphya no se reinterpretan. Solo varían la pose y los accesorios
   sencillos que requiera cada sección; no se añaden rasgos físicos, ropa ni
-  expresiones alegres. Cada PNG debe conservar transparencia, carecer de texto
+  expresiones alegres. Cada ilustración debe conservar transparencia, carecer de texto
   y revisarse a tamaño real sobre fondos claros y oscuros. Si la mascota deja
   de parecer la misma, se descarta y se vuelve a generar. La primera muestra
-  validada para esta tanda es `plans-coffee.png`.
+  validada para esta tanda es `plans-coffee.svg`.
 - La sección Peores ideas usa el título «El muro de la vergüenza».
 - La versión de escritorio y la móvil conservan la misma identidad. En móvil,
   la composición se apila y mantiene separación entre grupos para que el
@@ -287,28 +287,16 @@ completar la revisión, medir Home, Humanos notables, Contacto, Descárgate, alt
 y `/panel-control` con Lighthouse en escritorio y móvil, ambos temas y caché
 fría y caliente; revisar waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
 de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
-900 px de lado máximo para su uso en interfaz y pesan 3.584.291 B en total
-(aproximadamente 3,58 MB). El nuevo
-`contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
-527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
-887.500 B (`create-account-plan.png`); `stage-curtain-v2.webp` es la cenefa
-azul oscuro transparente, de menor altura y sin desenfoque; mide 1440 × 533 px
-y pesa 14.590 B.
-`audience-rounded.webp` representa la platea como una multitud de Grumphyas
-pequeñas, vistas desde atrás y sin rasgos faciales. Conserva el lienzo y la
-proporción del original; sus cabezas redondeadas incluyen las orejas de la
-mascota y la curva sube ligeramente en los extremos. Las figuras están en
-sombra, sin iluminación. Mide 2172 × 724 px y pesa 49.772 B; conserva la
-transparencia y el borde superior suavizado dentro del WebP. El telón también
-conserva transparencia en WebP. CSS escala el
-público manteniendo su proporción y reserva una franja suficiente para que no
-se corten ni se aplasten las cabezas.
-`home-grumpy-judge.webp` mide 400 × 400 px y pesa 30.480 B. El isotipo
-`mascot-isotype.png` mide 144 × 117 px y pesa 27.360 B. `admin-dashboard-audit.png`
-sigue siendo un PNG transparente de 900 × 900 px y 787.615 B (aprox. 769 KiB).
-En conjunto pesan 845.455 B (aprox. 0,85 MB / 0,81 MiB). El telón, el público,
-el hero de Home y el isotipo se optimizaron después del informe móvil citado;
-no se ha medido el efecto posterior en Lighthouse.
+Los assets SVG sustituyen las ilustraciones PNG de la app, excepto el telón y el
+público, que se conservan como WebP. Las versiones activas son SVGOMG en
+`apps/web/public/assets/grumphya/`; las vectorizaciones adjuntas sin optimizar
+se archivan en
+`ideas-and-designs/revision-vectorial/revision-png-svg-fase1-2026-10/svg-vectorizados-originales-adjuntos-2026-10/`,
+y las salidas de SVGOMG junto con el detalle de pesos están en
+`ideas-and-designs/revision-vectorial/revision-png-svg-fase1-2026-10/svgomg-optimized/adjuntos-rondas-recientes-2026-10/`.
+El isotipo activo mide 144 × 117 px y pesa 19.013 B; `admin-dashboard-audit.svg`
+mide 900 × 900 px y pesa 73.585 B. No se ha medido el efecto de este cambio
+en Lighthouse.
 `worst-ideas-wall.webp`, usado en el hero de Peores ideas, mide 600 × 480 px y
 pesa 44.232 B. El sello S4 del footer usa una variante móvil de 84 × 84 px y
 4.788 B para pantallas de hasta 767 px; en tamaños mayores usa la imagen
@@ -321,12 +309,10 @@ móvil.
 `cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de
 645.212 B a 460.094 B (185.118 B, aproximadamente un 28,7 %); no se ha medido
 un cambio de puntuación Lighthouse.
-La nueva ilustración de Descárgate y los dos assets de las tarjetas de tono
-suman 1.095.690 B (aprox. 1,10 MB / 1,04 MiB), una reducción de 2.040.647 B
-(aprox. 65,1 %) frente a sus versiones anteriores. `descargate-boxing-bag.png`
-mide 1124 × 900 px y pesa 668.414 B; `idea-tone-soft-bandage-v2.png` mide
-512 × 554 px y pesa 224.619 B; `idea-tone-hard-boxing-v2.png` mide 512 × 512 px
-y pesa 202.657 B. Los tres conservan transparencia.
+Las versiones SVGOMG activas de la ilustración de Descárgate y las dos tarjetas
+de tono pesan 205.536 B en conjunto: `descargate-boxing-bag.svg`, 67.914 B;
+`idea-tone-soft-bandage-v2.svg`, 72.991 B; y `idea-tone-hard-boxing-v2.svg`,
+64.631 B. Las tres conservan transparencia.
 
 ## Ranking público de ideas rechazadas
 
@@ -410,7 +396,7 @@ Las rutas desconocidas muestran el 404 con la criatura indicando una puerta
 equivocada; los fallos de renderizado muestran el 500 con una llama pequeña y
 la mascota tranquila; y el límite temporal de creación de perfiles muestra el
 429 con la criatura impaciente. Las tres pantallas heredan navegación, telón,
-público, tema y pie del marco común; cada una usa una ilustración PNG
+público, tema y pie del marco común; cada una usa una ilustración SVG
 transparente que integra mascota, accesorios, proporción y solapes de su lámina:
 puerta, tarima y cartel de X en 404; brasero con llama en 500; señal de mano y
 barrera en 429. El copy y las acciones permanecen como contenido HTML.

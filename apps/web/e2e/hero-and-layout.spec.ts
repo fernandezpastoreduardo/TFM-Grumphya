@@ -31,32 +31,32 @@ const HERO_ASSETS = [
   {
     path: "/humanos-notables",
     mascotClass: "mascot-notable-humans",
-    asset: "/assets/grumphya/notable-humans-hero.png",
+    asset: "/assets/grumphya/notable-humans-hero.svg",
   },
   {
     path: "/buenas-practicas",
     mascotClass: "mascot-good-practices",
-    asset: "/assets/grumphya/good-practices-checklist.png",
+    asset: "/assets/grumphya/good-practices-checklist.svg",
   },
   {
     path: "/contacto",
     mascotClass: "mascot-contact",
-    asset: "/assets/grumphya/contact-hero-phone.png",
+    asset: "/assets/grumphya/contact-hero-phone.svg",
   },
   {
     path: "/precios",
     mascotClass: "mascot-plans",
-    asset: "/assets/grumphya/plans-coffee.png",
+    asset: "/assets/grumphya/plans-coffee.svg",
   },
   {
     path: "/descargate",
     mascotClass: "mascot-roast",
-    asset: "/assets/grumphya/descargate-boxing-bag.png",
+    asset: "/assets/grumphya/descargate-boxing-bag.svg",
   },
   {
     path: "/panel-control",
     mascotClass: "mascot-admin",
-    asset: "/assets/grumphya/admin-dashboard-audit.png",
+    asset: "/assets/grumphya/admin-dashboard-audit.svg",
     role: "admin",
   },
 ] as const;
@@ -157,11 +157,11 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   const toneIllustrations = [
     {
       selector: ".idea-tone-illustration-soft",
-      asset: "/assets/grumphya/idea-tone-soft-bandage-v2.png",
+      asset: "/assets/grumphya/idea-tone-soft-bandage-v2.svg",
     },
     {
       selector: ".idea-tone-illustration-hard",
-      asset: "/assets/grumphya/idea-tone-hard-boxing-v2.png",
+      asset: "/assets/grumphya/idea-tone-hard-boxing-v2.svg",
     },
   ] as const;
   await page
@@ -175,7 +175,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
     expect(renderedBackground).toContain(illustration.asset);
     const response = await page.request.get(illustration.asset);
     expect(response.ok()).toBe(true);
-    expect(response.headers()["content-type"]).toContain("image/png");
+    expect(response.headers()["content-type"]).toContain("image/svg+xml");
     expect(await assetHasTransparentPixels(page, illustration.asset)).toBe(
       true,
     );
@@ -413,21 +413,21 @@ test("aligns login content and keeps Good Practices editorial content in flow", 
     .evaluate((element) => getComputedStyle(element).position);
   expect(introPosition).toBe("static");
 
-  const mascotPath = "/assets/grumphya/good-practices-validate-idea.png";
+  const mascotPath = "/assets/grumphya/good-practices-validate-idea.svg";
   await expect(page.locator(".calm-mascot")).toHaveAttribute("src", mascotPath);
   const mascotResponse = await page.request.get(mascotPath);
   expect(mascotResponse.ok()).toBe(true);
-  expect(mascotResponse.headers()["content-type"]).toContain("image/png");
+  expect(mascotResponse.headers()["content-type"]).toContain("image/svg+xml");
   expect(await assetHasTransparentPixels(page, mascotPath)).toBe(true);
 
   const companionAssets = [
     {
       selector: ".practice-companion-pink",
-      asset: "/assets/grumphya/good-practices-companion-pink.png",
+      asset: "/assets/grumphya/good-practices-companion-pink.svg",
     },
     {
       selector: ".practice-companion-yellow",
-      asset: "/assets/grumphya/good-practices-companion-yellow.png",
+      asset: "/assets/grumphya/good-practices-companion-yellow.svg",
     },
   ] as const;
   for (const companion of companionAssets) {
@@ -437,7 +437,7 @@ test("aligns login content and keeps Good Practices editorial content in flow", 
     expect(background).toContain(companion.asset);
     const response = await page.request.get(companion.asset);
     expect(response.ok()).toBe(true);
-    expect(response.headers()["content-type"]).toContain("image/png");
+    expect(response.headers()["content-type"]).toContain("image/svg+xml");
     expect(await assetHasTransparentPixels(page, companion.asset)).toBe(true);
   }
 });
@@ -738,29 +738,27 @@ test("uses Grumphya's navigation logo as the site favicon", async ({
 }) => {
   await page.goto("/precios");
   const favicon = page.locator('link[rel="icon"]');
-  await expect(favicon).toHaveAttribute("type", "image/png");
+  await expect(favicon).toHaveAttribute("type", "image/svg+xml");
   await expect(favicon).toHaveAttribute(
     "href",
-    "/assets/grumphya/mascot-isotype.png",
+    "/assets/grumphya/mascot-isotype.svg",
   );
   const navigationLogo = await page
     .locator(".brand-mark")
     .evaluate((element) => getComputedStyle(element).backgroundImage);
-  expect(navigationLogo).toContain("/assets/grumphya/mascot-isotype.png");
+  expect(navigationLogo).toContain("/assets/grumphya/mascot-isotype.svg");
   const response = await page.request.get(
-    "/assets/grumphya/mascot-isotype.png",
+    "/assets/grumphya/mascot-isotype.svg",
   );
   expect(response.ok()).toBe(true);
-  expect(response.headers()["content-type"]).toContain("image/png");
+  expect(response.headers()["content-type"]).toContain("image/svg+xml");
   expect(
     await assetHasTransparentPixels(
       page,
-      "/assets/grumphya/mascot-isotype.png",
+      "/assets/grumphya/mascot-isotype.svg",
     ),
   ).toBe(true);
-  expect(Array.from((await response.body()).subarray(0, 8))).toEqual([
-    137, 80, 78, 71, 13, 10, 26, 10,
-  ]);
+  expect((await response.text()).trimStart()).toMatch(/^<svg\b/);
 });
 
 test("places the roast ranking beside the chat on desktop and below it on mobile", async ({
@@ -945,7 +943,7 @@ test("uses the section hero assets with transparent pixels", async ({
     expect(backgroundImage).toContain(hero.asset);
     const assetResponse = await page.request.get(hero.asset);
     expect(assetResponse.ok()).toBe(true);
-    expect(assetResponse.headers()["content-type"]).toContain("image/png");
+    expect(assetResponse.headers()["content-type"]).toContain("image/svg+xml");
 
     const assetIsTransparent = await assetHasTransparentPixels(
       page,
@@ -1152,12 +1150,12 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   ).toBeLessThanOrEqual(1);
 });
 
-test("serves the profile hero as a transparent PNG", async ({ page }) => {
+test("serves the profile hero as a transparent SVG", async ({ page }) => {
   await page.goto("/login");
-  const profileAsset = "/assets/grumphya/profile-account-shield.png";
+  const profileAsset = "/assets/grumphya/profile-account-shield.svg";
   const response = await page.request.get(profileAsset);
   expect(response.ok()).toBe(true);
-  expect(response.headers()["content-type"]).toContain("image/png");
+  expect(response.headers()["content-type"]).toContain("image/svg+xml");
   expect(await assetHasTransparentPixels(page, profileAsset)).toBe(true);
 });
 
@@ -1205,11 +1203,11 @@ test("keeps the contact illustration card white and uses the updated art", async
   expect(contactStyle.backgroundColor).toBe("rgb(255, 255, 255)");
   expect(contactStyle.transitionProperty).toContain("translate");
   expect(contactStyle.illustration).toContain(
-    "/assets/grumphya/contact-message-tube.png",
+    "/assets/grumphya/contact-message-tube.svg",
   );
   const contactIllustrationIsTransparent = await assetHasTransparentPixels(
     page,
-    "/assets/grumphya/contact-message-tube.png",
+    "/assets/grumphya/contact-message-tube.svg",
   );
   expect(contactIllustrationIsTransparent).toBe(true);
 
@@ -1272,7 +1270,7 @@ test("shows the anonymous contact modal with its mascot above the copy on mobile
   expect(
     await assetHasTransparentPixels(
       page,
-      "/assets/grumphya/contact-form-vanishing.png",
+      "/assets/grumphya/contact-form-vanishing.svg",
     ),
   ).toBe(true);
 });

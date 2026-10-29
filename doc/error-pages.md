@@ -2,9 +2,9 @@
 
 Las páginas de error usan el marco visual ya existente: navegación, telón,
 público, selector de tema y pie de página. El contenido de error no repite esas
-capas. Cada estado usa una ilustración PNG transparente que integra mascota,
+capas. Cada estado usa una ilustración SVG transparente optimizada que integra mascota,
 accesorios, escala, posición y solapes de la lámina aprobada:
-`apps/web/public/assets/grumphya/error-scene-{404,429,500}.png`. El escenario
+`apps/web/public/assets/grumphya/error-scene-{404,429,500}.svg`. El escenario
 se presenta como una sola capa decorativa para mantener la composición unida;
 el copy y las acciones siguen siendo HTML accesible. En escritorio, el centro
 visual de la escena queda alineado con el centro de la columna de información;

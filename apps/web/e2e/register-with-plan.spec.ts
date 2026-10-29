@@ -97,7 +97,7 @@ test("verifies the registration, activates the simulated purchase and deletes th
         (element) => getComputedStyle(element).backgroundImage,
       ),
     )
-    .toContain("/assets/grumphya/profile-account-shield.png");
+    .toContain("/assets/grumphya/profile-account-shield.svg");
   await expect(page.getByText(EMAIL)).toBeVisible();
   await expect(page.getByRole("link", { name: "Mi cuenta" })).toBeVisible();
   await expect(

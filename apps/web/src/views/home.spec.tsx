@@ -810,7 +810,7 @@ describe("Home", () => {
       }),
     ).toHaveAttribute(
       "src",
-      "/assets/grumphya/special-idea-coffee-slippers.png",
+      "/assets/grumphya/special-idea-coffee-slippers.svg",
     );
     expect(screen.getByRole("link", { name: "Me atrevo" })).toHaveAttribute(
       "href",
@@ -986,7 +986,7 @@ describe("Home", () => {
     });
     expect(failureIllustration).toHaveAttribute(
       "src",
-      "/assets/grumphya/evaluation-error-spilled-coffee.png",
+      "/assets/grumphya/evaluation-error-spilled-coffee.svg",
     );
     expect(errorAlert).toContainElement(failureIllustration);
     expect(errorAlert.textContent).not.toContain(TEST_IDEA_TEXT);

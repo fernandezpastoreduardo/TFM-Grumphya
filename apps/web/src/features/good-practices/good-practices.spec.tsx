@@ -23,7 +23,7 @@ describe("GoodPractices", () => {
     ).toBeInTheDocument();
     expect(container.querySelector(".calm-mascot")).toHaveAttribute(
       "src",
-      "/assets/grumphya/good-practices-validate-idea.png",
+      "/assets/grumphya/good-practices-validate-idea.svg",
     );
     expect(container.querySelectorAll(".practice-companion")).toHaveLength(2);
   });

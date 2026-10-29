@@ -154,7 +154,7 @@ export function Pricing() {
           </button>
           <img
             className="dialog-mascot"
-            src="/assets/grumphya/ultrachachi-reality-check.png"
+            src="/assets/grumphya/ultrachachi-reality-check.svg"
             alt=""
             aria-hidden="true"
           />

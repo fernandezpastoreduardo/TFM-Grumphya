@@ -1,7 +1,7 @@
 # Panel de administración
 
-El hero de `/panel-control` usa el PNG transparente
-`admin-dashboard-audit.png` (900 × 900 px, 787.615 B; aprox. 769 KiB):
+El hero de `/panel-control` usa el SVG transparente optimizado
+`admin-dashboard-audit.svg` (900 × 900 px, 73.585 B):
 Grumphya examina gráficas con una lupa para representar la revisión de métricas
 y datos operativos.
 

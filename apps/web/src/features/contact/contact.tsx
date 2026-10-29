@@ -103,7 +103,7 @@ function AnonymousContactDemo() {
           </button>
           <img
             className="contact-dialog-mascot"
-            src="/assets/grumphya/contact-form-vanishing.png"
+            src="/assets/grumphya/contact-form-vanishing.svg"
             alt="Grumphya señala un formulario que se desvanece"
           />
           <span className="eyebrow">Grumphya tiene algo que decir</span>
