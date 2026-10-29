@@ -232,9 +232,16 @@ for (const header of [
   "x-content-type-options",
   "x-frame-options",
   "referrer-policy",
+  "cross-origin-opener-policy",
+  "cross-origin-embedder-policy",
+  "content-security-policy",
+  "content-security-policy-report-only",
 ]) {
   assert.match(responseHeaders, new RegExp(`^${header}:`, "im"));
 }
+assert.match(responseHeaders, /^cross-origin-opener-policy:\s*same-origin\s*$/im);
+assert.match(responseHeaders, /^cross-origin-embedder-policy:\s*require-corp\s*$/im);
+assert.match(responseHeaders, /base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'/i);
 const permissionsPolicy = responseHeaders.match(/^permissions-policy:\s*(.+)$/im)?.[1];
 assert.ok(permissionsPolicy, "voice dictation Permissions-Policy must be present");
 assert.match(permissionsPolicy, /microphone=\(self\)/);
