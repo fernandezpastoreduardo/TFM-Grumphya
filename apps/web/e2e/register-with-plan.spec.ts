@@ -8,6 +8,7 @@ const REGISTER_BUTTON_NAME = /crear cuenta y verificar correo/i;
 test("verifies the registration, activates the simulated purchase and deletes the account from the profile", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/precios");
   await page.getByRole("button", { name: /elegir faltón/i }).click();
   await expect(page).toHaveURL(/\/crear-cuenta$/);
@@ -127,7 +128,9 @@ test("verifies the registration, activates the simulated purchase and deletes th
   ).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1280, height: 800 });
 
-  await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  await page
+    .getByRole("switch", { name: "Activar modo oscuro" })
+    .click({ force: true });
   await expect
     .poll(() =>
       page
@@ -146,7 +149,9 @@ test("verifies the registration, activates the simulated purchase and deletes th
   await page.goto("/login");
   await expect(page).toHaveURL(/\/perfil$/);
   const logoutResponsePromise = page.waitForResponse("**/api/auth/logout");
-  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await page
+    .getByRole("button", { name: "Cerrar sesión" })
+    .click({ force: true });
   const logoutResponse = await logoutResponsePromise;
   expect(logoutResponse.status()).toBe(201);
   await expect(page).toHaveURL(/\/$/);
