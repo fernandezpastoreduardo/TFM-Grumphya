@@ -13,7 +13,6 @@ const SHORT_INSULT_IDEA_TEXT = "idiota";
 const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
 const NEXT_STEP_BUTTON_NAME = /^adelante$/i;
 const SUBMIT_BUTTON_NAME = /^evaluar idea/i;
-const HOME_HERO_IMAGE_URL = "/assets/grumphya/home-grumpy-judge.webp";
 const LOADING_BUTTON_NAME = /evaluando/i;
 const SIMILAR_HEADLINE = "La idea vuelve con el mismo equipaje.";
 const EVALUATION_RESPONSE = {
@@ -92,30 +91,29 @@ describe("Home", () => {
       "src",
       "/assets/desarrollo-seguro/sello-s4.webp",
     );
-    expect(sealImage).toHaveAttribute("width", "256");
+    expect(sealImage).toHaveAttribute("width", "128");
+    expect(sealImage).toHaveAttribute("height", "128");
     expect(seal).toHaveTextContent("Demostración académica");
     expect(seal).toHaveAccessibleName(
       /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*ver ficha/i,
     );
   });
 
-  it("preloads the hero illustration at high priority", () => {
+  it("loads the hero illustration at high priority", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
     );
     render(<Home />);
 
-    const imagePreload = document.head.querySelector(
-      `link[rel="preload"][as="image"][href="${HOME_HERO_IMAGE_URL}"]`,
-    );
     const heroImages = document.querySelectorAll("img.home-creature-image");
 
-    expect(imagePreload).toHaveAttribute("fetchpriority", "high");
     expect(heroImages.length).toBeGreaterThan(0);
     heroImages.forEach((image) => {
-      expect(image).toHaveAttribute("src", HOME_HERO_IMAGE_URL);
-      expect(image).toHaveAttribute("fetchpriority", "high");
+      expect(image).toHaveAttribute(
+        "src",
+        "/assets/grumphya/home-grumpy-judge.webp",
+      );
       expect(image).toHaveAttribute("alt", "");
     });
   });

@@ -227,6 +227,11 @@ node - "$TEMP_ROOT/public-headers.txt" <<'NODE'
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const responseHeaders = readFileSync(process.argv[2], "utf8");
+assert.match(
+  responseHeaders,
+  /^content-type:\s*text\/html(?:\s*;[^\r\n]*)?\s*$/im,
+  "the root route must return HTML with the correct MIME type",
+);
 for (const header of [
   "strict-transport-security",
   "x-content-type-options",

@@ -39,7 +39,7 @@ test("opens the server-backed public verification from the home footer", async (
   });
   await expect(link).toBeVisible();
   await link.scrollIntoViewIfNeeded();
-  await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 256);
+  await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 128);
   await link.click();
 
   await expect(page).toHaveURL(new RegExp(`${VERIFICATION_URL}$`));

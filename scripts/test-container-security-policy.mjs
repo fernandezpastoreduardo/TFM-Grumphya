@@ -325,6 +325,22 @@ assert.match(
 );
 assert.match(htmlEntryLocation, /try_files \$uri =404;/);
 
+const homeLocation = readLocationBlock(nginxSpa, "location = / {");
+assert.match(
+  homeLocation,
+  /add_header Link "<\/assets\/grumphya\/home-grumpy-judge\.webp>; rel=preload; as=image; fetchpriority=high; media=\\"\(min-width: 768px\)\\"" always;/,
+  "the Home hero must be preloaded only for desktop from its initial response",
+);
+assert.match(
+  homeLocation,
+  /default_type text\/html;/,
+  "the root route must retain the HTML content type when serving the extensionless URI",
+);
+assert.match(
+  homeLocation,
+  /alias \/usr\/share\/nginx\/html\/index\.html;/,
+  "the root route must serve the HTML entry directly with its route-specific preload",
+);
 const hashedAssetsLocation = readLocationBlock(
   nginxSpa,
   'location ~* "^/assets/.+[.-][A-Za-z0-9_-]{8,}\\.(?:js|css)$"',

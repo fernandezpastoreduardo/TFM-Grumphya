@@ -46,8 +46,8 @@ export function AccreditationSeal() {
       {status === "demonstration" && (
         <img
           src="/assets/desarrollo-seguro/sello-s4.webp"
-          width="256"
-          height="256"
+          width="128"
+          height="128"
           alt="Sello ilustrado de Desarrollo Seguro"
           loading="lazy"
           decoding="async"

@@ -78,8 +78,8 @@ la lámina maestra está en
   del PNG; CSS no aplica opacidad ni filtro al público.
 - Los assets SVG revisados se guardan en
   `ideas-and-designs/revision-vectorial/revisados/`. Se colocan según la lámina
-  maestra; no se autotracean ni se reinterpretan. El marco común usa el PNG
-  transparente `stage-curtain-v2.png` y el WebP transparente
+  maestra; no se autotracean ni se reinterpretan. El marco común usa el WebP
+  transparente `stage-curtain-v2.webp` y el WebP transparente
   `audience-rounded.webp`; el haz de luz de Home se dibuja con CSS. Las capas
   de profundidad y adornos se resuelven con CSS.
 - Los rayos y formas de color rodean hero y acciones como paréntesis visuales,
@@ -126,6 +126,10 @@ la lámina maestra está en
   estados activos del nav usan el rosa de «Dame tu mejor golpe» con texto
   oscuro. En los errores, el código numérico conserva tinta oscura sobre el
   amarillo también en el tema oscuro.
+- En la comprobación móvil de Home a 412 × 823 px, el contador de caracteres
+  mantiene al menos 4,5:1 de contraste con el fondo del textarea. Es una
+  comprobación automatizada de ese par de texto y fondo; no amplía la revisión
+  al resto de combinaciones visuales.
 - En el panel de administración, los desgloses de coste se apilan en móvil y
   las tablas con muchas columnas se desplazan dentro de su propio contenedor,
   sin ampliar el ancho de la página.
@@ -268,31 +272,36 @@ rutas ni sustituyen la autenticación del servidor.
 
 Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
-No se midieron LCP, CLS ni INP, por lo
-que esta revisión no certifica Core Web Vitals. Para completarla, medir Home,
-Humanos notables, Contacto, Descárgate, alta y `/panel-control` con Lighthouse
-en escritorio y móvil, ambos temas y caché fría y caliente; revisar waterfall,
-bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
+El informe móvil de Lighthouse 13.5.0 de Home, capturado el 29 de octubre de
+2026, registró una puntuación de rendimiento de 0,76 y un LCP de 7,38 s. No se
+ha repetido la medición después de los cambios de optimización descritos aquí,
+así que no se afirma una mejora de métricas. Para completar la revisión, medir
+Home, Humanos notables, Contacto, Descárgate, alta y `/panel-control` con
+Lighthouse en escritorio y móvil, ambos temas y caché fría y caliente; revisar
+waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
 de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 900 px de lado máximo para su uso en interfaz y pesan 3.584.291 B en total
 (aproximadamente 3,58 MB). El nuevo
 `contact-message-tube.png` pesa 508.710 B y `profile-account-shield.png` pesa
 527.469 B. Los assets de alta pesan 922.763 B (`create-account-hero.png`) y
-887.500 B (`create-account-plan.png`); `stage-curtain-v2.png` es la cenefa
-azul oscuro transparente, de menor altura y sin desenfoque; pesa 103.564 B.
+887.500 B (`create-account-plan.png`); `stage-curtain-v2.webp` es la cenefa
+azul oscuro transparente, de menor altura y sin desenfoque; mide 1440 × 533 px
+y pesa 14.590 B.
 `audience-rounded.webp` representa la platea como una multitud de Grumphyas
 pequeñas, vistas desde atrás y sin rasgos faciales. Conserva el lienzo y la
 proporción del original; sus cabezas redondeadas incluyen las orejas de la
 mascota y la curva sube ligeramente en los extremos. Las figuras están en
-sombra, sin iluminación. Mide 2172 × 724 px y pesa 232.424 B; conserva la
-transparencia y el borde superior suavizado dentro del WebP. El otro asset del
-marco, `stage-curtain-v2.png`, también conserva transparencia. CSS escala el
+sombra, sin iluminación. Mide 2172 × 724 px y pesa 49.772 B; conserva la
+transparencia y el borde superior suavizado dentro del WebP. El telón también
+conserva transparencia en WebP. CSS escala el
 público manteniendo su proporción y reserva una franja suficiente para que no
 se corten ni se aplasten las cabezas.
-`home-grumpy-judge.webp` mide 400 × 400 px y pesa 130.500 B. `admin-dashboard-audit.png`
+`home-grumpy-judge.webp` mide 400 × 400 px y pesa 30.480 B. El isotipo
+`mascot-isotype.png` mide 144 × 117 px y pesa 27.360 B. `admin-dashboard-audit.png`
 sigue siendo un PNG transparente de 900 × 900 px y 787.615 B (aprox. 769 KiB).
-En conjunto pesan 918.115 B (aprox. 0,92 MB / 0,88 MiB). No se obtuvo una
-medición Lighthouse posterior a estas optimizaciones.
+En conjunto pesan 845.455 B (aprox. 0,85 MB / 0,81 MiB). El telón, el público,
+el hero de Home y el isotipo se optimizaron después del informe móvil citado;
+no se ha medido el efecto posterior en Lighthouse.
 `cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
 97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
 `cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de

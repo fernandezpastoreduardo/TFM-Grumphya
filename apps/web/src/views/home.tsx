@@ -29,7 +29,6 @@ import {
 
 const EVALUATION_FAILURE_MESSAGE =
   "La evaluación se ha torcido. Ni Grumphya puede arreglarlo con café. No se te ha descontado este intento. Prueba otra vez en un rato.";
-const HOME_HERO_IMAGE_SOURCE = "/assets/grumphya/home-grumpy-judge.webp";
 const THEME_LABEL = {
   LIGHT: "Activar modo oscuro",
   DARK: "Activar modo claro",
@@ -286,12 +285,6 @@ export function Home() {
     <div
       className={`home-page theme-${theme}${isMobileMenuOpen ? " menu-open" : ""}`}
     >
-      <link
-        rel="preload"
-        as="image"
-        href={HOME_HERO_IMAGE_SOURCE}
-        fetchPriority="high"
-      />
       <main className="home-shell">
         <header
           ref={homeTopbarRef}
@@ -432,11 +425,10 @@ export function Home() {
             <span className="home-creature">
               <img
                 className="home-creature-image"
-                src={HOME_HERO_IMAGE_SOURCE}
+                src="/assets/grumphya/home-grumpy-judge.webp"
                 width="400"
                 height="400"
                 alt=""
-                fetchPriority="high"
                 decoding="async"
               />
             </span>
@@ -553,11 +545,10 @@ export function Home() {
           <span className="home-creature">
             <img
               className="home-creature-image"
-              src={HOME_HERO_IMAGE_SOURCE}
+              src="/assets/grumphya/home-grumpy-judge.webp"
               width="400"
               height="400"
               alt=""
-              fetchPriority="high"
               decoding="async"
             />
           </span>

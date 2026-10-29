@@ -3,10 +3,15 @@ import { expect, test, type Page } from "@playwright/test";
 const HOME_URL = "/";
 const IDEA_CONTINUE_BUTTON = ".idea-submit";
 const IDEA_CHARACTER_COUNTER = ".idea-input-meta [aria-live='polite']";
+const IDEA_TEXTAREA = "#idea-text";
 const WCAG_AA_TEXT_CONTRAST = 4.5;
 
-async function getContrastRatio(page: Page, selector: string) {
-  return page.locator(selector).evaluate((element) => {
+async function getContrastRatio(
+  page: Page,
+  selector: string,
+  backgroundSelector?: string,
+) {
+  return page.locator(selector).evaluate((element, backgroundSelector) => {
     const parseColor = (color: string) => {
       const channels = [...color.matchAll(/[\d.]+/g)].map(([value]) =>
         Number(value),
@@ -32,11 +37,19 @@ async function getContrastRatio(page: Page, selector: string) {
         0.0722 * linearize(color.blue)
       );
     };
+
     const foreground = parseColor(getComputedStyle(element).color);
-    let background = parseColor("rgba(0, 0, 0, 0)");
+    let background = parseColor(getComputedStyle(element).backgroundColor);
     let ancestor: HTMLElement | null = element as HTMLElement;
 
     while (ancestor && background.alpha < 1) {
+      if (backgroundSelector) {
+        const target = document.querySelector(backgroundSelector);
+        if (target) {
+          background = parseColor(getComputedStyle(target).backgroundColor);
+          break;
+        }
+      }
       background = parseColor(getComputedStyle(ancestor).backgroundColor);
       ancestor = ancestor.parentElement;
     }
@@ -47,10 +60,13 @@ async function getContrastRatio(page: Page, selector: string) {
     const darker = Math.min(foregroundLuminance, backgroundLuminance);
 
     return (lighter + 0.05) / (darker + 0.05);
-  });
+  }, backgroundSelector);
 }
 
-test("keeps the Home form text at WCAG AA contrast", async ({ page }) => {
+test("keeps the Home form text at WCAG AA contrast on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 412, height: 823 });
   await page.goto(HOME_URL);
 
   const continueButton = page.locator(IDEA_CONTINUE_BUTTON).first();
@@ -62,6 +78,6 @@ test("keeps the Home form text at WCAG AA contrast", async ({ page }) => {
     await getContrastRatio(page, IDEA_CONTINUE_BUTTON),
   ).toBeGreaterThanOrEqual(WCAG_AA_TEXT_CONTRAST);
   expect(
-    await getContrastRatio(page, IDEA_CHARACTER_COUNTER),
+    await getContrastRatio(page, IDEA_CHARACTER_COUNTER, IDEA_TEXTAREA),
   ).toBeGreaterThanOrEqual(WCAG_AA_TEXT_CONTRAST);
 });

@@ -130,13 +130,11 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
         source: (element as HTMLImageElement).getAttribute("src"),
         objectFit: style.objectFit,
         objectPosition: style.objectPosition,
-        fetchPriority: (element as HTMLImageElement).fetchPriority,
       };
     });
   expect(homeHero.source).toContain("/assets/grumphya/home-grumpy-judge.webp");
   expect(homeHero.objectFit).toBe("contain");
   expect(homeHero.objectPosition).toBe("50% 100%");
-  expect(homeHero.fetchPriority).toBe("high");
   const homeStage = page.locator(".home-hero-layout > .home-hero-stage");
   const homeMascotBox = await page
     .locator(".home-hero-layout > .home-hero-stage .home-creature")
@@ -308,6 +306,7 @@ test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
   const webpAssets = [
     "/assets/grumphya/home-grumpy-judge.webp",
     "/assets/grumphya/audience-rounded.webp",
+    "/assets/grumphya/stage-curtain-v2.webp",
     "/assets/grumphya/cookie-kick.webp",
   ];
   for (const assetPath of webpAssets) {
@@ -322,8 +321,16 @@ test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
       getComputedStyle(document.querySelector(".home-page")!, "::after")
         .backgroundImage,
   );
+  const homeCurtainBackground = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector(".home-page")!, "::before")
+        .backgroundImage,
+  );
   expect(homeAudienceBackground).toContain(
     "/assets/grumphya/audience-rounded.webp",
+  );
+  expect(homeCurtainBackground).toContain(
+    "/assets/grumphya/stage-curtain-v2.webp",
   );
 
   await page.evaluate(() =>
@@ -344,6 +351,14 @@ test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
   );
   expect(sectionAudienceBackground).toContain(
     "/assets/grumphya/audience-rounded.webp",
+  );
+  const sectionCurtainBackground = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector(".app-page")!, "::before")
+        .backgroundImage,
+  );
+  expect(sectionCurtainBackground).toContain(
+    "/assets/grumphya/stage-curtain-v2.webp",
   );
 });
 
@@ -736,6 +751,12 @@ test("uses Grumphya's navigation logo as the site favicon", async ({
   );
   expect(response.ok()).toBe(true);
   expect(response.headers()["content-type"]).toContain("image/png");
+  expect(
+    await assetHasTransparentPixels(
+      page,
+      "/assets/grumphya/mascot-isotype.png",
+    ),
+  ).toBe(true);
   expect(Array.from((await response.body()).subarray(0, 8))).toEqual([
     137, 80, 78, 71, 13, 10, 26, 10,
   ]);
