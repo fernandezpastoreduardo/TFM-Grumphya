@@ -1,0 +1,72 @@
+[
+  {
+    "path": "/",
+    "manifestEntry": "src/views/home.tsx",
+    "developmentStyles": ["/src/views/home.scss"],
+    "requiredCopy": ["Antes de construirla,"]
+  },
+  {
+    "path": "/lo-peor-de-lo-peor",
+    "manifestEntry": "src/features/worst-ideas/worst-ideas.tsx",
+    "developmentStyles": ["/src/features/worst-ideas/worst-ideas.scss"],
+    "requiredCopy": ["El muro de la vergüenza"]
+  },
+  {
+    "path": "/descargate",
+    "manifestEntry": "src/features/roast/roast.tsx",
+    "developmentStyles": ["/src/features/roast/roast.scss"],
+    "requiredCopy": ["Descárgate a gusto"]
+  },
+  {
+    "path": "/humanos-notables",
+    "manifestEntry": "src/features/notable-humans/notable-humans.tsx",
+    "developmentStyles": ["/src/features/notable-humans/notable-humans.scss"],
+    "requiredCopy": ["Humanos notables"]
+  },
+  {
+    "path": "/buenas-practicas",
+    "manifestEntry": "src/features/good-practices/good-practices.tsx",
+    "developmentStyles": ["/src/features/good-practices/good-practices.scss"],
+    "requiredCopy": ["Primero el problema."]
+  },
+  {
+    "path": "/precios",
+    "manifestEntry": "src/features/pricing/pricing.tsx",
+    "developmentStyles": ["/src/features/pricing/pricing.scss"],
+    "requiredCopy": [
+      "Once usos. Sí, once.",
+      "Iluminado",
+      "Faltón",
+      "UltraChachi"
+    ]
+  },
+  {
+    "path": "/contacto",
+    "manifestEntry": "src/features/contact/contact.tsx",
+    "developmentStyles": ["/src/features/contact/contact.scss"],
+    "requiredCopy": ["¿Necesitas decirlo en voz alta?"]
+  },
+  {
+    "path": "/politica-de-privacidad",
+    "manifestEntry": "src/features/register-with-plan/privacy-policy.tsx",
+    "developmentStyles": [
+      "/src/shared/styles/account.scss",
+      "/src/features/register-with-plan/privacy-policy.scss"
+    ],
+    "requiredCopy": ["Política de privacidad"]
+  },
+  {
+    "path": "/terminos-y-condiciones",
+    "manifestEntry": "src/features/register-with-plan/terms-and-conditions.tsx",
+    "developmentStyles": ["/src/shared/styles/account.scss"],
+    "requiredCopy": ["Términos y condiciones"]
+  },
+  {
+    "path": "/acreditaciones/DS-GRUMPHYA-2026-001",
+    "manifestEntry": "src/features/accreditation-verification/accreditation-verification.tsx",
+    "developmentStyles": [
+      "/src/features/accreditation-verification/accreditation-verification.scss"
+    ],
+    "requiredCopy": ["Ficha pública de verificación"]
+  }
+]

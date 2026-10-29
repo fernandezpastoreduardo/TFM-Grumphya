@@ -58,6 +58,8 @@ const LOCAL_SPEECH_OPTIONS: SpeechRecognitionOptions = {
 const PERMISSION_ERRORS = new Set(["not-allowed", "service-not-allowed"]);
 
 export function isSpeechToTextSupported(): boolean {
+  if (typeof window === "undefined") return false;
+
   if (ANDROID_USER_AGENT_PATTERN.test(window.navigator.userAgent)) {
     return false;
   }

@@ -14,18 +14,14 @@ import {
   SkeletonBlock,
 } from "./shared/components/loading-skeleton";
 import { CookieNotice } from "./features/cookie-notice/cookie-notice";
+import { isPrerenderedPublicPath } from "./shared/prerendered-public-routes";
+import { SectionPage } from "./views/section-page";
 
 let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 
 const Home = lazy(() =>
   import("./views/home").then((module) => ({ default: module.Home })),
 );
-const SectionPage = lazy(() =>
-  import("./views/section-page").then((module) => ({
-    default: module.SectionPage,
-  })),
-);
-
 const PREVIEW_ERROR_PATHS: Record<string, ErrorPageStatus> = {
   "/__preview/errors/404": "404",
   "/__preview/errors/429": "429",
@@ -67,7 +63,7 @@ export function App({ initialPath }: { initialPath?: string } = {}) {
         >
           <AppRoute path={path} />
         </Suspense>
-        <CookieNotice deferInitialStorage={path === "/precios"} />
+        <CookieNotice deferInitialStorage={isPrerenderedPublicPath(path)} />
       </>
     </ErrorPagesBoundary>
   );

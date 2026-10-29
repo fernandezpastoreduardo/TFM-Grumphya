@@ -17,6 +17,19 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      try {
+        const savedTheme = window.localStorage.getItem("grumphya-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          document.querySelectorAll(".home-page, .app-page").forEach((page) => {
+            page.classList.remove("theme-light", "theme-dark");
+            page.classList.add(`theme-${savedTheme}`);
+          });
+        }
+      } catch {
+        // The default light theme remains available when browser storage is restricted.
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

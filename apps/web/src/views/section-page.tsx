@@ -119,86 +119,81 @@ const PAGE_META: Record<string, SectionPageMeta> = {
   },
 };
 
-const SECTION_CONTENT_BY_PATH: Record<
+const SECTION_CONTENT_LOADERS: Record<
   string,
-  LazyExoticComponent<ComponentType>
+  () => Promise<{ default: ComponentType }>
 > = {
-  [ACCREDITATION_VERIFICATION_URL]: lazy(() =>
+  [ACCREDITATION_VERIFICATION_URL]: () =>
     import("../features/accreditation-verification/accreditation-verification").then(
       (module) => ({ default: module.AccreditationVerification }),
     ),
-  ),
-  "/lo-peor-de-lo-peor": lazy(() =>
+  "/lo-peor-de-lo-peor": () =>
     import("../features/worst-ideas/worst-ideas").then((module) => ({
       default: module.WorstIdeas,
     })),
-  ),
-  "/descargate": lazy(() =>
+  "/descargate": () =>
     import("../features/roast/roast").then((module) => ({
       default: module.Roast,
     })),
-  ),
-  "/humanos-notables": lazy(() =>
+  "/humanos-notables": () =>
     import("../features/notable-humans/notable-humans").then((module) => ({
       default: module.NotableHumans,
     })),
-  ),
-  "/buenas-practicas": lazy(() =>
+  "/buenas-practicas": () =>
     import("../features/good-practices/good-practices").then((module) => ({
       default: module.GoodPractices,
     })),
-  ),
-  "/precios": lazy(() =>
+  "/precios": () =>
     import("../features/pricing/pricing").then((module) => ({
       default: module.Pricing,
     })),
-  ),
-  "/contacto": lazy(() =>
+  "/contacto": () =>
     import("../features/contact/contact").then((module) => ({
       default: module.Contact,
     })),
-  ),
-  "/crear-cuenta": lazy(() =>
+  "/crear-cuenta": () =>
     import("../features/register-with-plan/register-with-plan").then(
       (module) => ({ default: module.RegisterWithPlan }),
     ),
-  ),
-  "/perfil": lazy(() =>
+  "/perfil": () =>
     import("../features/user-profile/user-profile").then((module) => ({
       default: module.UserProfile,
     })),
-  ),
-  "/panel-control": lazy(() =>
+  "/panel-control": () =>
     import("../features/admin-dashboard/admin-dashboard").then((module) => ({
       default: module.AdminDashboard,
     })),
-  ),
-  "/recuperar-contrasena": lazy(() =>
+  "/recuperar-contrasena": () =>
     import("../features/password-reset/password-reset").then((module) => ({
       default: module.PasswordReset,
     })),
-  ),
-  "/restablecer-contrasena": lazy(() =>
+  "/restablecer-contrasena": () =>
     import("../features/password-reset/password-reset").then((module) => ({
       default: module.PasswordReset,
     })),
-  ),
-  "/verificar-cuenta": lazy(() =>
+  "/verificar-cuenta": () =>
     import("../features/register-with-plan/registration-verification").then(
       (module) => ({ default: module.RegistrationVerification }),
     ),
-  ),
-  "/politica-de-privacidad": lazy(() =>
+  "/politica-de-privacidad": () =>
     import("../features/register-with-plan/privacy-policy").then((module) => ({
       default: module.PrivacyPolicy,
     })),
-  ),
-  "/terminos-y-condiciones": lazy(() =>
+  "/terminos-y-condiciones": () =>
     import("../features/register-with-plan/terms-and-conditions").then(
       (module) => ({ default: module.TermsAndConditions }),
     ),
-  ),
 };
+
+const SECTION_CONTENT_BY_PATH: Record<
+  string,
+  LazyExoticComponent<ComponentType>
+> = Object.fromEntries(
+  Object.entries(SECTION_CONTENT_LOADERS).map(([path, load]) => [
+    path,
+    lazy(load),
+  ]),
+);
 
 const DEFAULT_SECTION_CONTENT = lazy(() =>
   import("../features/authentication/authentication-page").then((module) => ({

@@ -199,7 +199,7 @@ export function SectionPageFrame({
   children: ReactNode;
   showHero?: boolean;
 }) {
-  const { theme, toggleTheme } = usePersistentTheme(currentPath === "/precios");
+  const { theme, toggleTheme } = usePersistentTheme();
   const {
     isOpen: isMenuOpen,
     toggle: toggleMenu,

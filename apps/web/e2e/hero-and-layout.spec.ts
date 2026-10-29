@@ -165,7 +165,7 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
     },
   ] as const;
   await page
-    .getByRole("textbox", { name: /escribe, pega o dicta tu idea/i })
+    .getByRole("textbox", { name: /escribe o pega tu idea/i })
     .fill("Una app para compartir herramientas entre vecinos");
   await page.getByRole("button", { name: /adelante/i }).click();
   for (const illustration of toneIllustrations) {
@@ -1030,6 +1030,7 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/contacto");
+  await page.waitForLoadState("networkidle");
 
   const sectionMascot = page.locator(".section-mobile-mascot");
   const sectionContent = page.locator(".section-main > .contact-layout");
@@ -1074,6 +1075,7 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   );
 
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   const mobileHeroHeading = page.locator(".home-heading-copy h1");
   const mobileHeroDescription = page.locator(".home-rude-line");
   await expect(mobileHeroHeading).toBeVisible();
@@ -1105,6 +1107,7 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   ).toBeVisible();
   await mobileMenu.getByRole("link", { name: "Contacto" }).click();
   await expect(page).toHaveURL(/\/contacto$/);
+  await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "Abrir menú de secciones" }).click();
   const sectionMenu = page.getByRole("dialog", { name: "Menú de navegación" });
@@ -1112,8 +1115,10 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
   await expect(plansLink).toBeVisible();
   await plansLink.click();
   await expect(page).toHaveURL(/\/precios$/);
+  await page.waitForLoadState("networkidle");
 
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   const homeMascot = page.locator(".home-hero-stage-mobile");
   const marketing = page.locator(".home-marketing");
   const footer = page.locator(".home-footer");
@@ -1136,6 +1141,7 @@ test("stacks mobile mascots after page content and prevents iPhone input zoom", 
 
   await page.setViewportSize(DESKTOP_VIEWPORT);
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   const continueButton = page.getByRole("button", { name: /^adelante$/i });
   const buttonBox = await continueButton.boundingBox();
   const actionsBox = await page.locator(".idea-step-actions").boundingBox();

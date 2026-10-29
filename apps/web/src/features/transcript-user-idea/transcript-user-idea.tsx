@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import "./transcript-user-idea.scss";
 import {
-  isSpeechToTextSupported,
   startSpeechToText,
   type SpeechToTextError,
   type SpeechToTextSession,
 } from "../../shared/utils/speech-to-text";
+import { useSpeechToTextSupport } from "../../shared/hooks/use-speech-to-text-support";
 
 type TranscriptUserIdeaProps = {
   onTranscript: (transcript: string) => void;
+  isAvailable?: boolean;
 };
 
 const DICTATE_LABEL = {
@@ -31,8 +32,12 @@ const PREPARING_STATUS =
 const LISTENING_STATUS =
   "Escuchando en este dispositivo. Suelta la idea; luego podrás corregir la transcripción.";
 
-export function TranscriptUserIdea({ onTranscript }: TranscriptUserIdeaProps) {
-  const [isAvailable] = useState(isSpeechToTextSupported);
+export function TranscriptUserIdea({
+  onTranscript,
+  isAvailable: isAvailableOverride,
+}: TranscriptUserIdeaProps) {
+  const detectedSupport = useSpeechToTextSupport();
+  const isAvailable = isAvailableOverride ?? detectedSupport;
   const [isListening, setIsListening] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [error, setError] = useState("");

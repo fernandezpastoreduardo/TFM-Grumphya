@@ -36,12 +36,19 @@ function installSpeechRecognitionMock() {
 }
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   Reflect.deleteProperty(window, "SpeechRecognition");
   Reflect.deleteProperty(window, "webkitSpeechRecognition");
 });
 
 describe("isSpeechToTextSupported", () => {
+  it("returns false when evaluated during server rendering", () => {
+    vi.stubGlobal("window", undefined);
+
+    expect(isSpeechToTextSupported()).toBe(false);
+  });
+
   it("detects local recognition support without constructing a recognizer", () => {
     const { constructor } = installSpeechRecognitionMock();
 

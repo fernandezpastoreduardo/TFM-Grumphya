@@ -8,8 +8,7 @@ import * as speechToText from "../../shared/utils/speech-to-text";
 const VALID_IDEA = "Una aplicación para organizar los turnos de una clínica";
 const CLIPBOARD_IDEA = "Una app para compartir herramientas entre vecinos";
 const UNSAFE_ERROR_TEXT = '<script>alert("xss")</script>';
-const INPUT_LABEL = /escribe, pega o dicta tu idea/i;
-const INPUT_LABEL_WITHOUT_DICTATION = /escribe o pega tu idea/i;
+const INPUT_LABEL = /escribe o pega tu idea/i;
 const NEXT_STEP_LABEL = /^adelante$/i;
 const BACK_TO_IDEA_LABEL = /cambiar idea/i;
 const SUBMIT_LABEL = /^evaluar idea/i;
@@ -67,14 +66,12 @@ describe("GetUserIdea", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses the no-dictation label and clears text with the close button", async () => {
+  it("keeps a stable idea label and hides dictation when unsupported", async () => {
     const user = userEvent.setup();
     vi.spyOn(speechToText, "isSpeechToTextSupported").mockReturnValue(false);
     render(<GetUserIdea onSubmit={vi.fn()} />);
 
-    const ideaInput = screen.getByRole("textbox", {
-      name: INPUT_LABEL_WITHOUT_DICTATION,
-    });
+    const ideaInput = screen.getByRole("textbox", { name: INPUT_LABEL });
     expect(
       screen.queryByRole("button", { name: MICROPHONE_BUTTON_LABEL }),
     ).not.toBeInTheDocument();

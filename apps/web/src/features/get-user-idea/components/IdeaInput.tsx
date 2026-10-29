@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import { MAX_IDEA_LENGTH } from "../idea-input-rules";
 import { TranscriptUserIdea } from "../../transcript-user-idea/transcript-user-idea";
-import { isSpeechToTextSupported } from "../../../shared/utils/speech-to-text";
+import { useSpeechToTextSupport } from "../../../shared/hooks/use-speech-to-text-support";
 
 type IdeaInputProps = {
   value: string;
@@ -11,10 +11,7 @@ type IdeaInputProps = {
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 };
 
-const IDEA_INPUT_LABELS = {
-  WITH_DICTATION: "1. Escribe, pega o dicta tu idea",
-  WITHOUT_DICTATION: "1. Escribe o pega tu idea",
-} as const;
+const IDEA_INPUT_LABEL = "1. Escribe o pega tu idea";
 const CLEAR_IDEA_LABEL = "Borrar idea";
 const IDEA_INPUT_HELP =
   "Quién la usaría, qué le duele y qué haría la app. Lo básico, vamos.";
@@ -29,15 +26,13 @@ export function IdeaInput({
   errorMessage,
   textareaRef,
 }: IdeaInputProps) {
-  const ideaInputLabel = isSpeechToTextSupported()
-    ? IDEA_INPUT_LABELS.WITH_DICTATION
-    : IDEA_INPUT_LABELS.WITHOUT_DICTATION;
+  const isSpeechSupported = useSpeechToTextSupport();
   const describedBy = errorMessage ? `${HELP_ID} ${ERROR_ID}` : HELP_ID;
 
   return (
     <div className="idea-input-field">
       <label className="idea-input-label" htmlFor={INPUT_ID}>
-        {ideaInputLabel}
+        {IDEA_INPUT_LABEL}
       </label>
       <div className="idea-input-area">
         <textarea
@@ -54,7 +49,10 @@ export function IdeaInput({
           aria-invalid={Boolean(errorMessage)}
         />
         <div className="idea-input-tools">
-          <TranscriptUserIdea onTranscript={onDictatedText} />
+          <TranscriptUserIdea
+            isAvailable={isSpeechSupported}
+            onTranscript={onDictatedText}
+          />
           {value ? (
             <button
               className="idea-clear-button"
