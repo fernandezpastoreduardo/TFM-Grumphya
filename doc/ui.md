@@ -47,6 +47,12 @@ la lámina maestra está en
     recomendaciones generales de estilo.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
+- En escritorio, los heroes de sección toman su altura del titular y la
+  introducción; la mascota ocupa el espacio lateral sin imponer una altura
+  mínima. La separación con el contenido se conserva en el espaciado del marco.
+- En la Home de escritorio, el bloque de evaluación define la altura del hero y
+  la ilustración se ajusta a ella. El titular no conserva una altura mínima
+  propia.
 - El favicon apunta directamente a `/assets/grumphya/mascot-isotype.png`, el
   mismo recurso PNG de Grumphya que ya sirve la navegación; no se mantiene una
   copia de favicon con URL y caché separadas.
