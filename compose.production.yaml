@@ -108,7 +108,10 @@ services:
     expose: ["8080"]
     healthcheck:
       test:
-        ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8080/index.html || exit 1",
+        ]
       interval: 10s
       timeout: 3s
       retries: 6

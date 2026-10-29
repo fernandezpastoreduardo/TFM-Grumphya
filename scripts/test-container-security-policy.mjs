@@ -144,6 +144,11 @@ assert.match(
   /retries:\s*6/,
   "the web healthcheck must keep retrying after its warm-up period",
 );
+assert.match(
+  webHealthcheck,
+  /wget -q -O \/dev\/null http:\/\/127\.0\.0\.1:8080\/index\.html/,
+  "the static web healthcheck must probe the built SPA entry point directly",
+);
 
 const smokeStepStart = workflow.indexOf(
   "- name: Smoke test the scanned production images with isolated Compose resources",
@@ -227,6 +232,11 @@ assert.match(
   productionComposeSmoke,
   /assert_not_published web/,
   "the static web service must not publish a host port",
+);
+assert.match(
+  productionComposeSmoke,
+  /on_error\(\)[\s\S]*?docker inspect --format '\{\{json \.State\.Health\}\}' "\$web_container"[\s\S]*?logs --no-color --tail=100 web/,
+  "the smoke failure handler must report web health details and recent logs",
 );
 assert.match(
   productionComposeSmoke,

@@ -151,10 +151,17 @@ cleanup() {
 }
 
 on_error() {
-  local status=$?
+  local status=$? web_container
   if (( started == 1 )); then
     printf 'Production Compose smoke failed; isolated service state follows.\n' >&2
     "${compose[@]}" ps >&2 || true
+    web_container=$("${compose[@]}" ps --quiet web 2>/dev/null || true)
+    if [[ -n $web_container ]]; then
+      printf 'Web container health details:\n' >&2
+      docker inspect --format '{{json .State.Health}}' "$web_container" >&2 || true
+    fi
+    printf 'Web container logs:\n' >&2
+    "${compose[@]}" logs --no-color --tail=100 web >&2 || true
   fi
   return "$status"
 }
