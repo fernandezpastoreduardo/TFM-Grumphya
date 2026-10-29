@@ -112,6 +112,10 @@ const MIGRATIONS = [
     version: "034_illuminado_price_retroactive",
     file: "034_illuminado_price_retroactive.sql",
   },
+  {
+    version: "035_admin_ai_cached_input_tokens",
+    file: "035_admin_ai_cached_input_tokens.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

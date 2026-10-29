@@ -34,6 +34,8 @@ El roast pide una pulla personalizada, mordaz y fácil de entender, en una frase
 
 Cada llamada a OpenAI en evaluación, embeddings, equivalencia semántica y roast emite una línea JSON `ai_operation` a stdout. Incluye nombre de operación, modelo, resultado, duración, identificador aleatorio por llamada, tokens de entrada/salida disponibles y coste estimado. No incluye texto, cuenta, cookie, IP, token de sesión ni clave API; el identificador no permite correlacionar llamadas de una sesión.
 
+El panel de costes estima las entradas cacheadas de `gpt-5.4-mini` a 0,075 USD por millón de tokens y el resto de entradas a 0,75 USD; la salida cuesta 4,50 USD por millón. La fuente de precios consultada es la [ficha oficial del modelo](https://developers.openai.com/api/docs/models/gpt-5.4-mini). La migración `035_admin_ai_cached_input_tokens` conserva el contador de caché para llamadas nuevas. Los registros anteriores no incluyen ese dato y su estimación histórica no se puede reconstruir con exactitud. El total del panel es una estimación de uso, no el importe facturado por OpenAI.
+
 El panel admin presenta estos controles en pestañas. **Benchmark de IA**
 describe el corpus sintético y cómo ejecutar la comparación; no presenta
 resultados históricos porque el runner no los persiste. **Telemetría de IA**

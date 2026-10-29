@@ -145,8 +145,9 @@ describe("AdminDashboard", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Coste medio por cuenta · semana/),
+      screen.getByText(/Coste medio estimado por cuenta · semana/),
     ).toBeInTheDocument();
+    expect(screen.getByText(/1,35\s*€/)).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Responder por correo" }),
     ).toBeInTheDocument();

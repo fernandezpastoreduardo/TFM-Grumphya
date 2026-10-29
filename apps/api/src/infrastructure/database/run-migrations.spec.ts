@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(34);
+    ).toHaveLength(35);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -131,7 +131,7 @@ describe("controlled database migrations", () => {
     expect(migrationSql).not.toMatch(/UPDATE subscriptions/i);
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
-      ["034_illuminado_price_retroactive"],
+      ["035_admin_ai_cached_input_tokens"],
     );
   });
 

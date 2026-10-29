@@ -84,14 +84,14 @@ const EUR = new Intl.NumberFormat("es-ES", {
   style: "currency",
   currency: "EUR",
 });
-const USD = new Intl.NumberFormat("es-ES", {
+const EUR_COST = new Intl.NumberFormat("es-ES", {
   style: "currency",
-  currency: "USD",
+  currency: "EUR",
   maximumFractionDigits: 4,
 });
-const USD_PER_ATTEMPT = new Intl.NumberFormat("es-ES", {
+const EUR_PER_ATTEMPT = new Intl.NumberFormat("es-ES", {
   style: "currency",
-  currency: "USD",
+  currency: "EUR",
   minimumFractionDigits: 4,
   maximumFractionDigits: 8,
 });
@@ -479,32 +479,42 @@ function AdminDashboardOverview() {
                 value={EUR.format(data.revenue.totalEur)}
               />
               <Metric
-                title="Coste IA · esta semana"
-                value={USD.format(data.estimatedAiCost.weeklyUsd)}
-              />
-              <Metric
-                title="Coste IA · total"
-                value={USD.format(data.estimatedAiCost.totalUsd)}
-              />
-              <Metric
-                title="Coste medio por cuenta · semana"
-                value={USD.format(
-                  data.estimatedAiCost.weeklyAveragePerAccountUsd,
+                title="Coste IA estimado · esta semana"
+                value={EUR_COST.format(
+                  data.estimatedAiCost.weeklyUsd *
+                    data.annualFinance.usdToEurRate,
                 )}
               />
               <Metric
-                title="Coste medio por cuenta · total"
-                value={USD.format(
-                  data.estimatedAiCost.totalAveragePerAccountUsd,
+                title="Coste IA estimado · total"
+                value={EUR_COST.format(
+                  data.estimatedAiCost.totalUsd *
+                    data.annualFinance.usdToEurRate,
+                )}
+              />
+              <Metric
+                title="Coste medio estimado por cuenta · semana"
+                value={EUR_COST.format(
+                  data.estimatedAiCost.weeklyAveragePerAccountUsd *
+                    data.annualFinance.usdToEurRate,
+                )}
+              />
+              <Metric
+                title="Coste medio estimado por cuenta · total"
+                value={EUR_COST.format(
+                  data.estimatedAiCost.totalAveragePerAccountUsd *
+                    data.annualFinance.usdToEurRate,
                 )}
               />
               <MaximumCostMetric
                 title="Coste máximo iluminado"
                 cost={data.maximumMonthlyCost.iluminado}
+                usdToEurRate={data.annualFinance.usdToEurRate}
               />
               <MaximumCostMetric
                 title="Coste máximo faltón"
                 cost={data.maximumMonthlyCost.falton}
+                usdToEurRate={data.annualFinance.usdToEurRate}
               />
             </section>
             <p className="admin-dashboard-note admin-maximum-cost-note">
@@ -522,7 +532,10 @@ function AdminDashboardOverview() {
               {data.estimatedAiCost.activeAdminAccountCount}, respectivamente).
               Los usos sin cuenta también forman parte del gasto total y se
               muestran aparte. Eventos sin precio configurado:{" "}
-              {data.estimatedAiCost.unpricedUsageEvents}.
+              {data.estimatedAiCost.unpricedUsageEvents}. Los eventos anteriores
+              a registrar tokens cacheados no se pueden recalcular con
+              exactitud; el total es una estimación de uso, no la factura de
+              OpenAI.
             </p>
             <section
               className="admin-dashboard-card admin-ai-costs"
@@ -530,21 +543,26 @@ function AdminDashboardOverview() {
             >
               <div className="admin-dashboard-section-heading">
                 <div>
-                  <span className="eyebrow">Gastos de IA · USD</span>
+                  <span className="eyebrow">Costes estimados de IA · EUR</span>
                   <h2 id="admin-ai-costs-title">Quién genera el coste</h2>
                 </div>
               </div>
               <CostBreakdown
                 title="Esta semana"
                 costs={data.estimatedAiCost.weeklyByActor}
+                usdToEurRate={data.annualFinance.usdToEurRate}
               />
               <CostBreakdown
                 title="Acumulado"
                 costs={data.estimatedAiCost.totalByActor}
+                usdToEurRate={data.annualFinance.usdToEurRate}
               />
               <div className="admin-chart-pair">
                 <ActivePlansChart weeks={data.weeklyActivePlans} />
-                <AiCostChart weeks={data.estimatedAiCost.weeklyTrend} />
+                <AiCostChart
+                  weeks={data.estimatedAiCost.weeklyTrend}
+                  usdToEurRate={data.annualFinance.usdToEurRate}
+                />
               </div>
             </section>
             <AnnualFinanceChart finance={data.annualFinance} />
@@ -703,16 +721,22 @@ function TelemetryTab({ data }: { data: DashboardData }) {
       <h2 id="admin-telemetry-title">Telemetría de operaciones de IA</h2>
       <p>
         Los eventos estructurados registran operación, modelo, resultado,
-        latencia, tokens y coste estimado.
+        latencia, tokens y coste estimado. El panel aplica la tarifa reducida a
+        los tokens de entrada cacheados y convierte a euros con la referencia
+        del BCE indicada en finanzas.
       </p>
       <div className="admin-metrics">
         <Metric
           title="Coste estimado · esta semana"
-          value={USD.format(data.estimatedAiCost.weeklyUsd)}
+          value={EUR_COST.format(
+            data.estimatedAiCost.weeklyUsd * data.annualFinance.usdToEurRate,
+          )}
         />
         <Metric
           title="Coste estimado · total"
-          value={USD.format(data.estimatedAiCost.totalUsd)}
+          value={EUR_COST.format(
+            data.estimatedAiCost.totalUsd * data.annualFinance.usdToEurRate,
+          )}
         />
         <Metric
           title="Eventos sin precio configurado"
@@ -769,9 +793,11 @@ function SecurityTab() {
 function CostBreakdown({
   title,
   costs,
+  usdToEurRate,
 }: {
   title: string;
   costs: AiCostByActor;
+  usdToEurRate: number;
 }) {
   return (
     <div className="admin-cost-breakdown">
@@ -779,15 +805,15 @@ function CostBreakdown({
       <dl>
         <div>
           <dt>Cuentas de usuario</dt>
-          <dd>{USD.format(costs.registeredUsersUsd)}</dd>
+          <dd>{EUR_COST.format(costs.registeredUsersUsd * usdToEurRate)}</dd>
         </div>
         <div>
           <dt>Jappy · admin</dt>
-          <dd>{USD.format(costs.adminsUsd)}</dd>
+          <dd>{EUR_COST.format(costs.adminsUsd * usdToEurRate)}</dd>
         </div>
         <div>
           <dt>Visitantes sin cuenta</dt>
-          <dd>{USD.format(costs.anonymousUsd)}</dd>
+          <dd>{EUR_COST.format(costs.anonymousUsd * usdToEurRate)}</dd>
         </div>
       </dl>
     </div>
@@ -808,7 +834,13 @@ const CHART_COLORS = {
   anonymous: "#d94d7b",
 } as const;
 
-function AiCostChart({ weeks }: { weeks: AiCostTrendWeek[] }) {
+function AiCostChart({
+  weeks,
+  usdToEurRate,
+}: {
+  weeks: AiCostTrendWeek[];
+  usdToEurRate: number;
+}) {
   const chartHeight = CHART.height - CHART.top - CHART.bottom;
   const maxCost = Math.max(...weeks.map((week) => week.totalUsd), 0.000001);
   const slotWidth =
@@ -871,7 +903,7 @@ function AiCostChart({ weeks }: { weeks: AiCostTrendWeek[] }) {
           });
           return (
             <g key={week.weekStart}>
-              <title>{`${week.weekStart}: ${USD.format(week.totalUsd)} en total; cuentas ${USD.format(week.registeredUsersUsd)}, Jappy ${USD.format(week.adminsUsd)}, visitantes ${USD.format(week.anonymousUsd)}`}</title>
+              <title>{`${week.weekStart}: ${EUR_COST.format(week.totalUsd * usdToEurRate)} en total; cuentas ${EUR_COST.format(week.registeredUsersUsd * usdToEurRate)}, Jappy ${EUR_COST.format(week.adminsUsd * usdToEurRate)}, visitantes ${EUR_COST.format(week.anonymousUsd * usdToEurRate)}`}</title>
               {bars}
               <text
                 x={x + barWidth / 2}
@@ -891,9 +923,11 @@ function AiCostChart({ weeks }: { weeks: AiCostTrendWeek[] }) {
 function MaximumCostMetric({
   title,
   cost,
+  usdToEurRate,
 }: {
   title: string;
   cost: MaximumPlanCost;
+  usdToEurRate: number;
 }) {
   return (
     <article className="admin-metric admin-maximum-cost">
@@ -901,13 +935,13 @@ function MaximumCostMetric({
       <p>
         {cost.monthlyMaximumUsd === null
           ? "Sin usos con precio registrado"
-          : USD.format(cost.monthlyMaximumUsd)}
+          : EUR_COST.format(cost.monthlyMaximumUsd * usdToEurRate)}
       </p>
       <small>
         {cost.pricedAttempts} usos con precio · media por intento:{" "}
         {cost.averagePerAttemptUsd === null
           ? "sin datos"
-          : USD_PER_ATTEMPT.format(cost.averagePerAttemptUsd)}
+          : EUR_PER_ATTEMPT.format(cost.averagePerAttemptUsd * usdToEurRate)}
       </small>
     </article>
   );
