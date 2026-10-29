@@ -2,7 +2,8 @@ node_modules/
 dist/
 var/avatars/
 coverage/
-.DS_Store #Mandatory 4 me. This is from My NAS Sync Backup app
+# macOS and NAS sync metadata
+.DS_Store
 
 # Environment files may contain credentials. Keep every variant out of Git.
 .env
@@ -19,3 +20,8 @@ test-results/
 apps/*/.env*
 !apps/*/.env.example
 apps/web/public/assets/.DS_Store
+
+# Local SVG exploration rounds (source assets and visual comparisons)
+ideas-and-designs/revision-vectorial/prueba-metodologia-pottrace-2026-10/
+ideas-and-designs/revision-vectorial/revision-png-svg-ronda2-2026-10/
+ideas-and-designs/revision-vectorial/revision-png-svg-ronda3-2026-10/
