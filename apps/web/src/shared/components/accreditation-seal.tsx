@@ -42,16 +42,12 @@ export function AccreditationSeal() {
   }, []);
 
   return (
-    <a
-      className="accreditation-seal"
-      href={ACCREDITATION_VERIFICATION_URL}
-      aria-label="Verificar demostración de Desarrollo Seguro para Grumphya"
-    >
+    <a className="accreditation-seal" href={ACCREDITATION_VERIFICATION_URL}>
       {status === "demonstration" && (
         <img
           src="/assets/desarrollo-seguro/sello-s4.webp"
-          width="512"
-          height="512"
+          width="256"
+          height="256"
           alt="Sello ilustrado de Desarrollo Seguro"
           loading="lazy"
           decoding="async"

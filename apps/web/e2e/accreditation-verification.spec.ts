@@ -35,11 +35,11 @@ test("opens the server-backed public verification from the home footer", async (
   await page.goto("/");
 
   const link = page.getByRole("link", {
-    name: "Verificar demostración de Desarrollo Seguro para Grumphya",
+    name: /demostración académica.*sin certificación oficial.*ver ficha/i,
   });
   await expect(link).toBeVisible();
   await link.scrollIntoViewIfNeeded();
-  await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 512);
+  await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 256);
   await link.click();
 
   await expect(page).toHaveURL(new RegExp(`${VERIFICATION_URL}$`));
@@ -62,7 +62,7 @@ test("keeps the seal and verification within mobile width", async ({
   );
   await page.goto("/precios");
   const link = page.getByRole("link", {
-    name: "Verificar demostración de Desarrollo Seguro para Grumphya",
+    name: /demostración académica.*sin certificación oficial.*ver ficha/i,
   });
   await expect(link).toBeVisible();
   await link.click();

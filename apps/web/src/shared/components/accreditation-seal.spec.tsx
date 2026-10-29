@@ -49,7 +49,7 @@ describe("AccreditationSeal", () => {
     render(<AccreditationSeal />);
 
     const link = screen.getByRole("link", {
-      name: /verificar demostración de desarrollo seguro/i,
+      name: /consultando el estado del sello.*ver ficha/i,
     });
     expect(link).toHaveAttribute(
       "href",
@@ -66,6 +66,9 @@ describe("AccreditationSeal", () => {
       await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
     ).toBeVisible();
     expect(link).toHaveTextContent("Sin certificación oficial");
+    expect(link).toHaveAccessibleName(
+      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*ver ficha/i,
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/accreditations/DS-GRUMPHYA-2026-001",
       { credentials: "omit", cache: "no-store" },
@@ -150,7 +153,7 @@ describe("AccreditationSeal", () => {
       screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link")).toHaveAccessibleName(
-      /verificar demostración de desarrollo seguro/i,
+      /sello no verificable o sin vigencia.*ver ficha/i,
     );
   });
 
