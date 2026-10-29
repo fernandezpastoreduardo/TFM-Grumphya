@@ -58,10 +58,11 @@ la lámina maestra está en
   copia de favicon con URL y caché separadas.
 - El texto del hero vive en HTML y sigue siendo editable. No forma parte de un
   asset gráfico.
-- Fredoka se usa en titulares y Nunito Sans en lectura y controles, con fuentes
-  variables locales en `apps/web/public/assets/fonts/`, con fuentes de sistema
-  como alternativa. Sus licencias OFL se conservan junto a los archivos. Los
-  pesos altos deben mantener buena separación entre caracteres.
+- Fredoka se usa en titulares y Nunito Sans en lectura y controles. Ambas se
+  sirven como fuentes variables WOFF2 desde `apps/web/public/assets/fonts/`, con
+  fuentes de sistema como alternativa. Los TTF originales se conservan como
+  respaldo y sus licencias OFL permanecen junto a los archivos. Los pesos altos
+  deben mantener buena separación entre caracteres.
 
 ## Escenario y assets
 
