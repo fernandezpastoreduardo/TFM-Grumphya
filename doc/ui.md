@@ -276,11 +276,13 @@ rutas ni sustituyen la autenticación del servidor.
 
 Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.
-Durante el build, `/precios` se prerenderiza con React en `precios.html`, que
-Nginx sirve para esa ruta. El documento incluye el contenido de la página y su
-CSS antes de descargar el bundle; `main.tsx` lo hidrata con `hydrateRoot`. El
-servidor de desarrollo aplica el mismo prerender para conservar el flujo de
-prueba. Las demás rutas siguen usando el montaje cliente actual.
+Durante el build, Home y las secciones públicas se prerenderizan con React en
+HTML y CSS iniciales que Nginx sirve directamente. La lista está en
+`apps/web/src/shared/prerendered-public-routes.json` y la misma configuración
+alimenta el servidor de desarrollo. `main.tsx` hidrata el contenido con
+`hydrateRoot`. Las rutas de cuenta y las que dependen de tokens o parámetros de
+la URL mantienen el montaje cliente para respetar sus comprobaciones de sesión
+y estado por solicitud.
 Los informes Lighthouse 13.5.0 de Home y Peores ideas capturados el 29 de
 octubre de 2026 entre las 15:34 y las 15:36 UTC son la línea base anterior a
 los cambios de assets, skeleton y contraste descritos aquí: Home registró
