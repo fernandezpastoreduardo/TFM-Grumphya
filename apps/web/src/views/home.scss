@@ -3075,6 +3075,20 @@
   }
 }
 
+@media (min-width: 980px) {
+  .home-footer {
+    justify-content: space-between;
+  }
+
+  .home-footer-note {
+    width: auto;
+  }
+}
+
+.home-page.theme-dark .home-footer {
+  color: #fff;
+}
+
 .home-hero-stage-mobile {
   display: none;
 }

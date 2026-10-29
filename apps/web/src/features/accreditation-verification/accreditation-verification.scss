@@ -9,6 +9,11 @@
   background: var(--color-paper, #fffdf5);
 }
 
+.theme-dark .accreditation-verification {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
 .accreditation-verification h2 {
   margin: 0 0 10px;
   font-size: clamp(1.2rem, 3vw, 1.65rem);
@@ -89,6 +94,11 @@
   padding: 16px;
   background: #fff;
   overflow-wrap: anywhere;
+}
+
+.theme-dark .accreditation-assurance {
+  background: var(--color-mint-deep);
+  color: var(--color-ink);
 }
 
 .accreditation-assurance strong {

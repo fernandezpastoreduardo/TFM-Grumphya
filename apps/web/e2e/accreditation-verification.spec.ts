@@ -74,6 +74,29 @@ test("keeps the seal and verification within mobile width", async ({
   ).toBeLessThanOrEqual(390);
 });
 
+test("keeps verification text readable on dark backgrounds in dark mode", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("grumphya-theme", "dark");
+  });
+  await page.route("**/api/accreditations/**", (route) =>
+    route.fulfill({ json: ACADEMIC_RECORD }),
+  );
+  await page.goto(VERIFICATION_URL);
+
+  const verificationCard = page.locator(".accreditation-verification");
+  const assuranceCard = page.locator(".accreditation-assurance");
+  await expect(page.locator(".app-page")).toHaveClass(/theme-dark/);
+  await expect(verificationCard).toHaveCSS(
+    "background-color",
+    "rgb(32, 60, 59)",
+  );
+  await expect(verificationCard).toHaveCSS("color", "rgb(243, 255, 243)");
+  await expect(assuranceCard).toHaveCSS("background-color", "rgb(49, 92, 86)");
+  await expect(assuranceCard).toHaveCSS("color", "rgb(243, 255, 243)");
+});
+
 test("public navigation makes no browser requests to third parties", async ({
   page,
   context,
