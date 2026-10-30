@@ -72,29 +72,19 @@ const EVALUATION_TIMEOUT_RESPONSE = {
 
 class InvalidEvaluationResponseException extends ServiceUnavailableException {
   readonly applicationErrorDiagnostic: string;
-  readonly applicationErrorContext: {
-    useCase: "idea_evaluation";
-    inputText: string;
-  };
 
-  constructor(validationCode: ModelDecisionValidationCode, inputText: string) {
+  constructor(validationCode: ModelDecisionValidationCode) {
     super(INVALID_EVALUATION_RESPONSE);
     this.applicationErrorDiagnostic = validationCode;
-    this.applicationErrorContext = { useCase: "idea_evaluation", inputText };
   }
 }
 
 class EvaluationFailureException extends ServiceUnavailableException {
   readonly applicationErrorDiagnostic: string;
-  readonly applicationErrorContext: {
-    useCase: "idea_evaluation";
-    inputText: string;
-  };
 
-  constructor(diagnosticCode: string, inputText: string) {
+  constructor(diagnosticCode: string) {
     super(EVALUATOR_UNAVAILABLE_RESPONSE);
     this.applicationErrorDiagnostic = diagnosticCode;
-    this.applicationErrorContext = { useCase: "idea_evaluation", inputText };
   }
 }
 
@@ -281,10 +271,7 @@ export class EvaluationProcessService {
     }
 
     if (!this.evaluationPort) {
-      throw new EvaluationFailureException(
-        "evaluator_not_configured",
-        request.ideaText,
-      );
+      throw new EvaluationFailureException("evaluator_not_configured");
     }
 
     try {
@@ -303,10 +290,6 @@ export class EvaluationProcessService {
         );
         Object.assign(timeout, {
           applicationErrorDiagnostic: "evaluation_timeout",
-          applicationErrorContext: {
-            useCase: "idea_evaluation",
-            inputText: request.ideaText,
-          },
         });
         throw timeout;
       }
@@ -314,23 +297,14 @@ export class EvaluationProcessService {
         this.logger.error(
           `${INVALID_EVALUATION_RESPONSE.code} validation=${error.validationCode}`,
         );
-        throw new InvalidEvaluationResponseException(
-          error.validationCode,
-          request.ideaText,
-        );
+        throw new InvalidEvaluationResponseException(error.validationCode);
       }
       if (error instanceof OpenAiEvaluationFailure) {
         this.logger.error(error.code);
-        throw new EvaluationFailureException(
-          error.code.toLowerCase(),
-          request.ideaText,
-        );
+        throw new EvaluationFailureException(error.code.toLowerCase());
       }
       this.logger.error(EVALUATOR_UNAVAILABLE_RESPONSE.code);
-      throw new EvaluationFailureException(
-        "unexpected_evaluation_failure",
-        request.ideaText,
-      );
+      throw new EvaluationFailureException("unexpected_evaluation_failure");
     }
   }
 }
