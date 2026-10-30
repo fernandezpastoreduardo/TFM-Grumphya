@@ -1157,19 +1157,19 @@ test("reserves anonymous contact layout height while checking the session on mob
     await document.fonts.load('600 1.45rem "Fredoka"');
   });
 
-  const skeletonHeightWhileChecking = (await page
-    .locator(".contact-skeleton")
+  const sectionMainHeightWhileChecking = (await page
+    .locator(".section-main")
     .boundingBox())!.height;
   const mascot = page.locator(".section-mobile-mascot");
   const mascotTopWhileChecking = (await mascot.boundingBox())!.y;
   releaseSession();
   await expect(page.locator(".contact-layout")).toBeVisible();
 
-  const contactLayoutHeightAfterSession = (await page
-    .locator(".contact-layout")
+  const sectionMainHeightAfterSession = (await page
+    .locator(".section-main")
     .boundingBox())!.height;
   expect(
-    Math.abs(skeletonHeightWhileChecking - contactLayoutHeightAfterSession),
+    Math.abs(sectionMainHeightWhileChecking - sectionMainHeightAfterSession),
   ).toBeLessThanOrEqual(1);
   const mascotTopAfterSessionCheck = (await mascot.boundingBox())!.y;
   expect(
