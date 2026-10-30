@@ -143,6 +143,11 @@ la lámina maestra está en
 - El enlace anónimo para crear una cuenta en Peores ideas conserva al menos
   4,5:1 de contraste en ambos temas; la comprobación Playwright se ejecuta a
   390 × 844 px.
+- El control secundario del historial personal de Peores ideas fija tinta
+  `#172123` sobre fondo `#fffefa`, con una relación calculada de 16,28:1 en
+  ambos temas. El número del puesto usa `#2c6768` sobre el fondo destacado
+  `#fff1b9` (5,71:1); en tema oscuro conserva `#245e58` sobre `#f4dc8e`
+  (5,49:1).
 - En el panel de administración, los desgloses de coste se apilan en móvil y
   las tablas con muchas columnas se desplazan dentro de su propio contenedor,
   sin ampliar el ancho de la página.
@@ -299,7 +304,11 @@ rendimiento 0,79 y LCP 5,58 s; Peores ideas, rendimiento 0,56, LCP 6,63 s y
 CLS 0,458, con una contribución de 0,4509 atribuida al bloque del ranking. El
 informe móvil previo de Home, capturado ese día a las 14:05 UTC, registró
 rendimiento 0,76 y LCP 7,38 s. No hay una medición Lighthouse posterior a
-estos cambios, por lo que no se afirma una mejora en las métricas. Para
+estos cambios, por lo que no se afirma una mejora en las métricas. Los ajustes
+publicados el 30 de octubre para responder a esos hallazgos precargan el telón
+compartido `stage-curtain-v2.webp` desde `apps/web/index.html` con prioridad
+alta, fijan los colores del CTA del historial vacío de Peores ideas y oscurecen
+el color del número de puesto en Humanos notables. Para
 completar la revisión, medir Home, Humanos notables, Contacto, Descárgate, alta
 y `/panel-control` con Lighthouse en escritorio y móvil, ambos temas y caché
 fría y caliente; revisar waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
