@@ -51,7 +51,7 @@ describe("AccreditationSeal", () => {
     const link = screen.getByRole("link", {
       name: /consultando el estado del sello.*conocer la propuesta/i,
     });
-    expect(link).toHaveAttribute("href", "/desarrollo-seguro/");
+    expect(link).toHaveAttribute("href", "/desarrollo-seguro/#sello");
     expect(link).toHaveTextContent("Consultando el estado del sello");
     expect(
       screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
@@ -90,7 +90,7 @@ describe("AccreditationSeal", () => {
       ).not.toBeInTheDocument();
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
-        "/desarrollo-seguro/",
+        "/desarrollo-seguro/#sello",
       );
     },
   );

@@ -1,6 +1,6 @@
 export const ACCREDITATION_ID = "DS-GRUMPHYA-2026-001";
 
-export const DEVELOPMENT_SECURITY_PROTOTYPE_URL = "/desarrollo-seguro/";
+export const DEVELOPMENT_SECURITY_PROTOTYPE_URL = "/desarrollo-seguro/#sello";
 
 // Server-backed verification remains the source of truth for the public record.
 export const ACCREDITATION_VERIFICATION_URL = `/acreditaciones/${ACCREDITATION_ID}`;

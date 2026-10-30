@@ -167,7 +167,7 @@ describe("SectionPage", () => {
     const seal = screen
       .getByRole("contentinfo")
       .querySelector("a[href^='/desarrollo-seguro/']");
-    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/");
+    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/#sello");
     expect(seal).toHaveAccessibleName(
       /consultando el estado del sello.*conocer la propuesta/i,
     );

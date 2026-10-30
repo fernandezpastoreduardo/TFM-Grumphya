@@ -42,7 +42,12 @@ test("opens the secure-development prototype from the home footer and links to v
   await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 128);
   await link.click();
 
-  await expect(page).toHaveURL(/\/desarrollo-seguro\/$/);
+  await expect(page).toHaveURL(/\/desarrollo-seguro\/#sello$/);
+  await expect(page.locator("#sello")).toBeInViewport();
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "/assets/desarrollo-seguro/logo-l4.webp",
+  );
   await expect(page.locator(".academic-note")).toContainText(
     /prototipo académico[\s\S]*sin certificación[\s\S]*oficial/i,
   );
@@ -61,7 +66,7 @@ test("opens the secure-development prototype from the home footer and links to v
   await expect(themeSwitch).toBeChecked();
   await expect(page.locator("body")).toHaveCSS(
     "background-color",
-    "rgb(23, 57, 66)",
+    "rgb(11, 23, 40)",
   );
   await themeSwitchLabel.click();
   await expect(themeSwitch).not.toBeChecked();
@@ -105,7 +110,8 @@ test("keeps the seal and verification within mobile width", async ({
   });
   await expect(link).toBeVisible();
   await link.click();
-  await expect(page).toHaveURL(/\/desarrollo-seguro\/$/);
+  await expect(page).toHaveURL(/\/desarrollo-seguro\/#sello$/);
+  await expect(page.locator("#sello")).toBeInViewport();
   await expect(page.locator(".academic-note")).toContainText(
     /prototipo académico[\s\S]*sin certificación[\s\S]*oficial/i,
   );

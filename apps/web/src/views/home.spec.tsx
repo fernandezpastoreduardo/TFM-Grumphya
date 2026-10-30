@@ -84,7 +84,7 @@ describe("Home", () => {
     const seal = screen
       .getByRole("contentinfo")
       .querySelector("a[href^='/desarrollo-seguro/']");
-    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/");
+    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/#sello");
     const sealImage = await screen.findByAltText(
       "Sello ilustrado de Desarrollo Seguro",
     );
