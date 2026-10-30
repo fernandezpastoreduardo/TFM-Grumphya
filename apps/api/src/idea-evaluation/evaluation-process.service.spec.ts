@@ -54,6 +54,11 @@ const TIMEOUT_RESPONSE = {
   message: "La evaluación ha tardado demasiado. Inténtalo más tarde.",
 };
 
+function expectExceptionNotToRetainIdea(exception: unknown) {
+  expect(exception).not.toHaveProperty("applicationErrorContext");
+  expect(JSON.stringify(exception ?? null)).not.toContain(VALID_IDEA);
+}
+
 function createCompleteDecision(): ModelDecision {
   return {
     status: "SIN_BLOQUEO_EVIDENTE",
@@ -397,11 +402,8 @@ describe("EvaluationProcessService", () => {
     expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
     expect(caught).toMatchObject({
       applicationErrorDiagnostic: "evaluator_not_configured",
-      applicationErrorContext: {
-        useCase: "idea_evaluation",
-        inputText: VALID_IDEA,
-      },
     });
+    expectExceptionNotToRetainIdea(caught);
   });
 
   it("allows the Nest application to start without a production evaluator", async () => {
@@ -473,12 +475,9 @@ describe("EvaluationProcessService", () => {
     expect(caught).toBeInstanceOf(ServiceUnavailableException);
     expect(caught).toMatchObject({
       applicationErrorDiagnostic: "criteria_prefix",
-      applicationErrorContext: {
-        useCase: "idea_evaluation",
-        inputText: VALID_IDEA,
-      },
     });
     expect(getExceptionResponse(caught)).toEqual(INVALID_RESPONSE);
+    expectExceptionNotToRetainIdea(caught);
     expect(port.evaluate).toHaveBeenCalledTimes(1);
     expect(String(caught)).not.toContain("secret");
     expect(String(caught)).not.toContain(VALID_IDEA);
@@ -572,11 +571,8 @@ describe("EvaluationProcessService", () => {
 
     expect(caught).toMatchObject({
       applicationErrorDiagnostic: "semantic_passing_failed_criterion",
-      applicationErrorContext: {
-        useCase: "idea_evaluation",
-        inputText: VALID_IDEA,
-      },
     });
+    expectExceptionNotToRetainIdea(caught);
     expect(port.evaluate).toHaveBeenCalledTimes(2);
     expect(loggerError).toHaveBeenCalledWith(
       "INVALID_EVALUATION_RESPONSE validation=semantic_passing_failed_criterion",
@@ -604,11 +600,8 @@ describe("EvaluationProcessService", () => {
     expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
     expect(caught).toMatchObject({
       applicationErrorDiagnostic: "openai_http_429",
-      applicationErrorContext: {
-        useCase: "idea_evaluation",
-        inputText: VALID_IDEA,
-      },
     });
+    expectExceptionNotToRetainIdea(caught);
     expect(String(caught)).not.toContain(VALID_IDEA);
     expect(String(caught)).not.toContain("secret");
     expect(loggerError).toHaveBeenCalledWith("OPENAI_HTTP_429");
@@ -636,11 +629,8 @@ describe("EvaluationProcessService", () => {
     expect(getExceptionResponse(caught)).toEqual(UNAVAILABLE_RESPONSE);
     expect(caught).toMatchObject({
       applicationErrorDiagnostic: "unexpected_evaluation_failure",
-      applicationErrorContext: {
-        useCase: "idea_evaluation",
-        inputText: VALID_IDEA,
-      },
     });
+    expectExceptionNotToRetainIdea(caught);
     expect(String(caught)).not.toContain(VALID_IDEA);
     expect(String(caught)).not.toContain("secret");
     expect(loggerError).toHaveBeenCalledWith("EVALUATOR_UNAVAILABLE");
@@ -676,11 +666,8 @@ describe("EvaluationProcessService", () => {
     expect(getExceptionResponse(caught)).toEqual(TIMEOUT_RESPONSE);
     expect(caught).toMatchObject({
       applicationErrorDiagnostic: "evaluation_timeout",
-      applicationErrorContext: {
-        useCase: "idea_evaluation",
-        inputText: VALID_IDEA,
-      },
     });
+    expectExceptionNotToRetainIdea(caught);
     expect(loggerWarn).toHaveBeenCalledWith("EVALUATION_TIMEOUT");
     expect(requestSignal?.aborted).toBe(true);
     expect(port.evaluate).toHaveBeenCalledTimes(1);
