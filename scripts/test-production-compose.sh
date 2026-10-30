@@ -259,6 +259,60 @@ assert.ok(permissionsPolicy, "voice dictation Permissions-Policy must be present
 assert.match(permissionsPolicy, /microphone=\(self\)/);
 assert.match(permissionsPolicy, /on-device-speech-recognition=\(self\)/);
 NODE
+
+prototype_redirect_status=$(curl --insecure --silent --show-error \
+  --dump-header "$TEMP_ROOT/development-security-redirect.headers" \
+  --output /dev/null --write-out '%{http_code}' \
+  "https://localhost:$HTTPS_PORT/desarrollo-seguro")
+if [[ $prototype_redirect_status != 308 ]]; then
+  printf 'The prototype URL without its trailing slash must redirect with 308.\n' >&2
+  exit 1
+fi
+node - "$TEMP_ROOT/development-security-redirect.headers" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const responseHeaders = readFileSync(process.argv[2], "utf8");
+assert.match(responseHeaders, /^location:\s*\/desarrollo-seguro\/\s*$/im);
+NODE
+
+curl --insecure --fail --silent --show-error \
+  "https://localhost:$HTTPS_PORT/desarrollo-seguro/" \
+  --dump-header "$TEMP_ROOT/development-security.headers" \
+  -o "$TEMP_ROOT/development-security.html"
+node - "$TEMP_ROOT/development-security.headers" "$TEMP_ROOT/development-security.html" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const responseHeaders = readFileSync(process.argv[2], "utf8");
+const prototypeHtml = readFileSync(process.argv[3], "utf8");
+assert.match(responseHeaders, /^cache-control:\s*no-cache\s*$/im);
+assert.match(responseHeaders, /^content-security-policy:\s*base-uri 'self'/im);
+assert.match(prototypeHtml, /<title>Desarrollo Seguro · Prácticas que se pueden explicar<\/title>/);
+assert.match(prototypeHtml, /id="sello"/);
+assert.doesNotMatch(prototypeHtml, /<script\b/i);
+NODE
+
+curl --insecure --fail --silent --show-error \
+  "https://localhost:$HTTPS_PORT/desarrollo-seguro/styles.css" \
+  --dump-header "$TEMP_ROOT/development-security-styles.headers" \
+  -o /dev/null
+node - "$TEMP_ROOT/development-security-styles.headers" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+assert.match(
+  readFileSync(process.argv[2], "utf8"),
+  /^cache-control:\s*no-cache\s*$/im,
+);
+NODE
+prototype_unknown_status=$(curl --insecure --silent --show-error \
+  --output /dev/null --write-out '%{http_code}' \
+  "https://localhost:$HTTPS_PORT/desarrollo-seguro/no-existe" \
+)
+if [[ $prototype_unknown_status != 404 ]]; then
+  printf 'Unknown secure-development prototype paths must return 404 (got %s).\n' \
+    "$prototype_unknown_status" >&2
+  exit 1
+fi
+
 curl --insecure --fail --silent --show-error \
   "https://localhost:$HTTPS_PORT/account" -o "$TEMP_ROOT/account.html"
 node - "$TEMP_ROOT/account.html" <<'NODE'

@@ -25,9 +25,16 @@ usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
 El directorio raíz `prototype/` se copia desde la etapa `web-build` a
 `/usr/share/nginx/html/desarrollo-seguro/` en la imagen `web-production`.
-Nginx sirve `/desarrollo-seguro/` como esa página estática y sus recursos; no
-requiere un proceso ni una API propios. La URL es pública aunque el único
-enlace interno de Grumphya a ella sea el sello del footer. La ficha
+Nginx redirige `/desarrollo-seguro` con una cabecera `Location` relativa a la
+URL canónica con barra final (`/desarrollo-seguro/`), sin filtrar el esquema,
+host o puerto interno del contenedor, y sirve allí explícitamente su
+`index.html` estático;
+los recursos bajo esa ruta se sirven como archivos exactos y los inexistentes
+devuelven 404, sin caer en el HTML de la SPA. La página y sus recursos usan
+`Cache-Control: no-cache`. Caddy aplica también las cabeceras de seguridad
+globales, incluida la CSP aplicada y la CSP en modo `Report-Only`. No requiere
+un proceso ni una API propios. La URL es pública aunque el único enlace interno
+de Grumphya a ella sea el sello del footer. La ficha
 `/acreditaciones/DS-GRUMPHYA-2026-001` continúa siendo una ruta de la SPA y
 consulta el endpoint de acreditaciones de la API.
 El healthcheck del servicio web solicita `/` directamente a Nginx, así detecta
