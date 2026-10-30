@@ -18,24 +18,31 @@ export function Contact() {
         showImmediately
       >
         <section className="content-card contact-card contact-skeleton-form">
-          <SkeletonBlock className="skeleton-contact-title" />
-          <SkeletonBlock className="skeleton-contact-heading" />
+          <span className="eyebrow skeleton-block skeleton-contact-title">
+            Formulario de contacto
+          </span>
+          <h2 className="skeleton-block skeleton-contact-heading">
+            Escribe lo que nadie te ha pedido
+          </h2>
           <div className="contact-skeleton-fields">
-            <div className="contact-skeleton-field">
-              <SkeletonBlock className="skeleton-contact-label" />
+            <label className="contact-skeleton-field">
+              Nombre
               <SkeletonBlock className="skeleton-contact-input" />
-            </div>
-            <div className="contact-skeleton-field">
-              <SkeletonBlock className="skeleton-contact-label" />
+            </label>
+            <label className="contact-skeleton-field">
+              Email
               <SkeletonBlock className="skeleton-contact-input" />
-            </div>
-            <div className="contact-skeleton-field">
-              <SkeletonBlock className="skeleton-contact-label" />
+            </label>
+            <label className="contact-skeleton-field">
+              Mensaje
               <SkeletonBlock className="skeleton-contact-message" />
-            </div>
+            </label>
           </div>
           <SkeletonBlock className="skeleton-contact-button" />
-          <SkeletonBlock className="skeleton-contact-note" />
+          <p className="contact-plan-note skeleton-block skeleton-contact-note">
+            El formulario de contacto completo está disponible al iniciar
+            sesión.
+          </p>
         </section>
         <aside className="contact-side contact-skeleton-aside">
           <SkeletonBlock className="skeleton-contact-creature" />
@@ -57,7 +64,7 @@ function AnonymousContactDemo() {
     setDismissed(true);
   }
   return (
-    <div className="contact-layout">
+    <div className="contact-layout contact-anonymous-layout">
       <section
         className={`content-card contact-card ${dismissed ? "contact-faded" : ""}`}
         aria-labelledby="contact-form-title"

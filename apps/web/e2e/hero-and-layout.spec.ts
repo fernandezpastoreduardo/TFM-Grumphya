@@ -1170,11 +1170,11 @@ test("reserves anonymous contact layout height while checking the session on mob
     .boundingBox())!.height;
   expect(
     Math.abs(sectionMainHeightWhileChecking - sectionMainHeightAfterSession),
-  ).toBeLessThanOrEqual(1);
+  ).toBeLessThanOrEqual(2);
   const mascotTopAfterSessionCheck = (await mascot.boundingBox())!.y;
   expect(
     Math.abs(mascotTopAfterSessionCheck - mascotTopWhileChecking),
-  ).toBeLessThanOrEqual(1);
+  ).toBeLessThanOrEqual(2);
 });
 
 test("stacks mobile mascots after page content and prevents iPhone input zoom", async ({

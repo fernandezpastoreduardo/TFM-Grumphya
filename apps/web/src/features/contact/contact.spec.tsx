@@ -61,7 +61,7 @@ describe("Contact", () => {
       ".contact-skeleton .loading-skeleton-content",
     );
     expect(skeleton).toBeVisible();
-    expect(skeleton?.querySelectorAll(".skeleton-contact-label")).toHaveLength(
+    expect(skeleton?.querySelectorAll(".contact-skeleton-field")).toHaveLength(
       3,
     );
     expect(

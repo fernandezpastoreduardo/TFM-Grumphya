@@ -1,3 +1,8 @@
+.contact-anonymous-layout,
+.contact-skeleton {
+  --contact-message-height: 124px;
+}
+
 .contact-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.8fr);
@@ -14,13 +19,16 @@
   display: block;
 }
 .skeleton-contact-title {
-  width: 150px;
-  height: 14px;
+  color: transparent;
+  border-radius: 6px;
 }
-.skeleton-contact-heading {
-  width: min(95%, 420px);
-  height: 58px;
-  margin: 5px 0 0;
+.contact-skeleton-form .skeleton-contact-heading {
+  font:
+    600 clamp(1.45rem, 2.6vw, 2.2rem)/1 "Fredoka",
+    sans-serif;
+  letter-spacing: -0.04em;
+  color: transparent;
+  border-radius: 13px;
 }
 .contact-skeleton-fields {
   display: grid;
@@ -31,10 +39,6 @@
   display: grid;
   gap: 6px;
 }
-.skeleton-contact-label {
-  width: 72px;
-  height: 13px;
-}
 .skeleton-contact-input,
 .skeleton-contact-message {
   width: 100%;
@@ -42,7 +46,7 @@
   border-radius: 13px;
 }
 .skeleton-contact-message {
-  height: 124px;
+  height: var(--contact-message-height);
 }
 .skeleton-contact-button {
   width: 180px;
@@ -50,9 +54,8 @@
   margin-top: 12px;
 }
 .skeleton-contact-note {
-  width: min(85%, 340px);
-  height: 30px;
-  margin-top: 14px;
+  color: transparent;
+  border-radius: 13px;
 }
 .skeleton-contact-stamp {
   grid-column: 1 / -1;
@@ -108,8 +111,17 @@
   color: #183234;
   background: #fff;
 }
+.contact-anonymous-layout .contact-card input {
+  height: 48px;
+}
 .contact-card textarea {
   resize: vertical;
+}
+.contact-anonymous-layout .contact-card textarea {
+  height: var(--contact-message-height);
+}
+.contact-anonymous-layout .contact-card .button-primary {
+  height: 48px;
 }
 .contact-faded form {
   opacity: 0.12;
