@@ -4,7 +4,7 @@ import "./cookie-notice.scss";
 const COOKIE_NOTICE_TITLE = "Ni galletitas ni galletitos";
 const NOTICE_ACKNOWLEDGED_KEY = "grumphya.privacy-notice.acknowledged.v1";
 const COOKIE_NOTICE_COPY =
-  "Usamos cookies propias para mantener el perfil sin cuenta, el plan durante el alta y tu sesión. Guardamos además la preferencia de tema y la sincronización de sesión entre pestañas en el almacenamiento local del navegador. No usamos publicidad, analítica ni cookies de terceros.";
+  "Usamos solo cookies propias técnicas, las que sirven para que todo funcione como te mereces. Aquí NO se analiza ni vende ningún dato de nadie.";
 const SUPPORTS_NATIVE_MODAL =
   typeof HTMLDialogElement !== "undefined" &&
   typeof HTMLDialogElement.prototype.showModal === "function";

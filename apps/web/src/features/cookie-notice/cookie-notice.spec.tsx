@@ -6,6 +6,8 @@ import { CookieNotice } from "./cookie-notice";
 const NOTICE_BUTTON_NAME = "Entendido";
 const PRIVACY_LINK_NAME = "Leer la política de privacidad";
 const NOTICE_ACKNOWLEDGED_KEY = "grumphya.privacy-notice.acknowledged.v1";
+const ABSTRACT_COOKIE_NOTICE_COPY =
+  "Usamos solo cookies propias técnicas, las que sirven para que todo funcione como te mereces. Aquí NO se analiza ni vende ningún dato de nadie.";
 
 describe("CookieNotice", () => {
   beforeEach(() => {
@@ -16,23 +18,19 @@ describe("CookieNotice", () => {
     vi.restoreAllMocks();
   });
 
-  it("explains the first-party storage and links to the full policy", () => {
+  it("shows the concise cookie notice and links to the full policy", () => {
     render(<CookieNotice />);
 
     expect(
       screen.getByRole("dialog", { name: "Ni galletitas ni galletitos" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /No usamos publicidad, analítica ni cookies de terceros/i,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/almacenamiento local del navegador/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(ABSTRACT_COOKIE_NOTICE_COPY)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: PRIVACY_LINK_NAME }),
     ).toHaveAttribute("href", "/politica-de-privacidad");
+    expect(screen.getByRole("link", { name: PRIVACY_LINK_NAME })).toHaveClass(
+      "cookie-notice-details",
+    );
     expect(
       screen.getByRole("img", {
         name: "Grumphya le da una patada a una galleta",

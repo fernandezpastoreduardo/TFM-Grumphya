@@ -61,7 +61,21 @@
 .cookie-notice-details {
   display: inline-block;
   margin: -8px 0 18px;
+  border-radius: 4px;
+  color: #006b73;
   font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.cookie-notice-details:hover {
+  color: #004e55;
+}
+
+.cookie-notice-details:focus-visible {
+  outline: 3px solid var(--color-pink);
+  outline-offset: 4px;
 }
 
 .cookie-notice-button {
@@ -95,6 +109,11 @@
   border-color: var(--color-mint-deep);
   background: #18272b;
   color: #fffefa;
+}
+
+#root:has(.theme-dark) .cookie-notice-details,
+#root:has(.theme-dark) .cookie-notice-details:hover {
+  color: #8ce8e2;
 }
 
 #root:has(.theme-dark) .cookie-notice-button {
