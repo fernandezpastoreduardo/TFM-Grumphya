@@ -152,10 +152,22 @@ cleanup() {
 }
 
 on_error() {
-  local status=$? web_container
+  local status=$? api_container db_container web_container
   if (( started == 1 )); then
     printf 'Production Compose smoke failed; isolated service state follows.\n' >&2
     "${compose[@]}" ps >&2 || true
+    db_container=$("${compose[@]}" ps --quiet db 2>/dev/null || true)
+    if [[ -n $db_container ]]; then
+      printf 'Database container health details:\n' >&2
+      docker inspect --format '{{json .State.Health}}' "$db_container" >&2 || true
+      printf 'Database container logs:\n' >&2
+      "${compose[@]}" logs --no-color --tail=100 db >&2 || true
+    fi
+    api_container=$("${compose[@]}" ps --quiet api 2>/dev/null || true)
+    if [[ -n $api_container ]]; then
+      printf 'API container logs:\n' >&2
+      "${compose[@]}" logs --no-color --tail=100 api >&2 || true
+    fi
     web_container=$("${compose[@]}" ps --quiet web 2>/dev/null || true)
     if [[ -n $web_container ]]; then
       printf 'Web container health details:\n' >&2
@@ -174,7 +186,7 @@ started=1
 "${compose[@]}" config --quiet
 "${compose[@]}" up --detach --pull never --no-build --wait --wait-timeout 180
 "${compose[@]}" exec --no-TTY api node -e '
-  const { Client } = require("pg");
+  const { Client } = require("./apps/api/node_modules/pg");
   const client = new Client({
     host: "db",
     port: 5432,

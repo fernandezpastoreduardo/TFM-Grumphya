@@ -47,12 +47,14 @@ POSTGRES_DB=$PGDATABASE
 APP_PGUSER=$PGUSER
 APP_PGDATABASE=$PGDATABASE
 export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD APP_PGUSER APP_PGDATABASE APP_PG_PASSWORD
-POSTGRES_DATA_DIRECTORY=${PGDATA:-/var/lib/postgresql/data}
+POSTGRES_TLS_DIRECTORY=${GRUMPHYA_POSTGRES_TLS_DIRECTORY:-/run/postgresql/grumphya-tls}
 if [ "$(id -u)" -eq 0 ]; then
-  install -o postgres -g postgres -m 0644 "$TLS_CERT_FILE" "$POSTGRES_DATA_DIRECTORY/server.crt"
-  install -o postgres -g postgres -m 0600 "$TLS_KEY_FILE" "$POSTGRES_DATA_DIRECTORY/server.key"
+  install -d -o postgres -g postgres -m 0700 "$POSTGRES_TLS_DIRECTORY"
+  install -o postgres -g postgres -m 0644 "$TLS_CERT_FILE" "$POSTGRES_TLS_DIRECTORY/server.crt"
+  install -o postgres -g postgres -m 0600 "$TLS_KEY_FILE" "$POSTGRES_TLS_DIRECTORY/server.key"
 else
-  install -m 0644 "$TLS_CERT_FILE" "$POSTGRES_DATA_DIRECTORY/server.crt"
-  install -m 0600 "$TLS_KEY_FILE" "$POSTGRES_DATA_DIRECTORY/server.key"
+  install -d -m 0700 "$POSTGRES_TLS_DIRECTORY"
+  install -m 0644 "$TLS_CERT_FILE" "$POSTGRES_TLS_DIRECTORY/server.crt"
+  install -m 0600 "$TLS_KEY_FILE" "$POSTGRES_TLS_DIRECTORY/server.key"
 fi
 exec docker-entrypoint.sh "$@"

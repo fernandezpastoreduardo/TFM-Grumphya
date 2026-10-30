@@ -199,6 +199,16 @@ assert.match(
   "PostgreSQL must enforce a modern minimum TLS protocol",
 );
 assert.match(
+  compose,
+  /ssl_cert_file=\/run\/postgresql\/grumphya-tls\/server\.crt/,
+  "PostgreSQL TLS material must stay outside the persistent data volume",
+);
+assert.match(
+  compose,
+  /ssl_key_file=\/run\/postgresql\/grumphya-tls\/server\.key/,
+  "PostgreSQL private key must stay outside the persistent data volume",
+);
+assert.match(
   postgresHba,
   /^local all all trust$/m,
   "PostgreSQL initialization must retain local socket access",

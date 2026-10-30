@@ -21,9 +21,9 @@ services:
         "-c",
         "ssl_min_protocol_version=TLSv1.2",
         "-c",
-        "ssl_cert_file=/var/lib/postgresql/data/server.crt",
+        "ssl_cert_file=/run/postgresql/grumphya-tls/server.crt",
         "-c",
-        "ssl_key_file=/var/lib/postgresql/data/server.key",
+        "ssl_key_file=/run/postgresql/grumphya-tls/server.key",
         "-c",
         "hba_file=/etc/postgresql/pg_hba.conf",
       ]

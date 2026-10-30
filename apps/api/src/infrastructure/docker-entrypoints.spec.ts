@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import {
   mkdtempSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
@@ -239,7 +240,7 @@ describe("Docker service entrypoints", () => {
     });
   });
 
-  it("starts PostgreSQL with a separate bootstrap credential and app role settings", () => {
+  it("installs PostgreSQL TLS outside the data volume and uses separate credentials", () => {
     const directory = createTemporaryDirectory();
     const secretsDirectory = resolve(directory, "secrets");
     const binaryDirectory = resolve(directory, "bin");
@@ -266,6 +267,7 @@ describe("Docker service entrypoints", () => {
       "test-postgres-private-key",
     );
     const postgresDataDirectory = resolve(directory, "postgres-data");
+    const postgresTlsDirectory = resolve(directory, "postgres-tls");
     mkdirSync(postgresDataDirectory);
     const probePath = resolve(binaryDirectory, "docker-entrypoint.sh");
     writeFileSync(
@@ -282,6 +284,7 @@ describe("Docker service entrypoints", () => {
       env: {
         ...process.env,
         GRUMPHYA_SECRETS_DIR: secretsDirectory,
+        GRUMPHYA_POSTGRES_TLS_DIRECTORY: postgresTlsDirectory,
         PGDATA: postgresDataDirectory,
         PATH: `${binaryDirectory}:${process.env.PATH ?? ""}`,
       },
@@ -290,8 +293,9 @@ describe("Docker service entrypoints", () => {
     expect(output.trim()).toBe(
       "grumphya_test|postgres|bootstrap-secret|app_test|grumphya_test|postgres",
     );
-    const installedCertificate = resolve(postgresDataDirectory, "server.crt");
-    const installedPrivateKey = resolve(postgresDataDirectory, "server.key");
+    expect(readdirSync(postgresDataDirectory)).toEqual([]);
+    const installedCertificate = resolve(postgresTlsDirectory, "server.crt");
+    const installedPrivateKey = resolve(postgresTlsDirectory, "server.key");
     expect(readFileSync(installedCertificate, "utf8")).toBe(
       "test-postgres-certificate",
     );
