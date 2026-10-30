@@ -1,2 +1,18 @@
+#!/usr/bin/env sh
+set -eu
+
 pnpm migrations:check
-pnpm test:e2e
+
+run_e2e=false
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    case "$local_sha" in
+      *[!0]*) run_e2e=true ;;
+    esac
+  fi
+done
+
+if [ "$run_e2e" = true ]; then
+  echo "Push a main detectado; ejecutando E2E antes de publicar."
+  pnpm test:e2e
+fi
