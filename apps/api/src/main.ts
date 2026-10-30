@@ -3,6 +3,7 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { createSecurityMiddleware } from "./security/security.middleware";
+import { LoginAbuseProtection } from "./security/login-abuse-protection.service";
 
 const ACCESS_TOKEN_SECRET_MIN_BYTES = 32;
 
@@ -57,7 +58,11 @@ async function bootstrap() {
       "application/reports+json",
     ],
   });
-  app.use(createSecurityMiddleware());
+  app.use(
+    createSecurityMiddleware({
+      loginAbuseProtection: app.get(LoginAbuseProtection, { strict: false }),
+    }),
+  );
   const port = Number(process.env.API_PORT ?? 3000);
   const host =
     process.env.API_HOST ??

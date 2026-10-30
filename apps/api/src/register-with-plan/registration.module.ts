@@ -9,11 +9,16 @@ import { PlanUsageService } from "./plan-usage.service";
 import { RegistrationService } from "./registration.service";
 import { MailModule } from "../infrastructure/mail/mail.module";
 import { MailService } from "../infrastructure/mail/mail.service";
+import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
 
 @Module({
   imports: [AuthSecurityModule, MailModule],
   controllers: [RegistrationController],
   providers: [
+    {
+      provide: LoginAbuseProtection,
+      useFactory: () => new LoginAbuseProtection(),
+    },
     {
       provide: REGISTRATION_REPOSITORY,
       useFactory: () => new PostgresRegistrationRepository(),
@@ -32,6 +37,6 @@ import { MailService } from "../infrastructure/mail/mail.service";
     },
     PlanUsageService,
   ],
-  exports: [REGISTRATION_REPOSITORY, PlanUsageService],
+  exports: [REGISTRATION_REPOSITORY, PlanUsageService, LoginAbuseProtection],
 })
 export class RegistrationModule {}

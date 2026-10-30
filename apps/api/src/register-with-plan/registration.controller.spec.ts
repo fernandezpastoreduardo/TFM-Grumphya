@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RegistrationController } from "./registration.controller";
 import { RegistrationError } from "./registration.models";
 import { RegistrationService } from "./registration.service";
+import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const RESEND_BODY = { email: "persona@example.es" };
@@ -21,7 +22,7 @@ const SESSION = {
   result: ACCOUNT_RESULT,
 };
 
-function createController() {
+function createController(loginAbuseProtection = createLoginAbuseProtection()) {
   const service = {
     createIntent: vi.fn().mockResolvedValue({
       token: "intent-token",
@@ -49,7 +50,18 @@ function createController() {
       .mockResolvedValue({ publicRankingsOptIn: true }),
     purchasePlanForUser: vi.fn(),
   } as unknown as RegistrationService;
-  return { controller: new RegistrationController(service), service };
+  return {
+    controller: new RegistrationController(service, loginAbuseProtection),
+    service,
+    loginAbuseProtection,
+  };
+}
+
+function createLoginAbuseProtection() {
+  return {
+    recordLoginFailure: vi.fn(),
+    recordLoginSuccess: vi.fn(),
+  } as unknown as LoginAbuseProtection;
 }
 
 function createResponse() {
@@ -292,7 +304,7 @@ describe("RegistrationController", () => {
   });
 
   it("logs in and sets a refresh cookie without remember-me lifetime", async () => {
-    const { controller, service } = createController();
+    const { controller, service, loginAbuseProtection } = createController();
     const response = createResponse();
     const body = { email: "persona@example.es", password: "secret" };
 
@@ -306,6 +318,31 @@ describe("RegistrationController", () => {
       REFRESH_TOKEN,
       expect.not.objectContaining({ maxAge: expect.any(Number) }),
     );
+    expect(loginAbuseProtection.recordLoginSuccess).toHaveBeenCalledWith(
+      "unknown",
+    );
+  });
+
+  it("records a failed login against the request IP without exposing the error", async () => {
+    const { controller, service, loginAbuseProtection } = createController();
+    const response = createResponse();
+    const request = { ip: "192.0.2.25", socket: { remoteAddress: "local" } };
+    vi.mocked(service.login).mockRejectedValueOnce(
+      new RegistrationError(
+        401,
+        "LOGIN_UNAVAILABLE",
+        "Credenciales no válidas.",
+      ),
+    );
+
+    await expect(
+      controller.login({}, response as never, request as never),
+    ).rejects.toMatchObject({ status: 401, code: "LOGIN_UNAVAILABLE" });
+
+    expect(loginAbuseProtection.recordLoginFailure).toHaveBeenCalledWith(
+      request.ip,
+    );
+    expect(response.cookie).not.toHaveBeenCalled();
   });
 
   it("sets the remaining session lifetime when remember-me is enabled", async () => {

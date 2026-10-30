@@ -5,10 +5,19 @@ import {
   notifySessionChanged,
   setAccessToken,
 } from "../../infrastructure/auth/session";
+import {
+  isLoginChallenge,
+  solveLoginChallenge,
+  type LoginChallenge,
+} from "./services/login-challenge";
 
 const LOGIN_ENDPOINT = "/api/auth/login";
 const LOGIN_ERROR =
   "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.";
+const LOGIN_CHALLENGE_NOTICE = "Verificando el navegador…";
+const LOGIN_CHALLENGE_REQUIRED = "LOGIN_CHALLENGE_REQUIRED";
+const LOGIN_CHALLENGE_HEADER = "X-Login-Challenge";
+const LOGIN_PROOF_HEADER = "X-Login-Proof";
 const PASSWORD_VISIBILITY_LABEL = {
   SHOW: "Mostrar contraseña",
   HIDE: "Ocultar contraseña",
@@ -48,7 +57,7 @@ export function AuthenticationPage() {
     setSubmitting(true);
     setNotice("");
     try {
-      const response = await fetch(LOGIN_ENDPOINT, {
+      const loginRequest = {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
@@ -57,8 +66,22 @@ export function AuthenticationPage() {
           password: form.get("password"),
           rememberMe: form.get("remember") === "on",
         }),
-      });
-      const body: unknown = await response.json();
+      } as const;
+      let response = await fetch(LOGIN_ENDPOINT, loginRequest);
+      let body: unknown = await response.json();
+      if (isChallengeRequiredResponse(response.status, body)) {
+        setNotice(LOGIN_CHALLENGE_NOTICE);
+        const proof = await solveLoginChallenge(body.challenge);
+        response = await fetch(LOGIN_ENDPOINT, {
+          ...loginRequest,
+          headers: {
+            ...loginRequest.headers,
+            [LOGIN_CHALLENGE_HEADER]: body.challenge.token,
+            [LOGIN_PROOF_HEADER]: proof,
+          },
+        });
+        body = await response.json();
+      }
       if (!response.ok || !isLoginResponse(body)) {
         setNotice(LOGIN_ERROR);
         return;
@@ -162,4 +185,25 @@ export function AuthenticationPage() {
       </aside>
     </div>
   );
+}
+
+function isChallengeRequiredResponse(
+  status: number,
+  value: unknown,
+): value is {
+  code: typeof LOGIN_CHALLENGE_REQUIRED;
+  challenge: LoginChallenge;
+} {
+  if (
+    status !== 428 ||
+    !value ||
+    typeof value !== "object" ||
+    !("code" in value) ||
+    value.code !== LOGIN_CHALLENGE_REQUIRED ||
+    !("challenge" in value) ||
+    !isLoginChallenge(value.challenge)
+  ) {
+    return false;
+  }
+  return true;
 }

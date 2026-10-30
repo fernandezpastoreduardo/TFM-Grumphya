@@ -4,6 +4,7 @@ import {
   Get,
   Headers,
   Inject,
+  Optional,
   Post,
   Req,
   Res,
@@ -16,6 +17,7 @@ import { RegistrationService } from "./registration.service";
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
+import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
 
 const INTENT_COOKIE = "grumphya_registration_intent";
 const VERIFIED_COOKIE = "grumphya_verified_registration";
@@ -26,8 +28,15 @@ type AuthenticatedRequest = Request & { user?: { userId: string } };
 @Controller()
 export class RegistrationController {
   private readonly service: RegistrationService;
-  constructor(@Inject(RegistrationService) service: RegistrationService) {
+  private readonly loginAbuseProtection: LoginAbuseProtection;
+  constructor(
+    @Inject(RegistrationService) service: RegistrationService,
+    @Optional()
+    @Inject(LoginAbuseProtection)
+    loginAbuseProtection = new LoginAbuseProtection(),
+  ) {
     this.service = service;
+    this.loginAbuseProtection = loginAbuseProtection;
   }
 
   @Post("registration-intents")
@@ -147,8 +156,18 @@ export class RegistrationController {
   async login(
     @Body() body: unknown,
     @Res({ passthrough: true }) response: Response,
+    @Req() request?: Request,
   ) {
-    const session = await this.service.login(body);
+    const clientAddress =
+      request?.ip ?? request?.socket.remoteAddress ?? "unknown";
+    let session: Awaited<ReturnType<RegistrationService["login"]>>;
+    try {
+      session = await this.service.login(body);
+      this.loginAbuseProtection.recordLoginSuccess(clientAddress);
+    } catch (error) {
+      this.loginAbuseProtection.recordLoginFailure(clientAddress);
+      throw error;
+    }
     response.cookie(
       REFRESH_COOKIE,
       session.refreshToken,
