@@ -50,7 +50,7 @@ const BUTTON_LABEL = {
 const NEXT_STEP_LABEL = "Adelante";
 const PREVIOUS_STEP_LABEL = "Cambiar idea";
 const PUBLIC_RANKING_NOTICE =
-  "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Worst Ideas». El filtro no garantiza anonimato. Consulta la";
+  "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Peores ideas». El filtro no garantiza anonimato. Consulta la";
 const VALIDATION_MESSAGES: Record<InvalidIdeaTextReason, string> = {
   not_text: INVALID_IDEA_MESSAGE,
   empty: EMPTY_IDEA_MESSAGE,

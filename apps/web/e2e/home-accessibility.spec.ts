@@ -81,3 +81,15 @@ test("keeps the Home form text at WCAG AA contrast on mobile", async ({
     await getContrastRatio(page, IDEA_CHARACTER_COUNTER, IDEA_TEXTAREA),
   ).toBeGreaterThanOrEqual(WCAG_AA_TEXT_CONTRAST);
 });
+
+test("separates the ranking privacy note from the continue button on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(HOME_URL);
+
+  const privacyNote = page.locator(".idea-ranking-privacy-note");
+  await expect(privacyNote).toBeVisible();
+  await expect(page.locator(IDEA_CONTINUE_BUTTON).first()).toBeVisible();
+  await expect(privacyNote).toHaveCSS("margin-bottom", "12px");
+});

@@ -32,7 +32,7 @@ describe("GetUserIdea", () => {
     expect(
       screen.getByText(/si rechazamos tu idea/i).closest("p"),
     ).toHaveTextContent(
-      "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Worst Ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.",
+      "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Peores ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.",
     );
     expect(
       screen.getByRole("link", { name: /política de privacidad/i }),

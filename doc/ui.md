@@ -62,7 +62,9 @@ la lámina maestra está en
   sirven como fuentes variables WOFF2 desde `apps/web/public/assets/fonts/`, con
   fuentes de sistema como alternativa. Los TTF originales se conservan como
   respaldo y sus licencias OFL permanecen junto a los archivos. Los pesos altos
-  deben mantener buena separación entre caracteres.
+  deben mantener buena separación entre caracteres. `apps/web/index.html`
+  precarga el WOFF2 variable de Nunito Sans para que la fuente de lectura pueda
+  empezar a descargarse antes de que se resuelva la hoja de estilos.
 
 ## Escenario y assets
 
@@ -315,8 +317,11 @@ pesa 44.232 B. El sello S4 del footer usa una variante móvil de 84 × 84 px y
 4.788 B para pantallas de hasta 767 px; en tamaños mayores usa la imagen
 principal de 128 × 128 px y 7.550 B. En el ranking público, el skeleton
 representa las diez filas máximas y conserva la altura de la tarjeta al recibir
-una respuesta con diez resultados; la comprobación E2E mide ese caso límite en
-móvil.
+una respuesta con diez resultados. Se muestra inmediatamente, sin el retraso
+del skeleton compartido, para evitar dejar el bloque vacío durante la carga; la
+comprobación E2E mide ese caso límite en móvil. No hay una medición Lighthouse
+posterior que permita atribuir una mejora de CLS a este cambio o a la precarga de
+fuente.
 En Descárgate, el hilo ocupa la altura de su contenido hasta un máximo de 420
 px y permite desplazamiento interno si lo supera. No impone altura mínima:
 cuando no hay historial, el compositor queda más cerca del mensaje de estado.
@@ -337,7 +342,7 @@ de tono pesan 205.536 B en conjunto: `descargate-boxing-bag.svg`, 67.914 B;
 
 ## Ranking público de ideas rechazadas
 
-La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Antes de enviar una idea, el formulario avisa: «Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Worst Ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.» Primero,
+La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Antes de enviar una idea, el formulario avisa: «Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Peores ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.» En móvil, el aviso deja 12 px de separación antes de la acción «Adelante». Primero,
 `WorstIdeasAllTime` obtiene el ranking histórico de `GET /api/worst-ideas/all-time`;
 después, `WorstIdeasAll` obtiene el semanal de `GET /api/worst-ideas`. No incluyen
 filas de ejemplo. Cada fila muestra su puesto, título seguro y número de

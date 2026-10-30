@@ -151,7 +151,11 @@ function RankingContent({
 }) {
   if (state.status === "loading") {
     return (
-      <LoadingSkeleton label={loadingLabel} className="idea-ranking-skeleton">
+      <LoadingSkeleton
+        label={loadingLabel}
+        className="idea-ranking-skeleton"
+        showImmediately
+      >
         {Array.from({ length: MAX_RANKING_ITEMS }, (_, index) => (
           <div className="idea-ranking-skeleton-row" key={index}>
             <SkeletonBlock className="skeleton-ranking-position" />
