@@ -7,7 +7,6 @@
   font-weight: 800;
 }
 
-.home-result-status,
 .home-result-error {
   margin: 0;
   padding: 12px 14px;
@@ -43,12 +42,6 @@
     radial-gradient(circle at 100% 0, rgb(242 198 74 / 12%), transparent 38%),
     #1b2b2b;
   box-shadow: 5px 5px 0 #102323;
-}
-
-.theme-dark .home-result-status {
-  border-color: #a8ddcf;
-  color: #f3fff3;
-  background: #1b2b2b;
 }
 
 .evaluation-result-card h2,

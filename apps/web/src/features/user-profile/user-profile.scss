@@ -24,15 +24,6 @@
     0 2px 0 #18565d0a;
 }
 
-.profile-loading {
-  border-left: 4px solid var(--color-teal-dark);
-  border-radius: 4px 14px 14px 4px;
-  padding: 12px 15px;
-  background: var(--color-paper);
-  font-weight: 800;
-  line-height: 1.5;
-}
-
 .profile-loading-skeleton .loading-skeleton-content {
   gap: 18px;
 }
@@ -493,13 +484,6 @@
   background: #584a2a;
 }
 
-.profile-sample-note {
-  margin: 14px 0 0;
-  color: color-mix(in srgb, var(--color-ink) 72%, var(--color-paper));
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
 .profile-section-heading {
   margin-bottom: 14px;
 }
@@ -625,8 +609,7 @@
   color: #172123;
 }
 
-.theme-dark .profile-details dt,
-.theme-dark .profile-sample-note {
+.theme-dark .profile-details dt {
   color: #d5e3d9;
 }
 

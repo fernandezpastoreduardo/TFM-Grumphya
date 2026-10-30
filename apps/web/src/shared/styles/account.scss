@@ -89,8 +89,8 @@
 }
 .auth-creature {
   height: 220px;
-  background: url("/assets/grumphya/mascot-neutral.svg") center
-    bottom / contain no-repeat;
+  background: url("/assets/grumphya/mascot-neutral.svg") center bottom / contain
+    no-repeat;
 }
 
 .auth-creature-privacy {
@@ -129,19 +129,6 @@
   background: #f7dce2;
   font-weight: 800;
   line-height: 1.45;
-}
-.registration-test-notice {
-  margin: 12px 0;
-  border: 2px solid #856114;
-  border-radius: 14px;
-  padding: 12px 14px;
-  color: #49370c;
-  background: #fff1c8;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-.registration-test-notice strong {
-  font-weight: 900;
 }
 .registration-pending {
   display: grid;

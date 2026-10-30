@@ -113,7 +113,6 @@
 .admin-dashboard-heading,
 .admin-dashboard-card,
 .admin-metric,
-.admin-dashboard-loading,
 .admin-dashboard-error {
   border: 1px solid color-mix(in srgb, var(--color-teal-dark) 25%, white);
   border-radius: 20px;
@@ -353,9 +352,6 @@
 .admin-error-detail dd {
   margin: 3px 0 0;
   font-weight: 600;
-}
-.admin-error-input {
-  white-space: pre-wrap;
 }
 .admin-dashboard th,
 .admin-dashboard td {
