@@ -54,7 +54,7 @@ describe("Home", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("links to the public verification from the home footer", async () => {
+  it("links to the secure-development prototype from the home footer", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) =>
@@ -83,7 +83,8 @@ describe("Home", () => {
 
     const seal = screen
       .getByRole("contentinfo")
-      .querySelector("a[href^='/acreditaciones/']");
+      .querySelector("a[href^='/desarrollo-seguro/']");
+    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/");
     const sealImage = await screen.findByAltText(
       "Sello ilustrado de Desarrollo Seguro",
     );
@@ -95,7 +96,7 @@ describe("Home", () => {
     expect(sealImage).toHaveAttribute("height", "128");
     expect(seal).toHaveTextContent("Demostración académica");
     expect(seal).toHaveAccessibleName(
-      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*ver ficha/i,
+      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
     );
   });
 

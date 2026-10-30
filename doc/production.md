@@ -21,6 +21,13 @@ bundles JavaScript y CSS con nombre versionado
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
+El directorio raíz `prototype/` se copia desde la etapa `web-build` a
+`/usr/share/nginx/html/desarrollo-seguro/` en la imagen `web-production`.
+Nginx sirve `/desarrollo-seguro/` como esa página estática y sus recursos; no
+requiere un proceso ni una API propios. La URL es pública aunque el único
+enlace interno de Grumphya a ella sea el sello del footer. La ficha
+`/acreditaciones/DS-GRUMPHYA-2026-001` continúa siendo una ruta de la SPA y
+consulta el endpoint de acreditaciones de la API.
 El healthcheck del servicio web solicita `/` directamente a Nginx, así detecta
 fallos de la portada además de que el proceso responda. Permite 30 segundos de
 arranque inicial antes de contar fallos, para tolerar la carga fría del

@@ -166,9 +166,10 @@ describe("SectionPage", () => {
 
     const seal = screen
       .getByRole("contentinfo")
-      .querySelector("a[href^='/acreditaciones/']");
+      .querySelector("a[href^='/desarrollo-seguro/']");
+    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/");
     expect(seal).toHaveAccessibleName(
-      /consultando el estado del sello.*ver ficha/i,
+      /consultando el estado del sello.*conocer la propuesta/i,
     );
     expect(
       await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),

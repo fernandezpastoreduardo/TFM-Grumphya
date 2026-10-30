@@ -49,12 +49,9 @@ describe("AccreditationSeal", () => {
     render(<AccreditationSeal />);
 
     const link = screen.getByRole("link", {
-      name: /consultando el estado del sello.*ver ficha/i,
+      name: /consultando el estado del sello.*conocer la propuesta/i,
     });
-    expect(link).toHaveAttribute(
-      "href",
-      "/acreditaciones/DS-GRUMPHYA-2026-001",
-    );
+    expect(link).toHaveAttribute("href", "/desarrollo-seguro/");
     expect(link).toHaveTextContent("Consultando el estado del sello");
     expect(
       screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
@@ -67,7 +64,7 @@ describe("AccreditationSeal", () => {
     ).toBeVisible();
     expect(link).toHaveTextContent("Sin certificación oficial");
     expect(link).toHaveAccessibleName(
-      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*ver ficha/i,
+      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
     );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/accreditations/DS-GRUMPHYA-2026-001",
@@ -93,7 +90,7 @@ describe("AccreditationSeal", () => {
       ).not.toBeInTheDocument();
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
-        "/acreditaciones/DS-GRUMPHYA-2026-001",
+        "/desarrollo-seguro/",
       );
     },
   );
@@ -153,7 +150,7 @@ describe("AccreditationSeal", () => {
       screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link")).toHaveAccessibleName(
-      /sello no verificable o sin vigencia.*ver ficha/i,
+      /sello no verificable o sin vigencia.*conocer la propuesta/i,
     );
   });
 

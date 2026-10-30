@@ -419,4 +419,24 @@ assert.match(
 );
 assert.match(staticAssetsLocation, /try_files \$uri =404;/);
 
+const developmentSecurityLocation = readLocationBlock(
+  nginxSpa,
+  "location ^~ /desarrollo-seguro/",
+);
+assert.match(
+  developmentSecurityLocation,
+  /try_files \$uri =404;/,
+  "prototype subpaths must not fall through to the SPA shell",
+);
+assert.doesNotMatch(
+  developmentSecurityLocation,
+  /app\.html/,
+  "unknown prototype resources must stay 404 instead of serving the app",
+);
+assert.match(
+  dockerfile,
+  /COPY --from=web-build \/workspace\/prototype \/usr\/share\/nginx\/html\/desarrollo-seguro/,
+  "only the static prototype directory must be copied to its public web prefix",
+);
+
 process.stdout.write("Container security policy guards passed.\n");

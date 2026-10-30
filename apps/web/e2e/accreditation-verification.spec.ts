@@ -26,7 +26,7 @@ const ACADEMIC_RECORD = {
     "Demostración académica, sin certificación oficial ni auditoría independiente.",
 };
 
-test("opens the server-backed public verification from the home footer", async ({
+test("opens the secure-development prototype from the home footer and links to verification", async ({
   page,
 }) => {
   await page.route("**/api/accreditations/**", (route) =>
@@ -35,12 +35,51 @@ test("opens the server-backed public verification from the home footer", async (
   await page.goto("/");
 
   const link = page.getByRole("link", {
-    name: /demostración académica.*sin certificación oficial.*ver ficha/i,
+    name: /sello ilustrado de desarrollo seguro/i,
   });
   await expect(link).toBeVisible();
   await link.scrollIntoViewIfNeeded();
   await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 128);
   await link.click();
+
+  await expect(page).toHaveURL(/\/desarrollo-seguro\/$/);
+  await expect(page.locator(".academic-note")).toContainText(
+    /prototipo académico[\s\S]*sin certificación[\s\S]*oficial/i,
+  );
+  await expect(
+    page.getByRole("heading", { name: /buenas prácticas/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /grumphya como cliente/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /sello comprobable/i }),
+  ).toBeVisible();
+  const themeSwitch = page.getByRole("checkbox", { name: "Modo oscuro" });
+  const themeSwitchLabel = page.locator(".theme-toggle");
+  await themeSwitchLabel.click();
+  await expect(themeSwitch).toBeChecked();
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(23, 57, 66)",
+  );
+  await themeSwitchLabel.click();
+  await expect(themeSwitch).not.toBeChecked();
+
+  await expect(page.locator(".company-mark")).toHaveJSProperty(
+    "naturalWidth",
+    640,
+  );
+  await expect(page.locator(".seal-preview img")).toHaveJSProperty(
+    "naturalWidth",
+    128,
+  );
+
+  const verificationLink = page.getByRole("link", {
+    name: /comprobar el sello|ver ficha pública/i,
+  });
+  await expect(verificationLink).toHaveAttribute("href", VERIFICATION_URL);
+  await verificationLink.click();
 
   await expect(page).toHaveURL(new RegExp(`${VERIFICATION_URL}$`));
   await expect(
@@ -56,19 +95,24 @@ test("opens the server-backed public verification from the home footer", async (
 test("keeps the seal and verification within mobile width", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 320, height: 844 });
   await page.route("**/api/accreditations/**", (route) =>
     route.fulfill({ json: ACADEMIC_RECORD }),
   );
   await page.goto("/precios");
   const link = page.getByRole("link", {
-    name: /demostración académica.*sin certificación oficial.*ver ficha/i,
+    name: /sello ilustrado de desarrollo seguro/i,
   });
   await expect(link).toBeVisible();
   await link.click();
-  await expect(
-    page.getByText("Prototipo académico", { exact: true }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/desarrollo-seguro\/$/);
+  await expect(page.locator(".academic-note")).toContainText(
+    /prototipo académico[\s\S]*sin certificación[\s\S]*oficial/i,
+  );
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+  await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
@@ -97,7 +141,7 @@ test("keeps verification text readable on dark backgrounds in dark mode", async 
   await expect(assuranceCard).toHaveCSS("color", "rgb(243, 255, 243)");
 });
 
-test("public navigation makes no browser requests to third parties", async ({
+test("secure-development prototype uses no third parties or cookies", async ({
   page,
   context,
   baseURL,
@@ -110,19 +154,30 @@ test("public navigation makes no browser requests to third parties", async ({
       externalRequests.push(request.url());
     }
   });
-  await page.route("**/api/accreditations/**", (route) =>
-    route.fulfill({ json: ACADEMIC_RECORD }),
-  );
-  await page.goto("/");
-  await page.goto("/precios");
-  await page.goto(VERIFICATION_URL);
+  await page.goto("/desarrollo-seguro/");
   await expect(
-    page.getByRole("heading", { name: "Medidas y evidencias" }),
+    page.getByRole("heading", { name: /desarrollo seguro/i }),
   ).toBeVisible();
 
   expect(externalRequests).toEqual([]);
-  const appHost = new URL(page.url()).hostname;
-  expect(
-    (await context.cookies()).every((cookie) => cookie.domain === appHost),
-  ).toBe(true);
+  expect(await context.cookies()).toEqual([]);
+  await expect(page.locator("script")).toHaveCount(0);
+  await expect(page.locator("form")).toHaveCount(0);
+  await expect(
+    page.locator('meta[http-equiv="Content-Security-Policy"]'),
+  ).toHaveAttribute("content", /script-src 'none'/);
+});
+
+test("returns 404 for unknown secure-development prototype subpaths", async ({
+  request,
+}) => {
+  const canonicalResponse = await request.get("/desarrollo-seguro", {
+    maxRedirects: 0,
+  });
+  expect(canonicalResponse.status()).toBe(308);
+  expect(canonicalResponse.headers().location).toBe("/desarrollo-seguro/");
+
+  const response = await request.get("/desarrollo-seguro/no-existe");
+
+  expect(response.status()).toBe(404);
 });

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import type { Connect } from "vite";
 import React from "react";
 import { prerenderToNodeStream } from "react-dom/static";
 import { defineConfig, type Plugin } from "vite";
@@ -8,6 +9,23 @@ import prerenderedPublicRoutes from "./src/shared/prerendered-public-routes.json
 const API_PROXY_TARGET =
   process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3000";
 const ROOT_ELEMENT = '<div id="root"></div>';
+const DEVELOPMENT_SECURITY_PREFIX = "/desarrollo-seguro";
+const DEVELOPMENT_SECURITY_FILES = new Map([
+  [
+    `${DEVELOPMENT_SECURITY_PREFIX}/`,
+    {
+      file: new URL("../../prototype/index.html", import.meta.url),
+      contentType: "text/html; charset=utf-8",
+    },
+  ],
+  [
+    `${DEVELOPMENT_SECURITY_PREFIX}/styles.css`,
+    {
+      file: new URL("../../prototype/styles.css", import.meta.url),
+      contentType: "text/css; charset=utf-8",
+    },
+  ],
+]);
 const DEV_SHARED_STYLES = [
   "/src/shared/styles/base.scss",
   "/src/shared/components/mobile-navigation.scss",
@@ -87,8 +105,69 @@ const publicRoutePrerenderPlugin: Plugin = {
   },
 };
 
+const developmentSecurityPrototypePlugin: Plugin = {
+  name: "grumphya-development-security-prototype",
+  configureServer(server) {
+    server.middlewares.use(createDevelopmentSecurityMiddleware());
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use(createDevelopmentSecurityMiddleware());
+  },
+};
+
+function createDevelopmentSecurityMiddleware(): Connect.NextHandleFunction {
+  return async (request, response, next) => {
+    const pathname = new URL(request.url ?? "/", "http://vite.local").pathname;
+    if (
+      !pathname.startsWith(`${DEVELOPMENT_SECURITY_PREFIX}/`) &&
+      pathname !== DEVELOPMENT_SECURITY_PREFIX
+    ) {
+      next();
+      return;
+    }
+
+    if (pathname === DEVELOPMENT_SECURITY_PREFIX) {
+      response.statusCode = 308;
+      response.setHeader("Location", `${DEVELOPMENT_SECURITY_PREFIX}/`);
+      response.end();
+      return;
+    }
+
+    const staticFile = DEVELOPMENT_SECURITY_FILES.get(pathname);
+    if (!staticFile) {
+      response.statusCode = 404;
+      response.setHeader("Content-Type", "text/plain; charset=utf-8");
+      response.setHeader("X-Content-Type-Options", "nosniff");
+      response.end("Not found");
+      return;
+    }
+
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      response.statusCode = 405;
+      response.setHeader("Allow", "GET, HEAD");
+      response.end();
+      return;
+    }
+
+    try {
+      const body = await readFile(staticFile.file);
+      response.statusCode = 200;
+      response.setHeader("Content-Type", staticFile.contentType);
+      response.setHeader("Cache-Control", "no-cache");
+      response.setHeader("X-Content-Type-Options", "nosniff");
+      response.end(request.method === "HEAD" ? undefined : body);
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), publicRoutePrerenderPlugin],
+  plugins: [
+    react(),
+    developmentSecurityPrototypePlugin,
+    publicRoutePrerenderPlugin,
+  ],
   build: { cssCodeSplit: true, manifest: true },
   server: {
     headers: {

@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import {
-  ACCREDITATION_VERIFICATION_URL,
+  DEVELOPMENT_SECURITY_PROTOTYPE_URL,
   getAccreditation,
   isSealDisplayAllowed,
 } from "../accreditation-verification";
 import "./accreditation-seal.scss";
 
 const SEAL_CAPTIONS = {
-  loading: "Consultando el estado del sello · Ver ficha ↗",
+  loading: "Consultando el estado del sello · Conocer la propuesta ↗",
   demonstration:
-    "Demostración académica · Sin certificación oficial · Ver ficha ↗",
-  unavailable: "Sello no verificable o sin vigencia · Ver ficha ↗",
+    "Demostración académica · Sin certificación oficial · Conocer la propuesta ↗",
+  unavailable: "Sello no verificable o sin vigencia · Conocer la propuesta ↗",
 } as const;
 
 export function AccreditationSeal() {
@@ -42,7 +42,7 @@ export function AccreditationSeal() {
   }, []);
 
   return (
-    <a className="accreditation-seal" href={ACCREDITATION_VERIFICATION_URL}>
+    <a className="accreditation-seal" href={DEVELOPMENT_SECURITY_PROTOTYPE_URL}>
       {status === "demonstration" && (
         <picture>
           <source
