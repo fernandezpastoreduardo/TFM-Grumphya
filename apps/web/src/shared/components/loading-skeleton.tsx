@@ -5,6 +5,7 @@ type LoadingSkeletonProps = {
   label: string;
   children: ReactNode;
   className?: string;
+  showImmediately?: boolean;
 };
 
 type SkeletonBlockProps = {
@@ -15,6 +16,7 @@ export function LoadingSkeleton({
   label,
   children,
   className = "",
+  showImmediately = false,
 }: LoadingSkeletonProps) {
   const isVisible = useDelayedVisibility();
 
@@ -26,7 +28,7 @@ export function LoadingSkeleton({
       aria-busy="true"
     >
       <span className="loading-skeleton-label">{label}</span>
-      {isVisible ? (
+      {showImmediately || isVisible ? (
         <div className="loading-skeleton-content" aria-hidden="true">
           {children}
         </div>
