@@ -12,6 +12,12 @@ if [ ! -r "$ADMIN_SETTINGS_FILE" ]; then
   echo "Required database secret 'postgres_admin_settings' is missing or unreadable in $SECRETS_DIR." >&2
   exit 1
 fi
+TLS_CERT_FILE="$SECRETS_DIR/postgres_tls.crt"
+TLS_KEY_FILE="$SECRETS_DIR/postgres_tls.key"
+if [ ! -r "$TLS_CERT_FILE" ] || [ ! -r "$TLS_KEY_FILE" ]; then
+  echo "Required PostgreSQL TLS certificate and key are missing or unreadable in $SECRETS_DIR." >&2
+  exit 1
+fi
 
 while IFS= read -r settings_line || [ -n "$settings_line" ]; do
   case "$settings_line" in
@@ -41,4 +47,12 @@ POSTGRES_DB=$PGDATABASE
 APP_PGUSER=$PGUSER
 APP_PGDATABASE=$PGDATABASE
 export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD APP_PGUSER APP_PGDATABASE APP_PG_PASSWORD
+POSTGRES_DATA_DIRECTORY=${PGDATA:-/var/lib/postgresql/data}
+if [ "$(id -u)" -eq 0 ]; then
+  install -o postgres -g postgres -m 0644 "$TLS_CERT_FILE" "$POSTGRES_DATA_DIRECTORY/server.crt"
+  install -o postgres -g postgres -m 0600 "$TLS_KEY_FILE" "$POSTGRES_DATA_DIRECTORY/server.key"
+else
+  install -m 0644 "$TLS_CERT_FILE" "$POSTGRES_DATA_DIRECTORY/server.crt"
+  install -m 0600 "$TLS_KEY_FILE" "$POSTGRES_DATA_DIRECTORY/server.key"
+fi
 exec docker-entrypoint.sh "$@"

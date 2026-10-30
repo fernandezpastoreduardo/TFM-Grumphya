@@ -1,57 +1,58 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolvePostgresSslConfig } from "./postgres-pool";
 
+const TEST_CA_CERTIFICATE = "test internal CA certificate";
+
 describe("PostgreSQL TLS configuration", () => {
-  it("allows TLS to be disabled only for the explicit internal Compose host", () => {
-    expect(
+  it("requires and loads the trusted CA for strictly verified production TLS", () => {
+    const directory = mkdtempSync(join(tmpdir(), "grumphya-postgres-tls-"));
+    const caFile = join(directory, "ca.crt");
+    writeFileSync(caFile, TEST_CA_CERTIFICATE);
+    try {
+      expect(
+        resolvePostgresSslConfig({
+          NODE_ENV: "production",
+          PGSSL_MODE: "verify-full",
+          PGSSL_CA_FILE: caFile,
+          PGHOST: "db",
+        }),
+      ).toEqual({
+        rejectUnauthorized: true,
+        ca: readFileSync(caFile),
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects the former plaintext internal database mode", () => {
+    expect(() =>
       resolvePostgresSslConfig({
         NODE_ENV: "production",
         PGSSL_MODE: "disable-internal",
         PGHOST: "db",
       }),
-    ).toBe(false);
+    ).toThrow("PGSSL_MODE must be 'verify-full' in production.");
+  });
+
+  it("requires an explicit CA certificate in production", () => {
     expect(() =>
       resolvePostgresSslConfig({
         NODE_ENV: "production",
-        PGSSL_MODE: "disable-internal",
-        PGHOST: "database.example.net",
       }),
-    ).toThrow("allowed only for the Compose database host 'db'");
+    ).toThrow("PGSSL_CA_FILE must be configured in production.");
   });
 
-  it("requires strict certificate verification for production external databases", () => {
-    expect(
-      resolvePostgresSslConfig({
-        NODE_ENV: "production",
-        PGSSL_MODE: "verify-full",
-        PGHOST: "database.example.net",
-      }),
-    ).toEqual({ rejectUnauthorized: true });
+  it("rejects unreadable CA certificate paths without leaking file details", () => {
     expect(() =>
       resolvePostgresSslConfig({
         NODE_ENV: "production",
-        PGSSL_MODE: "insecure",
-        PGHOST: "database.example.net",
+        PGSSL_CA_FILE: "/missing/internal-ca.crt",
       }),
-    ).toThrow("PGSSL_MODE must be 'verify-full' or 'disable-internal'.");
-  });
-
-  it("defaults production connections to strict TLS when no mode is provided", () => {
-    expect(
-      resolvePostgresSslConfig({
-        NODE_ENV: "production",
-        PGHOST: "database.example.net",
-      }),
-    ).toEqual({ rejectUnauthorized: true });
-  });
-
-  it("rejects the internal TLS exception when the Compose host is missing", () => {
-    expect(() =>
-      resolvePostgresSslConfig({
-        NODE_ENV: "production",
-        PGSSL_MODE: "disable-internal",
-      }),
-    ).toThrow("allowed only for the Compose database host 'db'");
+    ).toThrow("PGSSL_CA_FILE must point to a readable CA certificate.");
   });
 
   it("leaves local development on the driver's default TLS behavior", () => {

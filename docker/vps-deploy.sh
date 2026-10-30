@@ -4,12 +4,19 @@ umask 077
 
 readonly EXPECTED_SECRETS=(
   admin_settings
+  api_tls.crt
+  api_tls.key
   database_settings
   grumphya_env
+  internal_tls_ca.crt
   mail_settings
   openai_key
   openai_settings
   postgres_admin_settings
+  postgres_tls.crt
+  postgres_tls.key
+  web_tls.crt
+  web_tls.key
 )
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
@@ -113,29 +120,33 @@ read_release_sha() {
 }
 
 check_secrets() {
-  local secret
+  local secret secret_path mode
   [[ -d $SECRETS_DIR && ! -L $SECRETS_DIR ]] || die 'VPS secrets directory is missing or invalid'
+  [[ ! -e $SECRETS_DIR/internal_tls_ca.key && ! -L $SECRETS_DIR/internal_tls_ca.key ]] ||
+    die 'the internal TLS CA private key must remain offline'
   [[ -r $ENV_FILE && -f $ENV_FILE && ! -L $ENV_FILE ]] || die 'VPS production environment file is missing or invalid'
   for secret in "${EXPECTED_SECRETS[@]}"; do
     [[ -r $SECRETS_DIR/$secret && -f $SECRETS_DIR/$secret && ! -L $SECRETS_DIR/$secret ]] ||
       die 'a required VPS secret file is missing or invalid'
   done
+  mode=$(stat -c '%a' "$SECRETS_DIR") || die 'cannot inspect VPS secrets permissions'
   if [[ ${GRUMPHYA_TESTING:-0} != 1 ]]; then
-    local mode
-    mode=$(stat -c '%a' "$SECRETS_DIR") || die 'cannot inspect VPS secrets permissions'
     [[ $(stat -c '%u' "$SECRETS_DIR") == 0 ]] || die 'VPS secrets must be owned by root'
-    (( (8#$mode & 077) == 0 )) || die 'VPS secrets directory permissions are too broad'
-    for secret in "${EXPECTED_SECRETS[@]}" "$ENV_FILE"; do
-      if [[ $secret == /* ]]; then
-        mode=$(stat -c '%a' "$secret") || die 'cannot inspect VPS secret permissions'
-        [[ $(stat -c '%u' "$secret") == 0 ]] || die 'VPS secrets must be owned by root'
-      else
-        mode=$(stat -c '%a' "$SECRETS_DIR/$secret") || die 'cannot inspect VPS secret permissions'
-        [[ $(stat -c '%u' "$SECRETS_DIR/$secret") == 0 ]] || die 'VPS secrets must be owned by root'
-      fi
-      (( (8#$mode & 077) == 0 )) || die 'VPS secret file permissions are too broad'
-    done
   fi
+  (( (8#$mode & 077) == 0 )) || die 'VPS secrets directory permissions are too broad'
+
+  for secret in "${EXPECTED_SECRETS[@]}" "$ENV_FILE"; do
+    if [[ $secret == /* ]]; then
+      secret_path=$secret
+    else
+      secret_path="$SECRETS_DIR/$secret"
+    fi
+    mode=$(stat -c '%a' "$secret_path") || die 'cannot inspect VPS secret permissions'
+    if [[ ${GRUMPHYA_TESTING:-0} != 1 ]]; then
+      [[ $(stat -c '%u' "$secret_path") == 0 ]] || die 'VPS secrets must be owned by root'
+    fi
+    (( (8#$mode & 077) == 0 )) || die 'VPS secret file permissions are too broad'
+  done
 }
 
 check_tools() {
@@ -357,8 +368,8 @@ verify_release_images() {
 
 verify_bootstrap_revision() {
   local api_container=$1 web_container=$2 sha=$3
-  docker exec "$api_container" node -e \
-    'fetch("http://127.0.0.1:3000/api/health").then(async response => { const body = await response.json(); if (!response.ok || body.status !== "ok" || body.revision !== process.argv[1]) process.exit(1); }).catch(() => process.exit(1))' \
+  docker exec --env NODE_EXTRA_CA_CERTS=/run/secrets/internal_tls_ca.crt "$api_container" node -e \
+    'fetch("https://127.0.0.1:3000/api/health").then(async response => { const body = await response.json(); if (!response.ok || body.status !== "ok" || body.revision !== process.argv[1]) process.exit(1); }).catch(() => process.exit(1))' \
     "$sha" >/dev/null || die 'running API health revision does not match bootstrap SHA'
   docker exec "$web_container" sh -c \
     'test -s /usr/share/nginx/html/build.json && grep -Eq "\\\"revision\\\"[[:space:]]*:[[:space:]]*\\\"$1\\\"" /usr/share/nginx/html/build.json' \

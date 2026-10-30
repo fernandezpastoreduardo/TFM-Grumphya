@@ -1,25 +1,27 @@
 import { Pool } from "pg";
+import { readFileSync } from "node:fs";
 
 const POSTGRES_CONNECTION_TIMEOUT_MS = 2_000;
-const INTERNAL_DATABASE_HOST = "db";
 
 export function resolvePostgresSslConfig(
   environment: NodeJS.ProcessEnv = process.env,
-): false | { rejectUnauthorized: true } | undefined {
+): { rejectUnauthorized: true; ca: Buffer } | undefined {
   if (environment.NODE_ENV !== "production") return undefined;
 
   const mode = environment.PGSSL_MODE ?? "verify-full";
-  if (mode === "disable-internal") {
-    if (environment.PGHOST !== INTERNAL_DATABASE_HOST) {
-      throw new Error(
-        "PGSSL_MODE=disable-internal is allowed only for the Compose database host 'db'.",
-      );
-    }
-    return false;
+  if (mode !== "verify-full") {
+    throw new Error("PGSSL_MODE must be 'verify-full' in production.");
   }
-  if (mode === "verify-full") return { rejectUnauthorized: true };
 
-  throw new Error("PGSSL_MODE must be 'verify-full' or 'disable-internal'.");
+  const caFile = environment.PGSSL_CA_FILE;
+  if (!caFile) {
+    throw new Error("PGSSL_CA_FILE must be configured in production.");
+  }
+  try {
+    return { rejectUnauthorized: true, ca: readFileSync(caFile) };
+  } catch {
+    throw new Error("PGSSL_CA_FILE must point to a readable CA certificate.");
+  }
 }
 
 export function createPostgresPool(): Pool {

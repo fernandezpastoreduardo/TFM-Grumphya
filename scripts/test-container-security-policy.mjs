@@ -4,11 +4,15 @@ import { runInNewContext } from "node:vm";
 
 const DEPENDABOT_PATH = ".github/dependabot.yml";
 const CADDY_DOCKERFILE_PATH = "docker/Caddy.Dockerfile";
+const CADDYFILE_PATH = "docker/Caddyfile";
 const DOCKERFILE_PATH = "Dockerfile";
 const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
+const VPS_DEPLOY_HELPER_PATH = "docker/vps-deploy.sh";
+const INTERNAL_TLS_SCRIPT_PATH = "scripts/generate-internal-tls.sh";
+const POSTGRES_HBA_PATH = "docker/postgres-pg_hba.conf";
 const MIGRATIONS_DIRECTORY = "apps/api/migrations";
 const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
 const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
@@ -19,21 +23,29 @@ const CADDY_GO_JOSE_VERSION = "github.com/go-jose/go-jose/v4@v4.1.6";
 const [
   dependabot,
   caddyDockerfile,
+  caddyfile,
   dockerfile,
   compose,
   workflow,
   nginxSpa,
   productionComposeSmoke,
   migrationFiles,
+  internalTlsScript,
+  postgresHba,
+  vpsDeployHelper,
 ] = await Promise.all([
   readFile(DEPENDABOT_PATH, "utf8"),
   readFile(CADDY_DOCKERFILE_PATH, "utf8"),
+  readFile(CADDYFILE_PATH, "utf8"),
   readFile(DOCKERFILE_PATH, "utf8"),
   readFile(COMPOSE_PATH, "utf8"),
   readFile(WORKFLOW_PATH, "utf8"),
   readFile(NGINX_SPA_PATH, "utf8"),
   readFile(PRODUCTION_COMPOSE_SMOKE_PATH, "utf8"),
   readdir(MIGRATIONS_DIRECTORY),
+  readFile(INTERNAL_TLS_SCRIPT_PATH, "utf8"),
+  readFile(POSTGRES_HBA_PATH, "utf8"),
+  readFile(VPS_DEPLOY_HELPER_PATH, "utf8"),
 ]);
 
 function readLocationBlock(configuration, location) {
@@ -103,6 +115,26 @@ assert.ok(
   caddyCopyIndex > apkUpgradeIndex,
   "the patched Caddy binary must be copied after the runtime image package upgrade",
 );
+assert.match(
+  caddyfile,
+  /tls\s*\{\s*protocols tls1\.2 tls1\.3\s*\}/,
+  "public TLS must allow TLS 1.2 and 1.3 only",
+);
+assert.match(
+  caddyfile,
+  /reverse_proxy https:\/\/api:3000[\s\S]*?tls_trust_pool file \/run\/secrets\/internal_tls_ca\.crt/,
+  "Caddy must verify the API upstream certificate against the internal CA",
+);
+assert.match(
+  caddyfile,
+  /reverse_proxy https:\/\/web:8443[\s\S]*?tls_trust_pool file \/run\/secrets\/internal_tls_ca\.crt/,
+  "Caddy must verify the web upstream certificate against the internal CA",
+);
+assert.match(
+  caddyfile,
+  /Strict-Transport-Security "max-age=31536000; includeSubDomains"/,
+  "the HTTPS site must send HSTS",
+);
 
 assert.match(
   workflow,
@@ -149,8 +181,63 @@ assert.match(
 );
 assert.match(
   webHealthcheck,
-  /wget -q -O \/dev\/null http:\/\/127\.0\.0\.1:8080\//,
-  "the static web healthcheck must probe the public root route",
+  /openssl s_client -quiet -verify_return_error -verify_hostname web -CAfile \/run\/secrets\/internal_tls_ca\.crt[\s\S]*-connect 127\.0\.0\.1:8443 -servername web/,
+  "the static web healthcheck must verify the internal CA and hostname before probing the root route",
+);
+assert.match(compose, /PGSSL_MODE:\s*verify-full/);
+assert.doesNotMatch(compose, /PGSSL_MODE:\s*disable-internal/);
+assert.match(
+  compose,
+  /hba_file=\/etc\/postgresql\/pg_hba\.conf/,
+  "PostgreSQL must load the strict TLS host authentication rules",
+);
+assert.match(postgresHba, /^hostnossl all all all reject$/m);
+assert.match(postgresHba, /^hostssl all all all scram-sha-256$/m);
+assert.match(
+  compose,
+  /ssl_min_protocol_version=TLSv1\.2/,
+  "PostgreSQL must enforce a modern minimum TLS protocol",
+);
+assert.match(
+  postgresHba,
+  /^local all all trust$/m,
+  "PostgreSQL initialization must retain local socket access",
+);
+assert.match(
+  internalTlsScript,
+  /Refusing to overwrite existing internal TLS material/,
+  "internal certificate generation must avoid silently replacing existing trust roots",
+);
+assert.match(internalTlsScript, /DNS:api,IP:127\.0\.0\.1/);
+assert.match(internalTlsScript, /DNS:web,IP:127\.0\.0\.1/);
+assert.match(internalTlsScript, /DNS:db/);
+const apiMainPath = "apps/api/src/main.ts";
+const postgresPoolPath =
+  "apps/api/src/infrastructure/database/postgres-pool.ts";
+const postgresEntrypointPath = "docker/postgres-entrypoint.sh";
+const [apiMain, postgresPool, postgresEntrypoint] = await Promise.all([
+  readFile(apiMainPath, "utf8"),
+  readFile(postgresPoolPath, "utf8"),
+  readFile(postgresEntrypointPath, "utf8"),
+]);
+assert.match(
+  apiMain,
+  /httpsOptions[\s\S]*readRequiredTlsFile\("API_TLS_CERT_FILE"\)/,
+);
+assert.match(
+  postgresPool,
+  /rejectUnauthorized:\s*true[\s\S]*ca:\s*readFileSync\(caFile\)/,
+);
+assert.match(postgresEntrypoint, /install -o postgres -g postgres -m 0600/);
+assert.match(
+  vpsDeployHelper,
+  /stat -c '%u' "\$SECRETS_DIR"\) == 0/,
+  "the VPS secrets directory must be owned by root outside test mode",
+);
+assert.match(
+  vpsDeployHelper,
+  /stat -c '%u' "\$secret_path"\) == 0/,
+  "each VPS secret and production environment file must be owned by root outside test mode",
 );
 
 const smokeStepStart = workflow.indexOf(
@@ -195,7 +282,7 @@ const webImageStageEnd = dockerfile.indexOf(
 assert.ok(webImageStageStart >= 0 && webImageStageEnd > webImageStageStart);
 assert.match(
   dockerfile.slice(webImageStageStart, webImageStageEnd),
-  /RUN nginx -t/,
+  /&& nginx -t/,
   "the static web image must validate its Nginx configuration during build",
 );
 assert.match(

@@ -105,6 +105,7 @@ cat > "$TEMP_ROOT/.secrets/admin_settings" <<'EOF'
 ADMIN_EMAIL=ci@example.invalid
 ADMIN_PASSWORD=ci-fake-admin-password
 EOF
+bash "$REPO_ROOT/scripts/generate-internal-tls.sh" "$TEMP_ROOT/.secrets"
 
 compose=(
   docker compose
@@ -172,6 +173,25 @@ started=1
 
 "${compose[@]}" config --quiet
 "${compose[@]}" up --detach --pull never --no-build --wait --wait-timeout 180
+"${compose[@]}" exec --no-TTY api node -e '
+  const { Client } = require("pg");
+  const client = new Client({
+    host: "db",
+    port: 5432,
+    database: process.env.PGDATABASE,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
+    ssl: false,
+  });
+  client.connect().then(() => {
+    console.error("PostgreSQL unexpectedly accepted a plaintext connection.");
+    process.exit(1);
+  }).catch((error) => {
+    if (error.code === "28000") process.exit(0);
+    console.error("Plaintext PostgreSQL probe failed for an unexpected reason.");
+    process.exit(1);
+  });
+'
 
 assert_not_published() {
   local service=$1 container_id ports

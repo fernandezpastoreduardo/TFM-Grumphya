@@ -37,6 +37,7 @@ RUN apk add --no-cache git \
 FROM pgvector/pgvector:0.8.7-pg17 AS database-production
 COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 COPY docker/postgres-entrypoint.sh /usr/local/bin/grumphya-postgres-entrypoint.sh
+COPY docker/postgres-pg_hba.conf /etc/postgresql/pg_hba.conf
 COPY docker/initdb/000-provision-runtime-role.sh /docker-entrypoint-initdb.d/000-provision-runtime-role.sh
 COPY docker/postgres-backup.sh /usr/local/bin/grumphya-postgres-backup.sh
 RUN apt-get update \
@@ -45,7 +46,8 @@ RUN apt-get update \
   && gosu nobody true \
   && chmod 0555 /usr/local/bin/grumphya-postgres-entrypoint.sh \
   /docker-entrypoint-initdb.d/000-provision-runtime-role.sh \
-  /usr/local/bin/grumphya-postgres-backup.sh
+  /usr/local/bin/grumphya-postgres-backup.sh \
+  /etc/postgresql/pg_hba.conf
 ENTRYPOINT ["/usr/local/bin/grumphya-postgres-entrypoint.sh"]
 CMD ["postgres"]
 
@@ -62,12 +64,18 @@ RUN printf '{"revision":"%s"}\n' "$DEPLOY_SHA" > apps/web/public/build.json
 RUN pnpm --filter @grumphya/web build
 
 FROM nginx:1.30-alpine AS web-production
-RUN apk upgrade --no-cache
 COPY docker/nginx-spa.conf /etc/nginx/conf.d/default.conf
+RUN apk upgrade --no-cache \
+  && apk add --no-cache openssl \
+  && mkdir -p /run/secrets \
+  && openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+    -keyout /run/secrets/web_tls.key -out /run/secrets/web_tls.crt \
+    -subj "/CN=web" \
+  && nginx -t \
+  && rm -rf /run/secrets/web_tls.key /run/secrets/web_tls.crt
 COPY --from=web-build /workspace/apps/web/dist /usr/share/nginx/html
 COPY --from=web-build /workspace/prototype /usr/share/nginx/html/desarrollo-seguro
-RUN nginx -t
-EXPOSE 8080
+EXPOSE 8443
 
 FROM pnpm-base AS production-dependencies
 
