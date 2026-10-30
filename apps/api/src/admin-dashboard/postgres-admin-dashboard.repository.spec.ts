@@ -113,7 +113,7 @@ const CONTACT_CREATED_AT = new Date("2026-10-18T12:00:00.000Z");
 describe("PostgresAdminDashboardRepository", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("records a safe validation diagnostic", async () => {
+  it("records safe error categories without persisting request context", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
     const repository = new PostgresAdminDashboardRepository({
       query,
@@ -125,9 +125,10 @@ describe("PostgresAdminDashboardRepository", () => {
       "decision_semantics",
     );
 
+    expect(query.mock.calls[0]?.[0]).not.toContain("context_json");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
-      ["INVALID_EVALUATION_RESPONSE", 503, "decision_semantics", null],
+      expect.stringContaining("diagnostic_code"),
+      ["INVALID_EVALUATION_RESPONSE", 503, "decision_semantics"],
     );
   });
 
@@ -143,13 +144,14 @@ describe("PostgresAdminDashboardRepository", () => {
       "decision_semantics;idea text",
     );
 
+    expect(query.mock.calls[0]?.[0]).not.toContain("context_json");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
-      ["INVALID_EVALUATION_RESPONSE", 503, null, null],
+      expect.stringContaining("diagnostic_code"),
+      ["INVALID_EVALUATION_RESPONSE", 503, null],
     );
   });
 
-  it("stores only the supplied evaluation context for admin diagnostics", async () => {
+  it("ignores legacy context supplied by callers", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
     const repository = new PostgresAdminDashboardRepository({
       query,
@@ -166,18 +168,14 @@ describe("PostgresAdminDashboardRepository", () => {
       context,
     );
 
+    expect(query.mock.calls[0]?.[0]).not.toContain("context_json");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
-      [
-        "INVALID_EVALUATION_RESPONSE",
-        503,
-        "decision_semantics",
-        JSON.stringify(context),
-      ],
+      expect.stringContaining("diagnostic_code"),
+      ["INVALID_EVALUATION_RESPONSE", 503, "decision_semantics"],
     );
   });
 
-  it("stores context for provider and timeout evaluation failures", async () => {
+  it("does not persist context for provider and timeout failures", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
     const repository = new PostgresAdminDashboardRepository({
       query,
@@ -194,18 +192,14 @@ describe("PostgresAdminDashboardRepository", () => {
       context,
     );
 
+    expect(query.mock.calls[0]?.[0]).not.toContain("context_json");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
-      [
-        "EVALUATOR_UNAVAILABLE",
-        503,
-        "openai_http_429",
-        JSON.stringify(context),
-      ],
+      expect.stringContaining("diagnostic_code"),
+      ["EVALUATOR_UNAVAILABLE", 503, "openai_http_429"],
     );
   });
 
-  it("stores bounded evaluation context for any 5xx, even without a classified code", async () => {
+  it("does not persist legacy context for unclassified server failures", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
     const repository = new PostgresAdminDashboardRepository({
       query,
@@ -222,9 +216,10 @@ describe("PostgresAdminDashboardRepository", () => {
       context,
     );
 
+    expect(query.mock.calls[0]?.[0]).not.toContain("context_json");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
-      ["HTTP_503", 503, null, JSON.stringify(context)],
+      expect.stringContaining("diagnostic_code"),
+      ["HTTP_503", 503, null],
     );
   });
 
@@ -239,13 +234,14 @@ describe("PostgresAdminDashboardRepository", () => {
       inputText: "private idea",
     });
 
+    expect(query.mock.calls[0]?.[0]).not.toContain("context_json");
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
-      ["HTTP_400", 400, null, null],
+      expect.stringContaining("diagnostic_code"),
+      ["HTTP_400", 400, null],
     );
   });
 
-  it("returns a single admin error event with its safe context", async () => {
+  it("returns an admin error event without legacy idea context", async () => {
     const occurredAt = new Date("2026-10-24T10:30:00.000Z");
     const context = {
       useCase: "idea_evaluation",
@@ -273,10 +269,10 @@ describe("PostgresAdminDashboardRepository", () => {
       statusCode: 503,
       occurredAt: occurredAt.toISOString(),
       diagnosticCode: "decision_semantics",
-      context,
+      context: null,
     });
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining("context_json"),
+      expect.not.stringContaining("context_json"),
       ["42"],
     );
   });
@@ -326,12 +322,38 @@ describe("PostgresAdminDashboardRepository", () => {
       .mockResolvedValueOnce({ rows: TREND_ROWS })
       .mockResolvedValueOnce({ rows: MAXIMUM_COST_ROWS })
       .mockResolvedValueOnce({ rows: ACTIVE_PLAN_ROWS })
-      .mockResolvedValueOnce({ rows: ANNUAL_FINANCE_ROWS });
+      .mockResolvedValueOnce({ rows: ANNUAL_FINANCE_ROWS })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            hour: new Date("2026-10-30T09:00:00.000Z"),
+            operation: "idea_evaluation",
+            model: "gpt-test",
+            event_count: "3",
+            input_tokens: "100",
+            cached_input_tokens: "40",
+            output_tokens: "20",
+            estimated_cost_usd: "0.0025",
+          },
+        ],
+      });
     const repository = new PostgresAdminDashboardRepository({
       query,
     } as unknown as Pool);
 
     await expect(repository.getSnapshot()).resolves.toMatchObject({
+      recentAiActivity: [
+        {
+          hour: "2026-10-30T09:00:00.000Z",
+          operation: "idea_evaluation",
+          model: "gpt-test",
+          eventCount: 3,
+          inputTokenBucket: "under_1k",
+          cachedInputTokenBucket: "under_1k",
+          outputTokenBucket: "under_1k",
+          estimatedCostUsd: 0.0025,
+        },
+      ],
       revenue: { weeklyEur: 4, totalEur: 8 },
       estimatedAiCost: {
         weeklyUsd: 2.25,
@@ -430,7 +452,139 @@ describe("PostgresAdminDashboardRepository", () => {
     expect(query.mock.calls[4]?.[0]).toContain("'expired'");
     expect(query.mock.calls[5]?.[0]).toContain("FROM simulated_purchases");
     expect(query.mock.calls[5]?.[0]).toContain("FROM admin_ai_usage_events");
-    expect(query).toHaveBeenCalledTimes(6);
+    expect(query.mock.calls[6]?.[0]).toContain("date_trunc('hour'");
+    expect(query.mock.calls[6]?.[0]).toContain("LIMIT 100");
+    expect(query.mock.calls[6]?.[0]).toContain("HAVING count(*) >= 3");
+    expect(query.mock.calls[6]?.[0]).not.toContain("user_id");
+    expect(query).toHaveBeenCalledTimes(7);
+  });
+
+  it.each([
+    [999, "under_1k"],
+    [1_000, "1k_5k"],
+    [4_999, "1k_5k"],
+    [5_000, "5k_20k"],
+    [19_999, "5k_20k"],
+    [20_000, "20k_plus"],
+  ] as const)(
+    "maps aggregate token volume %i to the privacy bucket %s without exposing exact totals",
+    async (tokenCount, expectedBucket) => {
+      const recentActivityRows = [
+        {
+          hour: new Date("2026-10-30T09:00:00.000Z"),
+          operation: "idea_evaluation",
+          model: `gpt-test-${tokenCount}`,
+          event_count: "3",
+          input_tokens: String(tokenCount),
+          cached_input_tokens: String(tokenCount),
+          output_tokens: String(tokenCount),
+          estimated_cost_usd: "0.001",
+        },
+      ];
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [SUMMARY_ROW] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: recentActivityRows });
+      const repository = new PostgresAdminDashboardRepository({
+        query,
+      } as unknown as Pool);
+
+      const snapshot = await repository.getSnapshot();
+      const [activity] = snapshot.recentAiActivity;
+
+      expect(activity).toEqual({
+        hour: "2026-10-30T09:00:00.000Z",
+        operation: "idea_evaluation",
+        model: `gpt-test-${tokenCount}`,
+        eventCount: 3,
+        inputTokenBucket: expectedBucket,
+        cachedInputTokenBucket: expectedBucket,
+        outputTokenBucket: expectedBucket,
+        estimatedCostUsd: 0.001,
+      });
+      expect(activity).not.toHaveProperty("inputTokens");
+      expect(activity).not.toHaveProperty("cachedInputTokens");
+      expect(activity).not.toHaveProperty("outputTokens");
+      expect(activity).not.toHaveProperty("userId");
+    },
+  );
+
+  it("drops invalid recent activity rows and keeps unknown costs unpriced", async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [SUMMARY_ROW] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            hour: new Date("2026-10-30T09:00:00.000Z"),
+            operation: "roast",
+            model: "gpt-test",
+            event_count: "3",
+            input_tokens: "1000",
+            cached_input_tokens: "500",
+            output_tokens: "200",
+            estimated_cost_usd: "not-a-number",
+          },
+          {
+            hour: new Date("invalid date"),
+            operation: "roast",
+            model: "gpt-test",
+            event_count: "3",
+            input_tokens: "1000",
+            cached_input_tokens: "500",
+            output_tokens: "200",
+            estimated_cost_usd: "0.1",
+          },
+          {
+            hour: new Date("2026-10-30T08:00:00.000Z"),
+            operation: "idea_similarity",
+            model: "gpt-test",
+            event_count: "3",
+            input_tokens: "1000",
+            cached_input_tokens: "500",
+            output_tokens: "200",
+            estimated_cost_usd: "0.1",
+          },
+          {
+            hour: new Date("2026-10-30T07:00:00.000Z"),
+            operation: "roast",
+            model: "private/model-name",
+            event_count: "3",
+            input_tokens: "1000",
+            cached_input_tokens: "500",
+            output_tokens: "200",
+            estimated_cost_usd: "0.1",
+          },
+        ],
+      });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    const snapshot = await repository.getSnapshot();
+
+    expect(snapshot.recentAiActivity).toEqual([
+      {
+        hour: "2026-10-30T09:00:00.000Z",
+        operation: "roast",
+        model: "gpt-test",
+        eventCount: 3,
+        inputTokenBucket: "1k_5k",
+        cachedInputTokenBucket: "under_1k",
+        outputTokenBucket: "under_1k",
+        estimatedCostUsd: null,
+      },
+    ]);
   });
 
   it("returns zero account averages and an empty error and trend list", async () => {
@@ -445,6 +599,7 @@ describe("PostgresAdminDashboardRepository", () => {
           },
         ],
       })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -480,6 +635,7 @@ describe("PostgresAdminDashboardRepository", () => {
   it("throws when the dashboard summary query returns no row", async () => {
     const query = vi
       .fn()
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -803,7 +959,7 @@ describe("PostgresAdminDashboardRepository", () => {
     expect(query).toHaveBeenCalledTimes(1);
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO application_error_events"),
-      ["UNCLASSIFIED_ERROR", 599, null, null],
+      ["UNCLASSIFIED_ERROR", 599, null],
     );
   });
 

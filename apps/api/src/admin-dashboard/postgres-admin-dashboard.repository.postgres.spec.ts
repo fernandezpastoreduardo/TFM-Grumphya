@@ -113,6 +113,63 @@ describe.skipIf(!DATABASE_URL)("admin dashboard AI cost attribution", () => {
     });
   });
 
+  it("returns recent AI activity in private token ranges and suppresses sparse or stale groups", async () => {
+    await testPool.query("TRUNCATE admin_ai_usage_events");
+    const { rows } = await testPool.query<{
+      occurred_at: Date;
+      activity_hour: Date;
+    }>(`
+      SELECT date_trunc('hour', now()) - interval '1 hour' AS activity_hour,
+        date_trunc('hour', now()) - interval '1 hour' + interval '10 minutes'
+          AS occurred_at
+    `);
+    const occurredAt = rows[0]?.occurred_at;
+    const expectedHour = rows[0]?.activity_hour;
+    if (!occurredAt || !expectedHour)
+      throw new Error("Test activity timestamp is missing.");
+
+    await testPool.query(
+      `INSERT INTO admin_ai_usage_events
+         (user_id,actor_type,operation,model,input_tokens,cached_input_tokens,
+          output_tokens,estimated_cost_usd,occurred_at)
+       VALUES
+         (NULL,'anonymous','idea_evaluation','gpt-test',400,100,500,0.001,$1),
+         (NULL,'anonymous','idea_evaluation','gpt-test',400,100,500,0.001,$1),
+         (NULL,'anonymous','idea_evaluation','gpt-test',400,100,500,0.001,$1),
+         (NULL,'anonymous','roast','sparse-model',400,100,500,0.002,$1),
+         (NULL,'anonymous','roast','sparse-model',400,100,500,0.002,$1),
+         (NULL,'anonymous','roast','old-model',400,100,500,0.003,$1 - interval '25 hours'),
+         (NULL,'anonymous','roast','old-model',400,100,500,0.003,$1 - interval '25 hours'),
+         (NULL,'anonymous','roast','old-model',400,100,500,0.003,$1 - interval '25 hours')`,
+      [occurredAt],
+    );
+
+    const snapshot = await repository.getSnapshot();
+
+    expect(snapshot.recentAiActivity).toEqual([
+      {
+        hour: expectedHour.toISOString(),
+        operation: "idea_evaluation",
+        model: "gpt-test",
+        eventCount: 3,
+        inputTokenBucket: "1k_5k",
+        cachedInputTokenBucket: "under_1k",
+        outputTokenBucket: "1k_5k",
+        estimatedCostUsd: 0.003,
+      },
+    ]);
+    expect(Object.keys(snapshot.recentAiActivity[0] ?? {}).sort()).toEqual([
+      "cachedInputTokenBucket",
+      "estimatedCostUsd",
+      "eventCount",
+      "hour",
+      "inputTokenBucket",
+      "model",
+      "operation",
+      "outputTokenBucket",
+    ]);
+  });
+
   it("derives plan limits, distinct weekly subscribers and annual finances from persisted events", async () => {
     await testPool.query(
       "TRUNCATE admin_ai_usage_events, simulated_purchases, subscriptions, users CASCADE",

@@ -8,7 +8,7 @@ type ApplicationErrorDetail = {
   statusCode: number;
   occurredAt: string;
   diagnosticCode: string | null;
-  context: { useCase: "idea_evaluation"; inputText: string } | null;
+  context: null;
 };
 
 type DetailState =
@@ -20,7 +20,6 @@ const ERROR_DETAIL_ERROR = "No se ha podido cargar el detalle de este error.";
 const ERROR_EVENT_ID_PATTERN = /^[1-9]\d{0,18}$/u;
 const ERROR_CODE_PATTERN = /^[A-Z0-9_]{1,100}$/u;
 const DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
-const MAX_SAVED_INPUT_LENGTH = 2_000;
 const ERROR_DETAIL_ENDPOINT = "/api/admin/application-errors/";
 const EUROPEAN_DATE = new Intl.DateTimeFormat("es-ES", {
   dateStyle: "long",
@@ -37,13 +36,6 @@ function parseApplicationErrorDetail(
   expectedId: string,
 ): ApplicationErrorDetail | null {
   if (!isRecord(value)) return null;
-  const context = value.context;
-  const contextIsValid =
-    context === null ||
-    (isRecord(context) &&
-      context.useCase === "idea_evaluation" &&
-      typeof context.inputText === "string" &&
-      context.inputText.length <= MAX_SAVED_INPUT_LENGTH);
   if (
     value.id !== expectedId ||
     typeof value.code !== "string" ||
@@ -56,8 +48,7 @@ function parseApplicationErrorDetail(
     !Number.isFinite(Date.parse(value.occurredAt)) ||
     (value.diagnosticCode !== null &&
       (typeof value.diagnosticCode !== "string" ||
-        !DIAGNOSTIC_CODE_PATTERN.test(value.diagnosticCode))) ||
-    !contextIsValid
+        !DIAGNOSTIC_CODE_PATTERN.test(value.diagnosticCode)))
   ) {
     return null;
   }
@@ -67,13 +58,7 @@ function parseApplicationErrorDetail(
     statusCode: value.statusCode,
     occurredAt: value.occurredAt,
     diagnosticCode: value.diagnosticCode,
-    context:
-      context === null
-        ? null
-        : {
-            useCase: "idea_evaluation",
-            inputText: String(context.inputText),
-          },
+    context: null,
   };
 }
 
@@ -139,11 +124,7 @@ export function AdminErrorDetail({ eventId }: { eventId: string }) {
         </div>
         <div>
           <dt>Caso de uso</dt>
-          <dd>
-            {detail.context?.useCase === "idea_evaluation"
-              ? "Evaluación de ideas"
-              : "No identificado"}
-          </dd>
+          <dd>No identificado</dd>
         </div>
         {detail.diagnosticCode && (
           <div>
@@ -154,18 +135,7 @@ export function AdminErrorDetail({ eventId }: { eventId: string }) {
           </div>
         )}
       </dl>
-      {detail.context ? (
-        <section aria-labelledby="admin-error-input-title">
-          <h3 id="admin-error-input-title">Texto introducido</h3>
-          <pre className="admin-error-input">{detail.context.inputText}</pre>
-          <p className="admin-dashboard-note">
-            Se conserva de forma temporal para diagnosticar este fallo y se
-            elimina junto con el evento de error a los 30 días.
-          </p>
-        </section>
-      ) : (
-        <p>No se guardó información de entrada para este evento.</p>
-      )}
+      <p>El detalle no incluye texto enviado por usuarios.</p>
     </article>
   );
 }

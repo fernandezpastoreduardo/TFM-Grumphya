@@ -51,11 +51,10 @@ describe("ApplicationErrorFilter", () => {
       "ADMIN_DASHBOARD_UNAVAILABLE",
       503,
       undefined,
-      undefined,
     );
   });
 
-  it("persists a safe evaluation validation category for admin diagnosis", async () => {
+  it("does not persist idea text attached to an exception", async () => {
     const { filter, host, repository } = createFilter();
     const exception = Object.assign(
       new HttpException(
@@ -77,10 +76,6 @@ describe("ApplicationErrorFilter", () => {
       "INVALID_EVALUATION_RESPONSE",
       503,
       "decision_semantics",
-      {
-        useCase: "idea_evaluation",
-        inputText: "Una app para probar una idea",
-      },
     );
   });
 
@@ -97,11 +92,10 @@ describe("ApplicationErrorFilter", () => {
       "ADMIN_DASHBOARD_UNAVAILABLE",
       503,
       undefined,
-      undefined,
     );
   });
 
-  it("captures the idea text for server failures on the evaluation endpoint", async () => {
+  it("does not capture evaluation request bodies", async () => {
     const request = {
       method: "POST",
       url: "/api/evaluation-process",
@@ -124,10 +118,6 @@ describe("ApplicationErrorFilter", () => {
       "EVALUATOR_UNAVAILABLE",
       503,
       undefined,
-      {
-        useCase: "idea_evaluation",
-        inputText: "Una app para avisar si el purificador necesita recambio",
-      },
     );
   });
 
@@ -148,7 +138,6 @@ describe("ApplicationErrorFilter", () => {
     expect(repository.recordApplicationError).toHaveBeenCalledWith(
       "HTTP_503",
       503,
-      undefined,
       undefined,
     );
   });

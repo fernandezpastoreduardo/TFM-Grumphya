@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { LoginAbuseProtection } from "./login-abuse-protection.service";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const API_REQUEST_LIMIT = 120;
@@ -25,6 +26,7 @@ type RateLimitBucket = { count: number; resetAt: number };
 type SecurityMiddlewareOptions = {
   apiRequestLimit?: number;
   sessionRefreshRequestLimit?: number;
+  loginAbuseProtection?: LoginAbuseProtection;
 };
 
 function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
@@ -58,6 +60,8 @@ export function createSecurityMiddleware(
       ? Number(options.sessionRefreshRequestLimit)
       : REGISTRATION_VERIFY_REQUEST_LIMIT;
   const buckets = new Map<string, RateLimitBucket>();
+  const loginAbuseProtection =
+    options.loginAbuseProtection ?? new LoginAbuseProtection();
   let requestCount = 0;
 
   return (request, response, next) => {
@@ -69,9 +73,7 @@ export function createSecurityMiddleware(
       request.path.startsWith("/api/auth/") ||
       request.path.startsWith("/api/registration") ||
       request.path === "/api/contact-messages" ||
-      request.path === "/api/admin/dashboard" ||
-      request.path === "/api/admin/contact-messages" ||
-      request.path.startsWith("/api/admin/application-errors/") ||
+      request.path.startsWith("/api/admin/") ||
       request.path.startsWith("/api/dev/mail-preview")
     ) {
       response.setHeader("Cache-Control", "no-store");
@@ -157,6 +159,22 @@ export function createSecurityMiddleware(
       request.method === "POST" && request.path === "/api/auth/refresh";
     const isLoginPost =
       request.method === "POST" && request.path === "/api/auth/login";
+    if (isLoginPost) {
+      const blockedSeconds = loginAbuseProtection.getBlockedRetryAfter(
+        clientAddress,
+        now,
+      );
+      if (blockedSeconds > 0) {
+        loginAbuseProtection.recordBlockedLoginRequest(now);
+        response.setHeader("Retry-After", String(blockedSeconds));
+        response.status(429).json({
+          statusCode: 429,
+          code: "LOGIN_IP_BLOCKED",
+          message: RATE_LIMIT_MESSAGE,
+        });
+        return;
+      }
+    }
     const isLogoutPost =
       request.method === "POST" && request.path === "/api/auth/logout";
     const isAuthPost =
@@ -257,6 +275,27 @@ export function createSecurityMiddleware(
         if (oldestKey) buckets.delete(oldestKey);
       }
       buckets.set(key, bucket);
+    }
+
+    if (isLoginPost) loginAbuseProtection.recordLoginRequest(now);
+
+    if (
+      isLoginPost &&
+      loginAbuseProtection.isChallengeModeActive(now) &&
+      !loginAbuseProtection.verifyChallenge(
+        clientAddress,
+        request.get("x-login-challenge") ?? "",
+        request.get("x-login-proof") ?? "",
+        now,
+      )
+    ) {
+      response.status(428).json({
+        statusCode: 428,
+        code: "LOGIN_CHALLENGE_REQUIRED",
+        message: "Verifica el navegador para continuar.",
+        challenge: loginAbuseProtection.createChallenge(clientAddress, now),
+      });
+      return;
     }
 
     next();

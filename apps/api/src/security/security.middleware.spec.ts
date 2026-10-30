@@ -1,16 +1,23 @@
 import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 import { createSecurityMiddleware } from "./security.middleware";
+import { LoginAbuseProtection } from "./login-abuse-protection.service";
 
 const EVALUATION_PATH = "/api/evaluation-process";
+const LOGIN_PATH = "/api/auth/login";
 const REQUEST_IP = "192.0.2.10";
+const LOGIN_RATE_PER_SECOND = 10;
 
-function createRequest(path = EVALUATION_PATH, method = "POST"): Request {
+function createRequest(
+  path = EVALUATION_PATH,
+  method = "POST",
+  ip = REQUEST_IP,
+): Request {
   return {
-    ip: REQUEST_IP,
+    ip,
     path,
     method,
-    socket: { remoteAddress: REQUEST_IP },
+    socket: { remoteAddress: ip },
     headers: {},
     get: (name: string) =>
       name.toLowerCase() === "origin" ? "http://127.0.0.1:5173" : undefined,
@@ -97,6 +104,117 @@ describe("security middleware", () => {
     );
     expect(headers.has("Retry-After")).toBe(true);
     expect(next).toHaveBeenCalledTimes(10);
+  });
+
+  it("blocks the sixth login request from the same IP in its one-minute window", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const request = createRequest(LOGIN_PATH, "POST");
+
+    for (let index = 0; index < 5; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response, headers } = createResponse();
+
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(5);
+  });
+
+  it("does not let rate-limited requests from one IP activate the global challenge threshold", () => {
+    vi.useFakeTimers();
+    try {
+      const loginAbuseProtection = new LoginAbuseProtection({
+        secret: "test-secret",
+      });
+      const recordLoginRequest = vi.spyOn(
+        loginAbuseProtection,
+        "recordLoginRequest",
+      );
+      const middleware = createSecurityMiddleware({ loginAbuseProtection });
+      const next = vi.fn() as NextFunction;
+
+      for (let second = 0; second < 3; second += 1) {
+        vi.setSystemTime(second * 1_000);
+        for (let attempt = 0; attempt < LOGIN_RATE_PER_SECOND; attempt += 1) {
+          middleware(
+            createRequest(LOGIN_PATH, "POST"),
+            createResponse().response,
+            next,
+          );
+        }
+      }
+
+      expect(next).toHaveBeenCalledTimes(5);
+      expect(recordLoginRequest).toHaveBeenCalledTimes(5);
+      expect(loginAbuseProtection.isChallengeModeActive(2_999)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("requires a web challenge after sustained global login traffic across IPs", () => {
+    vi.useFakeTimers();
+    const loginAbuseProtection = new LoginAbuseProtection({
+      secret: "test-secret",
+    });
+    const middleware = createSecurityMiddleware({ loginAbuseProtection });
+    const next = vi.fn() as NextFunction;
+
+    for (let second = 0; second < 3; second += 1) {
+      vi.setSystemTime(second * 1_000);
+      for (let requestNumber = 0; requestNumber < 10; requestNumber += 1) {
+        middleware(
+          createRequest(
+            LOGIN_PATH,
+            "POST",
+            `192.0.2.${second * 10 + requestNumber + 1}`,
+          ),
+          createResponse().response,
+          next,
+        );
+      }
+    }
+
+    const challenged = createResponse();
+    middleware(createRequest(LOGIN_PATH), challenged.response, next);
+
+    expect(challenged.response.status).toHaveBeenCalledWith(428);
+    expect(challenged.response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "LOGIN_CHALLENGE_REQUIRED" }),
+    );
+    expect(next).toHaveBeenCalledTimes(29);
+    vi.useRealTimers();
+  });
+
+  it("blocks an IP after four failed logins during challenge mode", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(3_003);
+    const loginAbuseProtection = new LoginAbuseProtection({
+      secret: "test-secret",
+    });
+    for (let second = 0; second < 3; second += 1) {
+      for (let requestNumber = 0; requestNumber < 10; requestNumber += 1) {
+        loginAbuseProtection.recordLoginRequest(second * 1_000);
+      }
+    }
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      loginAbuseProtection.recordLoginFailure(REQUEST_IP, 3_000 + attempt);
+    }
+    const middleware = createSecurityMiddleware({ loginAbuseProtection });
+    const { response, headers } = createResponse();
+
+    middleware(createRequest(LOGIN_PATH), response, vi.fn() as NextFunction);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(headers.get("Retry-After")).toBe("900");
+    expect(loginAbuseProtection.getAdminSnapshot(3_003)).toMatchObject({
+      blockedRequests: 1,
+      activeBlockedAddresses: 1,
+    });
+    vi.useRealTimers();
   });
 
   it("limits public CSP report ingestion to protect application logs", () => {

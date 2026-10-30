@@ -2,12 +2,54 @@ import { ServiceUnavailableException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminDashboardRepository } from "./admin-dashboard.models";
 import { AdminDashboardService } from "./admin-dashboard.service";
+import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
 
 const PRIVATE_DATABASE_DETAIL = "password=private; idea=private";
 const DASHBOARD_UNAVAILABLE_MESSAGE =
   "No se han podido consultar las métricas ahora.";
 
 describe("AdminDashboardService", () => {
+  it("replaces repository placeholder data with live aggregate login metrics", async () => {
+    const snapshot = {
+      recentAiActivity: [],
+      loginSecurity: {
+        windowMinutes: 15,
+        loginRequests: 0,
+        challengesIssued: 0,
+        challengesAccepted: 0,
+        challengesRejected: 0,
+        failedLogins: 0,
+        blockedRequests: 0,
+        activeBlockedAddresses: 0,
+        attackModeActive: false,
+      },
+    };
+    const liveMetrics = {
+      windowMinutes: 15,
+      loginRequests: 12,
+      challengesIssued: 3,
+      challengesAccepted: 2,
+      challengesRejected: 1,
+      failedLogins: 2,
+      blockedRequests: 4,
+      activeBlockedAddresses: 1,
+      attackModeActive: true,
+    } as const;
+    const repository = {
+      getSnapshot: vi.fn().mockResolvedValue(snapshot),
+    } as unknown as AdminDashboardRepository;
+    const loginAbuseProtection = {
+      getAdminSnapshot: vi.fn().mockReturnValue(liveMetrics),
+    } as unknown as LoginAbuseProtection;
+    const service = new AdminDashboardService(repository, loginAbuseProtection);
+
+    await expect(service.getSnapshot()).resolves.toEqual({
+      ...snapshot,
+      loginSecurity: liveMetrics,
+    });
+    expect(loginAbuseProtection.getAdminSnapshot).toHaveBeenCalledOnce();
+  });
+
   it("hides repository details when dashboard metrics are unavailable", async () => {
     const repository = {
       getSnapshot: vi

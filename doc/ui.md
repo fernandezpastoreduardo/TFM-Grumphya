@@ -120,6 +120,11 @@ la lámina maestra está en
   evaluación con una ilustración de Grumphya junto a café derramado. Los fallos
   cuyo resultado o consumo es incierto mantienen un aviso textual sin esa
   afirmación de cuota.
+- Si `POST /api/roast` responde `503 ROAST_REPLY_UNAVAILABLE`, Descárgate muestra
+  un diálogo titulado «Se nos ha derramado el café». El servidor libera la
+  reserva en este error, así que el diálogo confirma que no se descontó el
+  envío. Cerrar el aviso conserva el texto para que se pueda volver a intentar;
+  los errores con otros códigos siguen en el contexto del formulario.
 - La revisión de contraste cubre Home (incluidos radio, notas y errores), los
   códigos de las páginas de error, la navegación y las vistas de Planes,
   Contacto, Buenas prácticas, Humanos notables, Descárgate, Peores ideas y
@@ -312,13 +317,14 @@ principal de 128 × 128 px y 7.550 B. En el ranking público, el skeleton
 representa las diez filas máximas y conserva la altura de la tarjeta al recibir
 una respuesta con diez resultados; la comprobación E2E mide ese caso límite en
 móvil.
-En Descárgate, el hilo reserva 420 px desde el HTML prerenderizado. Dos pruebas
-E2E móviles comprueban que la altura cambia menos de 2 px al cargar la
-conversación y que la posición del compositor se mantiene estable cuando se
-agota la cuota sin historial. Otra prueba comprueba que el enlace principal al
-plan Faltón mantiene al menos 4,5:1 de contraste en ambos temas y en reposo y
-hover. Son verificaciones de layout y contraste, no una medición CLS de
-Lighthouse.
+En Descárgate, el hilo ocupa la altura de su contenido hasta un máximo de 420
+px y permite desplazamiento interno si lo supera. No impone altura mínima:
+cuando no hay historial, el compositor queda más cerca del mensaje de estado.
+Una prueba E2E móvil comprueba el límite de altura del hilo y que no impone un
+mínimo; otra confirma que el compositor sube cuando no hay historial. Una
+tercera comprueba que el enlace principal al plan Faltón mantiene al menos 4,5:1
+de contraste en ambos temas y en reposo y hover. Son verificaciones de layout y
+contraste, no una medición CLS de Lighthouse.
 `cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
 97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
 `cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de

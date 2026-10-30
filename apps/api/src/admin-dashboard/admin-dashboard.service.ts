@@ -4,12 +4,14 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import {
   ADMIN_DASHBOARD_REPOSITORY,
   type AdminDashboardRepository,
 } from "./admin-dashboard.models";
+import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
 
 const INVALID_ERROR_EVENT_ID_MESSAGE =
   "El identificador del error no es válido.";
@@ -30,11 +32,18 @@ export class AdminDashboardService {
   constructor(
     @Inject(ADMIN_DASHBOARD_REPOSITORY)
     private readonly repository: AdminDashboardRepository,
+    @Optional()
+    @Inject(LoginAbuseProtection)
+    private readonly loginAbuseProtection = new LoginAbuseProtection(),
   ) {}
 
   async getSnapshot() {
     try {
-      return await this.repository.getSnapshot();
+      const snapshot = await this.repository.getSnapshot();
+      return {
+        ...snapshot,
+        loginSecurity: this.loginAbuseProtection.getAdminSnapshot(),
+      };
     } catch {
       this.logger.error("ADMIN_DASHBOARD_UNAVAILABLE");
       throw new ServiceUnavailableException({

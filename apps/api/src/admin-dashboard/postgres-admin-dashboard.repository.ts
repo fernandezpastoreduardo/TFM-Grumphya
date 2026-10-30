@@ -12,11 +12,8 @@ import type {
   ContactMessageReplyClaim,
   AdminDashboardRepository,
   AdminDashboardSnapshot,
+  TokenVolumeBucket,
 } from "./admin-dashboard.models";
-import {
-  parseApplicationErrorContext,
-  type ApplicationErrorContext,
-} from "../infrastructure/observability/application-error-context";
 
 const CONTACT_MESSAGE_LIMIT = 100;
 const MAX_ERROR_CODE_LENGTH = 100;
@@ -72,6 +69,31 @@ type AnnualFinanceRow = {
   ai_cost_usd: string;
 };
 
+type RecentAiActivityRow = {
+  hour: Date;
+  operation: string;
+  model: string;
+  event_count: string;
+  input_tokens: string;
+  cached_input_tokens: string;
+  output_tokens: string;
+  estimated_cost_usd: string | null;
+};
+
+const SAFE_MODEL_PATTERN = /^[a-zA-Z0-9._:-]{1,100}$/u;
+
+function safeNonNegativeInteger(value: string): number {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function bucketTokenVolume(value: number): TokenVolumeBucket {
+  if (value < 1_000) return "under_1k";
+  if (value < 5_000) return "1k_5k";
+  if (value < 20_000) return "5k_20k";
+  return "20k_plus";
+}
+
 @Injectable()
 export class PostgresAdminDashboardRepository implements AdminDashboardRepository {
   private readonly pool: Pool;
@@ -90,6 +112,7 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       maximumCostRows,
       activePlanRows,
       financeRows,
+      recentAiActivityRows,
     ] = await Promise.all([
       this.pool.query<SnapshotRow>(`
         WITH boundaries AS (
@@ -267,6 +290,21 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         LEFT JOIN ai_cost USING (month_start)
         ORDER BY months.month_start
       `),
+      this.pool.query<RecentAiActivityRow>(`
+        SELECT date_trunc('hour', occurred_at) AS hour,
+          operation, model, count(*)::text AS event_count,
+          COALESCE(sum(input_tokens), 0)::text AS input_tokens,
+          COALESCE(sum(cached_input_tokens), 0)::text AS cached_input_tokens,
+          COALESCE(sum(output_tokens), 0)::text AS output_tokens,
+          sum(estimated_cost_usd)::text AS estimated_cost_usd
+        FROM admin_ai_usage_events
+        WHERE occurred_at >= now() - interval '24 hours'
+          AND operation IN ('idea_evaluation', 'roast')
+        GROUP BY 1, operation, model
+        HAVING count(*) >= 3
+        ORDER BY hour DESC, operation ASC, model ASC
+        LIMIT 100
+      `),
     ]);
     const row = summary.rows[0];
     if (!row) throw new Error("Admin dashboard summary unavailable.");
@@ -323,6 +361,54 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       };
     });
     return {
+      recentAiActivity: recentAiActivityRows.rows.flatMap((activity) => {
+        if (
+          !(activity.hour instanceof Date) ||
+          !Number.isFinite(activity.hour.getTime()) ||
+          (activity.operation !== "idea_evaluation" &&
+            activity.operation !== "roast") ||
+          !SAFE_MODEL_PATTERN.test(activity.model)
+        ) {
+          return [];
+        }
+        const inputTokens = safeNonNegativeInteger(activity.input_tokens);
+        const cachedInputTokens = safeNonNegativeInteger(
+          activity.cached_input_tokens,
+        );
+        const outputTokens = safeNonNegativeInteger(activity.output_tokens);
+        const parsedCost =
+          activity.estimated_cost_usd === null
+            ? null
+            : Number(activity.estimated_cost_usd);
+        return [
+          {
+            hour: activity.hour.toISOString(),
+            operation: activity.operation,
+            model: activity.model,
+            eventCount: safeNonNegativeInteger(activity.event_count),
+            inputTokenBucket: bucketTokenVolume(inputTokens),
+            cachedInputTokenBucket: bucketTokenVolume(cachedInputTokens),
+            outputTokenBucket: bucketTokenVolume(outputTokens),
+            estimatedCostUsd:
+              parsedCost !== null &&
+              Number.isFinite(parsedCost) &&
+              parsedCost >= 0
+                ? parsedCost
+                : null,
+          },
+        ];
+      }),
+      loginSecurity: {
+        windowMinutes: 15,
+        loginRequests: 0,
+        challengesIssued: 0,
+        challengesAccepted: 0,
+        challengesRejected: 0,
+        failedLogins: 0,
+        blockedRequests: 0,
+        activeBlockedAddresses: 0,
+        attackModeActive: false,
+      },
       revenue: {
         weeklyEur: Number(row.weekly_revenue_eur),
         totalEur: Number(row.total_revenue_eur),
@@ -406,10 +492,9 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       status_code: number;
       occurred_at: Date;
       diagnostic_code: string | null;
-      context_json: unknown;
     }>(
       `SELECT id::text, error_code, status_code, occurred_at,
-          diagnostic_code, context_json
+          diagnostic_code
        FROM application_error_events WHERE id=$1::bigint`,
       [id],
     );
@@ -421,7 +506,7 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
       statusCode: row.status_code,
       occurredAt: row.occurred_at.toISOString(),
       diagnosticCode: row.diagnostic_code,
-      context: parseApplicationErrorContext(row.context_json),
+      context: null,
     };
   }
 
@@ -578,8 +663,9 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
     errorCode: string,
     statusCode: number,
     diagnosticCode?: string,
-    context?: ApplicationErrorContext,
+    _context?: unknown,
   ): Promise<void> {
+    void _context;
     await this.ensureSchema();
     const normalizedCode = /^[A-Z0-9_]{1,100}$/u.test(errorCode)
       ? errorCode.slice(0, MAX_ERROR_CODE_LENGTH)
@@ -590,20 +676,11 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         : null;
     if (!Number.isInteger(statusCode) || statusCode < 400 || statusCode > 599)
       return;
-    const applicationErrorContext =
-      statusCode >= 500 ? parseApplicationErrorContext(context) : null;
     await this.pool.query(
       `INSERT INTO application_error_events
-         (error_code,status_code,diagnostic_code,context_json)
-       VALUES($1,$2,$3,$4::jsonb)`,
-      [
-        normalizedCode,
-        statusCode,
-        normalizedDiagnosticCode,
-        applicationErrorContext
-          ? JSON.stringify(applicationErrorContext)
-          : null,
-      ],
+         (error_code,status_code,diagnostic_code)
+       VALUES($1,$2,$3)`,
+      [normalizedCode, statusCode, normalizedDiagnosticCode],
     );
   }
 

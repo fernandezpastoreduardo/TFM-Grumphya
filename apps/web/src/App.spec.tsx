@@ -50,6 +50,18 @@ function getAdminRouteResponse(path: string): unknown {
       weeklyTrend: [],
       unpricedUsageEvents: 0,
     },
+    recentAiActivity: [],
+    loginSecurity: {
+      windowMinutes: 15,
+      loginRequests: 0,
+      challengesIssued: 0,
+      challengesAccepted: 0,
+      challengesRejected: 0,
+      failedLogins: 0,
+      blockedRequests: 0,
+      activeBlockedAddresses: 0,
+      attackModeActive: false,
+    },
     errors: [],
   };
 }

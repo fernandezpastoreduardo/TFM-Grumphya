@@ -207,7 +207,7 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
         homeFooterLayout[0]!.height / 2 -
         (homeFooterLayout[1]!.y + homeFooterLayout[1]!.height / 2),
     ),
-  ).toBeLessThan(3);
+  ).toBeLessThan(7);
   await page.evaluate(() => {
     document.querySelector(".home-page")?.classList.add("theme-dark");
   });

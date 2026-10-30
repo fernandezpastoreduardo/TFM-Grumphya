@@ -6,6 +6,9 @@ const DARK_MODE_SWITCH = /activar modo oscuro/i;
 const FIRST_SAMPLE_ROAST =
   "Quiero una app que haga mi trabajo mientras duermo.";
 const NO_PREVIOUS_ROASTS = "No hay mensajes anteriores guardados.";
+const ROAST_FAILURE_TITLE = "Se nos ha derramado el café";
+const ROAST_RETRY_MESSAGE = "Quería un roast y me he encontrado un error.";
+const ROAST_SUCCESS_REPLY = "Hasta el café tiene más iniciativa.";
 
 function calculateContrastRatio(
   foregroundColor: string,
@@ -32,7 +35,7 @@ function calculateContrastRatio(
   );
 }
 
-test("reserves the roast thread height while anonymous usage loads on mobile", async ({
+test("lets the roast thread follow its contents instead of forcing a minimum height on mobile", async ({
   page,
 }) => {
   await page.setViewportSize(MOBILE_VIEWPORT);
@@ -56,20 +59,23 @@ test("reserves the roast thread height while anonymous usage loads on mobile", a
   await page.goto("/descargate");
   const thread = page.locator(".roast-thread");
   await expect(thread.locator(".roast-thread-skeleton")).toBeVisible();
-  const skeletonHeight = await thread.evaluate(
-    (element) => element.getBoundingClientRect().height,
-  );
+  await expect
+    .poll(() =>
+      thread.evaluate((element) => getComputedStyle(element).minHeight),
+    )
+    .toBe("0px");
+  await expect
+    .poll(() =>
+      thread.evaluate((element) => getComputedStyle(element).maxHeight),
+    )
+    .toBe("420px");
 
   releaseUsageResponse();
   await expect(page.getByText(FIRST_SAMPLE_ROAST)).toBeVisible();
-  const loadedHeight = await thread.evaluate(
-    (element) => element.getBoundingClientRect().height,
-  );
-
-  expect(Math.abs(loadedHeight - skeletonHeight)).toBeLessThan(2);
+  await expect(thread.locator(".roast-thread-skeleton")).toHaveCount(0);
 });
 
-test("reserves the roast composer position when exhausted users have no history on mobile", async ({
+test("shrinks the roast thread and moves the composer up when there is no history", async ({
   page,
 }) => {
   await page.setViewportSize(MOBILE_VIEWPORT);
@@ -101,7 +107,57 @@ test("reserves the roast composer position when exhausted users have no history 
 
   expect(initialComposerTop).toBeDefined();
   expect(loadedComposerTop).toBeDefined();
-  expect(Math.abs(loadedComposerTop! - initialComposerTop!)).toBeLessThan(2);
+  expect(initialComposerTop! - loadedComposerTop!).toBeGreaterThan(20);
+});
+
+test("closes the roast failure modal, blocks the page behind it, and lets the user retry", async ({
+  page,
+}) => {
+  let roastRequestCount = 0;
+  await page.route("**/api/roast", async (route) => {
+    roastRequestCount += 1;
+    if (roastRequestCount === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "ROAST_REPLY_UNAVAILABLE",
+          message: "La respuesta de roast no está disponible.",
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({ reply: ROAST_SUCCESS_REPLY }),
+    });
+  });
+
+  await page.goto("/descargate");
+  const input = page.getByRole("textbox", { name: /tu insulto/i });
+  await expect(input).toBeEnabled();
+  await input.fill(ROAST_RETRY_MESSAGE);
+  await page.getByRole("button", { name: /enviar insulto/i }).click();
+
+  const dialog = page.getByRole("dialog", { name: ROAST_FAILURE_TITLE });
+  await expect(dialog).toBeVisible();
+  await expect
+    .poll(() => dialog.evaluate((element) => element.matches(":modal")))
+    .toBe(true);
+  const backdropColor = await dialog.evaluate(
+    (element) => getComputedStyle(element, "::backdrop").backgroundColor,
+  );
+  expect(backdropColor).not.toBe("rgba(0, 0, 0, 0)");
+
+  await page.getByRole("button", { name: "Cerrar aviso" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(input).toHaveValue(ROAST_RETRY_MESSAGE);
+  await page.getByRole("button", { name: /enviar insulto/i }).click();
+
+  await expect(page.getByText(ROAST_SUCCESS_REPLY)).toBeVisible();
+  await expect(dialog).not.toBeVisible();
+  expect(roastRequestCount).toBe(2);
 });
 
 test("keeps the roast plan link readable in both themes on mobile", async ({

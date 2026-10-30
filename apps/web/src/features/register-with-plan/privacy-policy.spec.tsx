@@ -53,7 +53,7 @@ describe("PrivacyPolicy", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        /solo las cuentas administradoras pueden consultar ese detalle/i,
+        /no guardamos ni mostramos a administración el texto enviado/i,
       ),
     ).toBeInTheDocument();
     expect(

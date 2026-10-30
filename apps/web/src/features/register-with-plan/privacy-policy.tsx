@@ -73,10 +73,9 @@ export function PrivacyPolicy() {
           </li>
           <li>
             <strong>Diagnóstico de errores de evaluación:</strong> si se produce
-            un error del servidor al evaluar una idea, el texto enviado puede
-            conservarse temporalmente junto al diagnóstico para investigarlo.
-            Solo las cuentas administradoras pueden consultar ese detalle y se
-            elimina a los 30 días.
+            un error del servidor al evaluar una idea, conservamos su categoría
+            y un código de diagnóstico seguro para investigarlo. No guardamos ni
+            mostramos a administración el texto enviado junto al error.
           </li>
           <li>
             <strong>Rankings:</strong> el ranking educativo de ideas rechazadas
@@ -295,10 +294,9 @@ export function PrivacyPolicy() {
           </li>
           <li>
             Los mensajes de contacto y las métricas técnicas y de uso de IA se
-            conservan hasta 12 meses; los eventos de error y el texto de idea
-            asociado a un fallo de evaluación, hasta 30 días. Los correos pueden
-            seguir disponibles en los buzones según sus propias reglas de
-            conservación.
+            conservan hasta 12 meses; los metadatos de errores, hasta 30 días.
+            Los correos pueden seguir disponibles en los buzones según sus
+            propias reglas de conservación.
           </li>
         </ul>
         <p>

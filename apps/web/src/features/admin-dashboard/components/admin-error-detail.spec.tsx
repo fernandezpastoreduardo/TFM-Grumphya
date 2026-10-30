@@ -33,7 +33,7 @@ describe("AdminErrorDetail", () => {
     );
   });
 
-  it("shows the use case, validation reason, and submitted idea", async () => {
+  it("shows the safe diagnosis and excludes submitted idea text", async () => {
     render(<AdminErrorDetail eventId="42" />);
 
     expect(
@@ -41,13 +41,16 @@ describe("AdminErrorDetail", () => {
         name: /incoherencia entre decisión y criterios/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Evaluación de ideas")).toBeInTheDocument();
-    expect(screen.getByText(IDEA_TEXT)).toBeInTheDocument();
+    expect(screen.getByText("No identificado")).toBeInTheDocument();
+    expect(
+      screen.getByText(/no incluye texto enviado por usuarios/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(IDEA_TEXT)).not.toBeInTheDocument();
     expect(screen.getByText("503")).toBeInTheDocument();
     expect(authenticatedFetch).toHaveBeenCalledWith(DETAIL_ENDPOINT);
   });
 
-  it("renders untrusted idea text as text and never as markup", async () => {
+  it("never displays historical idea text or renders it as markup", async () => {
     const injectedText = '<script>alert("idea")</script>';
     vi.mocked(authenticatedFetch).mockResolvedValue(
       new Response(
@@ -65,11 +68,14 @@ describe("AdminErrorDetail", () => {
 
     render(<AdminErrorDetail eventId="42" />);
 
-    expect(await screen.findByText(injectedText)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/no incluye texto enviado por usuarios/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(injectedText)).not.toBeInTheDocument();
     expect(document.querySelector("script")).toBeNull();
   });
 
-  it("explains when the stored event predates diagnostic context", async () => {
+  it("explains that event details do not expose submitted text", async () => {
     vi.mocked(authenticatedFetch).mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -87,31 +93,19 @@ describe("AdminErrorDetail", () => {
     render(<AdminErrorDetail eventId="42" />);
 
     expect(
-      await screen.findByText(/no se guardó información de entrada/i),
+      await screen.findByText(/no incluye texto enviado por usuarios/i),
     ).toBeInTheDocument();
   });
 
-  it.each([
-    {
+  it("hides an event response for a different event id", async () => {
+    const body = {
       id: "43",
       code: EVALUATION_ERROR_CODE,
       statusCode: 503,
       occurredAt: OCCURRED_AT,
       diagnosticCode: EVALUATION_DIAGNOSTIC_CODE,
       context: null,
-    },
-    {
-      id: "42",
-      code: EVALUATION_ERROR_CODE,
-      statusCode: 503,
-      occurredAt: OCCURRED_AT,
-      diagnosticCode: EVALUATION_DIAGNOSTIC_CODE,
-      context: {
-        useCase: "idea_evaluation",
-        inputText: "x".repeat(2_001),
-      },
-    },
-  ])("hides an invalid or mismatched event response: %o", async (body) => {
+    };
     vi.mocked(authenticatedFetch).mockResolvedValue(
       new Response(JSON.stringify(body), {
         status: 200,
