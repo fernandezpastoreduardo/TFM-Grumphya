@@ -99,7 +99,7 @@ Listado de hasta diez de las peores ideas del usuario logueado ordenado por vece
 ### SubmitContactMessage
 
 - Contenedor local a la feature `submit-contact-message`; gestiona estado, envío y feedback del formulario autenticado en `/contacto`.
-- Tras guardar, la API intenta enviar una confirmación SMTP genérica; la UI distingue envío, vista previa local y fallo. Jappy puede leer los mensajes desde el panel y responder desde el buzón SMTP; la aplicación no usa IMAP. Los mensajes se purgan a los 12 meses mediante `DataRetentionService` y la baja física de la cuenta también los elimina por cascada. El asunto y cuerpo se guardan como texto claro, sin cifrado a nivel de aplicación; indicar que no se incluyan contraseñas ni datos de pago.
+- Tras guardar, la API intenta enviar una confirmación SMTP genérica; la UI distingue envío, vista previa local y fallo. Jappy puede leer los mensajes desde el panel y responder desde el buzón SMTP; la aplicación no usa IMAP. Los mensajes se purgan a los 12 meses mediante `DataRetentionService` y la baja física de la cuenta también los elimina por cascada. El asunto y cuerpo se guardan como texto claro, sin cifrado a nivel de aplicación; en producción, el transporte API–PostgreSQL usa TLS obligatorio. El cifrado en reposo no está incluido; indicar que no se incluyan contraseñas ni datos de pago.
 
 ### ContactMessageForm
 

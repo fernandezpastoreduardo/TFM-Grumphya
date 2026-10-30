@@ -37,8 +37,8 @@ Las versiones efectivamente resueltas quedan fijadas en `pnpm-lock.yaml`. Consul
 ## Procesos
 
 - `@grumphya/web`: Vite en `http://127.0.0.1:5173`; `/api/*` se reenvía a la API.
-- `@grumphya/api`: NestJS en `http://127.0.0.1:3000`, prefijo `/api`.
-- En producción la API escucha en `0.0.0.0` dentro de la red privada del servicio; el proxy perimetral es quien la publica.
+- `@grumphya/api`: NestJS en desarrollo local por `http://127.0.0.1:3000`, prefijo `/api`.
+- En producción NestJS escucha por HTTPS en `0.0.0.0:3000` dentro de la red privada; el proxy perimetral Caddy valida su certificado y es quien publica la API. Nginx sirve la web por HTTPS en `web:8443` dentro de la red de Compose.
 - `db` en Docker Compose: `127.0.0.1:5433` por defecto → PostgreSQL `5432` del contenedor. Para cambiar el puerto publicado, ajusta `GRUMPHYA_DB_HOST_PORT` en `.env.docker`; `PGPORT` solo configura clientes del host, porque la API en Compose usa `db:5432` por la red interna.
 - Volumen persistente: `grumphya-postgres-data`.
 - Para levantar/recrear el stack `db` + `api` + `web` y esperar sus healthchecks: `docker compose --env-file .env.docker up -d --build --force-recreate --wait`. `down` sin `-v` retira contenedores y red, pero conserva el volumen; `down -v` lo borra.
