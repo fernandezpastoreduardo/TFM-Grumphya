@@ -60,9 +60,11 @@ la lámina maestra está en
   asset gráfico.
 - Fredoka se usa en titulares y Nunito Sans en lectura y controles. Ambas se
   sirven como fuentes variables WOFF2 desde `apps/web/public/assets/fonts/`, con
-  fuentes de sistema como alternativa. Los TTF originales se conservan como
-  respaldo y sus licencias OFL permanecen junto a los archivos. Los pesos altos
-  deben mantener buena separación entre caracteres. `apps/web/index.html`
+  fuentes de sistema como alternativa. Los TTF fuente y copias de sus licencias
+  OFL se conservan en `ideas-and-designs/tipografias-originales/`, fuera de los
+  recursos estáticos publicados. Las licencias OFL también se distribuyen junto
+  a los WOFF2. Los pesos altos deben mantener buena separación entre caracteres.
+  `apps/web/index.html`
   precarga el WOFF2 variable de Nunito Sans para que la fuente de lectura pueda
   empezar a descargarse antes de que se resuelva la hoja de estilos.
 
@@ -165,10 +167,10 @@ la lámina maestra está en
   ilustraciones conservan el fondo transparente y no incluyen copy incrustado;
   la UI mantiene el contenido legible en HTML. Las escenas de error existentes
   siguen siendo sus propios assets. Home usa `home-grumpy-judge.webp`: Grumphya
-  aparece sentada como jueza con un mazo y sin bombilla tachada. Este asset
-  reemplaza `home-idea-review.png`; el vestuario judicial es una excepción
-  específica autorizada para esta escena y no modifica la regla general de
-  identidad. El hero de `/panel-control` usa `admin-dashboard-audit.svg`, con
+  aparece sentada como jueza con un mazo y sin bombilla tachada. El vestuario
+  judicial es una excepción específica autorizada para esta escena y no
+  modifica la regla general de identidad. El hero de `/panel-control` usa
+  `admin-dashboard-audit.svg`, con
   Grumphya examinando gráficas mediante una lupa. El hero de alta y su panel de
   plan usan
   `create-account-hero.svg` y `create-account-plan.svg` respectivamente.
