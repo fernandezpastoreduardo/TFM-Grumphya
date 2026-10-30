@@ -1,7 +1,27 @@
 import type { AiUsageRecord } from "../infrastructure/ai/ai-usage";
-import type { ApplicationErrorContext } from "../infrastructure/observability/application-error-context";
 
 export type AdminDashboardSnapshot = {
+  recentAiActivity: Array<{
+    hour: string;
+    operation: "idea_evaluation" | "roast";
+    model: string;
+    eventCount: number;
+    inputTokenBucket: TokenVolumeBucket;
+    cachedInputTokenBucket: TokenVolumeBucket;
+    outputTokenBucket: TokenVolumeBucket;
+    estimatedCostUsd: number | null;
+  }>;
+  loginSecurity: {
+    windowMinutes: 15;
+    loginRequests: number;
+    challengesIssued: number;
+    challengesAccepted: number;
+    challengesRejected: number;
+    failedLogins: number;
+    blockedRequests: number;
+    activeBlockedAddresses: number;
+    attackModeActive: boolean;
+  };
   revenue: { weeklyEur: number; totalEur: number };
   maximumMonthlyCost: {
     iluminado: MaximumMonthlyPlanCost;
@@ -32,6 +52,8 @@ export type AdminDashboardSnapshot = {
     latestDiagnosticCode: string | null;
   }>;
 };
+
+export type TokenVolumeBucket = "under_1k" | "1k_5k" | "5k_20k" | "20k_plus";
 
 export type MaximumMonthlyPlanCost = {
   averagePerAttemptUsd: number | null;
@@ -69,7 +91,7 @@ export type AdminApplicationErrorDetail = {
   statusCode: number;
   occurredAt: string;
   diagnosticCode: string | null;
-  context: ApplicationErrorContext | null;
+  context: null;
 };
 
 export type AiCostByActor = {
@@ -130,7 +152,7 @@ export interface AdminDashboardRepository {
     errorCode: string,
     statusCode: number,
     diagnosticCode?: string,
-    context?: ApplicationErrorContext,
+    _context?: unknown,
   ): Promise<void>;
 }
 

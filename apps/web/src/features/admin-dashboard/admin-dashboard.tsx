@@ -40,6 +40,8 @@ type DashboardData = {
     weeklyTrend: AiCostTrendWeek[];
     unpricedUsageEvents: number;
   };
+  recentAiActivity: RecentAiActivity[];
+  loginSecurity: LoginSecurityMetrics;
   errors: Array<{
     latestEventId: string;
     code: string;
@@ -48,6 +50,28 @@ type DashboardData = {
     lastOccurredAt: string;
     latestDiagnosticCode: string | null;
   }>;
+};
+type RecentAiActivity = {
+  hour: string;
+  operation: "idea_evaluation" | "roast";
+  model: string;
+  eventCount: number;
+  inputTokenBucket: TokenVolumeBucket;
+  cachedInputTokenBucket: TokenVolumeBucket;
+  outputTokenBucket: TokenVolumeBucket;
+  estimatedCostUsd: number | null;
+};
+type TokenVolumeBucket = "under_1k" | "1k_5k" | "5k_20k" | "20k_plus";
+type LoginSecurityMetrics = {
+  windowMinutes: 15;
+  loginRequests: number;
+  challengesIssued: number;
+  challengesAccepted: number;
+  challengesRejected: number;
+  failedLogins: number;
+  blockedRequests: number;
+  activeBlockedAddresses: number;
+  attackModeActive: boolean;
 };
 type MaximumPlanCost = {
   averagePerAttemptUsd: number | null;
@@ -136,7 +160,7 @@ const ADMIN_TABS = [
   { id: "summary", label: "Resumen" },
   { id: "benchmark", label: "Benchmark de IA" },
   { id: "telemetry", label: "Telemetría de IA" },
-  { id: "security", label: "Pruebas de seguridad" },
+  { id: "security", label: "Seguridad y acceso" },
 ] as const;
 type AdminTab = (typeof ADMIN_TABS)[number]["id"];
 
@@ -168,6 +192,106 @@ function isIsoDay(value: unknown): value is string {
   return (
     Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
   );
+}
+function isIsoDateTime(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.toISOString() === value;
+}
+function hasExactKeys(
+  value: Record<string, unknown>,
+  expectedKeys: readonly string[],
+): boolean {
+  const keys = Object.keys(value);
+  return (
+    keys.length === expectedKeys.length &&
+    expectedKeys.every((key) => Object.hasOwn(value, key))
+  );
+}
+const RECENT_AI_ACTIVITY_KEYS = [
+  "hour",
+  "operation",
+  "model",
+  "eventCount",
+  "inputTokenBucket",
+  "cachedInputTokenBucket",
+  "outputTokenBucket",
+  "estimatedCostUsd",
+] as const;
+const SAFE_AI_MODEL_PATTERN = /^[a-zA-Z0-9._:-]{1,100}$/u;
+function isTokenVolumeBucket(value: unknown): value is TokenVolumeBucket {
+  return (
+    value === "under_1k" ||
+    value === "1k_5k" ||
+    value === "5k_20k" ||
+    value === "20k_plus"
+  );
+}
+function isRecentAiActivity(value: unknown): value is RecentAiActivity {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, RECENT_AI_ACTIVITY_KEYS) &&
+    isIsoDateTime(value.hour) &&
+    (value.operation === "idea_evaluation" || value.operation === "roast") &&
+    typeof value.model === "string" &&
+    SAFE_AI_MODEL_PATTERN.test(value.model) &&
+    isCount(value.eventCount) &&
+    Number.isSafeInteger(value.eventCount) &&
+    value.eventCount > 0 &&
+    isTokenVolumeBucket(value.inputTokenBucket) &&
+    isTokenVolumeBucket(value.cachedInputTokenBucket) &&
+    isTokenVolumeBucket(value.outputTokenBucket) &&
+    isNullableCount(value.estimatedCostUsd)
+  );
+}
+const LOGIN_SECURITY_KEYS = [
+  "windowMinutes",
+  "loginRequests",
+  "challengesIssued",
+  "challengesAccepted",
+  "challengesRejected",
+  "failedLogins",
+  "blockedRequests",
+  "activeBlockedAddresses",
+  "attackModeActive",
+] as const;
+function isLoginSecurityMetrics(value: unknown): value is LoginSecurityMetrics {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, LOGIN_SECURITY_KEYS) &&
+    value.windowMinutes === 15 &&
+    isCount(value.loginRequests) &&
+    Number.isSafeInteger(value.loginRequests) &&
+    isCount(value.challengesIssued) &&
+    Number.isSafeInteger(value.challengesIssued) &&
+    isCount(value.challengesAccepted) &&
+    Number.isSafeInteger(value.challengesAccepted) &&
+    isCount(value.challengesRejected) &&
+    Number.isSafeInteger(value.challengesRejected) &&
+    isCount(value.failedLogins) &&
+    Number.isSafeInteger(value.failedLogins) &&
+    isCount(value.blockedRequests) &&
+    Number.isSafeInteger(value.blockedRequests) &&
+    isCount(value.activeBlockedAddresses) &&
+    Number.isSafeInteger(value.activeBlockedAddresses) &&
+    typeof value.attackModeActive === "boolean"
+  );
+}
+function hasUniqueRecentAiActivity(activities: RecentAiActivity[]): boolean {
+  const groupKeys = activities.map(
+    ({ hour, operation, model }) => `${hour}\u0000${operation}\u0000${model}`,
+  );
+  return new Set(groupKeys).size === groupKeys.length;
+}
+function getAiOperationLabel(operation: RecentAiActivity["operation"]): string {
+  if (operation === "idea_evaluation") return "Evaluación de idea";
+  return "Envío de roast";
+}
+function getTokenVolumeLabel(bucket: TokenVolumeBucket): string {
+  if (bucket === "under_1k") return "Menos de 1.000";
+  if (bucket === "1k_5k") return "1.000–4.999";
+  if (bucket === "5k_20k") return "5.000–19.999";
+  return "20.000 o más";
 }
 function isMaximumPlanCost(value: unknown): value is MaximumPlanCost {
   return (
@@ -231,6 +355,8 @@ function isDashboardData(value: unknown): value is DashboardData {
     !Array.isArray(value.weeklyActivePlans) ||
     !isRecord(value.annualFinance) ||
     !isRecord(value.estimatedAiCost) ||
+    !Array.isArray(value.recentAiActivity) ||
+    !isLoginSecurityMetrics(value.loginSecurity) ||
     !Array.isArray(value.errors)
   )
     return false;
@@ -270,6 +396,8 @@ function isDashboardData(value: unknown): value is DashboardData {
     Array.isArray(costs.weeklyTrend) &&
     costs.weeklyTrend.every(isAiCostTrendWeek) &&
     isCount(costs.unpricedUsageEvents) &&
+    value.recentAiActivity.every(isRecentAiActivity) &&
+    hasUniqueRecentAiActivity(value.recentAiActivity) &&
     value.errors.every(
       (item) =>
         isRecord(item) &&
@@ -671,7 +799,7 @@ function AdminDashboardOverview() {
         ) : null}
         {activeTab === "benchmark" ? <BenchmarkTab /> : null}
         {activeTab === "telemetry" ? <TelemetryTab data={data} /> : null}
-        {activeTab === "security" ? <SecurityTab /> : null}
+        {activeTab === "security" ? <SecurityTab data={data} /> : null}
       </section>
     </div>
   );
@@ -697,16 +825,23 @@ function BenchmarkTab() {
           de los casos.
         </li>
       </ul>
-      <p>Para ejecutar una comparación desde el entorno de desarrollo:</p>
-      <pre>
-        <code>
-          pnpm --filter @grumphya/api run benchmark:evaluator -- --help
-        </code>
-      </pre>
+      <p>No hay ningún informe de benchmark guardado en este momento.</p>
+      <p>El informe sintético incluiría:</p>
+      <ul>
+        <li>Versión de la política y fecha de generación.</li>
+        <li>Número de casos y variantes evaluadas.</li>
+        <li>
+          Acuerdo con las decisiones esperadas, en recuento y porcentaje, por
+          variante.
+        </li>
+        <li>
+          Recuento de casos con acuerdo de estado y de motivo entre variantes.
+        </li>
+        <li>Confirmación de que solo se emiten resultados agregados.</li>
+      </ul>
       <p className="admin-dashboard-note">
-        El benchmark requiere una clave de proveedor y puede generar coste. El
-        panel no muestra una última ejecución porque sus resultados no se
-        guardan en la base de datos.
+        No se ha ejecutado un benchmark desde este panel. El informe no incluye
+        ideas ni explicaciones de los modelos.
       </p>
     </section>
   );
@@ -720,10 +855,9 @@ function TelemetryTab({ data }: { data: DashboardData }) {
     >
       <h2 id="admin-telemetry-title">Telemetría de operaciones de IA</h2>
       <p>
-        Los eventos estructurados registran operación, modelo, resultado,
-        latencia, tokens y coste estimado. El panel aplica la tarifa reducida a
-        los tokens de entrada cacheados y convierte a euros con la referencia
-        del BCE indicada en finanzas.
+        Actividad agregada de las últimas 24 horas, agrupada por hora, operación
+        y modelo. El coste estimado se convierte a euros con la referencia del
+        BCE indicada en finanzas.
       </p>
       <div className="admin-metrics">
         <Metric
@@ -743,24 +877,116 @@ function TelemetryTab({ data }: { data: DashboardData }) {
           value={String(data.estimatedAiCost.unpricedUsageEvents)}
         />
       </div>
+      <section aria-labelledby="admin-recent-ai-activity-title">
+        <h3 id="admin-recent-ai-activity-title">Actividad reciente de IA</h3>
+        {data.recentAiActivity.length > 0 ? (
+          <div className="admin-table-scroll">
+            <table aria-label="Actividad reciente agregada de IA">
+              <thead>
+                <tr>
+                  <th scope="col">Hora</th>
+                  <th scope="col">Operación</th>
+                  <th scope="col">Modelo</th>
+                  <th scope="col">Usos</th>
+                  <th scope="col">Volumen de entrada</th>
+                  <th scope="col">Volumen cacheado</th>
+                  <th scope="col">Volumen de salida</th>
+                  <th scope="col">Coste estimado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recentAiActivity.map((activity) => (
+                  <tr
+                    key={`${activity.hour}:${activity.operation}:${activity.model}`}
+                  >
+                    <td>
+                      <time dateTime={activity.hour}>
+                        {DATE.format(new Date(activity.hour))}
+                      </time>
+                    </td>
+                    <td>{getAiOperationLabel(activity.operation)}</td>
+                    <td>{activity.model}</td>
+                    <td>{activity.eventCount}</td>
+                    <td>{getTokenVolumeLabel(activity.inputTokenBucket)}</td>
+                    <td>
+                      {getTokenVolumeLabel(activity.cachedInputTokenBucket)}
+                    </td>
+                    <td>{getTokenVolumeLabel(activity.outputTokenBucket)}</td>
+                    <td>
+                      {activity.estimatedCostUsd === null
+                        ? "Sin precio configurado"
+                        : EUR_COST.format(
+                            activity.estimatedCostUsd *
+                              data.annualFinance.usdToEurRate,
+                          )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>No hay grupos de tres o más usos en las últimas 24 horas.</p>
+        )}
+      </section>
       <p className="admin-dashboard-note">
-        Las trazas no incluyen ideas, mensajes, direcciones IP, tokens de sesión
-        ni identificadores de traza persistentes. Los eventos detallados se
-        envían al registro del proceso; el panel muestra costes totales
-        agregados y usos sin precio. El registro privado conserva consumo por
-        operación y modelo para calcular estas métricas.
+        Solo se muestran grupos de tres o más usos y el volumen de tokens en
+        rangos. No aparecen ideas, cuentas, direcciones IP, sesiones ni
+        identificadores individuales.
       </p>
     </section>
   );
 }
 
-function SecurityTab() {
+function SecurityTab({ data }: { data: DashboardData }) {
+  const metrics = data.loginSecurity;
   return (
     <section
       className="admin-dashboard-card"
       aria-labelledby="admin-security-title"
     >
-      <h2 id="admin-security-title">Pruebas de seguridad</h2>
+      <h2 id="admin-security-title">Actividad de acceso y protección</h2>
+      <p>Métricas agregadas de los últimos {metrics.windowMinutes} minutos.</p>
+      <div className="admin-metrics" aria-label="Métricas agregadas de acceso">
+        <Metric
+          title="Solicitudes de acceso"
+          value={String(metrics.loginRequests)}
+        />
+        <Metric
+          title="Desafíos emitidos"
+          value={String(metrics.challengesIssued)}
+        />
+        <Metric
+          title="Desafíos aceptados"
+          value={String(metrics.challengesAccepted)}
+        />
+        <Metric
+          title="Desafíos rechazados"
+          value={String(metrics.challengesRejected)}
+        />
+        <Metric
+          title="Inicios de sesión fallidos"
+          value={String(metrics.failedLogins)}
+        />
+        <Metric
+          title="Solicitudes bloqueadas"
+          value={String(metrics.blockedRequests)}
+        />
+        <Metric
+          title="Direcciones bloqueadas activas"
+          value={String(metrics.activeBlockedAddresses)}
+        />
+        <Metric
+          title="Modo de ataque"
+          value={metrics.attackModeActive ? "Activo" : "Inactivo"}
+        />
+      </div>
+      <p className="admin-dashboard-note">
+        Contadores volátiles en memoria; se reinician al reiniciarse el proceso.
+        Son agregados y no muestran direcciones IP, cuentas ni sesiones, ni
+        conservan un historial individual de inicios de sesión.
+      </p>
+      <h3>Pruebas de seguridad cubiertas</h3>
       <ul>
         <li>
           Inyección de instrucciones dentro de ideas y descripciones no

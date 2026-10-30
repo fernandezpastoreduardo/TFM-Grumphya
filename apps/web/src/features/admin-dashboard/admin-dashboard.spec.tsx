@@ -7,6 +7,9 @@ vi.mock("../../infrastructure/auth/session", () => ({
   authenticatedFetch: vi.fn(),
 }));
 
+const AI_ACTIVITY_TABLE_LABEL = "Actividad reciente agregada de IA";
+const SECURITY_TAB_LABEL = "Seguridad y acceso";
+
 const dashboard = {
   revenue: { weeklyEur: 4, totalEur: 8 },
   maximumMonthlyCost: {
@@ -73,6 +76,39 @@ const dashboard = {
       },
     ],
     unpricedUsageEvents: 1,
+  },
+  recentAiActivity: [
+    {
+      hour: "2026-10-29T11:00:00.000Z",
+      operation: "idea_evaluation",
+      model: "gpt-5.4-mini",
+      eventCount: 3,
+      inputTokenBucket: "5k_20k",
+      cachedInputTokenBucket: "5k_20k",
+      outputTokenBucket: "1k_5k",
+      estimatedCostUsd: 0.01,
+    },
+    {
+      hour: "2026-10-29T10:00:00.000Z",
+      operation: "roast",
+      model: "future-model",
+      eventCount: 3,
+      inputTokenBucket: "under_1k",
+      cachedInputTokenBucket: "under_1k",
+      outputTokenBucket: "under_1k",
+      estimatedCostUsd: null,
+    },
+  ],
+  loginSecurity: {
+    windowMinutes: 15,
+    loginRequests: 23,
+    challengesIssued: 4,
+    challengesAccepted: 2,
+    challengesRejected: 1,
+    failedLogins: 3,
+    blockedRequests: 5,
+    activeBlockedAddresses: 2,
+    attackModeActive: true,
   },
   errors: [
     {
@@ -177,6 +213,58 @@ describe("AdminDashboard", () => {
       within(accumulatedCosts as HTMLElement).getByText("Jappy · admin")
         .parentElement,
     ).toHaveTextContent(/0,18\s*€/u);
+  });
+
+  it("shows empty recent activity and zero login counters", async () => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    const emptyMetrics = {
+      ...dashboard,
+      recentAiActivity: [],
+      loginSecurity: {
+        windowMinutes: 15 as const,
+        loginRequests: 0,
+        challengesIssued: 0,
+        challengesAccepted: 0,
+        challengesRejected: 0,
+        failedLogins: 0,
+        blockedRequests: 0,
+        activeBlockedAddresses: 0,
+        attackModeActive: false,
+      },
+    };
+    vi.mocked(authenticatedFetch).mockImplementation(
+      async (input) =>
+        new Response(
+          JSON.stringify(
+            String(input).includes("contact-messages")
+              ? contacts
+              : emptyMetrics,
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+    const user = userEvent.setup();
+    render(<AdminDashboard />);
+    await user.click(
+      await screen.findByRole("tab", { name: "Telemetría de IA" }),
+    );
+    expect(
+      screen.getByText(
+        "No hay grupos de tres o más usos en las últimas 24 horas.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("table", { name: AI_ACTIVITY_TABLE_LABEL }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: SECURITY_TAB_LABEL }));
+    expect(
+      screen.getByText("Solicitudes de acceso").parentElement,
+    ).toHaveTextContent("0");
+    expect(screen.getByText("Modo de ataque").parentElement).toHaveTextContent(
+      "Inactivo",
+    );
   });
 
   it("shows per-operation monthly maximums and accessible plan and finance charts", async () => {
@@ -375,7 +463,7 @@ describe("AdminDashboard", () => {
     );
   });
 
-  it("opens the benchmark, privacy-safe telemetry and security tabs", async () => {
+  it("shows the benchmark report contract, aggregated AI activity and login metrics", async () => {
     const user = userEvent.setup();
     render(<AdminDashboard />);
     await screen.findByRole("heading", { name: "Hola, Jappy." });
@@ -387,18 +475,84 @@ describe("AdminDashboard", () => {
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(/seis casos sintéticos/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "No hay ningún informe de benchmark guardado en este momento.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Versión de la política y fecha de generación/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Acuerdo con las decisiones esperadas/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/solo se emiten resultados agregados/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/pnpm --filter/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Telemetría de IA" }));
     expect(
       screen.getByRole("heading", { name: "Telemetría de operaciones de IA" }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/no incluyen ideas, mensajes/)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Pruebas de seguridad" }));
+    const recentActivityTable = screen.getByRole("table", {
+      name: AI_ACTIVITY_TABLE_LABEL,
+    });
+    expect(recentActivityTable).toHaveTextContent("Evaluación de idea");
+    expect(recentActivityTable).toHaveTextContent("gpt-5.4-mini");
+    expect(recentActivityTable).toHaveTextContent("5.000–19.999");
+    expect(recentActivityTable).toHaveTextContent("1.000–4.999");
+    expect(recentActivityTable).toHaveTextContent(/0,009\s*€/u);
+    expect(recentActivityTable).toHaveTextContent("Sin precio configurado");
     expect(
-      screen.getByRole("heading", { name: "Pruebas de seguridad" }),
+      recentActivityTable.querySelector(
+        'time[datetime="2026-10-29T11:00:00.000Z"]',
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Aislamiento entre cuentas/)).toBeInTheDocument();
+    expect(screen.getByText(/grupos de tres o más usos/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/user-secret|idea-secret|session-secret/i),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: SECURITY_TAB_LABEL }));
+    expect(
+      screen.getByRole("heading", {
+        name: "Actividad de acceso y protección",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Solicitudes de acceso").parentElement,
+    ).toHaveTextContent("23");
+    expect(screen.getByText("Solicitudes de acceso")).toBeInTheDocument();
+    expect(
+      screen.getByText("Desafíos emitidos").parentElement,
+    ).toHaveTextContent("4");
+    expect(
+      screen.getByText("Desafíos aceptados").parentElement,
+    ).toHaveTextContent("2");
+    expect(
+      screen.getByText("Desafíos rechazados").parentElement,
+    ).toHaveTextContent("1");
+    expect(
+      screen.getByText("Inicios de sesión fallidos").parentElement,
+    ).toHaveTextContent("3");
+    expect(
+      screen.getByText("Solicitudes bloqueadas").parentElement,
+    ).toHaveTextContent("5");
+    expect(
+      screen.getByText("Direcciones bloqueadas activas").parentElement,
+    ).toHaveTextContent("2");
+    expect(screen.getByText("Modo de ataque").parentElement).toHaveTextContent(
+      "Activo",
+    );
+    expect(screen.getByText(/últimos 15 minutos/)).toBeInTheDocument();
+    expect(screen.getByText(/volátiles en memoria/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/\b(?:\d{1,3}\.){3}\d{1,3}\b/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Pruebas de seguridad cubiertas/),
+    ).toBeInTheDocument();
   });
 
   it("supports arrow-key navigation between tabs", async () => {
@@ -411,9 +565,7 @@ describe("AdminDashboard", () => {
       screen.getByRole("tab", { name: "Benchmark de IA" }),
     ).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{End}");
-    expect(
-      screen.getByRole("tab", { name: "Pruebas de seguridad" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("tab", { name: SECURITY_TAB_LABEL })).toHaveFocus();
     await user.keyboard("{ArrowLeft}");
     expect(screen.getByRole("tab", { name: "Telemetría de IA" })).toHaveFocus();
   });
@@ -454,5 +606,119 @@ describe("AdminDashboard", () => {
       "No se han podido consultar los datos del panel.",
     );
     expect(screen.queryByText("unexpected")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "token volume uses an unsupported bucket",
+      {
+        ...dashboard,
+        recentAiActivity: [
+          { ...dashboard.recentAiActivity[0], inputTokenBucket: "exact-count" },
+        ],
+      },
+    ],
+    [
+      "activity includes an identifier outside the contract",
+      {
+        ...dashboard,
+        recentAiActivity: [
+          { ...dashboard.recentAiActivity[0], userId: "private-user-id" },
+        ],
+      },
+    ],
+    [
+      "activity contains a non-ISO hour",
+      {
+        ...dashboard,
+        recentAiActivity: [
+          { ...dashboard.recentAiActivity[0], hour: "ayer a las doce" },
+        ],
+      },
+    ],
+    [
+      "activity contains an invalid model name",
+      {
+        ...dashboard,
+        recentAiActivity: [
+          { ...dashboard.recentAiActivity[0], model: "model private" },
+        ],
+      },
+    ],
+    [
+      "activity repeats an aggregation bucket",
+      {
+        ...dashboard,
+        recentAiActivity: [
+          dashboard.recentAiActivity[0],
+          dashboard.recentAiActivity[0],
+        ],
+      },
+    ],
+    [
+      "login metrics use a different time window",
+      {
+        ...dashboard,
+        loginSecurity: { ...dashboard.loginSecurity, windowMinutes: 60 },
+      },
+    ],
+    [
+      "login metrics are missing required fields",
+      {
+        ...dashboard,
+        loginSecurity: {
+          windowMinutes: 15,
+          loginRequests: 0,
+          attackModeActive: false,
+        },
+      },
+    ],
+    [
+      "login metrics include a fractional count",
+      {
+        ...dashboard,
+        loginSecurity: { ...dashboard.loginSecurity, failedLogins: 1.5 },
+      },
+    ],
+    [
+      "login metrics include a client address",
+      {
+        ...dashboard,
+        loginSecurity: {
+          ...dashboard.loginSecurity,
+          address: "203.0.113.10",
+        },
+      },
+    ],
+    [
+      "attack mode is not a boolean",
+      {
+        ...dashboard,
+        loginSecurity: {
+          ...dashboard.loginSecurity,
+          attackModeActive: "active",
+        },
+      },
+    ],
+  ])("fails closed when %s", async (_caseName, invalidDashboard) => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    vi.mocked(authenticatedFetch).mockImplementation(
+      async (input) =>
+        new Response(
+          JSON.stringify(
+            String(input).includes("contact-messages")
+              ? contacts
+              : invalidDashboard,
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+    );
+
+    render(<AdminDashboard />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "No se han podido consultar los datos del panel.",
+    );
   });
 });

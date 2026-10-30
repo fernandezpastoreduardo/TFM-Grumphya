@@ -14,6 +14,17 @@ const CHALLENGE_TTL_MS = 60 * 1000;
 const CHALLENGE_DIFFICULTY_BITS = 16;
 const MAX_TRACKED_ENTRIES = 20_000;
 const DEFAULT_DEVELOPMENT_SECRET = "local-login-challenge-only";
+const LOGIN_TELEMETRY_WINDOW_MINUTES = 15;
+const LOGIN_TELEMETRY_BUCKET_LIMIT = LOGIN_TELEMETRY_WINDOW_MINUTES + 1;
+
+type LoginTelemetryMetric =
+  | "loginRequests"
+  | "challengesIssued"
+  | "challengesAccepted"
+  | "challengesRejected"
+  | "failedLogins"
+  | "blockedRequests";
+type LoginTelemetryBucket = Record<LoginTelemetryMetric, number>;
 
 type LoginChallengePayload = {
   id: string;
@@ -36,6 +47,7 @@ export class LoginAbuseProtection {
   private readonly failedLogins = new Map<string, FailureBucket>();
   private readonly recentFailedLogins = new Map<string, RecentFailureBucket>();
   private readonly consumedChallenges = new Map<string, number>();
+  private readonly loginTelemetry = new Map<number, LoginTelemetryBucket>();
   private attackModeUntil = 0;
 
   constructor(options: { secret?: string } = {}) {
@@ -47,6 +59,7 @@ export class LoginAbuseProtection {
   }
 
   recordLoginRequest(now = Date.now()): void {
+    this.recordTelemetry("loginRequests", now);
     const second = Math.floor(now / 1_000);
     this.cleanup(now);
     this.requestsBySecond.set(
@@ -68,6 +81,7 @@ export class LoginAbuseProtection {
   }
 
   createChallenge(address: string, now = Date.now()): LoginChallenge {
+    this.recordTelemetry("challengesIssued", now);
     const payload: LoginChallengePayload = {
       id: randomBytes(18).toString("base64url"),
       expiresAt: now + CHALLENGE_TTL_MS,
@@ -86,6 +100,20 @@ export class LoginAbuseProtection {
     token: string,
     proof: string,
     now = Date.now(),
+  ): boolean {
+    const accepted = this.verifyChallengeProof(address, token, proof, now);
+    this.recordTelemetry(
+      accepted ? "challengesAccepted" : "challengesRejected",
+      now,
+    );
+    return accepted;
+  }
+
+  private verifyChallengeProof(
+    address: string,
+    token: string,
+    proof: string,
+    now: number,
   ): boolean {
     if (
       token.length > 1_024 ||
@@ -136,7 +164,59 @@ export class LoginAbuseProtection {
       this.storeBounded(this.recentFailedLogins, key, recent);
       return;
     }
+    this.recordTelemetry("failedLogins", now);
     this.addFailure(key, now);
+  }
+
+  recordBlockedLoginRequest(now = Date.now()): void {
+    this.recordTelemetry("blockedRequests", now);
+  }
+
+  getAdminSnapshot(now = Date.now()) {
+    const currentMinute = Math.floor(now / 60_000);
+    for (const minute of this.loginTelemetry.keys()) {
+      if (minute < currentMinute - LOGIN_TELEMETRY_WINDOW_MINUTES + 1) {
+        this.loginTelemetry.delete(minute);
+      }
+    }
+    const totals: LoginTelemetryBucket = createEmptyTelemetryBucket();
+    for (const bucket of this.loginTelemetry.values()) {
+      for (const metric of Object.keys(totals) as LoginTelemetryMetric[]) {
+        totals[metric] += bucket[metric];
+      }
+    }
+    let activeBlockedAddresses = 0;
+    for (const bucket of this.failedLogins.values()) {
+      if (bucket.blockedUntil && bucket.blockedUntil > now) {
+        activeBlockedAddresses += 1;
+      }
+    }
+    return {
+      windowMinutes: LOGIN_TELEMETRY_WINDOW_MINUTES as 15,
+      ...totals,
+      activeBlockedAddresses,
+      attackModeActive: this.isChallengeModeActive(now),
+    };
+  }
+
+  private recordTelemetry(metric: LoginTelemetryMetric, now: number): void {
+    const minute = Math.floor(now / 60_000);
+    let bucket = this.loginTelemetry.get(minute);
+    if (!bucket) {
+      bucket = createEmptyTelemetryBucket();
+      this.loginTelemetry.set(minute, bucket);
+    }
+    bucket[metric] += 1;
+    for (const recordedMinute of this.loginTelemetry.keys()) {
+      if (recordedMinute < minute - LOGIN_TELEMETRY_WINDOW_MINUTES + 1) {
+        this.loginTelemetry.delete(recordedMinute);
+      }
+    }
+    while (this.loginTelemetry.size > LOGIN_TELEMETRY_BUCKET_LIMIT) {
+      const oldestMinute = this.loginTelemetry.keys().next().value;
+      if (oldestMinute === undefined) break;
+      this.loginTelemetry.delete(oldestMinute);
+    }
   }
 
   private addFailure(key: string, now: number): void {
@@ -199,6 +279,7 @@ export class LoginAbuseProtection {
         (timestamp) => timestamp > now - SUSTAINED_WINDOW_COUNT * 1_000,
       ).length;
       for (let attempt = 0; attempt < recentCount; attempt += 1) {
+        this.recordTelemetry("failedLogins", now);
         this.addFailure(key, now);
       }
     }
@@ -212,6 +293,17 @@ export class LoginAbuseProtection {
     }
     map.set(key, value);
   }
+}
+
+function createEmptyTelemetryBucket(): LoginTelemetryBucket {
+  return {
+    loginRequests: 0,
+    challengesIssued: 0,
+    challengesAccepted: 0,
+    challengesRejected: 0,
+    failedLogins: 0,
+    blockedRequests: 0,
+  };
 }
 
 function safeEqual(value: string, expected: string): boolean {

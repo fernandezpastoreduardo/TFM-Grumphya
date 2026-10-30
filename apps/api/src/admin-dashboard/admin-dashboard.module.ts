@@ -13,9 +13,10 @@ import {
   AdminContactMessageReply,
 } from "./admin-contact-message-reply.service";
 import { AdminContactReplyMailer } from "./admin-contact-reply-mailer";
+import { RegistrationModule } from "../register-with-plan/registration.module";
 
 @Module({
-  imports: [AuthSecurityModule],
+  imports: [AuthSecurityModule, RegistrationModule],
   controllers: [AdminDashboardController],
   providers: [
     {

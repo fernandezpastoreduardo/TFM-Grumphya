@@ -37,14 +37,47 @@ Cada llamada a OpenAI en evaluación, embeddings, equivalencia semántica y roas
 El panel de costes estima las entradas cacheadas de `gpt-5.4-mini` a 0,075 USD por millón de tokens y el resto de entradas a 0,75 USD; la salida cuesta 4,50 USD por millón. La fuente de precios consultada es la [ficha oficial del modelo](https://developers.openai.com/api/docs/models/gpt-5.4-mini). La migración `035_admin_ai_cached_input_tokens` conserva el contador de caché para llamadas nuevas. Los registros anteriores no incluyen ese dato y su estimación histórica no se puede reconstruir con exactitud. El total del panel es una estimación de uso, no el importe facturado por OpenAI.
 
 El panel admin presenta estos controles en pestañas. **Benchmark de IA**
-describe el corpus sintético y cómo ejecutar la comparación; no presenta
-resultados históricos porque el runner no los persiste. **Telemetría de IA**
-muestra costes agregados y usos sin precio. **Pruebas de seguridad** resume el
-alcance de la suite automatizada y de los análisis ejecutados por CI. Ninguna
-pestaña ejecuta modelos o pruebas desde el navegador. Para calcular promedios
-por cuenta, el registro privado de consumos almacena tokens y costes asociados
-a `userId`; estos identificadores no aparecen en los eventos stdout ni en la
-interfaz.
+explica el corpus sintético y la estructura de un informe posible, pero no
+ofrece un comando, no ejecuta el benchmark y no está conectado a un historial de
+resultados. El informe ilustrativo incluye versión de política y fecha,
+recuento de casos y variantes, acuerdo con las etiquetas y consistencia de
+estado/motivo; no es un resultado almacenado. La CLI documentada arriba sigue
+siendo una ejecución manual independiente y sus resultados no se conectan al
+panel. **Telemetría de IA** muestra costes agregados, usos sin precio y
+actividad reciente agrupada por hora, operación y modelo durante las últimas
+24 horas. Esa tabla muestra recuento de usos, volúmenes de tokens de
+entrada/cacheados/salida en rangos —menos de 1.000; de 1.000 a menos de 5.000;
+de 5.000 a menos de 20.000; y 20.000 o más— y coste estimado; no expone los
+recuentos exactos de tokens. Omite los grupos con menos de tres usos. La tabla
+no incluye texto de ideas, identificadores de evento, actor, cuenta, IP ni
+sesión. **Seguridad y acceso** resume pruebas de seguridad
+y métricas agregadas de protección de login. Ninguna pestaña ejecuta modelos o
+pruebas desde el navegador. Para calcular promedios por cuenta, el registro
+privado de consumos almacena tokens y costes asociados a `userId`; estos
+identificadores no aparecen en los eventos stdout ni en la tabla de actividad
+reciente.
+
+Las métricas de `LoginAbuseProtection` cubren una ventana móvil de 15 minutos:
+solicitudes de login admitidas por el rate limit, challenges emitidos/aceptados/rechazados, fallos de
+autenticación durante el modo challenge, solicitudes denegadas por el bloqueo
+temporal, direcciones de red bloqueadas vigentes y estado del modo de ataque.
+El detector y el contador de solicitudes consideran las solicitudes admitidas
+por el rate limit de login; las denegadas por ese límite no activan el
+challenge. Los fallos cuentan solo una respuesta `401 LOGIN_UNAVAILABLE`
+durante el modo challenge e incluyen los fallos recientes usados al activarlo.
+Son contadores volátiles en memoria por proceso y se reinician con el proceso;
+no registran ni muestran IP, usuario, cuenta o sesiones individuales. No hay
+sincronización entre procesos o réplicas. El bloqueo temporal se aplica a la IP
+de salida compartida, por lo que puede afectar a varias personas detrás de una
+NAT.
+
+Los errores HTTP 5xx conservan códigos y diagnósticos seguros para las métricas
+del panel, pero los eventos nuevos no guardan contexto de entrada ni texto de
+ideas. El detalle administrativo no devuelve contextos. La migración
+`036_redact_application_error_context.sql` pone a `NULL` los contextos ya
+guardados en la base; la columna permanece en el esquema y las copias de
+seguridad históricas no se modifican. La retención física de los eventos sigue
+siendo de 30 días.
 
 Configura tarifas USD por millón de tokens que correspondan a la tarifa del proveedor para cada modelo activo. Los nombres de variables se forman así:
 

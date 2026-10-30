@@ -117,16 +117,14 @@ comandos de cada entorno.
   cuentan. La tabla muestra conteo semanal y total, fecha de la última
   ocurrencia y el diagnóstico específico. Cada denominación enlaza al evento
   más reciente del grupo y abre el detalle en otra pestaña. El detalle muestra
-  estado HTTP, fecha, caso de uso y diagnóstico; eventos históricos sin
-  contexto indican que no se guardó información de entrada.
-- Los errores 5xx de `POST /api/evaluation-process` pueden guardar en
-  `context_json` hasta 2.000 caracteres del texto enviado, para diagnosticar
-  fallos como errores del proveedor, timeouts o respuestas no válidas. El detalle solo está disponible
-  tras autenticación y comprobación del rol admin. El texto no se incluye en
-  logs ni se comparte con la vista agregada; se elimina con el evento a los 30
-  días. Otros errores no guardan payloads, rutas, credenciales ni mensajes
-  de excepción, y nunca se persiste la respuesta cruda del proveedor. La
-  migración `029` añade la categoría opcional y `031` el contexto acotado. Los
+  solo estado HTTP, fecha y diagnóstico; no expone texto de ideas ni contexto
+  de entrada, incluidos los registros históricos.
+- Los errores 5xx ya no guardan contexto de solicitud: el registro de nuevos
+  eventos conserva el código y el diagnóstico seguro, pero no payloads, rutas,
+  credenciales, mensajes de excepción ni texto de ideas. La columna histórica
+  `context_json` permanece en el esquema, pero la migración
+  `036_redact_application_error_context.sql` pone a `NULL` todos sus valores
+  existentes. La migración no modifica copias de seguridad históricas. Los
   eventos se purgan a los 30 días y las métricas de IA a los 12 meses mediante
   `DataRetentionService`; verificar la ejecución efectiva en producción.
 
@@ -142,24 +140,46 @@ y enlaces teal legibles para conservar el contraste.
 El panel `/panel-control` organiza el resumen y los mensajes de contacto en la
 pestaña **Resumen**, y añade tres vistas informativas de operación:
 
-- **Benchmark de evaluaciones y prompts** describe el corpus versionado de seis
-  casos sintéticos y cómo comparar acuerdo con las etiquetas y consistencia de
-  estado/motivo entre prompts y modelos. El panel ofrece el comando de ayuda;
-  las ejecuciones se lanzan desde un entorno de desarrollo con credenciales y
-  no se guardan ni se muestran como una ejecución reciente.
+- **Benchmark de evaluaciones y prompts** explica el corpus sintético y la
+  estructura de un informe posible: política y fecha, número de casos y
+  variantes, acuerdo con las etiquetas y consistencia de estado/motivo. Esta
+  pestaña no ofrece un comando para ejecutarlo ni está conectada a resultados o
+  historial de ejecuciones; el informe es una explicación de formato, no un
+  resultado del sistema.
 - **Telemetría de operaciones de IA** muestra coste agregado y eventos sin
-  tarifa. Los eventos estructurados de stdout incluyen operación, modelo,
-  resultado, latencia, identificador aleatorio por llamada, tokens disponibles
-  y coste estimado; no incluyen ideas, mensajes, cuenta, IP ni identificadores
-  de sesión. La tabla administrativa de consumo sí conserva tokens y coste por
-  operación/modelo y puede asociar una cuenta para calcular promedios. La UI
-  presenta cifras agregadas y no expone ese identificador.
-- **Pruebas de seguridad** resume las pruebas de inyección de instrucciones,
-  cuotas, permisos y aislamiento entre cuentas. Las pruebas de integración que
-  requieren PostgreSQL crean esquemas aleatorios en la base temporal de CI; las
-  pruebas E2E usan una instancia aislada de API/web con repositorios en memoria,
-  no esa base PostgreSQL. CI también ejecuta auditoría de dependencias y análisis
-  de vulnerabilidades de la imagen. El detalle está en [`ci-cd.md`](ci-cd.md) y
+  tarifa. La tabla de actividad reciente cubre las últimas 24 horas y agrupa
+  por hora, operación (`idea_evaluation` o `roast`) y modelo; muestra número de
+  usos y los volúmenes de tokens de entrada/cacheados/salida en rangos, no en
+  recuentos exactos: menos de 1.000; de 1.000 a menos de 5.000; de 5.000 a
+  menos de 20.000; y 20.000 o más. También muestra el coste estimado, hasta
+  100 grupos. Oculta los grupos con menos de tres usos.
+  No incluye ideas, IDs de evento, actor, cuenta, IP ni sesión. Los eventos
+  estructurados de stdout incluyen operación, modelo, resultado, latencia,
+  identificador aleatorio por llamada, tokens disponibles y coste estimado; no
+  incluyen ideas, mensajes, cuenta, IP, token de sesión ni clave API. La tabla
+  privada de consumo persiste tokens y coste por operación/modelo y puede asociar una
+  cuenta para calcular promedios; la vista reciente no expone esos datos de
+  actor ni identificadores individuales.
+- **Seguridad y acceso** presenta métricas agregadas de login y challenge en
+  una ventana móvil de 15 minutos: solicitudes de login admitidas por el límite,
+  challenges emitidos/aceptados/
+  rechazados, inicios fallidos durante la defensa, solicitudes denegadas por el
+  bloqueo temporal, direcciones de red bloqueadas activas y estado del modo de
+  ataque. El detector cuenta las solicitudes admitidas por el límite de login;
+  las denegadas por rate limit no activan el challenge. Los fallos se cuentan
+  solo cuando la autenticación devuelve `401 LOGIN_UNAVAILABLE` durante el
+  modo challenge, e incluyen los fallos recientes usados al activarlo. Los
+  contadores son volátiles, viven en memoria por proceso y se reinician al
+  reiniciarlo; no contienen ni muestran
+  IP, usuario, cuenta o sesión, y no forman un historial individual. La misma
+  dirección de red pública puede ser compartida por varias personas: un
+  bloqueo temporal puede afectar a todas ellas, por ejemplo detrás de una NAT.
+  La misma pestaña resume las pruebas de inyección de instrucciones, cuotas,
+  permisos y aislamiento entre cuentas. Las pruebas de integración que requieren
+  PostgreSQL crean esquemas aleatorios en la base temporal de CI; las pruebas
+  E2E usan una instancia aislada de API/web con repositorios en memoria, no esa
+  base PostgreSQL. CI también ejecuta auditoría de dependencias y análisis de
+  vulnerabilidades de la imagen. El detalle está en [`ci-cd.md`](ci-cd.md) y
   [`ai-evaluation-and-observability.md`](ai-evaluation-and-observability.md).
 
 Las pestañas son información de operación y documentación. No lanzan

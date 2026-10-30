@@ -885,6 +885,18 @@ test("uses the section hero assets with transparent pixels", async ({
                 },
               ],
             },
+            recentAiActivity: [],
+            loginSecurity: {
+              windowMinutes: 15,
+              loginRequests: 0,
+              challengesIssued: 0,
+              challengesAccepted: 0,
+              challengesRejected: 0,
+              failedLogins: 0,
+              blockedRequests: 0,
+              activeBlockedAddresses: 0,
+              attackModeActive: false,
+            },
             estimatedAiCost: {
               weeklyUsd: 0,
               totalUsd: 0,

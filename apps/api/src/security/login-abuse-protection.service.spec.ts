@@ -75,6 +75,69 @@ describe("LoginAbuseProtection", () => {
 
     expect(protection.getBlockedRetryAfter(BLOCKED_IP, 3_000)).toBe(899);
   });
+
+  it("exposes only aggregate security counters for the trailing 15 minutes", () => {
+    const protection = new LoginAbuseProtection({ secret: "test-secret" });
+    activateAttackMode(protection);
+    const challenge = protection.createChallenge(BLOCKED_IP, 3_000);
+    const proof = findProof(challenge.token, challenge.difficulty);
+    protection.verifyChallenge(BLOCKED_IP, challenge.token, proof, 3_001);
+    protection.verifyChallenge(BLOCKED_IP, challenge.token, proof, 3_002);
+    protection.recordLoginFailure(BLOCKED_IP, 3_003);
+    protection.recordBlockedLoginRequest(3_004);
+
+    expect(protection.getAdminSnapshot(3_005)).toEqual({
+      windowMinutes: 15,
+      loginRequests: 30,
+      challengesIssued: 1,
+      challengesAccepted: 1,
+      challengesRejected: 1,
+      failedLogins: 1,
+      blockedRequests: 1,
+      activeBlockedAddresses: 0,
+      attackModeActive: true,
+    });
+    expect(protection.getAdminSnapshot(903_001)).toMatchObject({
+      loginRequests: 0,
+      challengesIssued: 0,
+      challengesAccepted: 0,
+      challengesRejected: 0,
+      failedLogins: 0,
+      blockedRequests: 0,
+      attackModeActive: false,
+    });
+  });
+
+  it("counts active temporary blocks without exposing addresses and clears expired blocks", () => {
+    const protection = new LoginAbuseProtection({ secret: "test-secret" });
+    activateAttackMode(protection);
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      protection.recordLoginFailure(BLOCKED_IP, 3_000 + attempt);
+    }
+
+    const activeSnapshot = protection.getAdminSnapshot(3_003);
+    expect(activeSnapshot).toMatchObject({
+      failedLogins: 4,
+      activeBlockedAddresses: 1,
+    });
+    expect(Object.keys(activeSnapshot)).toEqual([
+      "windowMinutes",
+      "loginRequests",
+      "challengesIssued",
+      "challengesAccepted",
+      "challengesRejected",
+      "failedLogins",
+      "blockedRequests",
+      "activeBlockedAddresses",
+      "attackModeActive",
+    ]);
+    expect(JSON.stringify(activeSnapshot)).not.toContain(BLOCKED_IP);
+
+    expect(protection.getAdminSnapshot(903_003)).toMatchObject({
+      failedLogins: 0,
+      activeBlockedAddresses: 0,
+    });
+  });
 });
 
 function activateAttackMode(protection: LoginAbuseProtection): void {
