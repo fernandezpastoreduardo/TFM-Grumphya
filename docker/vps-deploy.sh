@@ -279,6 +279,17 @@ is_approved_illuminado_repricing_migration() {
   [[ $normalized_sql == "$expected_sql" ]]
 }
 
+is_approved_application_error_context_redaction_migration() {
+  local name=$1 content=$2 normalized_sql expected_sql
+  local marker='-- deployment-data-rewrite: redact-application-error-context'
+  [[ $name == '036_redact_application_error_context.sql' ]] || return 1
+  grep -Fq -- "$marker" <<< "$content" || return 1
+  normalized_sql=$(sed -E '/^[[:space:]]*(--|$)/d; s/[[:space:]]+/ /g' <<< "$content" |
+    tr '\n' ' ' | sed -E 's/ +/ /g; s/^ //; s/ $//')
+  expected_sql='UPDATE application_error_events SET context_json = NULL WHERE context_json IS NOT NULL;'
+  [[ $normalized_sql == "$expected_sql" ]]
+}
+
 migrations_compatible() {
   local previous_dir=$1 candidate_dir=$2 file name old_content new_content
   local marker='-- deployment-rollback-compatible: true'
@@ -310,7 +321,8 @@ migrations_compatible() {
       return 1
     fi
     if [[ $new_content =~ $destructive || $new_content =~ $alter_destructive ]]; then
-      if is_approved_illuminado_repricing_migration "$name" "$new_content"; then
+      if is_approved_illuminado_repricing_migration "$name" "$new_content" ||
+        is_approved_application_error_context_redaction_migration "$name" "$new_content"; then
         continue
       fi
       log "migration compatibility blocked: new migration $name contains a destructive operation"

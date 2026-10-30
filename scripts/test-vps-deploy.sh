@@ -286,6 +286,34 @@ test_approved_illuminado_repricing_migration_is_rollback_compatible() {
   cleanup_fixture
 }
 
+test_application_error_context_redaction_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" \
+    "$(<"$SCRIPT_DIR/../apps/api/migrations/036_redact_application_error_context.sql")" \
+    '036_redact_application_error_context.sql'
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'the approved application error context redaction was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after application error context redaction'
+  cleanup_fixture
+}
+
+test_application_error_context_redaction_rejects_extra_destructive_sql() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  local migration_content
+  migration_content=$(<"$SCRIPT_DIR/../apps/api/migrations/036_redact_application_error_context.sql")
+  make_bundle "$NEW_SHA" "$migration_content
+DROP TABLE users;" '036_redact_application_error_context.sql'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'the application error context allowlist accepted extra destructive SQL'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after rejected application error redaction SQL'
+  cleanup_fixture
+}
+
 test_illuminado_repricing_migration_rejects_extra_destructive_sql() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -502,6 +530,8 @@ for test_case in \
   test_all_time_ranking_migration_is_rollback_compatible \
   test_ai_cached_input_migration_is_rollback_compatible \
   test_approved_illuminado_repricing_migration_is_rollback_compatible \
+  test_application_error_context_redaction_is_rollback_compatible \
+  test_application_error_context_redaction_rejects_extra_destructive_sql \
   test_illuminado_repricing_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_allowlist_requires_exact_migration_name \
   test_failed_compose_restores_previous \
