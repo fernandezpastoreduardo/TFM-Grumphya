@@ -1153,6 +1153,9 @@ test("reserves anonymous contact layout height while checking the session on mob
 
   await page.goto("/contacto");
   await expect(page.locator(".skeleton-contact-title")).toBeVisible();
+  await page.evaluate(async () => {
+    await document.fonts.load('600 1.45rem "Fredoka"');
+  });
 
   const skeletonHeightWhileChecking = (await page
     .locator(".contact-skeleton")
