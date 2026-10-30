@@ -189,7 +189,7 @@ install -o root -g root -m 0755 docker/vps-deploy.sh /usr/local/sbin/grumphya-de
 /usr/local/sbin/grumphya-deploy helper-version
 ```
 
-El último comando debe mostrar `2` antes de reintentar Actions. Las excepciones a la detección de SQL destructivo son específicas y comparan nombre, marcador y SQL normalizado exacto: `034_illuminado_price_retroactive.sql` permite solo las dos actualizaciones de precio previstas; la futura migración `036_redact_application_error_context.sql` permitirá poner a `NULL` únicamente los contextos históricos de errores. La release anterior trata un contexto `NULL` como ausente, así que el rollback de aplicación sigue siendo compatible mientras se purgan esos datos sensibles. Las pruebas del helper rechazan cualquier SQL destructivo adicional dentro de estas migraciones. No relajes el detector general. Una vez recuperada la versión 2, las siguientes releases actualizan el helper dentro del flujo normal.
+El último comando debe mostrar `2` antes de reintentar Actions. Las excepciones a la detección de SQL destructivo son específicas y comparan nombre, marcador y SQL normalizado exacto: `034_illuminado_price_retroactive.sql` permite solo las dos actualizaciones de precio previstas; `036_redact_application_error_context.sql` permite poner a `NULL` únicamente los contextos históricos de errores. La release anterior trata un contexto `NULL` como ausente, así que el rollback de aplicación sigue siendo compatible mientras se purgan esos datos sensibles. Las pruebas del helper rechazan cualquier SQL destructivo adicional dentro de estas migraciones. No relajes el detector general. Una vez recuperada la versión 2, las siguientes releases actualizan el helper dentro del flujo normal.
 
 ### Errores y recuperación
 
