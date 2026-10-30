@@ -289,8 +289,9 @@ test_approved_illuminado_repricing_migration_is_rollback_compatible() {
 test_application_error_context_redaction_is_rollback_compatible() {
   new_fixture
   seed_release "$OLD_SHA"
-  make_bundle "$NEW_SHA" \
-    "$(<"$SCRIPT_DIR/../apps/api/migrations/036_redact_application_error_context.sql")" \
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+-- deployment-data-rewrite: redact-application-error-context
+UPDATE application_error_events SET context_json = NULL WHERE context_json IS NOT NULL;' \
     '036_redact_application_error_context.sql'
   run_deploy "$NEW_SHA" >/dev/null ||
     fail 'the approved application error context redaction was incorrectly rejected'
@@ -303,7 +304,9 @@ test_application_error_context_redaction_rejects_extra_destructive_sql() {
   new_fixture
   seed_release "$OLD_SHA"
   local migration_content
-  migration_content=$(<"$SCRIPT_DIR/../apps/api/migrations/036_redact_application_error_context.sql")
+  migration_content='-- deployment-rollback-compatible: true
+-- deployment-data-rewrite: redact-application-error-context
+UPDATE application_error_events SET context_json = NULL WHERE context_json IS NOT NULL;'
   make_bundle "$NEW_SHA" "$migration_content
 DROP TABLE users;" '036_redact_application_error_context.sql'
   if run_deploy "$NEW_SHA" >/dev/null 2>&1; then

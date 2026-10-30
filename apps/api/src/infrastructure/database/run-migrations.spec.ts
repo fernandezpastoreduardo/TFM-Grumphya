@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(36);
+    ).toHaveLength(35);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -55,28 +55,6 @@ describe("controlled database migrations", () => {
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["031_application_error_context"],
-    );
-  });
-
-  it("redacts legacy application error contexts", async () => {
-    const query = vi.fn().mockImplementation(async (sql: string) => {
-      if (sql.startsWith("SELECT version FROM schema_migrations")) {
-        return { rows: [], rowCount: 0 };
-      }
-      return { rows: [], rowCount: 0 };
-    });
-    const { pool } = fakePool(query);
-
-    await runMigrations(pool);
-
-    expect(
-      query.mock.calls.some(([sql]) =>
-        String(sql).includes("SET context_json = NULL"),
-      ),
-    ).toBe(true);
-    expect(query).toHaveBeenCalledWith(
-      "INSERT INTO schema_migrations(version) VALUES($1)",
-      ["036_redact_application_error_context"],
     );
   });
 

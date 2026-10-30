@@ -116,10 +116,6 @@ const MIGRATIONS = [
     version: "035_admin_ai_cached_input_tokens",
     file: "035_admin_ai_cached_input_tokens.sql",
   },
-  {
-    version: "036_redact_application_error_context",
-    file: "036_redact_application_error_context.sql",
-  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {
