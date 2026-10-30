@@ -10,6 +10,7 @@ const FIRST_SAMPLE_ROAST =
   "Quiero una app que haga mi trabajo mientras duermo.";
 const SUBMITTED_ROAST = "Una app que cobra por mis ideas";
 const SERVER_ROAST_REPLY = "Respuesta del servidor.";
+const ROAST_REPLY_UNAVAILABLE_CODE = "ROAST_REPLY_UNAVAILABLE";
 
 const mocks = vi.hoisted(() => ({
   session: {
@@ -314,6 +315,41 @@ describe("Roast", () => {
     expect(screen.getByText(SERVER_ROAST_REPLY)).toBeInTheDocument();
     expect(thread.scrollTop).toBe(640);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("shows the reply failure dialog and keeps the draft for retry", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json(
+        {
+          code: ROAST_REPLY_UNAVAILABLE_CODE,
+          message: "La respuesta de roast no está disponible.",
+        },
+        { status: 503 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Roast />);
+    const input = screen.getByRole("textbox", { name: ROAST_INPUT_LABEL });
+    await user.type(input, SUBMITTED_ROAST);
+    await user.click(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Se nos ha derramado el café",
+    });
+    expect(dialog).toHaveTextContent(/no se te ha descontado el envío/i);
+    expect(input).toHaveValue(SUBMITTED_ROAST);
+    expect(screen.queryByText(SUBMITTED_ROAST)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledOnce();
+
+    await user.click(
+      screen.getByRole("button", { name: "Seguir intentándolo" }),
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "Se nos ha derramado el café" }),
+    ).not.toBeInTheDocument();
+    expect(input).toHaveValue(SUBMITTED_ROAST);
   });
 
   it("loads and displays the roast ranking", async () => {

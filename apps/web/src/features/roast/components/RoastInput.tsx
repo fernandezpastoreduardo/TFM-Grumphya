@@ -11,6 +11,7 @@ const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo."
 const MESSAGE_MAX_LENGTH = 400;
 const QUOTA_EXHAUSTED_STATUS = 429;
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
+const ROAST_REPLY_UNAVAILABLE_CODE = "ROAST_REPLY_UNAVAILABLE";
 const ROAST_QUOTA_SCOPE = "roasts";
 
 type RoastInputProps = {
@@ -21,6 +22,7 @@ type RoastInputProps = {
   onUsageRefresh: () => Promise<void>;
   onAccountUsageRefresh?: () => Promise<AccountAttempts | null>;
   onDailyQuotaExhausted?: () => void;
+  onReplyUnavailable: () => void;
 };
 
 export function RoastInput({
@@ -31,6 +33,7 @@ export function RoastInput({
   onUsageRefresh,
   onAccountUsageRefresh,
   onDailyQuotaExhausted,
+  onReplyUnavailable,
 }: RoastInputProps) {
   const [message, setMessage] = useState("");
   const [displayRemaining, setDisplayRemaining] = useState<number | null>(
@@ -81,6 +84,11 @@ export function RoastInput({
             onUsageRefresh(),
             onAccountUsageRefresh?.() ?? Promise.resolve(null),
           ]);
+          return;
+        }
+        if (failure.code === ROAST_REPLY_UNAVAILABLE_CODE) {
+          onReplyUnavailable();
+          setError("");
           return;
         }
         throw new Error(failure.message ?? ROAST_ERROR_MESSAGE);

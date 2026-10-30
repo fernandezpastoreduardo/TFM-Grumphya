@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   fetch: vi.fn(),
   onSubmitted: vi.fn(),
   onUsageRefresh: vi.fn(async () => undefined),
+  onReplyUnavailable: vi.fn(),
 }));
 
 vi.mock("../../../infrastructure/auth/session", () => ({
@@ -44,6 +45,7 @@ describe("RoastInput", () => {
         quotaDescription="envíos gratuitos restantes"
         onSubmitted={mocks.onSubmitted}
         onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
       />,
     );
 
@@ -79,6 +81,7 @@ describe("RoastInput", () => {
         quotaDescription="envíos disponibles hoy"
         onSubmitted={mocks.onSubmitted}
         onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
       />,
     );
 
@@ -109,6 +112,7 @@ describe("RoastInput", () => {
         quotaDescription="envíos gratuitos restantes"
         onSubmitted={mocks.onSubmitted}
         onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
       />,
     );
     const input = screen.getByRole("textbox", { name: /tu insulto/i });
@@ -138,6 +142,7 @@ describe("RoastInput", () => {
         quotaDescription="envíos gratuitos restantes"
         onSubmitted={mocks.onSubmitted}
         onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
       />,
     );
     const input = screen.getByRole("textbox", { name: /tu insulto/i });
@@ -149,6 +154,41 @@ describe("RoastInput", () => {
     );
     expect(input).toHaveValue("Mi borrador");
     expect(mocks.onSubmitted).not.toHaveBeenCalled();
+    expect(mocks.onReplyUnavailable).not.toHaveBeenCalled();
+  });
+
+  it("opens the unavailable-reply flow and preserves the draft", async () => {
+    mocks.fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "ROAST_REPLY_UNAVAILABLE",
+          message: "La respuesta no está disponible.",
+        }),
+        { status: 503 },
+      ),
+    );
+    const user = userEvent.setup();
+    render(
+      <RoastInput
+        remainingAttempts={2}
+        quotaLimit={3}
+        quotaDescription="envíos gratuitos restantes"
+        onSubmitted={mocks.onSubmitted}
+        onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
+      />,
+    );
+    const input = screen.getByRole("textbox", { name: /tu insulto/i });
+    await user.type(input, "Mi idea de roast");
+    await user.click(screen.getByRole("button", { name: "Enviar insulto" }));
+
+    await waitFor(() =>
+      expect(mocks.onReplyUnavailable).toHaveBeenCalledOnce(),
+    );
+    expect(input).toHaveValue("Mi idea de roast");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(mocks.onSubmitted).not.toHaveBeenCalled();
+    expect(mocks.onUsageRefresh).not.toHaveBeenCalled();
   });
 
   it("does not allow blank messages or send when attempts are exhausted", async () => {
@@ -160,6 +200,7 @@ describe("RoastInput", () => {
         quotaDescription="envíos gratuitos restantes"
         onSubmitted={mocks.onSubmitted}
         onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
       />,
     );
     const textbox = screen.getByRole("textbox", { name: /tu insulto/i });
@@ -178,6 +219,7 @@ describe("RoastInput", () => {
         quotaDescription="envíos gratuitos restantes"
         onSubmitted={mocks.onSubmitted}
         onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
       />,
     );
     expect(textbox).toBeDisabled();

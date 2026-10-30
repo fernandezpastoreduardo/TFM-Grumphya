@@ -32,7 +32,7 @@ function calculateContrastRatio(
   );
 }
 
-test("reserves the roast thread height while anonymous usage loads on mobile", async ({
+test("lets the roast thread follow its contents instead of forcing a minimum height on mobile", async ({
   page,
 }) => {
   await page.setViewportSize(MOBILE_VIEWPORT);
@@ -56,20 +56,23 @@ test("reserves the roast thread height while anonymous usage loads on mobile", a
   await page.goto("/descargate");
   const thread = page.locator(".roast-thread");
   await expect(thread.locator(".roast-thread-skeleton")).toBeVisible();
-  const skeletonHeight = await thread.evaluate(
-    (element) => element.getBoundingClientRect().height,
-  );
+  await expect
+    .poll(() =>
+      thread.evaluate((element) => getComputedStyle(element).minHeight),
+    )
+    .toBe("0px");
+  await expect
+    .poll(() =>
+      thread.evaluate((element) => getComputedStyle(element).maxHeight),
+    )
+    .toBe("420px");
 
   releaseUsageResponse();
   await expect(page.getByText(FIRST_SAMPLE_ROAST)).toBeVisible();
-  const loadedHeight = await thread.evaluate(
-    (element) => element.getBoundingClientRect().height,
-  );
-
-  expect(Math.abs(loadedHeight - skeletonHeight)).toBeLessThan(2);
+  await expect(thread.locator(".roast-thread-skeleton")).toHaveCount(0);
 });
 
-test("reserves the roast composer position when exhausted users have no history on mobile", async ({
+test("shrinks the roast thread and moves the composer up when there is no history", async ({
   page,
 }) => {
   await page.setViewportSize(MOBILE_VIEWPORT);
@@ -101,7 +104,7 @@ test("reserves the roast composer position when exhausted users have no history 
 
   expect(initialComposerTop).toBeDefined();
   expect(loadedComposerTop).toBeDefined();
-  expect(Math.abs(loadedComposerTop! - initialComposerTop!)).toBeLessThan(2);
+  expect(initialComposerTop! - loadedComposerTop!).toBeGreaterThan(20);
 });
 
 test("keeps the roast plan link readable in both themes on mobile", async ({

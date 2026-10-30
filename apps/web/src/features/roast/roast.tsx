@@ -7,6 +7,7 @@ import {
   SkeletonBlock,
 } from "../../shared/components/loading-skeleton";
 import { RoastInput } from "./components/RoastInput";
+import { RoastFailureDialog } from "./components/RoastFailureDialog";
 import {
   RoastRanking,
   type RoastRankingState,
@@ -47,6 +48,8 @@ export function Roast() {
   });
   const [rankingRevision, setRankingRevision] = useState(0);
   const [isDailyQuotaDialogOpen, setIsDailyQuotaDialogOpen] = useState(false);
+  const [isReplyFailureDialogOpen, setIsReplyFailureDialogOpen] =
+    useState(false);
   const isAuthenticated = session.isAuthenticated === true;
   const hasActiveRoastPlan =
     isAuthenticated && session.accountAttempts?.roastsPlanActive === true;
@@ -218,6 +221,7 @@ export function Roast() {
             session.isAuthenticated === false ? undefined : session.refresh
           }
           onDailyQuotaExhausted={() => setIsDailyQuotaDialogOpen(true)}
+          onReplyUnavailable={() => setIsReplyFailureDialogOpen(true)}
         />
         <p className="prototype-stamp">
           {showDemoExchanges
@@ -256,6 +260,10 @@ export function Roast() {
           onClose={() => setIsDailyQuotaDialogOpen(false)}
         />
       ) : null}
+      <RoastFailureDialog
+        open={isReplyFailureDialogOpen}
+        onClose={() => setIsReplyFailureDialogOpen(false)}
+      />
     </div>
   );
 }

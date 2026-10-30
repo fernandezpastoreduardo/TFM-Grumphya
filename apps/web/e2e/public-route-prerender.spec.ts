@@ -32,7 +32,7 @@ test("serves all public section content in its initial HTML", async ({
   }
 });
 
-test("prerenders the roast conversation skeleton to reserve its initial height", async ({
+test("prerenders the roast conversation skeleton before client hydration", async ({
   request,
 }) => {
   const response = await request.get("/descargate");
