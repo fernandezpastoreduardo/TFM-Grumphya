@@ -423,6 +423,24 @@ const developmentSecurityLocation = readLocationBlock(
   nginxSpa,
   "location ^~ /desarrollo-seguro/",
 );
+const developmentSecurityRedirectLocation = readLocationBlock(
+  nginxSpa,
+  "location = /desarrollo-seguro",
+);
+const developmentSecurityIndexLocation = readLocationBlock(
+  nginxSpa,
+  "location = /desarrollo-seguro/",
+);
+assert.match(
+  developmentSecurityRedirectLocation,
+  /absolute_redirect off;/,
+  "the canonical prototype redirect must not expose the internal HTTP port",
+);
+assert.match(
+  developmentSecurityIndexLocation,
+  /try_files \/desarrollo-seguro\/index\.html =404;/,
+  "the prototype directory URL must serve its static index explicitly",
+);
 assert.match(
   developmentSecurityLocation,
   /try_files \$uri =404;/,
