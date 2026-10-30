@@ -165,7 +165,13 @@ export class RegistrationController {
       session = await this.service.login(body);
       this.loginAbuseProtection.recordLoginSuccess(clientAddress);
     } catch (error) {
-      this.loginAbuseProtection.recordLoginFailure(clientAddress);
+      if (
+        error instanceof RegistrationError &&
+        error.statusCode === 401 &&
+        error.code === "LOGIN_UNAVAILABLE"
+      ) {
+        this.loginAbuseProtection.recordLoginFailure(clientAddress);
+      }
       throw error;
     }
     response.cookie(

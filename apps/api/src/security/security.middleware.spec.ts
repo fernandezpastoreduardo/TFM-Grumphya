@@ -6,6 +6,7 @@ import { LoginAbuseProtection } from "./login-abuse-protection.service";
 const EVALUATION_PATH = "/api/evaluation-process";
 const LOGIN_PATH = "/api/auth/login";
 const REQUEST_IP = "192.0.2.10";
+const LOGIN_RATE_PER_SECOND = 10;
 
 function createRequest(
   path = EVALUATION_PATH,
@@ -122,6 +123,38 @@ describe("security middleware", () => {
     expect(next).toHaveBeenCalledTimes(5);
   });
 
+  it("does not let rate-limited requests from one IP activate the global challenge threshold", () => {
+    vi.useFakeTimers();
+    try {
+      const loginAbuseProtection = new LoginAbuseProtection({
+        secret: "test-secret",
+      });
+      const recordLoginRequest = vi.spyOn(
+        loginAbuseProtection,
+        "recordLoginRequest",
+      );
+      const middleware = createSecurityMiddleware({ loginAbuseProtection });
+      const next = vi.fn() as NextFunction;
+
+      for (let second = 0; second < 3; second += 1) {
+        vi.setSystemTime(second * 1_000);
+        for (let attempt = 0; attempt < LOGIN_RATE_PER_SECOND; attempt += 1) {
+          middleware(
+            createRequest(LOGIN_PATH, "POST"),
+            createResponse().response,
+            next,
+          );
+        }
+      }
+
+      expect(next).toHaveBeenCalledTimes(5);
+      expect(recordLoginRequest).toHaveBeenCalledTimes(5);
+      expect(loginAbuseProtection.isChallengeModeActive(2_999)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("requires a web challenge after sustained global login traffic across IPs", () => {
     vi.useFakeTimers();
     const loginAbuseProtection = new LoginAbuseProtection({
@@ -177,6 +210,10 @@ describe("security middleware", () => {
 
     expect(response.status).toHaveBeenCalledWith(429);
     expect(headers.get("Retry-After")).toBe("900");
+    expect(loginAbuseProtection.getAdminSnapshot(3_003)).toMatchObject({
+      blockedRequests: 1,
+      activeBlockedAddresses: 1,
+    });
     vi.useRealTimers();
   });
 

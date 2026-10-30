@@ -73,9 +73,7 @@ export function createSecurityMiddleware(
       request.path.startsWith("/api/auth/") ||
       request.path.startsWith("/api/registration") ||
       request.path === "/api/contact-messages" ||
-      request.path === "/api/admin/dashboard" ||
-      request.path === "/api/admin/contact-messages" ||
-      request.path.startsWith("/api/admin/application-errors/") ||
+      request.path.startsWith("/api/admin/") ||
       request.path.startsWith("/api/dev/mail-preview")
     ) {
       response.setHeader("Cache-Control", "no-store");
@@ -162,12 +160,12 @@ export function createSecurityMiddleware(
     const isLoginPost =
       request.method === "POST" && request.path === "/api/auth/login";
     if (isLoginPost) {
-      loginAbuseProtection.recordLoginRequest(now);
       const blockedSeconds = loginAbuseProtection.getBlockedRetryAfter(
         clientAddress,
         now,
       );
       if (blockedSeconds > 0) {
+        loginAbuseProtection.recordBlockedLoginRequest(now);
         response.setHeader("Retry-After", String(blockedSeconds));
         response.status(429).json({
           statusCode: 429,
@@ -278,6 +276,8 @@ export function createSecurityMiddleware(
       }
       buckets.set(key, bucket);
     }
+
+    if (isLoginPost) loginAbuseProtection.recordLoginRequest(now);
 
     if (
       isLoginPost &&

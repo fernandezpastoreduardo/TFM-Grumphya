@@ -345,6 +345,24 @@ describe("RegistrationController", () => {
     expect(response.cookie).not.toHaveBeenCalled();
   });
 
+  it("does not count infrastructure errors as failed credential attempts", async () => {
+    const { controller, service, loginAbuseProtection } = createController();
+    const response = createResponse();
+    const infrastructureError = new Error("Database connection unavailable.");
+    vi.mocked(service.login).mockRejectedValueOnce(infrastructureError);
+
+    await expect(
+      controller.login(
+        { identifier: "persona", password: "secret", rememberMe: false },
+        response as never,
+      ),
+    ).rejects.toBe(infrastructureError);
+
+    expect(loginAbuseProtection.recordLoginFailure).not.toHaveBeenCalled();
+    expect(loginAbuseProtection.recordLoginSuccess).not.toHaveBeenCalled();
+    expect(response.cookie).not.toHaveBeenCalled();
+  });
+
   it("sets the remaining session lifetime when remember-me is enabled", async () => {
     const { controller, service } = createController();
     const response = createResponse();
