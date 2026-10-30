@@ -15,19 +15,33 @@ export function Contact() {
       <LoadingSkeleton
         label="Comprobando tu sesión"
         className="contact-skeleton"
+        showImmediately
       >
         <section className="content-card contact-card contact-skeleton-form">
           <SkeletonBlock className="skeleton-contact-title" />
           <SkeletonBlock className="skeleton-contact-heading" />
-          <SkeletonBlock className="skeleton-contact-input" />
-          <SkeletonBlock className="skeleton-contact-input" />
-          <SkeletonBlock className="skeleton-contact-message" />
+          <div className="contact-skeleton-fields">
+            <div className="contact-skeleton-field">
+              <SkeletonBlock className="skeleton-contact-label" />
+              <SkeletonBlock className="skeleton-contact-input" />
+            </div>
+            <div className="contact-skeleton-field">
+              <SkeletonBlock className="skeleton-contact-label" />
+              <SkeletonBlock className="skeleton-contact-input" />
+            </div>
+            <div className="contact-skeleton-field">
+              <SkeletonBlock className="skeleton-contact-label" />
+              <SkeletonBlock className="skeleton-contact-message" />
+            </div>
+          </div>
           <SkeletonBlock className="skeleton-contact-button" />
+          <SkeletonBlock className="skeleton-contact-note" />
         </section>
         <aside className="contact-side contact-skeleton-aside">
           <SkeletonBlock className="skeleton-contact-creature" />
           <SkeletonBlock className="skeleton-contact-copy" />
         </aside>
+        <SkeletonBlock className="skeleton-contact-stamp" />
       </LoadingSkeleton>
     );
   }

@@ -64,9 +64,10 @@ la lámina maestra está en
   OFL se conservan en `ideas-and-designs/tipografias-originales/`, fuera de los
   recursos estáticos publicados. Las licencias OFL también se distribuyen junto
   a los WOFF2. Los pesos altos deben mantener buena separación entre caracteres.
-  `apps/web/index.html`
-  precarga el WOFF2 variable de Nunito Sans para que la fuente de lectura pueda
-  empezar a descargarse antes de que se resuelva la hoja de estilos.
+  `apps/web/index.html` precarga los WOFF2 variables de Nunito Sans y Fredoka
+  con `crossorigin`; Fredoka lleva prioridad alta para que la tipografía de los
+  titulares empiece a descargarse antes de que se resuelva la hoja de estilos.
+  La prueba E2E verifica la precarga de Fredoka.
 
 ## Escenario y assets
 
@@ -303,12 +304,35 @@ los cambios de assets, skeleton y contraste descritos aquí: Home registró
 rendimiento 0,79 y LCP 5,58 s; Peores ideas, rendimiento 0,56, LCP 6,63 s y
 CLS 0,458, con una contribución de 0,4509 atribuida al bloque del ranking. El
 informe móvil previo de Home, capturado ese día a las 14:05 UTC, registró
-rendimiento 0,76 y LCP 7,38 s. No hay una medición Lighthouse posterior a
-estos cambios, por lo que no se afirma una mejora en las métricas. Los ajustes
-publicados el 30 de octubre para responder a esos hallazgos precargan el telón
-compartido `stage-curtain-v2.webp` desde `apps/web/index.html` con prioridad
-alta, fijan los colores del CTA del historial vacío de Peores ideas y oscurecen
-el color del número de puesto en Humanos notables. Para
+rendimiento 0,76 y LCP 7,38 s. Un tercer informe móvil de Humanos notables,
+capturado el 30 de octubre a las 16:51 UTC antes del ajuste del skeleton,
+registró rendimiento 0,87, LCP 3,33 s y CLS 0,132; Lighthouse atribuyó
+0,1315 de CLS al desplazamiento del bloque «Tu turno». El ajuste actual reserva
+desde el primer render las diez filas máximas con el mismo espacio entre filas
+que el ranking cargado. La prueba E2E confirma que el bloque conserva su
+posición al terminar la carga; hace falta otra medición Lighthouse para
+confirmar el efecto en CLS y rendimiento. El informe móvil de Buenas prácticas
+capturado el 30 de octubre a las 16:52 UTC registró rendimiento 0,92, LCP
+3,33 s y CLS 0. La cadena de red muestra Nunito precargada desde el HTML y
+Fredoka solicitada después de descubrirse en CSS; el titular del hero usa
+Fredoka. Se añade su precarga con prioridad alta en el HTML compartido. La
+prueba E2E verifica el enlace de precarga; hace falta otra medición Lighthouse
+para confirmar el efecto sobre LCP. El informe móvil de Contacto sin sesión,
+capturado el 30 de octubre a las 16:54 UTC, registró rendimiento 0,76, LCP
+3,33 s y CLS 0,306. Lighthouse atribuyó 0,2877 del CLS al desplazamiento de
+la mascota móvil mientras se resolvía la sesión; el skeleton ahora reproduce
+las dimensiones del formulario anónimo y del sello. Una prueba E2E comprueba
+que la altura y la posición de la mascota varían como máximo un píxel al mostrar
+el formulario. Como Lighthouse identificó esa ilustración (56.075 B) como LCP
+y señaló que el fondo CSS no se descubre en el HTML inicial, la ruta prerenderizada
+de Contacto precarga el SVG con prioridad alta solo hasta 700 px. Hace falta
+otra medición Lighthouse para confirmar el efecto en LCP, CLS y rendimiento.
+Los ajustes publicados el 30 de octubre
+para responder a los informes anteriores también precargan el telón compartido
+`stage-curtain-v2.webp` desde `apps/web/index.html` con prioridad alta, fijan
+los colores del CTA del historial vacío de Peores ideas y oscurecen el color
+del número de puesto en Humanos notables. Los informes posteriores no permiten
+atribuir cambios de puntuación a cada ajuste por separado. Para
 completar la revisión, medir Home, Humanos notables, Contacto, Descárgate, alta
 y `/panel-control` con Lighthouse en escritorio y móvil, ambos temas y caché
 fría y caliente; revisar waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes

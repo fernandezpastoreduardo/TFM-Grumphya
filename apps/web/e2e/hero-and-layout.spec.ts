@@ -281,7 +281,9 @@ test("sizes every section hero to its copy on desktop", async ({ page }) => {
   }
 });
 
-test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
+test("serves crawl metadata and preloads critical fonts and artwork", async ({
+  page,
+}) => {
   await page.goto("/");
   await expect(page.locator(".home-page")).toBeVisible();
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
@@ -293,6 +295,13 @@ test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
   );
   await expect(curtainPreload).toHaveCount(1);
   await expect(curtainPreload).toHaveAttribute("fetchpriority", "high");
+
+  const fredokaPreload = page.locator(
+    'link[rel="preload"][as="font"][href="/assets/fonts/Fredoka-Variable.woff2"]',
+  );
+  await expect(fredokaPreload).toHaveCount(1);
+  await expect(fredokaPreload).toHaveAttribute("fetchpriority", "high");
+  await expect(fredokaPreload).toHaveAttribute("crossorigin");
 
   const robotsResponse = await page.request.get("/robots.txt");
   expect(robotsResponse.ok()).toBe(true);
@@ -826,6 +835,37 @@ test("stacks the notable humans callout content on mobile", async ({
   expect(calloutLayout.justifyItems).toBe("start");
 });
 
+test("reserves the notable humans ranking height while it loads on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  const users = Array.from({ length: 10 }, (_, index) => ({
+    username: `persona${index + 1}`,
+    approvedIdeasCount: 20 - index,
+  }));
+  let releaseRanking: () => void = () => undefined;
+  const rankingResponse = new Promise<void>((resolve) => {
+    releaseRanking = resolve;
+  });
+  await page.route("**/api/best-users", async (route) => {
+    await rankingResponse;
+    await route.fulfill({ json: users });
+  });
+
+  await page.goto("/humanos-notables");
+  await expect(page.locator(".humans-ranking-skeleton-row")).toHaveCount(10);
+
+  const callout = page.locator(".human-callout");
+  const calloutTopWhileLoading = (await callout.boundingBox())!.y;
+  releaseRanking();
+  await expect(page.locator(".humans-ranking li")).toHaveCount(10);
+
+  const calloutTopAfterLoad = (await callout.boundingBox())!.y;
+  expect(calloutTopAfterLoad).toBe(calloutTopWhileLoading);
+});
+
 test("keeps notable-human ranking positions at WCAG AA contrast in both themes", async ({
   page,
 }) => {
@@ -1096,6 +1136,44 @@ test("uses the section hero assets with transparent pixels", async ({
   }
 });
 
+test("reserves anonymous contact layout height while checking the session on mobile", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize(MOBILE_VIEWPORT);
+
+  let releaseSession: () => void = () => undefined;
+  const sessionResponse = new Promise<void>((resolve) => {
+    releaseSession = resolve;
+  });
+  await page.route("**/api/auth/refresh", async (route) => {
+    await sessionResponse;
+    await route.fulfill({ status: 204 });
+  });
+
+  await page.goto("/contacto");
+  await expect(page.locator(".skeleton-contact-title")).toBeVisible();
+
+  const skeletonHeightWhileChecking = (await page
+    .locator(".contact-skeleton")
+    .boundingBox())!.height;
+  const mascot = page.locator(".section-mobile-mascot");
+  const mascotTopWhileChecking = (await mascot.boundingBox())!.y;
+  releaseSession();
+  await expect(page.locator(".contact-layout")).toBeVisible();
+
+  const contactLayoutHeightAfterSession = (await page
+    .locator(".contact-layout")
+    .boundingBox())!.height;
+  expect(
+    Math.abs(skeletonHeightWhileChecking - contactLayoutHeightAfterSession),
+  ).toBeLessThanOrEqual(1);
+  const mascotTopAfterSessionCheck = (await mascot.boundingBox())!.y;
+  expect(
+    Math.abs(mascotTopAfterSessionCheck - mascotTopWhileChecking),
+  ).toBeLessThanOrEqual(1);
+});
+
 test("stacks mobile mascots after page content and prevents iPhone input zoom", async ({
   page,
 }) => {
@@ -1267,6 +1345,7 @@ test("keeps the contact illustration card white and uses the updated art", async
 
   const contactCard = page.locator(".contact-side");
   await expect(contactCard).toBeVisible();
+  await expect(page.locator(".contact-side .contact-creature")).toBeVisible();
   const contactStyle = await contactCard.evaluate((element) => {
     const style = getComputedStyle(element);
     const illustration = element.querySelector(".contact-creature");
@@ -1291,6 +1370,7 @@ test("keeps the contact illustration card white and uses the updated art", async
 
   await page.evaluate(() => localStorage.setItem("grumphya-theme", "light"));
   await page.reload();
+  await expect(page.locator(".contact-side .contact-creature")).toBeVisible();
   const lightCardBackground = await contactCard.evaluate(
     (element) => getComputedStyle(element).backgroundColor,
   );

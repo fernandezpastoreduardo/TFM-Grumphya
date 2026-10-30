@@ -43,6 +43,18 @@ test("prerenders the roast conversation skeleton before client hydration", async
   expect(html).toContain("skeleton-roast-bubble reply");
 });
 
+test("adds the mobile-only contact mascot preload to the prerendered document", async ({
+  request,
+}) => {
+  const response = await request.get("/contacto");
+  const html = await response.text();
+
+  expect(response.ok()).toBe(true);
+  expect(html).toContain(
+    '<link rel="preload" as="image" href="/assets/grumphya/contact-hero-phone.svg" fetchpriority="high" media="(max-width: 700px)" />',
+  );
+});
+
 test("hydrates every prerendered public route", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("grumphya-theme", "dark");

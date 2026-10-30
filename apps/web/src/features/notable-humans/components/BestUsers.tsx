@@ -1,4 +1,7 @@
-import type { BestUserItem } from "../services/get-best-list-best-users";
+import {
+  MAX_BEST_USERS,
+  type BestUserItem,
+} from "../services/get-best-list-best-users";
 import {
   LoadingSkeleton,
   SkeletonBlock,
@@ -27,8 +30,9 @@ export function BestUsers({ state, onRetry }: BestUsersProps) {
       <LoadingSkeleton
         label="Cargando la clasificación"
         className="humans-ranking-skeleton"
+        showImmediately
       >
-        {Array.from({ length: 5 }, (_, index) => (
+        {Array.from({ length: MAX_BEST_USERS }, (_, index) => (
           <div className="humans-ranking-skeleton-row" key={index}>
             <SkeletonBlock className="skeleton-human-rank" />
             <SkeletonBlock className="skeleton-human-avatar" />

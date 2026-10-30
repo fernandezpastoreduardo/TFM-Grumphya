@@ -46,6 +46,29 @@ afterEach(() => {
 });
 
 describe("Contact", () => {
+  it("renders the contact layout skeleton immediately while session status is unresolved", () => {
+    mockedUseSessionStatus.mockReturnValue({
+      isAuthenticated: null,
+      accountAttempts: null,
+      avatarUrl: null,
+      isSigningOut: false,
+      refresh: vi.fn(async () => null),
+      signOut: vi.fn(),
+    });
+    const { container } = render(<Contact />);
+
+    const skeleton = container.querySelector(
+      ".contact-skeleton .loading-skeleton-content",
+    );
+    expect(skeleton).toBeVisible();
+    expect(skeleton?.querySelectorAll(".skeleton-contact-label")).toHaveLength(
+      3,
+    );
+    expect(
+      skeleton?.querySelector(".skeleton-contact-stamp"),
+    ).toBeInTheDocument();
+  });
+
   it("shows an authenticated contact form instead of the anonymous joke", () => {
     render(<Contact />);
 

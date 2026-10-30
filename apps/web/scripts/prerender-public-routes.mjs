@@ -54,8 +54,23 @@ try {
     const stylesheets = [...new Set(pageStyles)]
       .map((href) => `<link rel="stylesheet" href="/${href}" />`)
       .join("");
+    const imagePreloads = (route.preloadImages ?? [])
+      .map(({ href, media }) => {
+        assert.match(
+          href,
+          /^\/assets\/[a-zA-Z0-9/_-]+\.(svg|webp|png)$/,
+          `Invalid image preload URL for ${route.path}`,
+        );
+        assert.match(
+          media,
+          /^\(max-width: \d+px\)$/,
+          `Invalid image preload media query for ${route.path}`,
+        );
+        return `<link rel="preload" as="image" href="${href}" fetchpriority="high" media="${media}" />`;
+      })
+      .join("");
     const html = indexHtml
-      .replace("</head>", `${stylesheets}</head>`)
+      .replace("</head>", `${imagePreloads}${stylesheets}</head>`)
       .replace(ROOT_ELEMENT, `<div id="root">${renderedRoot}</div>`);
     const outputPath =
       route.path === "/"

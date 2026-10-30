@@ -6,7 +6,7 @@ export interface BestUserItem {
   avatarUrl?: string | null;
 }
 const BEST_USERS_ENDPOINT = "/api/best-users";
-const MAX_BEST_USERS = 10;
+export const MAX_BEST_USERS = 10;
 
 export async function getBestListBestUsers(
   signal?: AbortSignal,

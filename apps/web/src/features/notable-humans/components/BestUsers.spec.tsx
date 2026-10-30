@@ -70,6 +70,17 @@ describe("BestUsers", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
+  it("reserves space for ten ranking positions from the first loading render", () => {
+    render(<BestUsers state={{ status: "loading" }} onRetry={vi.fn()} />);
+
+    const skeleton = screen.getByRole("status", {
+      name: "Cargando la clasificación",
+    });
+    expect(
+      skeleton.querySelectorAll(".humans-ranking-skeleton-row"),
+    ).toHaveLength(10);
+  });
+
   it("never renders more than ten entries", () => {
     const users = Array.from({ length: 12 }, (_, index) => ({
       username: `user-${index + 1}`,

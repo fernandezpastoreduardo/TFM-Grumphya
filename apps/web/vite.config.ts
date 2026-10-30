@@ -72,10 +72,23 @@ const publicRoutePrerenderPlugin: Plugin = {
         ]
           .map((href) => `<link rel="stylesheet" href="${href}?direct" />`)
           .join("");
+        const imagePreloads = (route.preloadImages ?? [])
+          .map(({ href, media }) => {
+            if (
+              !/^\/assets\/[a-zA-Z0-9/_-]+\.(svg|webp|png)$/.test(href) ||
+              !/^\(max-width: \d+px\)$/.test(media)
+            ) {
+              throw new Error(
+                `Invalid image preload configuration for ${route.path}`,
+              );
+            }
+            return `<link rel="preload" as="image" href="${href}" fetchpriority="high" media="${media}" />`;
+          })
+          .join("");
         const html = (
           await server.transformIndexHtml(request.url ?? route.path, sourceHtml)
         )
-          .replace("</head>", `${stylesheetLinks}</head>`)
+          .replace("</head>", `${imagePreloads}${stylesheetLinks}</head>`)
           .replace(ROOT_ELEMENT, `<div id="root">${markup}</div>`);
         response.statusCode = 200;
         response.setHeader("Content-Type", "text/html; charset=utf-8");
