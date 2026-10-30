@@ -36,6 +36,9 @@ if [ "${REQUIRE_PRODUCTION_SECRETS:-false}" = "true" ]; then
   require_secret openai_settings
   require_secret openai_key
   require_secret mail_settings
+  require_secret internal_tls_ca.crt
+  require_secret api_tls.crt
+  require_secret api_tls.key
 fi
 
 if [ -r "$SECRETS_DIR/grumphya_env" ]; then
@@ -75,6 +78,25 @@ export API_PORT=3000
 export PGHOST=db
 export PGPORT=5432
 export PGSSL_MODE=${PGSSL_MODE:-verify-full}
+if [ "$(id -u)" -eq 0 ] && [ -r "$SECRETS_DIR/internal_tls_ca.crt" ]; then
+  TLS_RUNTIME_DIR=$(mktemp -d /tmp/grumphya-api-tls.XXXXXX)
+  chown node:node "$TLS_RUNTIME_DIR"
+  chmod 0700 "$TLS_RUNTIME_DIR"
+  install -o node -g node -m 0444 "$SECRETS_DIR/internal_tls_ca.crt" "$TLS_RUNTIME_DIR/ca.crt"
+  if [ -r "$SECRETS_DIR/api_tls.crt" ] && [ -r "$SECRETS_DIR/api_tls.key" ]; then
+    install -o node -g node -m 0444 "$SECRETS_DIR/api_tls.crt" "$TLS_RUNTIME_DIR/api.crt"
+    install -o node -g node -m 0400 "$SECRETS_DIR/api_tls.key" "$TLS_RUNTIME_DIR/api.key"
+  fi
+  export PGSSL_CA_FILE="$TLS_RUNTIME_DIR/ca.crt"
+  export API_TLS_CERT_FILE="$TLS_RUNTIME_DIR/api.crt"
+  export API_TLS_KEY_FILE="$TLS_RUNTIME_DIR/api.key"
+  export NODE_EXTRA_CA_CERTS="$TLS_RUNTIME_DIR/ca.crt"
+else
+  export PGSSL_CA_FILE=${PGSSL_CA_FILE:-$SECRETS_DIR/internal_tls_ca.crt}
+  export API_TLS_CERT_FILE=${API_TLS_CERT_FILE:-$SECRETS_DIR/api_tls.crt}
+  export API_TLS_KEY_FILE=${API_TLS_KEY_FILE:-$SECRETS_DIR/api_tls.key}
+  export NODE_EXTRA_CA_CERTS=${NODE_EXTRA_CA_CERTS:-$SECRETS_DIR/internal_tls_ca.crt}
+fi
 export WEB_ORIGIN=${WEB_ORIGIN:-http://127.0.0.1:5173}
 export PGPASSWORD="$GRUMPHYA_DB_PASSWORD"
 unset GRUMPHYA_DB_PASSWORD

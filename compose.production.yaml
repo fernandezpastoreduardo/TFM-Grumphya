@@ -9,6 +9,24 @@ services:
     secrets:
       - database_settings
       - postgres_admin_settings
+      - source: postgres_tls_cert
+        target: postgres_tls.crt
+      - source: postgres_tls_key
+        target: postgres_tls.key
+    command:
+      [
+        "postgres",
+        "-c",
+        "ssl=on",
+        "-c",
+        "ssl_min_protocol_version=TLSv1.2",
+        "-c",
+        "ssl_cert_file=/var/lib/postgresql/data/server.crt",
+        "-c",
+        "ssl_key_file=/var/lib/postgresql/data/server.key",
+        "-c",
+        "hba_file=/etc/postgresql/pg_hba.conf",
+      ]
     volumes:
       - grumphya-production-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -36,9 +54,12 @@ services:
     user: "0"
     secrets:
       - database_settings
+      - source: internal_tls_ca
+        target: internal_tls_ca.crt
     environment:
       NODE_ENV: production
-      PGSSL_MODE: disable-internal
+      PGSSL_MODE: verify-full
+      NODE_EXTRA_CA_CERTS: /run/secrets/internal_tls_ca.crt
       PGHOST: db
       PGPORT: 5432
     depends_on:
@@ -67,11 +88,18 @@ services:
       - openai_settings
       - openai_key
       - mail_settings
+      - source: internal_tls_ca
+        target: internal_tls_ca.crt
+      - source: api_tls_cert
+        target: api_tls.crt
+      - source: api_tls_key
+        target: api_tls.key
     environment:
       NODE_ENV: production
       DEPLOY_SHA: ${DEPLOY_SHA:-local}
       REQUIRE_PRODUCTION_SECRETS: "true"
-      PGSSL_MODE: disable-internal
+      PGSSL_MODE: verify-full
+      NODE_EXTRA_CA_CERTS: /run/secrets/internal_tls_ca.crt
       PGHOST: db
       PGPORT: 5432
       WEB_ORIGIN: ${WEB_ORIGIN:-https://${DOMAIN:?Define DOMAIN for the public website}}
@@ -89,7 +117,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+        - "fetch('https://127.0.0.1:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
       interval: 10s
       timeout: 3s
       retries: 12
@@ -105,10 +133,20 @@ services:
       args:
         DEPLOY_SHA: ${DEPLOY_SHA:-local}
     restart: unless-stopped
-    expose: ["8080"]
+    expose: ["8443"]
+    secrets:
+      - source: internal_tls_ca
+        target: internal_tls_ca.crt
+      - source: web_tls_cert
+        target: web_tls.crt
+      - source: web_tls_key
+        target: web_tls.key
     healthcheck:
       test:
-        ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+        [
+          "CMD-SHELL",
+          "printf 'GET / HTTP/1.1\\r\\nHost: web\\r\\nConnection: close\\r\\n\\r\\n' | openssl s_client -quiet -verify_return_error -verify_hostname web -CAfile /run/secrets/internal_tls_ca.crt -connect 127.0.0.1:8443 -servername web 2>/dev/null | grep -q '^HTTP/1.1 200'",
+        ]
       interval: 10s
       timeout: 3s
       retries: 6
@@ -121,8 +159,12 @@ services:
       context: .
       dockerfile: docker/Caddy.Dockerfile
     restart: unless-stopped
+    user: "0:0"
     environment:
       DOMAIN: ${DOMAIN:?Define DOMAIN without scheme or path}
+    secrets:
+      - source: internal_tls_ca
+        target: internal_tls_ca.crt
     ports:
       - "80:80"
       - "443:443"
@@ -159,10 +201,12 @@ services:
     user: "0"
     secrets:
       - database_settings
+      - source: internal_tls_ca
+        target: internal_tls_ca.crt
       - admin_settings
     environment:
       NODE_ENV: production
-      PGSSL_MODE: disable-internal
+      PGSSL_MODE: verify-full
       PGHOST: db
       PGPORT: 5432
     depends_on:
@@ -209,3 +253,17 @@ secrets:
     file: ./.secrets/mail_settings
   admin_settings:
     file: ./.secrets/admin_settings
+  internal_tls_ca:
+    file: ./.secrets/internal_tls_ca.crt
+  api_tls_cert:
+    file: ./.secrets/api_tls.crt
+  api_tls_key:
+    file: ./.secrets/api_tls.key
+  web_tls_cert:
+    file: ./.secrets/web_tls.crt
+  web_tls_key:
+    file: ./.secrets/web_tls.key
+  postgres_tls_cert:
+    file: ./.secrets/postgres_tls.crt
+  postgres_tls_key:
+    file: ./.secrets/postgres_tls.key

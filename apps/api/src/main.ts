@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { readFileSync } from "node:fs";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
@@ -8,7 +9,16 @@ import { LoginAbuseProtection } from "./security/login-abuse-protection.service"
 const ACCESS_TOKEN_SECRET_MIN_BYTES = 32;
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const isProduction = process.env.NODE_ENV === "production";
+  const httpsOptions = isProduction
+    ? {
+        cert: readRequiredTlsFile("API_TLS_CERT_FILE"),
+        key: readRequiredTlsFile("API_TLS_KEY_FILE"),
+      }
+    : undefined;
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    httpsOptions,
+  });
   const webOrigin = process.env.WEB_ORIGIN;
   if (
     process.env.NODE_ENV === "production" &&
@@ -68,7 +78,22 @@ async function bootstrap() {
     process.env.API_HOST ??
     (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
   await app.listen(port, host);
-  console.log(`Grumphya API listening on http://${host}:${port}/api/health`);
+  const protocol = isProduction ? "https" : "http";
+  console.log(
+    `Grumphya API listening on ${protocol}://${host}:${port}/api/health`,
+  );
+}
+
+function readRequiredTlsFile(environmentName: string): Buffer {
+  const filePath = process.env[environmentName];
+  if (!filePath) {
+    throw new Error(`${environmentName} must be configured in production.`);
+  }
+  try {
+    return readFileSync(filePath);
+  } catch {
+    throw new Error(`${environmentName} must point to a readable TLS file.`);
+  }
 }
 
 void bootstrap();

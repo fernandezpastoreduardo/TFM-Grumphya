@@ -7,7 +7,14 @@ readonly OLD_SHA=1111111111111111111111111111111111111111
 readonly NEW_SHA=2222222222222222222222222222222222222222
 readonly THIRD_SHA=3333333333333333333333333333333333333333
 readonly SYSTEM_HEAD=$(command -v head)
+readonly SYSTEM_STAT=$(command -v stat)
 readonly FOURTH_SHA=4444444444444444444444444444444444444444
+readonly INTERNAL_TLS_SECRETS=(
+  internal_tls_ca.crt
+  api_tls.crt api_tls.key
+  web_tls.crt web_tls.key
+  postgres_tls.crt postgres_tls.key
+)
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -27,11 +34,16 @@ new_fixture() {
   TEST_BIN="$TEST_ROOT/bin"
   mkdir -p "$TEST_BIN" "$TEST_ROOT/.secrets" "$TEST_ROOT/state" "$TEST_ROOT/releases"
   printf 'DOMAIN=example.invalid\n' > "$TEST_ROOT/.env.production"
-  for secret in admin_settings database_settings grumphya_env mail_settings openai_key openai_settings postgres_admin_settings; do
+  chmod 600 "$TEST_ROOT/.env.production"
+  for secret in \
+    admin_settings database_settings grumphya_env mail_settings openai_key \
+    openai_settings postgres_admin_settings "${INTERNAL_TLS_SECRETS[@]}"; do
     printf 'TEST_SECRET=placeholder\n' > "$TEST_ROOT/.secrets/$secret"
+    chmod 600 "$TEST_ROOT/.secrets/$secret"
   done
   chmod 700 "$TEST_ROOT/.secrets"
   export TEST_ROOT TEST_BIN
+  export SYSTEM_STAT
   export DOCKER_LOG="$TEST_ROOT/docker.log"
   export HEAD_LOG="$TEST_ROOT/head.log"
   export DOCKER_STORAGE="$TEST_ROOT/docker-storage"
@@ -124,6 +136,21 @@ printf '%s\\n' "\$*" >> "\$HEAD_LOG"
 exec "$SYSTEM_HEAD" "\$@"
 EOF
   chmod +x "$TEST_BIN/head"
+  cat > "$TEST_BIN/stat" <<'STAT_STUB'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+if "$SYSTEM_STAT" -c '%a' "${3:-}" >/dev/null 2>&1; then
+  exec "$SYSTEM_STAT" "$@"
+fi
+if [[ ${1:-} == -c && ${2:-} == %a ]]; then
+  exec "$SYSTEM_STAT" -f '%Lp' "$3"
+fi
+if [[ ${1:-} == -c && ${2:-} == %u ]]; then
+  exec "$SYSTEM_STAT" -f '%u' "$3"
+fi
+exec "$SYSTEM_STAT" "$@"
+STAT_STUB
+  chmod +x "$TEST_BIN/stat"
   cat > "$TEST_BIN/flock" <<'FLOCK_STUB'
 #!/usr/bin/env bash
 exit 0
@@ -464,6 +491,58 @@ ALTER TABLE baseline ADD COLUMN note text;'
   cleanup_fixture
 }
 
+test_all_internal_tls_secrets_are_required() {
+  new_fixture
+  local secret
+  for secret in "${INTERNAL_TLS_SECRETS[@]}"; do
+    rm -f -- "$TEST_ROOT/.secrets/$secret"
+    if "$DEPLOY_HELPER" preflight "$OLD_SHA" 1 >/dev/null 2>&1; then
+      fail "preflight accepted a missing TLS secret: $secret"
+    fi
+    printf 'TEST_SECRET=placeholder\n' > "$TEST_ROOT/.secrets/$secret"
+    chmod 600 "$TEST_ROOT/.secrets/$secret"
+  done
+  cleanup_fixture
+}
+
+test_internal_tls_secrets_reject_symlinks_and_broad_permissions() {
+  new_fixture
+  local secret="$TEST_ROOT/.secrets/internal_tls_ca.crt"
+  mv "$secret" "$TEST_ROOT/real-internal-tls-ca.crt"
+  ln -s "$TEST_ROOT/real-internal-tls-ca.crt" "$secret"
+  if "$DEPLOY_HELPER" preflight "$OLD_SHA" 1 >/dev/null 2>&1; then
+    fail 'preflight accepted a symlinked TLS certificate'
+  fi
+  rm "$secret"
+  cp "$TEST_ROOT/real-internal-tls-ca.crt" "$secret"
+  chmod 600 "$secret"
+
+  chmod 644 "$TEST_ROOT/.secrets/api_tls.key"
+  if "$DEPLOY_HELPER" preflight "$OLD_SHA" 1 >/dev/null 2>&1; then
+    fail 'preflight accepted a TLS private key readable by other users'
+  fi
+  chmod 600 "$TEST_ROOT/.secrets/api_tls.key"
+
+  chmod 755 "$TEST_ROOT/.secrets"
+  if "$DEPLOY_HELPER" preflight "$OLD_SHA" 1 >/dev/null 2>&1; then
+    fail 'preflight accepted a TLS secrets directory accessible to other users'
+  fi
+  chmod 700 "$TEST_ROOT/.secrets"
+
+  local ca_private_key="$TEST_ROOT/.secrets/internal_tls_ca.key"
+  printf 'offline-ca-private-key\n' > "$ca_private_key"
+  chmod 600 "$ca_private_key"
+  if "$DEPLOY_HELPER" preflight "$OLD_SHA" 1 >/dev/null 2>&1; then
+    fail 'preflight accepted an online internal CA private key'
+  fi
+  rm -f -- "$ca_private_key"
+  ln -s "$TEST_ROOT/real-internal-tls-ca.crt" "$ca_private_key"
+  if "$DEPLOY_HELPER" preflight "$OLD_SHA" 1 >/dev/null 2>&1; then
+    fail 'preflight accepted an internal CA private key symlink'
+  fi
+  cleanup_fixture
+}
+
 test_destructive_migration_is_blocked() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -501,6 +580,7 @@ test_bootstrap_snapshots_running_images_without_recreating() {
   assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after bootstrap'
   [[ -s $TEST_ROOT/releases/$OLD_SHA/images.tar ]] || fail 'bootstrap did not save the running images'
   assert_contains "$DOCKER_LOG" 'image tag sha256:fake-id grumphya-api:'
+  assert_contains "$DOCKER_LOG" 'exec --env NODE_EXTRA_CA_CERTS=/run/secrets/internal_tls_ca.crt container-api node -e fetch("https://127.0.0.1:3000/api/health")'
   if grep -Eq ' compose .* up | compose .* stop |(^| )down( |$)|-v|--volumes|volume prune' "$DOCKER_LOG"; then
     fail 'bootstrap attempted to recreate services or touch volumes'
   fi
@@ -544,6 +624,8 @@ for test_case in \
   test_failed_state_commit_after_compose_restores_previous \
   test_missing_marker_is_blocked \
   test_oversized_bundle_is_bounded_by_preflight_size \
+  test_all_internal_tls_secrets_are_required \
+  test_internal_tls_secrets_reject_symlinks_and_broad_permissions \
   test_destructive_migration_is_blocked \
   test_changed_old_migration_is_blocked \
   test_bootstrap_snapshots_running_images_without_recreating \

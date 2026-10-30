@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -117,6 +118,9 @@ describe("Docker service entrypoints", () => {
       "mail_settings",
       "MAIL_SMTP_HOST=smtp.test\nMAIL_SMTP_PORT=465\nMAIL_USERNAME=test\nMAIL_PASSWORD=secret\nMAIL_FROM_ADDRESS=mail@test\n",
     );
+    writeSecret(secretsDirectory, "internal_tls_ca.crt", "test-ca");
+    writeSecret(secretsDirectory, "api_tls.crt", "test-api-certificate");
+    writeSecret(secretsDirectory, "api_tls.key", "test-api-private-key");
 
     const output = execFileSync(
       "sh",
@@ -251,6 +255,18 @@ describe("Docker service entrypoints", () => {
       "postgres_admin_settings",
       "POSTGRES_ADMIN_PASSWORD=bootstrap-secret\n",
     );
+    writeSecret(
+      secretsDirectory,
+      "postgres_tls.crt",
+      "test-postgres-certificate",
+    );
+    writeSecret(
+      secretsDirectory,
+      "postgres_tls.key",
+      "test-postgres-private-key",
+    );
+    const postgresDataDirectory = resolve(directory, "postgres-data");
+    mkdirSync(postgresDataDirectory);
     const probePath = resolve(binaryDirectory, "docker-entrypoint.sh");
     writeFileSync(
       probePath,
@@ -266,6 +282,7 @@ describe("Docker service entrypoints", () => {
       env: {
         ...process.env,
         GRUMPHYA_SECRETS_DIR: secretsDirectory,
+        PGDATA: postgresDataDirectory,
         PATH: `${binaryDirectory}:${process.env.PATH ?? ""}`,
       },
     });
@@ -273,6 +290,16 @@ describe("Docker service entrypoints", () => {
     expect(output.trim()).toBe(
       "grumphya_test|postgres|bootstrap-secret|app_test|grumphya_test|postgres",
     );
+    const installedCertificate = resolve(postgresDataDirectory, "server.crt");
+    const installedPrivateKey = resolve(postgresDataDirectory, "server.key");
+    expect(readFileSync(installedCertificate, "utf8")).toBe(
+      "test-postgres-certificate",
+    );
+    expect(readFileSync(installedPrivateKey, "utf8")).toBe(
+      "test-postgres-private-key",
+    );
+    expect(statSync(installedCertificate).mode & 0o777).toBe(0o644);
+    expect(statSync(installedPrivateKey).mode & 0o777).toBe(0o600);
   });
 
   it("creates a least-privilege app role and escapes identifiers and password literals", () => {

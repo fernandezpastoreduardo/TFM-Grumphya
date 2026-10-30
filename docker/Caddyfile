@@ -1,11 +1,22 @@
 {$DOMAIN} {
 	encode zstd gzip
+	tls {
+		protocols tls1.2 tls1.3
+	}
 	@api path /api/*
 	handle @api {
-		reverse_proxy api:3000
+		reverse_proxy https://api:3000 {
+			transport http {
+				tls_trust_pool file /run/secrets/internal_tls_ca.crt
+			}
+		}
 	}
 	handle {
-		reverse_proxy web:8080
+		reverse_proxy https://web:8443 {
+			transport http {
+				tls_trust_pool file /run/secrets/internal_tls_ca.crt
+			}
+		}
 	}
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
