@@ -525,6 +525,29 @@ describe("EvaluationProcessService", () => {
     );
   });
 
+  it("retries once when the generated visible message fails its copy contract", async () => {
+    const invalidCopyDecision = {
+      ...createCompleteDecision(),
+      message: "Vale.",
+    };
+    const port = createPort(invalidCopyDecision);
+    vi.mocked(port.evaluate)
+      .mockResolvedValueOnce(invalidCopyDecision)
+      .mockResolvedValueOnce(createCompleteDecision());
+    const service = new EvaluationProcessService(port);
+
+    const result = await service.evaluate({
+      ideaText: VALID_IDEA,
+      tone: "soft",
+    });
+
+    expect(result).toEqual({
+      ...EXPECTED_NEUTRAL_RESULT,
+      message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+    });
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+  });
+
   it("returns the semantic validation error after the single retry fails", async () => {
     const inconsistentDecision = {
       ...createCompleteDecision(),
