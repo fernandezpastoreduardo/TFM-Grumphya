@@ -261,7 +261,13 @@ assert.match(permissionsPolicy, /on-device-speech-recognition=\(self\)/);
 NODE
 curl --insecure --fail --silent --show-error \
   "https://localhost:$HTTPS_PORT/account" -o "$TEMP_ROOT/account.html"
-cmp -s "$TEMP_ROOT/home.html" "$TEMP_ROOT/account.html"
+node - "$TEMP_ROOT/account.html" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const accountHtml = readFileSync(process.argv[2], "utf8");
+assert.match(accountHtml, /<div id="root"><\/div>/);
+assert.doesNotMatch(accountHtml, /Antes de construirla,/);
+NODE
 curl --insecure --fail --silent --show-error \
   "https://localhost:$HTTPS_PORT/build.json" -o "$TEMP_ROOT/build.json"
 node - "$DEPLOY_SHA" "$TEMP_ROOT/build.json" <<'NODE'
