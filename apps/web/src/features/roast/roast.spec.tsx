@@ -346,6 +346,7 @@ describe("Roast", () => {
     await user.click(
       screen.getByRole("button", { name: "Seguir intentándolo" }),
     );
+    expect(dialog).not.toBeVisible();
     expect(
       screen.queryByRole("dialog", { name: "Se nos ha derramado el café" }),
     ).not.toBeInTheDocument();
