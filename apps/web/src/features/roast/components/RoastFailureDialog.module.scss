@@ -1,7 +1,6 @@
 .dialog {
   position: fixed;
   inset: 50% auto auto 50%;
-  display: grid;
   justify-items: center;
   gap: 14px;
   width: min(480px, calc(100vw - 28px));
@@ -34,6 +33,14 @@
     margin: 0;
     line-height: 1.55;
   }
+}
+
+.dialog[open] {
+  display: grid;
+}
+
+.dialog:not([open]) {
+  display: none;
 }
 
 .mascot {

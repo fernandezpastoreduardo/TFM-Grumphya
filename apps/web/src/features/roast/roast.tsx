@@ -207,6 +207,7 @@ export function Roast() {
           quotaLimit={quotaLimit}
           quotaDescription={quotaDescription}
           onSubmitted={(message, reply) => {
+            setIsReplyFailureDialogOpen(false);
             setSentMessages((previous) => [
               ...previous,
               { id: crypto.randomUUID(), message, reply },
