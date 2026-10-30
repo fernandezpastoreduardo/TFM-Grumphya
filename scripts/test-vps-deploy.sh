@@ -100,7 +100,7 @@ if [[ $1 == compose ]]; then
   while (($#)); do
     case $1 in
       --file) shift; file=${1:-} ;;
-      config|up|stop) action=$1 ;;
+      config|up|run|stop) action=$1 ;;
     esac
     shift
   done
@@ -109,6 +109,9 @@ if [[ $1 == compose ]]; then
   fi
   if [[ $action == up && ${FAIL_UP_SHA:-} && $file == *"/$FAIL_UP_SHA/"* ]]; then
     exit 42
+  fi
+  if [[ $action == run && ${FAIL_AI_SMOKE_SHA:-} && $file == *"/$FAIL_AI_SMOKE_SHA/"* ]]; then
+    exit 43
   fi
   exit 0
 fi
@@ -142,7 +145,7 @@ MV_STUB
   export GRUMPHYA_ROOT="$TEST_ROOT"
   export GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy"
   export GRUMPHYA_TESTING=1
-  unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_CURRENT_STATE_MOVE_ONCE || true
+  unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_AI_SMOKE_SHA FAIL_CURRENT_STATE_MOVE_ONCE || true
 }
 
 cleanup_fixture() {
@@ -216,6 +219,7 @@ ALTER TABLE baseline ADD COLUMN note text;'
   assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after deploy'
   assert_eq "$(cat "$TEST_ROOT/state/previous")" "$OLD_SHA" 'previous state after deploy'
   assert_contains "$DOCKER_LOG" '--no-build --wait'
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$NEW_SHA/compose.production.yaml run --rm --no-deps -T api sh /workspace/docker/api-entrypoint.sh node apps/api/dist/infrastructure/ai/production-ai-smoke.js"
   assert_contains "$DOCKER_LOG" "image inspect grumphya-api:$NEW_SHA"
   assert_contains "$DOCKER_LOG" "image inspect grumphya-api:$OLD_SHA"
   cmp -s "$DEPLOY_HELPER" "$GRUMPHYA_DEPLOY_HELPER_PATH" || fail 'successful deploy did not update the persistent helper'
@@ -225,6 +229,25 @@ ALTER TABLE baseline ADD COLUMN note text;'
   fi
   if grep -Eq '(^| )down( |$)|-v|--volumes|volume prune' "$DOCKER_LOG"; then
     fail 'deploy used a volume-destructive command'
+  fi
+  cleanup_fixture
+}
+
+test_failed_ai_smoke_restores_previous() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  export FAIL_AI_SMOKE_SHA=$NEW_SHA
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'failed production AI smoke scenario unexpectedly succeeded'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after failed AI smoke'
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$OLD_SHA/compose.production.yaml up -d --no-build --wait"
+  [[ ! -e $TEST_ROOT/state/deploying ]] || fail 'AI smoke rollback did not clear the deployment journal'
+  [[ ! -e $TEST_ROOT/releases/$NEW_SHA ]] || fail 'failed AI smoke release was retained'
+  if grep -Eq '(^| )down( |$)|-v|--volumes|volume prune' "$DOCKER_LOG"; then
+    fail 'AI smoke rollback used a volume-destructive command'
   fi
   cleanup_fixture
 }
@@ -482,6 +505,7 @@ for test_case in \
   test_illuminado_repricing_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_allowlist_requires_exact_migration_name \
   test_failed_compose_restores_previous \
+  test_failed_ai_smoke_restores_previous \
   test_bundle_digest_mismatch_is_rejected_before_image_load \
   test_release_retention_keeps_current_and_previous_only \
   test_failed_state_commit_after_compose_restores_previous \

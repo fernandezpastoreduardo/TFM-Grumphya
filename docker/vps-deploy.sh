@@ -489,6 +489,10 @@ deploy() {
   trap 'deploy_exit_recovery $?' EXIT
   log "starting atomic Compose rollout for $sha"
   if compose_for "$candidate_dir" up -d --no-build --wait >/dev/null; then
+    log 'checking production AI providers before committing the release'
+    compose_for "$candidate_dir" run --rm --no-deps -T api \
+      sh /workspace/docker/api-entrypoint.sh node apps/api/dist/infrastructure/ai/production-ai-smoke.js >/dev/null ||
+      die 'production AI provider smoke failed; restoring the previous release'
     write_state current "$sha"
     clear_pending_state
     ROLLOUT_IN_PROGRESS=0
