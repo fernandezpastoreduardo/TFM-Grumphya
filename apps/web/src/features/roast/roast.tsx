@@ -141,6 +141,7 @@ export function Roast() {
             <LoadingSkeleton
               label="Consultando los mensajes de la conversación"
               className="roast-thread-skeleton"
+              showImmediately
             >
               {Array.from({ length: 3 }, (_, index) => (
                 <div className="roast-exchange-skeleton" key={index}>

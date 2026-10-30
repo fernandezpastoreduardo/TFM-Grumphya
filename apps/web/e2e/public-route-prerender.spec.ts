@@ -32,6 +32,17 @@ test("serves all public section content in its initial HTML", async ({
   }
 });
 
+test("prerenders the roast conversation skeleton to reserve its initial height", async ({
+  request,
+}) => {
+  const response = await request.get("/descargate");
+  const html = await response.text();
+
+  expect(html).toContain('class="loading-skeleton-content"');
+  expect(html).toContain("skeleton-roast-bubble user");
+  expect(html).toContain("skeleton-roast-bubble reply");
+});
+
 test("hydrates every prerendered public route", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("grumphya-theme", "dark");

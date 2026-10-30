@@ -312,6 +312,13 @@ principal de 128 × 128 px y 7.550 B. En el ranking público, el skeleton
 representa las diez filas máximas y conserva la altura de la tarjeta al recibir
 una respuesta con diez resultados; la comprobación E2E mide ese caso límite en
 móvil.
+En Descárgate, el hilo reserva 420 px desde el HTML prerenderizado. Dos pruebas
+E2E móviles comprueban que la altura cambia menos de 2 px al cargar la
+conversación y que la posición del compositor se mantiene estable cuando se
+agota la cuota sin historial. Otra prueba comprueba que el enlace principal al
+plan Faltón mantiene al menos 4,5:1 de contraste en ambos temas y en reposo y
+hover. Son verificaciones de layout y contraste, no una medición CLS de
+Lighthouse.
 `cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
 97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
 `cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de

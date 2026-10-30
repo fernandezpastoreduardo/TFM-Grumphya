@@ -43,4 +43,20 @@ describe("LoadingSkeleton", () => {
       document.querySelector(".skeleton-section-heading"),
     ).toBeInTheDocument();
   });
+
+  it("can render its skeleton content immediately to reserve server-rendered space", () => {
+    render(
+      <LoadingSkeleton label={LOADING_LABEL} showImmediately>
+        <SkeletonBlock className="skeleton-section-heading" />
+      </LoadingSkeleton>,
+    );
+
+    expect(document.querySelector(".loading-skeleton-content")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    expect(
+      document.querySelector(".skeleton-section-heading"),
+    ).toBeInTheDocument();
+  });
 });
