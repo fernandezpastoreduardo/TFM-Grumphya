@@ -288,6 +288,11 @@ test("serves crawl metadata and transparent WebP artwork", async ({ page }) => {
     "content",
     "Grumphya evalúa ideas de apps con mirada crítica, detecta riesgos y te ayuda a decidir qué merece la pena desarrollar.",
   );
+  const curtainPreload = page.locator(
+    'link[rel="preload"][as="image"][href="/assets/grumphya/stage-curtain-v2.webp"]',
+  );
+  await expect(curtainPreload).toHaveCount(1);
+  await expect(curtainPreload).toHaveAttribute("fetchpriority", "high");
 
   const robotsResponse = await page.request.get("/robots.txt");
   expect(robotsResponse.ok()).toBe(true);
@@ -819,6 +824,59 @@ test("stacks the notable humans callout content on mobile", async ({
 
   expect(calloutLayout.columns).toHaveLength(1);
   expect(calloutLayout.justifyItems).toBe("start");
+});
+
+test("keeps notable-human ranking positions at WCAG AA contrast in both themes", async ({
+  page,
+}) => {
+  await page.route("**/api/best-users", (route) =>
+    route.fulfill({
+      json: [
+        { username: "primera", approvedIdeasCount: 12 },
+        { username: "segunda", approvedIdeasCount: 8 },
+      ],
+    }),
+  );
+  await page.goto("/humanos-notables");
+
+  const rank = page.locator(".humans-ranking li.is-first .human-rank");
+  await expect(rank).toBeVisible();
+
+  const contrastRatio = () =>
+    rank.evaluate((element) => {
+      const getLuminance = (color: string) => {
+        const channels = color
+          .match(/[\d.]+/g)!
+          .slice(0, 3)
+          .map(Number);
+        const normalizedChannels = color.startsWith("color(srgb")
+          ? channels
+          : channels.map((channel) => channel / 255);
+        const linearize = (channel: number) => {
+          return channel <= 0.04045
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4;
+        };
+        return (
+          0.2126 * linearize(normalizedChannels[0]) +
+          0.7152 * linearize(normalizedChannels[1]) +
+          0.0722 * linearize(normalizedChannels[2])
+        );
+      };
+      const row = element.closest("li");
+      const background = getComputedStyle(row!).backgroundColor;
+      const foregroundLuminance = getLuminance(getComputedStyle(element).color);
+      const backgroundLuminance = getLuminance(background);
+      return (
+        (Math.max(foregroundLuminance, backgroundLuminance) + 0.05) /
+        (Math.min(foregroundLuminance, backgroundLuminance) + 0.05)
+      );
+    });
+
+  expect(await contrastRatio()).toBeGreaterThanOrEqual(4.5);
+  await page.getByRole("switch", { name: /activar modo oscuro/i }).click();
+  await expect(page.locator(".app-page")).toHaveClass(/theme-dark/);
+  expect(await contrastRatio()).toBeGreaterThanOrEqual(4.5);
 });
 
 test("uses the section hero assets with transparent pixels", async ({
