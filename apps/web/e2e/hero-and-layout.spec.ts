@@ -476,6 +476,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   page,
 }) => {
   await page.goto("/");
+  await page.waitForLoadState("networkidle");
   await expect(
     page.getByRole("heading", { name: /antes de construirla/i }),
   ).toBeVisible();
@@ -545,6 +546,7 @@ test("keeps the Home navigation opaque and above the idea form in both themes", 
   expect(lightThemeLayers!.characterCounterPosition).toBe("static");
 
   await page.getByRole("switch", { name: "Activar modo oscuro" }).click();
+  await expect(page.locator(".home-page")).toHaveClass(/theme-dark/);
   await expect(page.locator(".home-topbar .theme-switch-thumb")).toBeEmpty();
   const darkThemeLayers = await readNavigationLayers();
   expect(darkThemeLayers).not.toBeNull();
