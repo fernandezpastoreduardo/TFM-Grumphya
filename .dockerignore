@@ -3,6 +3,10 @@
 .env
 .env.*
 .secrets/
+.aws/
+.codex/
+.agents/
+.ci-artifacts/
 **/var/avatars/
 **/node_modules
 **/dist

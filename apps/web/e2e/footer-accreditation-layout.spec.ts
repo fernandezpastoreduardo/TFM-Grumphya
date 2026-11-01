@@ -109,6 +109,7 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
   const seal = footer.locator(".accreditation-seal");
   const caption = seal.locator(".accreditation-seal-caption");
   await expect(seal).toBeVisible();
+  await expect(caption).toContainText("Demostración académica");
   await expect(caption).toHaveCSS("color", "rgb(16, 27, 32)");
 
   const desktopLayout = await footer.evaluate((element) => {

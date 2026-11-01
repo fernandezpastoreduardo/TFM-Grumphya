@@ -160,13 +160,11 @@ on_error() {
     if [[ -n $db_container ]]; then
       printf 'Database container health details:\n' >&2
       docker inspect --format '{{json .State.Health}}' "$db_container" >&2 || true
-      printf 'Database container logs:\n' >&2
-      "${compose[@]}" logs --no-color --tail=100 db >&2 || true
     fi
     api_container=$("${compose[@]}" ps --quiet api 2>/dev/null || true)
     if [[ -n $api_container ]]; then
-      printf 'API container logs:\n' >&2
-      "${compose[@]}" logs --no-color --tail=100 api >&2 || true
+      printf 'API container health details:\n' >&2
+      docker inspect --format '{{json .State.Health}}' "$api_container" >&2 || true
     fi
     web_container=$("${compose[@]}" ps --quiet web 2>/dev/null || true)
     if [[ -n $web_container ]]; then
@@ -175,6 +173,8 @@ on_error() {
     fi
     printf 'Web container logs:\n' >&2
     "${compose[@]}" logs --no-color --tail=100 web >&2 || true
+    printf 'Proxy container logs:\n' >&2
+    "${compose[@]}" logs --no-color --tail=100 proxy >&2 || true
   fi
   return "$status"
 }

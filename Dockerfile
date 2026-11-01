@@ -1,11 +1,10 @@
-FROM node:24.21.0-trixie-slim AS node-base
+FROM node:26.13.0-trixie-slim AS node-base
 
 WORKDIR /workspace
 
 FROM node-base AS pnpm-base
 
-ENV COREPACK_HOME=/usr/local/share/corepack
-RUN corepack enable && corepack prepare pnpm@12.5.1 --activate
+RUN npm install --global pnpm@12.5.1
 
 FROM pnpm-base AS development
 

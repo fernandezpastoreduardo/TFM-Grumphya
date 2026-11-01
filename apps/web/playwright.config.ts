@@ -46,7 +46,10 @@ export default defineConfig({
       url: `http://127.0.0.1:${WEB_TEST_PORT}`,
       reuseExistingServer: false,
       timeout: 30_000,
-      env: { API_PROXY_TARGET: `http://127.0.0.1:${API_TEST_PORT}` },
+      env: {
+        API_PROXY_TARGET: `http://127.0.0.1:${API_TEST_PORT}`,
+        NODE_ENV: "development",
+      },
     },
   ],
 });

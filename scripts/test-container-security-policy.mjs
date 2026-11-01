@@ -9,6 +9,7 @@ const DOCKERFILE_PATH = "Dockerfile";
 const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
+const PREFLIGHT_PATH = "scripts/ci-preflight.sh";
 const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
 const VPS_DEPLOY_HELPER_PATH = "docker/vps-deploy.sh";
 const INTERNAL_TLS_SCRIPT_PATH = "scripts/generate-internal-tls.sh";
@@ -27,6 +28,7 @@ const [
   dockerfile,
   compose,
   workflow,
+  preflight,
   nginxSpa,
   productionComposeSmoke,
   migrationFiles,
@@ -40,6 +42,7 @@ const [
   readFile(DOCKERFILE_PATH, "utf8"),
   readFile(COMPOSE_PATH, "utf8"),
   readFile(WORKFLOW_PATH, "utf8"),
+  readFile(PREFLIGHT_PATH, "utf8"),
   readFile(NGINX_SPA_PATH, "utf8"),
   readFile(PRODUCTION_COMPOSE_SMOKE_PATH, "utf8"),
   readdir(MIGRATIONS_DIRECTORY),
@@ -147,8 +150,12 @@ assert.match(
   "the hardened Caddy image must use the current commit tag",
 );
 assert.ok(
-  workflow.includes(POLICY_TEST_COMMAND),
+  preflight.includes(POLICY_TEST_COMMAND),
   "CI must execute the container security policy guard",
+);
+assert.ok(
+  preflight.includes("node scripts/test-ci-local.mjs"),
+  "CI preflight must test the local CI wrapper before dependency installation",
 );
 assert.match(
   compose,
@@ -280,7 +287,7 @@ assert.ok(
 assert.ok(
   qualityJob
     .slice(earlyGuardStep, installStep)
-    .includes("node scripts/test-container-security-policy.mjs"),
+    .includes("bash scripts/ci-preflight.sh"),
   "early production source guards must execute the container security policy checks",
 );
 const webImageStageStart = dockerfile.indexOf(
@@ -354,6 +361,16 @@ assert.match(
   productionComposeSmoke,
   /on_error\(\)[\s\S]*?docker inspect --format '\{\{json \.State\.Health\}\}' "\$web_container"[\s\S]*?logs --no-color --tail=100 web/,
   "the smoke failure handler must report web health details and recent logs",
+);
+assert.match(
+  productionComposeSmoke,
+  /Database container health details:[\s\S]*?docker inspect --format '\{\{json \.State\.Health\}\}' "\$db_container"[\s\S]*?API container health details:[\s\S]*?docker inspect --format '\{\{json \.State\.Health\}\}' "\$api_container"/,
+  "the smoke failure handler must retain database and API health signals",
+);
+assert.doesNotMatch(
+  productionComposeSmoke,
+  /logs --no-color --tail=100 (?:db|api)/,
+  "the smoke failure handler must not expose raw database or API logs",
 );
 assert.match(
   productionComposeSmoke,

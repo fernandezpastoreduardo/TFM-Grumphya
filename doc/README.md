@@ -33,7 +33,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 
 Entorno y stack actuales:
 
-- Node.js 24.21.0 y pnpm 12.5.1. El proyecto admite Node `^22.22.2 || ^24.15.0`; consulta [stack](stack.md) para la política y versiones exactas.
+- Node.js 26.13.0 y pnpm 12.5.1. El proyecto admite Node `^22.22.2 || ^24.15.0 || ^26.13.0`; consulta [stack](stack.md) para la política y versiones exactas.
 - React 19 + Vite 7, NestJS 12 y TypeScript 6.
 - Docker Desktop 4.94.0, Docker Engine 29.8.2 y Compose 5.5.1.
 - PostgreSQL 17 con `pgvector` 0.8.7 en Docker Compose.

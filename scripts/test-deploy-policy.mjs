@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
+const CI_VERIFY_PATH = "scripts/ci-verify.sh";
 const REQUIRED_DEPLOY_GUARDS = [
   "success()",
   "github.event_name == 'workflow_dispatch'",
@@ -24,6 +25,7 @@ const DEPLOY_ONLY_SECRETS = [
 ];
 
 const workflow = await readFile(WORKFLOW_PATH, "utf8");
+const ciVerify = await readFile(CI_VERIFY_PATH, "utf8");
 const releaseJobStart = workflow.indexOf("  supply-chain:");
 assert.notEqual(releaseJobStart, -1, "release job must exist");
 const releaseJob = workflow.slice(releaseJobStart);
@@ -43,8 +45,9 @@ assert.doesNotMatch(
   /^    needs:/m,
   "dependency auditing must start in parallel with quality and E2E",
 );
-assert.match(dependencyAuditJob, /pnpm audit --audit-level moderate/);
-assert.match(dependencyAuditJob, /pnpm audit --prod --audit-level high/);
+assert.match(dependencyAuditJob, /pnpm ci:verify audit/);
+assert.match(ciVerify, /pnpm audit --audit-level moderate/);
+assert.match(ciVerify, /pnpm audit --prod --audit-level high/);
 const deploymentStepStart = workflow.indexOf(
   "      - name: Preflight production deployment",
   releaseJobStart,
@@ -105,7 +108,7 @@ assert.match(
 );
 assert.match(
   releaseJob,
-  /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4\.3\.0/,
+  /docker\/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4\.4\.1/,
   "production builds must use the pinned Buildx setup action",
 );
 assert.match(
@@ -367,7 +370,7 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
 }
 assert.match(
   workflow,
-  /aquasecurity\/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241 # v0\.2\.6/,
+  /aquasecurity\/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0\.3\.1/,
   "Trivy must be installed from a pinned action revision",
 );
 assert.match(

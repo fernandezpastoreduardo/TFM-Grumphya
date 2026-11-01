@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@12.5.1",
   "engines": {
-    "node": "^22.22.2 || ^24.15.0"
+    "node": "^26.13.0"
   },
   "scripts": {
     "prepare": "husky",
@@ -21,6 +21,7 @@
     "check:react-runtime": "node scripts/check-react-runtime-versions.mjs",
     "migrations:check": "node scripts/check-migration-registry.mjs",
     "quality:check": "pnpm check:react-runtime && pnpm migrations:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "ci:verify": "bash scripts/ci-verify.sh",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"prototype/**/*.{html,css}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,mjs,json,css,html}\" \"prototype/**/*.{html,css}\" \"scripts/**/*.mjs\" \"doc/**/*.md\" \"agentic-guidelines/**/*.md\" compose.yaml compose.production.yaml package.json pnpm-workspace.yaml README.md"
   },
