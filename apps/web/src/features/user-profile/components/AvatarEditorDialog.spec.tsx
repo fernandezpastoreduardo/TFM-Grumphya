@@ -5,6 +5,7 @@ import { AvatarEditorDialog } from "./AvatarEditorDialog";
 
 const USERNAME = "persona-lista";
 const AVATAR_URL = "/api/avatars/00000000-0000-4000-8000-000000000099.webp";
+const ACCESSIBLE_CROP_DIALOG_TIMEOUT_MS = 10_000;
 
 function makeImageFile() {
   return new File(["image-bytes"], "portrait.png", { type: "image/png" });
@@ -29,59 +30,63 @@ describe("AvatarEditorDialog", () => {
     });
   });
 
-  it("presents an accessible circular preview and crop controls", async () => {
-    const user = userEvent.setup();
-    render(
-      <AvatarEditorDialog
-        avatarUrl={AVATAR_URL}
-        username={USERNAME}
-        uploading={false}
-        uploadError=""
-        onClose={vi.fn()}
-        onUpload={vi.fn().mockResolvedValue(true)}
-      />,
-    );
+  it(
+    "presents an accessible circular preview and crop controls",
+    async () => {
+      const user = userEvent.setup();
+      render(
+        <AvatarEditorDialog
+          avatarUrl={AVATAR_URL}
+          username={USERNAME}
+          uploading={false}
+          uploadError=""
+          onClose={vi.fn()}
+          onUpload={vi.fn().mockResolvedValue(true)}
+        />,
+      );
 
-    expect(
-      screen.getByRole("dialog", { name: "Editar avatar" }),
-    ).toHaveAttribute("aria-modal", "true");
-    expect(
-      screen.getByRole("img", { name: "Avatar actual de persona-lista" }),
-    ).toHaveAttribute("src", AVATAR_URL);
-    expect(screen.getByText("Así se verá")).toBeInTheDocument();
-    expect(screen.getByRole("slider", { name: /^Zoom/ })).toBeDisabled();
-    expect(
-      screen.getByRole("slider", { name: /^Mover encuadre horizontal/ }),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole("slider", { name: /^Mover encuadre vertical/ }),
-    ).toBeDisabled();
+      expect(
+        screen.getByRole("dialog", { name: "Editar avatar" }),
+      ).toHaveAttribute("aria-modal", "true");
+      expect(
+        screen.getByRole("img", { name: "Avatar actual de persona-lista" }),
+      ).toHaveAttribute("src", AVATAR_URL);
+      expect(screen.getByText("Así se verá")).toBeInTheDocument();
+      expect(screen.getByRole("slider", { name: /^Zoom/ })).toBeDisabled();
+      expect(
+        screen.getByRole("slider", { name: /^Mover encuadre horizontal/ }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("slider", { name: /^Mover encuadre vertical/ }),
+      ).toBeDisabled();
 
-    await user.upload(
-      screen.getByLabelText("Elegir imagen de avatar"),
-      makeImageFile(),
-    );
-    loadCropImage(640, 320);
+      await user.upload(
+        screen.getByLabelText("Elegir imagen de avatar"),
+        makeImageFile(),
+      );
+      loadCropImage(640, 320);
 
-    expect(
-      await screen.findByRole("application", {
-        name: "Encuadre del avatar; arrastra para ajustar",
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("slider", { name: /^Zoom/ })).toBeEnabled();
-    expect(
-      screen.getByRole("slider", { name: /^Mover encuadre horizontal/ }),
-    ).toBeEnabled();
-    expect(
-      screen.getByRole("slider", { name: /^Mover encuadre vertical/ }),
-    ).toBeEnabled();
-    expect(
-      screen.getByRole("button", { name: "Guardar avatar" }),
-    ).toBeEnabled();
-    expect(
-      screen.getByText(/revisión automática de contenido/i),
-    ).toBeInTheDocument();
-  });
+      expect(
+        await screen.findByRole("application", {
+          name: "Encuadre del avatar; arrastra para ajustar",
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("slider", { name: /^Zoom/ })).toBeEnabled();
+      expect(
+        screen.getByRole("slider", { name: /^Mover encuadre horizontal/ }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole("slider", { name: /^Mover encuadre vertical/ }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Guardar avatar" }),
+      ).toBeEnabled();
+      expect(
+        screen.getByText(/revisión automática de contenido/i),
+      ).toBeInTheDocument();
+    },
+    ACCESSIBLE_CROP_DIALOG_TIMEOUT_MS,
+  );
 
   it("rejects unsupported images and keeps the edit dialog open", async () => {
     const user = userEvent.setup({ applyAccept: false });
