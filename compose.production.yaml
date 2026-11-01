@@ -240,30 +240,30 @@ volumes:
 
 secrets:
   grumphya_env:
-    file: ./.secrets/grumphya_env
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/grumphya_env
   database_settings:
-    file: ./.secrets/database_settings
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/database_settings
   postgres_admin_settings:
-    file: ./.secrets/postgres_admin_settings
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/postgres_admin_settings
   openai_settings:
-    file: ./.secrets/openai_settings
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/openai_settings
   openai_key:
-    file: ./.secrets/openai_key
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/openai_key
   mail_settings:
-    file: ./.secrets/mail_settings
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/mail_settings
   admin_settings:
-    file: ./.secrets/admin_settings
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/admin_settings
   internal_tls_ca:
-    file: ./.secrets/internal_tls_ca.crt
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/internal_tls_ca.crt
   api_tls_cert:
-    file: ./.secrets/api_tls.crt
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/api_tls.crt
   api_tls_key:
-    file: ./.secrets/api_tls.key
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/api_tls.key
   web_tls_cert:
-    file: ./.secrets/web_tls.crt
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/web_tls.crt
   web_tls_key:
-    file: ./.secrets/web_tls.key
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/web_tls.key
   postgres_tls_cert:
-    file: ./.secrets/postgres_tls.crt
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/postgres_tls.crt
   postgres_tls_key:
-    file: ./.secrets/postgres_tls.key
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/postgres_tls.key

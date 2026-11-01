@@ -173,7 +173,7 @@ check_current_release() {
 compose_for() {
   local dir=$1
   shift
-  docker compose --project-name grumphya \
+  GRUMPHYA_SECRETS_DIR="$SECRETS_DIR" docker compose --project-name grumphya \
     --env-file "$ENV_FILE" \
     --env-file "$dir/release.env" \
     --file "$dir/compose.production.yaml" "$@"

@@ -3,6 +3,9 @@ import { readFile } from "node:fs/promises";
 
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const CI_VERIFY_PATH = "scripts/ci-verify.sh";
+const PRODUCTION_COMPOSE_PATH = "compose.production.yaml";
+const VPS_DEPLOY_HELPER_PATH = "docker/vps-deploy.sh";
+const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
 const REQUIRED_DEPLOY_GUARDS = [
   "success()",
   "github.event_name == 'workflow_dispatch'",
@@ -26,6 +29,30 @@ const DEPLOY_ONLY_SECRETS = [
 
 const workflow = await readFile(WORKFLOW_PATH, "utf8");
 const ciVerify = await readFile(CI_VERIFY_PATH, "utf8");
+const productionCompose = await readFile(PRODUCTION_COMPOSE_PATH, "utf8");
+const vpsDeployHelper = await readFile(VPS_DEPLOY_HELPER_PATH, "utf8");
+const productionComposeSmoke = await readFile(
+  PRODUCTION_COMPOSE_SMOKE_PATH,
+  "utf8",
+);
+const secretFilePaths = productionCompose.matchAll(
+  /^\s+file: \$\{GRUMPHYA_SECRETS_DIR:-\.\/\.secrets\}\//gm,
+);
+assert.equal(
+  [...secretFilePaths].length,
+  14,
+  "all production secret mounts must use the configurable secret directory",
+);
+assert.match(
+  vpsDeployHelper,
+  /GRUMPHYA_SECRETS_DIR="\$SECRETS_DIR" docker compose/,
+  "VPS Compose operations must resolve secret mounts from the persistent VPS directory",
+);
+assert.match(
+  productionComposeSmoke,
+  /GRUMPHYA_SECRETS_DIR=\$TEMP_ROOT\/\.secrets/,
+  "the production Compose smoke must exercise the explicit secret directory",
+);
 const releaseJobStart = workflow.indexOf("  supply-chain:");
 assert.notEqual(releaseJobStart, -1, "release job must exist");
 const releaseJob = workflow.slice(releaseJobStart);
