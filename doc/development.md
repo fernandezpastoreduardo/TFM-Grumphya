@@ -2,7 +2,7 @@
 
 ## Requisitos
 
-- macOS, Linux o Windows con Node.js `^22.22.2 || ^24.15.0 || ^26.13.0` y pnpm 12. El repositorio fija Node 26.13.0 en `.node-version`; configura el mismo runtime localmente para reproducir CI. Los rangos admitidos están definidos en `package.json`.
+- macOS, Linux o Windows con Node.js `^26.13.0` y pnpm 12. El repositorio fija Node 26.13.0 en `.node-version` y `.nvmrc`; con nvm, actívalo desde la raíz con `nvm use`. Los rangos admitidos están definidos en `package.json`.
 - Docker Desktop y PostgreSQL 17 con extensión pgvector 0.8.x (arranca con Compose).
 - Para tests E2E: navegador Chromium de Playwright.
 
@@ -165,7 +165,12 @@ pnpm lint
 pnpm build
 ```
 
-El hook de Git, cuando se inicialice Husky para el equipo, debe ejecutar al menos `pnpm lint` y `pnpm test`. No se fuerza un hook en el repo inicial hasta configurar explícitamente su ciclo de contribución.
+El hook `pre-commit` de Husky ejecuta `pnpm quality:check`. El hook `pre-push`
+comprueba el registro de migraciones en cada push y ejecuta E2E cuando el destino
+incluye `main`. Para ejecutar localmente las mismas puertas de CI dentro del
+runner aislado, usa `bash scripts/ci-local.sh`; admite `quality`, `e2e` y `audit`
+para ejecutar un solo grupo. Consulta [CI/CD](ci-cd.md) para los requisitos,
+artefactos y comprobaciones que solo se pueden realizar en GitHub.
 
 ## Estilos de la interfaz
 

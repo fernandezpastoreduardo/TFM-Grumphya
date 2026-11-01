@@ -21,6 +21,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 - [Incidencia de acceso al VPS y despliegue (octubre de 2026)](incident-vps-access-and-deployment-2026-10.md)
 - [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md)
 - [CI/CD y seguridad de la imagen](ci-cd.md)
+- [Fallos recientes de CI (29 de octubre de 2026)](ci-failures-2026-10-29.md)
 - [Usuarios, credenciales y secretos](credentials.md)
 - [Panel de administración](admin-dashboard.md)
 - [Sello demostrativo de Desarrollo Seguro](desarrollo-seguro.md)
@@ -33,7 +34,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 
 Entorno y stack actuales:
 
-- Node.js 26.13.0 y pnpm 12.5.1. El proyecto admite Node `^22.22.2 || ^24.15.0 || ^26.13.0`; consulta [stack](stack.md) para la política y versiones exactas.
+- Node.js 26.13.0 y pnpm 12.5.1. El proyecto admite Node `^26.13.0`; consulta [stack](stack.md) para la política y versiones exactas.
 - React 19 + Vite 7, NestJS 12 y TypeScript 6.
 - Docker Desktop 4.94.0, Docker Engine 29.8.2 y Compose 5.5.1.
 - PostgreSQL 17 con `pgvector` 0.8.7 en Docker Compose.
