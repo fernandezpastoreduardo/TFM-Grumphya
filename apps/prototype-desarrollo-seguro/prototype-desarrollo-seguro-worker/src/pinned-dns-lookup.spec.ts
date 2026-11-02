@@ -238,7 +238,8 @@ describe("createPinnedLookup", () => {
 
   it("bounds how long it waits for a DNS resolver", async () => {
     vi.useFakeTimers();
-    const lookup = createPinnedLookup(() => new Promise(() => {}));
+    const pendingResolution = createDeferred<LookupAddress[]>();
+    const lookup = createPinnedLookup(() => pendingResolution.promise);
     const resultPromise = runLookup(lookup, HOSTNAME, { all: true });
 
     await vi.advanceTimersByTimeAsync(5_000);
@@ -246,11 +247,13 @@ describe("createPinnedLookup", () => {
       error: { code: "EHOSTUNREACH" },
       address: [],
     });
+    pendingResolution.resolve([PUBLIC_IPV4]);
+    await pendingResolution.promise;
   });
 
   it("keeps timed-out lookup slots occupied until the underlying DNS promises settle", async () => {
     vi.useFakeTimers();
-    const pendingResolutions = Array.from({ length: 5 }, () =>
+    const pendingResolutions = Array.from({ length: 3 }, () =>
       createDeferred<LookupAddress[]>(),
     );
     let nextResolution = 0;
@@ -261,11 +264,11 @@ describe("createPinnedLookup", () => {
       return resolution.promise;
     });
     const lookup = createPinnedLookup(resolver);
-    const firstFour = Array.from({ length: 4 }, () =>
+    const firstTwo = Array.from({ length: 2 }, () =>
       runLookup(lookup, HOSTNAME, { all: true }),
     );
 
-    expect(resolver).toHaveBeenCalledTimes(4);
+    expect(resolver).toHaveBeenCalledTimes(2);
     await expect(
       runLookup(lookup, HOSTNAME, { all: true }),
     ).resolves.toMatchObject({
@@ -273,7 +276,7 @@ describe("createPinnedLookup", () => {
       address: [],
     });
     await vi.advanceTimersByTimeAsync(5_000);
-    expect(await Promise.all(firstFour)).toHaveLength(4);
+    expect(await Promise.all(firstTwo)).toHaveLength(2);
 
     await expect(
       runLookup(lookup, HOSTNAME, { all: true }),
@@ -281,26 +284,82 @@ describe("createPinnedLookup", () => {
       error: { code: "EHOSTUNREACH" },
       address: [],
     });
-    expect(resolver).toHaveBeenCalledTimes(4);
+    expect(resolver).toHaveBeenCalledTimes(2);
 
     pendingResolutions[0]?.resolve([PUBLIC_IPV4]);
     await pendingResolutions[0]?.promise;
     const afterUnderlyingResolution = runLookup(lookup, HOSTNAME, {
       all: true,
     });
-    expect(resolver).toHaveBeenCalledTimes(5);
+    expect(resolver).toHaveBeenCalledTimes(3);
 
     pendingResolutions[1]?.resolve([PUBLIC_IPV4]);
-    pendingResolutions[2]?.resolve([PUBLIC_IPV4]);
-    pendingResolutions[3]?.resolve([PUBLIC_IPV4]);
-    pendingResolutions[4]?.resolve([PUBLIC_IPV6]);
+    pendingResolutions[2]?.resolve([PUBLIC_IPV6]);
     await expect(afterUnderlyingResolution).resolves.toEqual({
       error: null,
       address: [PUBLIC_IPV6],
       family: undefined,
     });
     await Promise.all(
-      pendingResolutions.slice(1, 4).map(({ promise }) => promise),
+      pendingResolutions.slice(1, 2).map(({ promise }) => promise),
+    );
+  });
+
+  it("keeps the shared process cap occupied across adapters after caller timeouts", async () => {
+    vi.useFakeTimers();
+    const pendingResolutions = Array.from({ length: 3 }, () =>
+      createDeferred<LookupAddress[]>(),
+    );
+    let nextResolution = 0;
+    const resolver = vi.fn(() => {
+      const resolution = pendingResolutions[nextResolution];
+      nextResolution += 1;
+      if (!resolution) return Promise.reject(new Error("unexpected lookup"));
+      return resolution.promise;
+    });
+    const firstAdapter = createPinnedLookup(resolver);
+    const secondAdapter = createPinnedLookup(resolver);
+    const firstTwo = [
+      runLookup(firstAdapter, HOSTNAME, { all: true }),
+      runLookup(secondAdapter, HOSTNAME, { all: true }),
+    ];
+
+    expect(resolver).toHaveBeenCalledTimes(2);
+    const rejectedWhileAtCapacity = runLookup(firstAdapter, HOSTNAME, {
+      all: true,
+    });
+    expect(resolver).toHaveBeenCalledTimes(2);
+    await expect(rejectedWhileAtCapacity).resolves.toMatchObject({
+      error: { code: "EHOSTUNREACH" },
+      address: [],
+    });
+    await vi.advanceTimersByTimeAsync(5_000);
+    await expect(Promise.all(firstTwo)).resolves.toHaveLength(2);
+
+    await expect(
+      runLookup(secondAdapter, HOSTNAME, { all: true }),
+    ).resolves.toMatchObject({
+      error: { code: "EHOSTUNREACH" },
+      address: [],
+    });
+    expect(resolver).toHaveBeenCalledTimes(2);
+
+    pendingResolutions[0]?.resolve([PUBLIC_IPV4]);
+    await pendingResolutions[0]?.promise;
+    const afterUnderlyingResolution = runLookup(firstAdapter, HOSTNAME, {
+      all: true,
+    });
+    expect(resolver).toHaveBeenCalledTimes(3);
+
+    pendingResolutions[1]?.resolve([PUBLIC_IPV4]);
+    pendingResolutions[2]?.resolve([PUBLIC_IPV6]);
+    await expect(afterUnderlyingResolution).resolves.toEqual({
+      error: null,
+      address: [PUBLIC_IPV6],
+      family: undefined,
+    });
+    await Promise.all(
+      pendingResolutions.slice(1, 2).map(({ promise }) => promise),
     );
   });
 });

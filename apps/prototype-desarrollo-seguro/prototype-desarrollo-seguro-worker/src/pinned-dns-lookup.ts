@@ -4,7 +4,7 @@ import { isIP, type LookupFunction } from "node:net";
 import { normalizeHostname } from "@grumphya/prototype-desarrollo-seguro-core";
 
 const MAX_DNS_ANSWERS = 32;
-const MAX_CONCURRENT_DNS_LOOKUPS = 4;
+const MAX_CONCURRENT_DNS_LOOKUPS = 2;
 const DNS_LOOKUP_TIMEOUT_MS = 5_000;
 const LOOKUP_FAILURE_CODE = "EHOSTUNREACH";
 const LOOKUP_FAILURE_MESSAGE = "pinned_dns_lookup_failed";
@@ -42,39 +42,51 @@ const BLOCKED_IPV6_CIDRS = [
 type Resolver = (hostname: string) => Promise<readonly LookupAddress[]>;
 type AddressFamily = 4 | 6;
 type ParsedAddress = { family: AddressFamily; value: bigint; bits: number };
+type DnsLookupLimiter = {
+  run<T>(operation: () => Promise<T>): Promise<T>;
+};
 
 const defaultResolver: Resolver = async (hostname) =>
   lookup(hostname, { all: true, order: "verbatim" });
 
+function createDnsLookupLimiter(): DnsLookupLimiter {
+  let activeLookups = 0;
+  return {
+    run<T>(operation: () => Promise<T>): Promise<T> {
+      if (activeLookups >= MAX_CONCURRENT_DNS_LOOKUPS) {
+        return Promise.reject(createLookupError());
+      }
+
+      activeLookups += 1;
+      let result: Promise<T>;
+      try {
+        result = operation();
+      } catch {
+        activeLookups -= 1;
+        return Promise.reject(createLookupError());
+      }
+
+      return result.then(
+        (value) => {
+          activeLookups -= 1;
+          return value;
+        },
+        () => {
+          activeLookups -= 1;
+          throw createLookupError();
+        },
+      );
+    },
+  };
+}
+
+const moduleDnsLookupLimiter = createDnsLookupLimiter();
+
 export function createPinnedLookup(
   resolver: Resolver = defaultResolver,
 ): LookupFunction {
-  let activeLookups = 0;
-  const limitedResolver: Resolver = (hostname) => {
-    if (activeLookups >= MAX_CONCURRENT_DNS_LOOKUPS) {
-      return Promise.reject(createLookupError());
-    }
-
-    activeLookups += 1;
-    let resolution: Promise<readonly LookupAddress[]>;
-    try {
-      resolution = resolver(hostname);
-    } catch {
-      activeLookups -= 1;
-      return Promise.reject(createLookupError());
-    }
-
-    return resolution.then(
-      (addresses) => {
-        activeLookups -= 1;
-        return addresses;
-      },
-      () => {
-        activeLookups -= 1;
-        throw createLookupError();
-      },
-    );
-  };
+  const limitedResolver: Resolver = (hostname) =>
+    moduleDnsLookupLimiter.run(() => resolver(hostname));
 
   return (hostname, options, callback) => {
     void resolvePublicAddresses(hostname, limitedResolver).then(
