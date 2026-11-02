@@ -10,22 +10,22 @@ Las tablas de esta fase guardan **casos y evidencias internas**, no ejecuciones 
 
 ### ds_cases
 
-| Columna | Tipo sugerido | Regla |
-| --- | --- | --- |
-| id | texto, PK | ID público DS-GRUMPHYA-2026-001; patrón actual. |
-| issuer, application | texto no nulo | «Desarrollo Seguro», «Grumphya» en el caso inicial. |
-| status | texto no nulo | CHECK demonstration, suspended, revoked, expired; unknown se proyecta ante estado no reconocido, no se persiste deliberadamente. |
-| issued_at, validated_at, expires_at | timestamptz nullable | Conservar fechas históricas exactas del registro actual; no DEFAULT now. |
-| validation_method, scope, disclaimer | texto no nulo | Copy público acotado. |
-| created_at, updated_at | timestamptz no nulo | Auditoría de la fila; no confundir con fecha de observación. |
+| Columna                              | Tipo sugerido        | Regla                                                                                                                            |
+| ------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| id                                   | texto, PK            | ID público DS-GRUMPHYA-2026-001; patrón actual.                                                                                  |
+| issuer, application                  | texto no nulo        | «Desarrollo Seguro», «Grumphya» en el caso inicial.                                                                              |
+| status                               | texto no nulo        | CHECK demonstration, suspended, revoked, expired; unknown se proyecta ante estado no reconocido, no se persiste deliberadamente. |
+| issued_at, validated_at, expires_at  | timestamptz nullable | Conservar fechas históricas exactas del registro actual; no DEFAULT now.                                                         |
+| validation_method, scope, disclaimer | texto no nulo        | Copy público acotado.                                                                                                            |
+| created_at, updated_at               | timestamptz no nulo  | Auditoría de la fila; no confundir con fecha de observación.                                                                     |
 
 ### ds_case_domains
 
-| Columna | Tipo sugerido | Regla |
-| --- | --- | --- |
-| case_id | FK a ds_cases | Borrado restringido. |
-| canonical_domain | texto | Minúsculas/IDNA; unique global en fase inicial. |
-| ordinal | entero | Orden de presentación. |
+| Columna          | Tipo sugerido | Regla                                           |
+| ---------------- | ------------- | ----------------------------------------------- |
+| case_id          | FK a ds_cases | Borrado restringido.                            |
+| canonical_domain | texto         | Minúsculas/IDNA; unique global en fase inicial. |
+| ordinal          | entero        | Orden de presentación.                          |
 
 La presencia de un dominio en esta tabla solo significa «incluido en esta ficha». No afirmar que DNS TXT o /.well-known hayan probado titularidad. Un caso puede tener varios dominios declarados, pero la búsqueda de cada uno conduce al mismo ID.
 
@@ -35,14 +35,14 @@ case_id, ordinal y texto de criterio; clave única (case_id, ordinal). Conserva 
 
 ### ds_assurances
 
-| Columna | Tipo sugerido | Regla |
-| --- | --- | --- |
-| case_id, assurance_id | FK + ID local | PK compuesta; conservar privacy, first-party, transport y delivery. |
-| ordinal, title, description, evidence, limitation | enteros/texto | Copy actual sin ampliar afirmaciones automáticamente. |
-| method | texto | internal_test, internal_review o descriptive. |
-| evidence_state | texto | verified_internal, documented_unverified u outdated. |
-| observed_at | timestamptz nullable | Solo fecha de comprobación real de esa afirmación. |
-| source_ref, version_ref | texto nullable | Referencia interna segura; SHA cuando exista. |
+| Columna                                           | Tipo sugerido        | Regla                                                               |
+| ------------------------------------------------- | -------------------- | ------------------------------------------------------------------- |
+| case_id, assurance_id                             | FK + ID local        | PK compuesta; conservar privacy, first-party, transport y delivery. |
+| ordinal, title, description, evidence, limitation | enteros/texto        | Copy actual sin ampliar afirmaciones automáticamente.               |
+| method                                            | texto                | internal_test, internal_review o descriptive.                       |
+| evidence_state                                    | texto                | verified_internal, documented_unverified u outdated.                |
+| observed_at                                       | timestamptz nullable | Solo fecha de comprobación real de esa afirmación.                  |
+| source_ref, version_ref                           | texto nullable       | Referencia interna segura; SHA cuando exista.                       |
 
 No introducir PII, cookies, IP, cuerpos de páginas, cabeceras completas, tokens o contenido de formularios. Los títulos y resúmenes de evidencia deben poder mostrarse públicamente.
 

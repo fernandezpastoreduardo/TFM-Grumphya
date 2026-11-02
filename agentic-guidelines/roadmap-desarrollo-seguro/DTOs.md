@@ -12,14 +12,14 @@ La entrada de la red es unknown y se valida en servidor. El frontend valida tamb
 
 **Respuesta 200, unión discriminada:**
 
-| Campo | Caso encontrado | Caso ausente |
-| --- | --- | --- |
-| kind | known_case | unassessed |
-| canonicalDomain | hostname normalizado | hostname normalizado |
-| caseId | identificador público del registro | ausente |
-| caseUrl | ruta interna /acreditaciones/:id | ausente |
-| status | demonstration, suspended, revoked, expired o unknown | ausente |
-| message | «Existe una ficha académica para este dominio» | «Aún no hay evaluación para este dominio. La búsqueda no inicia un escaneo.» |
+| Campo           | Caso encontrado                                      | Caso ausente                                                                 |
+| --------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| kind            | known_case                                           | unassessed                                                                   |
+| canonicalDomain | hostname normalizado                                 | hostname normalizado                                                         |
+| caseId          | identificador público del registro                   | ausente                                                                      |
+| caseUrl         | ruta interna /acreditaciones/:id                     | ausente                                                                      |
+| status          | demonstration, suspended, revoked, expired o unknown | ausente                                                                      |
+| message         | «Existe una ficha académica para este dominio»       | «Aún no hay evaluación para este dominio. La búsqueda no inicia un escaneo.» |
 
 El servidor construye caseUrl desde el ID persistido, no desde la entrada sin escapar. Los dos miembros de la unión se validan en runtime en la web. No retornar un objeto de caso vacío para un dominio ausente.
 
@@ -33,13 +33,13 @@ El estado público permanece en la unión demonstration | suspended | revoked | 
 
 **Extensión aditiva por assurance para trazabilidad:**
 
-| Campo nuevo | Tipo | Semántica |
-| --- | --- | --- |
-| method | internal_test, internal_review o descriptive | Método real que respalda la evidencia. |
-| evidenceState | verified_internal, documented_unverified u outdated | Estado de soporte de la afirmación, independiente de status de la ficha. |
-| observedAt | instante UTC o null | Fecha de ejecución/revisión real; null si no hay observación comprobable. |
-| sourceRef | texto o null | Ruta de prueba, archivo o documento del repositorio; sin URL privada con token. |
-| versionRef | SHA de commit o null | Versión exacta revisada cuando se conozca. |
+| Campo nuevo   | Tipo                                                | Semántica                                                                       |
+| ------------- | --------------------------------------------------- | ------------------------------------------------------------------------------- |
+| method        | internal_test, internal_review o descriptive        | Método real que respalda la evidencia.                                          |
+| evidenceState | verified_internal, documented_unverified u outdated | Estado de soporte de la afirmación, independiente de status de la ficha.        |
+| observedAt    | instante UTC o null                                 | Fecha de ejecución/revisión real; null si no hay observación comprobable.       |
+| sourceRef     | texto o null                                        | Ruta de prueba, archivo o documento del repositorio; sin URL privada con token. |
+| versionRef    | SHA de commit o null                                | Versión exacta revisada cuando se conozca.                                      |
 
 Los campos anteriores de assurance (id, title, description, evidence, limitation) se mantienen. Si un assurance combina varias fuentes, no asignar un único método o fecha que sugiera una verificación más amplia de la realizada; dividirlo o marcar documented_unverified. El frontend debe aceptar y mostrar null sin sustituirlo por la hora actual. La respuesta JSON concreta se versionará mediante pruebas de contrato de servidor y cliente.
 

@@ -15,17 +15,17 @@ Aplicar AGENTS.md: un componente usado por una feature queda dentro de ella; si 
 
 ## Componentes propuestos
 
-| Componente | Responsabilidad | Ubicación orientativa |
-| --- | --- | --- |
-| Formulario estático de búsqueda | Enviar hostname por GET al mismo origen; sin JavaScript ni terceros | prototype/index.html |
-| DomainLookup | Contenedor de búsqueda: leer parámetro, consultar API, estados de carga y navegación | apps/web/src/features/domain-lookup/domain-lookup.tsx |
-| DomainLookupForm, LookupResult | Presentación pura; datos y callbacks por props | components/ dentro de domain-lookup |
-| Cliente de consulta | Parsear respuesta desconocida y exponer unión discriminada; solo compartido si también lo usa la ficha | local en domain-lookup; mover a shared solo tras segundo uso |
-| GetDomainCase | Validación, normalización y consulta por dominio; nunca realiza red externa | apps/api/src/verify-accreditation/ o subcarpeta de negocio |
-| GetAccreditation | Proyección compatible del registro por ID | conservar caso de uso existente |
-| AccreditationRepository | Puerto de lectura; implementación PostgreSQL y doble en memoria para pruebas | feature backend + infraestructura de DB existente |
-| EvidencePresenter | Filtrar y redactar solo campos públicos; sin cuerpos completos ni secretos | feature backend |
-| Clock | Fecha inyectable en casos de uso y pruebas | local hasta que otra feature lo use |
+| Componente                      | Responsabilidad                                                                                        | Ubicación orientativa                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| Formulario estático de búsqueda | Enviar hostname por GET al mismo origen; sin JavaScript ni terceros                                    | prototype/index.html                                         |
+| DomainLookup                    | Contenedor de búsqueda: leer parámetro, consultar API, estados de carga y navegación                   | apps/web/src/features/domain-lookup/domain-lookup.tsx        |
+| DomainLookupForm, LookupResult  | Presentación pura; datos y callbacks por props                                                         | components/ dentro de domain-lookup                          |
+| Cliente de consulta             | Parsear respuesta desconocida y exponer unión discriminada; solo compartido si también lo usa la ficha | local en domain-lookup; mover a shared solo tras segundo uso |
+| GetDomainCase                   | Validación, normalización y consulta por dominio; nunca realiza red externa                            | apps/api/src/verify-accreditation/ o subcarpeta de negocio   |
+| GetAccreditation                | Proyección compatible del registro por ID                                                              | conservar caso de uso existente                              |
+| AccreditationRepository         | Puerto de lectura; implementación PostgreSQL y doble en memoria para pruebas                           | feature backend + infraestructura de DB existente            |
+| EvidencePresenter               | Filtrar y redactar solo campos públicos; sin cuerpos completos ni secretos                             | feature backend                                              |
+| Clock                           | Fecha inyectable en casos de uso y pruebas                                                             | local hasta que otra feature lo use                          |
 
 El módulo NestJS de esta fase puede seguir llamándose verify-accreditation para minimizar churn. Si Luna decide renombrarlo a development-security, debe hacerlo en un cambio coherente con imports, endpoints y tests, sin alterar el comportamiento público. No duplicar dos fuentes de verdad para el mismo registro.
 

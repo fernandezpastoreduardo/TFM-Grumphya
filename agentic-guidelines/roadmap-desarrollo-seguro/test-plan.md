@@ -6,17 +6,17 @@ Implementar cada slice con ciclo rojo → verde → refactor. Escribir primero u
 
 ## Matriz obligatoria
 
-| Nivel | Casos |
-| --- | --- |
-| Normalizador | grumphya.com y mayúsculas/punto final → canonicalDomain; IDN válido → ASCII; URL, puerto, credenciales, IP literal, localhost, sufijos reservados, etiquetas inválidas y entradas largas → 400. |
-| Caso de uso de búsqueda | Dominio conocido → known_case e ID exacto; desconocido válido → unassessed sin crear registros; fallo de repositorio → error temporal; doble que detecta llamadas externas prueba que no existe escaneo. |
-| Contrato API | 200 de ambos miembros de la unión; 400/429/503 con código estable; no-store; no datos internos en JSON; GET /api/accreditations/:id mantiene contrato y 404 para ID ausente. |
-| Persistencia | Migración en base vacía y poblada; seed de Grumphya exacto; segunda ejecución idempotente; orden de dominios/criterios/assurances; índices y FK; no fecha automática de validación; fallo de DB no usa registro hardcoded. |
-| Proyección de evidencia | Null permanece null; documented_unverified no se convierte en verificado; texto privado no sale; versión y fecha reales se muestran separadas de fechas de la ficha. |
-| React | Formulario accesible, errores de campo, estado cargando, resultado conocido/desconocido, respuesta malformada, 503, enlace a ficha, contraste y teclado. /acreditaciones/buscar no se confunde con /acreditaciones/:id. |
-| Sello | demonstration + hostname autorizado muestra imagen y aclaración; otro hostname, suspended, revoked, expired, unknown, respuesta inválida o fallo de API muestran solo enlace textual. |
-| Privacidad | E2E de la landing y rutas públicas citadas comprueba recursos/cookies en navegador limpio; la búsqueda no llama al dominio introducido ni a terceros; CSP conserva script-src none y solo amplía form-action a self. |
-| E2E | Usuario abre sello → prototipo → busca Grumphya → ficha; busca dominio sin caso → mensaje honesto; introduce URL inválida → corrección; recarga directa de ambas rutas; viewport móvil 320 y 390 px. |
+| Nivel                   | Casos                                                                                                                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Normalizador            | grumphya.com y mayúsculas/punto final → canonicalDomain; IDN válido → ASCII; URL, puerto, credenciales, IP literal, localhost, sufijos reservados, etiquetas inválidas y entradas largas → 400.                            |
+| Caso de uso de búsqueda | Dominio conocido → known_case e ID exacto; desconocido válido → unassessed sin crear registros; fallo de repositorio → error temporal; doble que detecta llamadas externas prueba que no existe escaneo.                   |
+| Contrato API            | 200 de ambos miembros de la unión; 400/429/503 con código estable; no-store; no datos internos en JSON; GET /api/accreditations/:id mantiene contrato y 404 para ID ausente.                                               |
+| Persistencia            | Migración en base vacía y poblada; seed de Grumphya exacto; segunda ejecución idempotente; orden de dominios/criterios/assurances; índices y FK; no fecha automática de validación; fallo de DB no usa registro hardcoded. |
+| Proyección de evidencia | Null permanece null; documented_unverified no se convierte en verificado; texto privado no sale; versión y fecha reales se muestran separadas de fechas de la ficha.                                                       |
+| React                   | Formulario accesible, errores de campo, estado cargando, resultado conocido/desconocido, respuesta malformada, 503, enlace a ficha, contraste y teclado. /acreditaciones/buscar no se confunde con /acreditaciones/:id.    |
+| Sello                   | demonstration + hostname autorizado muestra imagen y aclaración; otro hostname, suspended, revoked, expired, unknown, respuesta inválida o fallo de API muestran solo enlace textual.                                      |
+| Privacidad              | E2E de la landing y rutas públicas citadas comprueba recursos/cookies en navegador limpio; la búsqueda no llama al dominio introducido ni a terceros; CSP conserva script-src none y solo amplía form-action a self.       |
+| E2E                     | Usuario abre sello → prototipo → busca Grumphya → ficha; busca dominio sin caso → mensaje honesto; introduce URL inválida → corrección; recarga directa de ambas rutas; viewport móvil 320 y 390 px.                       |
 
 ## Pruebas de evidencia
 

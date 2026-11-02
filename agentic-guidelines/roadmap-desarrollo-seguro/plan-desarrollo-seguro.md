@@ -8,7 +8,7 @@
 
 La visión posterior es construir un motor que compruebe dominios públicos cada hora y permita consultas bajo demanda. Después se podrá extraer a un repositorio, base de datos, contenedores y despliegue propios en `desarrolloseguro.com`, compartiendo únicamente el VPS y el proxy HTTPS de entrada. Las secciones 3 a 6 describen ese **diseño futuro**; no son instrucciones para activar escaneo en la fase inicial.
 
-El resultado público debe denominarse **«verificación externa periódica»** y mostrar exactamente qué se observó, cuándo y en qué páginas. «Certificado seguro», «cumple RGPD» o «sin vulnerabilidades» serían afirmaciones que un escaneo externo no puede sostener. [OWASP ASVS 5.0](https://asvs.owasp.org/) abarca controles internos, y [Mozilla Observatory](https://developer.mozilla.org/en-US/observatory/docs/faq) advierte que incluso su máxima nota no prueba seguridad completa.
+Cuando exista el escáner externo, el resultado público deberá denominarse **«verificación externa periódica»** y mostrar exactamente qué se observó, cuándo y en qué páginas. «Certificado seguro», «cumple RGPD» o «sin vulnerabilidades» serían afirmaciones que un escaneo externo no puede sostener. [OWASP ASVS 5.0](https://asvs.owasp.org/) abarca controles internos, y [Mozilla Observatory](https://developer.mozilla.org/en-US/observatory/docs/faq) advierte que incluso su máxima nota no prueba seguridad completa.
 
 ## 2. Punto de partida comprobado
 
@@ -18,7 +18,7 @@ La aplicación usa React/Vite, NestJS/TypeScript, PostgreSQL, pnpm, Vitest, Play
 
 ## 3. Contrato público de verificación futura
 
-Los estados de esta sección solo podrán publicarse cuando exista un escaneo externo real con las garantías descritas. En la fase inicial se utiliza exclusivamente `demonstration` y se sigue [DTOs.md](DTOs.md).
+Los estados de esta sección solo podrán publicarse cuando exista un escaneo externo real con las garantías descritas. En la fase inicial, el caso de Grumphya permanece en `demonstration`; se conservan los estados de retirada y se sigue [DTOs.md](DTOs.md).
 
 | Estado                                       | Significado público                                                                                                    |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -89,13 +89,13 @@ Grumphya: SVG y enlace local ── clic ──> Desarrollo Seguro (web)
 
 ## 7. Bundle de trabajo por fases
 
-| Fase y entrega                                | Componentes / criterio de aceptación                                                                                                                                                                                                                                           | Esfuerzo orientativo* |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------: |
-| **0. Contrato verificable**                   | Perfil v1 versionado, matriz de controles, alcance de páginas, estados, método de titularidad, modelo de datos y amenaza SSRF documentados.                                                                                                                                    |          2–4 jornadas |
-| **1. Prototipo académico inicial**           | Mantener `demonstration`; búsqueda sin red de casos conocidos, persistencia y evidencia interna trazable, UI accesible, contratos y tests. Sin motor remoto ni horario. Véase [execution.md](execution.md). | Esfuerzo a medir al implementar |
-| **2. Escaneo externo posterior**              | Motor de red seguro, scheduler horario, caché, estados vigentes, controles observables, revisión de falsos positivos y prueba de capacidad. Requiere nueva decisión de alcance. | Estimar tras fase 1 |
-| **3. Proyecto independiente futuro**          | Extraer código sin reescribir el motor; repo y CI/CD propios; web/API/worker/DB/volúmenes/backups independientes; nuevo dominio y Caddy por hostname; migrar historial si aporta valor; cambiar enlace del sello y retirar o redirigir la demo antigua.                        |         8–15 jornadas |
-| **4. Programa de garantía ampliada opcional** | Prueba de titularidad a escala, evidencias internas voluntarias, revisión humana ASVS/WCAG/privacidad, procedimiento de apelación y renovación.                                                                                                                                | Se presupuesta aparte |
+| Fase y entrega                                | Componentes / criterio de aceptación                                                                                                                                                                                                                    |           Esfuerzo orientativo* |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------: |
+| **0. Contrato verificable**                   | Perfil v1 versionado, matriz de controles, alcance de páginas, estados, método de titularidad, modelo de datos y amenaza SSRF documentados.                                                                                                             |                    2–4 jornadas |
+| **1. Prototipo académico inicial**            | Mantener `demonstration`; búsqueda sin red de casos conocidos, persistencia y evidencia interna trazable, UI accesible, contratos y tests. Sin motor remoto ni horario. Véase [execution.md](execution.md).                                             | Esfuerzo a medir al implementar |
+| **2. Escaneo externo posterior**              | Motor de red seguro, scheduler horario, caché, estados vigentes, controles observables, revisión de falsos positivos y prueba de capacidad. Requiere nueva decisión de alcance.                                                                         |             Estimar tras fase 1 |
+| **3. Proyecto independiente futuro**          | Extraer código sin reescribir el motor; repo y CI/CD propios; web/API/worker/DB/volúmenes/backups independientes; nuevo dominio y Caddy por hostname; migrar historial si aporta valor; cambiar enlace del sello y retirar o redirigir la demo antigua. |                   8–15 jornadas |
+| **4. Programa de garantía ampliada opcional** | Prueba de titularidad a escala, evidencias internas voluntarias, revisión humana ASVS/WCAG/privacidad, procedimiento de apelación y renovación.                                                                                                         |           Se presupuesta aparte |
 
 \*Rangos históricos de planificación para una persona familiarizada con el stack; **no son un presupuesto cerrado**. El alcance inicial se ha reducido respecto de la propuesta original: no contiene escáner real. El dominio, capacidad adicional, almacenamiento de backups y revisión especializada son costes futuros no contratados. Antes de las fases 2 y 3 hay que medir el margen real del VPS y, para la fase 3, verificar disponibilidad/precio del dominio.
 
