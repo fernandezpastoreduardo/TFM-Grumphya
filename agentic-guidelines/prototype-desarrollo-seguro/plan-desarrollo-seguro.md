@@ -10,7 +10,7 @@ El sello y el informe se presentan como **«verificación técnica automatizada 
 
 ## 2. Punto de partida y evolución
 
-Hoy existe una landing HTML/CSS en prototype/ servida bajo /desarrollo-seguro/, un sello en el footer de Grumphya, y una ficha React en /acreditaciones/DS-GRUMPHYA-2026-001 respaldada por GET /api/accreditations/:id. El registro antiguo está fijado en código con estado demonstration; no constituye un escaneo. La primera entrega lo conserva como demostración histórica o lo remite al informe operativo, sin mezclar fechas ni estados.
+Hoy existe una landing HTML/CSS en `prototype-desarrollo-seguro/` servida bajo `/desarrollo-seguro/`, un sello en el footer de Grumphya, y una ficha React en `/acreditaciones/DS-GRUMPHYA-2026-001` respaldada por `GET /api/accreditations/:id`. El registro antiguo está fijado en código con estado demonstration; no constituye un escaneo. La primera entrega lo conserva como demostración histórica o lo remite al informe operativo, sin mezclar fechas ni estados.
 
 El stack principal es React/Vite, NestJS/TypeScript, PostgreSQL, pnpm, Vitest/Playwright y Docker. Caddy ya ocupa 80/443 en el VPS. La aplicación DS operativa encaja bajo /desarrollo-seguro/app/ y /api/desarrollo-seguro/v1/, con procesos y base lógica propios dentro de la misma infraestructura. Véanse [components.md](components.md), [persistence.md](persistence.md) y [operations.md](operations.md).
 

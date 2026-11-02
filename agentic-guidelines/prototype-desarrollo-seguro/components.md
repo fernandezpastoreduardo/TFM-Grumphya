@@ -8,7 +8,7 @@ Aplicar AGENTS.md: las piezas usadas por una feature quedan locales; solo lo usa
 
 | Ruta orientativa                                                                                   | Responsabilidad                                                                                                                                                               |
 | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| prototype/                                                                                         | Landing explicativa existente. Añadir enlace/formulario a la aplicación operativa sin recursos externos.                                                                      |
+| prototype-desarrollo-seguro/                                                                       | Landing explicativa existente. Añadir enlace/formulario a la aplicación operativa sin recursos externos.                                                                      |
 | apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/                                  | React/Vite/TypeScript, base /desarrollo-seguro/app/, buscador, informe, historial y estados. El build estático se integraría en la imagen web actual.                         |
 | apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/                                  | NestJS/TypeScript, API pública, normalización, admisión, scheduler lógico, lectura/proyección de resultados y migraciones propias. Proceso separado, sin imports de apps/api. |
 | apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-worker/                               | Scheduler/cola y persistencia de resultados; sin endpoint público ni navegación con secretos de DB.                                                                           |
@@ -36,7 +36,7 @@ El `pnpm-workspace.yaml` incluye los patrones `apps/*` y `apps/prototype-desarro
 ## Encaje con rutas y código existentes
 
 - Caddy recibe /api/desarrollo-seguro/* antes del manejador general /api/* y lo envía a la API nueva mediante HTTPS interno verificado. El resto de /api/* sigue en Nest Grumphya.
-- Nginx conserva /desarrollo-seguro/ como landing de prototype/. Una regla más específica sirve /desarrollo-seguro/app/* desde el build React nuevo, con fallback solo a su index. El resto de la SPA Grumphya no cambia.
+- Nginx conserva /desarrollo-seguro/ como landing de `prototype-desarrollo-seguro/`. Una regla más específica sirve /desarrollo-seguro/app/* desde el build React nuevo, con fallback solo a su index. El resto de la SPA Grumphya no cambia.
 - El footer de Grumphya cambia únicamente el href y el texto/imagen neutral del sello local. No importa el cliente del escáner ni realiza solicitudes a un nuevo origen.
 - La antigua ficha /acreditaciones/DS-GRUMPHYA-2026-001 y GET /api/accreditations/:id siguen disponibles como demostración histórica y enlazan al informe operativo; no se usan como fuente de los resultados nuevos.
 - Las fechas manuales del registro antiguo no se copian a scan_runs.

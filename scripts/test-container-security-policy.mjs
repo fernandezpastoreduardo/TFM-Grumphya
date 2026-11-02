@@ -6,6 +6,10 @@ const DEPENDABOT_PATH = ".github/dependabot.yml";
 const CADDY_DOCKERFILE_PATH = "docker/Caddy.Dockerfile";
 const CADDYFILE_PATH = "docker/Caddyfile";
 const DOCKERFILE_PATH = "Dockerfile";
+const DEVELOPMENT_SECURITY_INDEX_PATH =
+  "prototype-desarrollo-seguro/index.html";
+const DEVELOPMENT_SECURITY_STYLES_PATH =
+  "prototype-desarrollo-seguro/styles.css";
 const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
@@ -14,6 +18,7 @@ const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
 const VPS_DEPLOY_HELPER_PATH = "docker/vps-deploy.sh";
 const INTERNAL_TLS_SCRIPT_PATH = "scripts/generate-internal-tls.sh";
 const POSTGRES_HBA_PATH = "docker/postgres-pg_hba.conf";
+const WEB_VITE_CONFIG_PATH = "apps/web/vite.config.ts";
 const MIGRATIONS_DIRECTORY = "apps/api/migrations";
 const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
 const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
@@ -26,6 +31,9 @@ const [
   caddyDockerfile,
   caddyfile,
   dockerfile,
+  viteConfig,
+  developmentSecurityIndex,
+  developmentSecurityStyles,
   compose,
   workflow,
   preflight,
@@ -40,6 +48,9 @@ const [
   readFile(CADDY_DOCKERFILE_PATH, "utf8"),
   readFile(CADDYFILE_PATH, "utf8"),
   readFile(DOCKERFILE_PATH, "utf8"),
+  readFile(WEB_VITE_CONFIG_PATH, "utf8"),
+  readFile(DEVELOPMENT_SECURITY_INDEX_PATH, "utf8"),
+  readFile(DEVELOPMENT_SECURITY_STYLES_PATH, "utf8"),
   readFile(COMPOSE_PATH, "utf8"),
   readFile(WORKFLOW_PATH, "utf8"),
   readFile(PREFLIGHT_PATH, "utf8"),
@@ -567,8 +578,26 @@ assert.doesNotMatch(
 );
 assert.match(
   dockerfile,
-  /COPY --from=web-build \/workspace\/prototype \/usr\/share\/nginx\/html\/desarrollo-seguro/,
+  /COPY --from=web-build \/workspace\/prototype-desarrollo-seguro \/usr\/share\/nginx\/html\/desarrollo-seguro/,
   "only the static prototype directory must be copied to its public web prefix",
+);
+assert.match(
+  viteConfig,
+  /\.\.\/\.\.\/prototype-desarrollo-seguro\/index\.html/,
+  "Vite must serve the renamed static prototype index",
+);
+assert.match(
+  viteConfig,
+  /\.\.\/\.\.\/prototype-desarrollo-seguro\/styles\.css/,
+  "Vite must serve the renamed static prototype stylesheet",
+);
+assert.ok(
+  developmentSecurityIndex.includes("Desarrollo Seguro"),
+  "the renamed static prototype index must be readable",
+);
+assert.ok(
+  developmentSecurityStyles.length > 0,
+  "the renamed static prototype stylesheet must be readable",
 );
 
 process.stdout.write("Container security policy guards passed.\n");

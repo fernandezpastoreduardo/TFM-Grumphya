@@ -14,14 +14,20 @@ const DEVELOPMENT_SECURITY_FILES = new Map([
   [
     `${DEVELOPMENT_SECURITY_PREFIX}/`,
     {
-      file: new URL("../../prototype/index.html", import.meta.url),
+      file: new URL(
+        "../../prototype-desarrollo-seguro/index.html",
+        import.meta.url,
+      ),
       contentType: "text/html; charset=utf-8",
     },
   ],
   [
     `${DEVELOPMENT_SECURITY_PREFIX}/styles.css`,
     {
-      file: new URL("../../prototype/styles.css", import.meta.url),
+      file: new URL(
+        "../../prototype-desarrollo-seguro/styles.css",
+        import.meta.url,
+      ),
       contentType: "text/css; charset=utf-8",
     },
   ],

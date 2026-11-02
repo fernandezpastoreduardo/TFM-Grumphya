@@ -25,7 +25,7 @@ Estado actualizado a 2 de noviembre de 2026. Este README y los documentos 1–9 
 
 El código de negocio, web, API, worker, migraciones y datos de Desarrollo Seguro tendrán nombres y carpetas propias. El único contacto con Grumphya será: un enlace/sello local en su footer, las rutas del proxy/Nginx, la instancia física de PostgreSQL, el Compose y la release compartida. No importar servicios de ideas, cuentas, planes, OpenAI, correo ni sesiones de Grumphya al núcleo de Desarrollo Seguro. No reutilizar credenciales de aplicación ni tablas de Grumphya. El recurso visual del sello no cargará dominios de terceros.
 
-La primera fase puede dejar la landing estática de prototype/ como introducción y montar la aplicación de consulta bajo /desarrollo-seguro/app/. La imagen S4 actual contiene «Aplicación certificada»; antes de mostrar un estado operativo, cambiarla por un sello local neutral o por un enlace textual. La ficha académica actual se preserva o se marca histórica y remite al informe operativo, sin mezclar fechas manuales con escaneos reales.
+La primera fase puede dejar la landing estática de `prototype-desarrollo-seguro/` como introducción y montar la aplicación de consulta bajo `/desarrollo-seguro/app/`. La imagen S4 actual contiene «Aplicación certificada»; antes de mostrar un estado operativo, cambiarla por un sello local neutral o por un enlace textual. La ficha académica actual se preserva o se marca histórica y remite al informe operativo, sin mezclar fechas manuales con escaneos reales.
 
 ## Qué cuenta como primera fase operativa completada
 

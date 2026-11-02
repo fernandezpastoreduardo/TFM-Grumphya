@@ -23,7 +23,7 @@ bundles JavaScript y CSS con nombre versionado
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
-El directorio raíz `prototype/` se copia desde la etapa `web-build` a
+El directorio raíz `prototype-desarrollo-seguro/` se copia desde la etapa `web-build` a
 `/usr/share/nginx/html/desarrollo-seguro/` en la imagen `web-production`.
 Nginx redirige `/desarrollo-seguro` con una cabecera `Location` relativa a la
 URL canónica con barra final (`/desarrollo-seguro/`), sin filtrar el esquema,
