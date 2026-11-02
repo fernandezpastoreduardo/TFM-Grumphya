@@ -31,7 +31,24 @@ El Dockerfile y la preparación de workspace actuales copian apps/api y apps/web
 
 ## Presupuesto de capacidad
 
-Antes de habilitar la búsqueda pública y el scheduler, medir en el VPS real CPU, memoria, swapping, espacio, latencia p95 y errores de Grumphya durante un periodo basal y durante escaneos representativos. El perfil inicial limita la navegación a **una ejecución simultánea**, con presupuestos de páginas, bytes, tiempo y procesos fijados en [scanner-safety.md](scanner-safety.md). Establecer límites de CPU/memoria/pids por contenedor y una reserva de capacidad para Grumphya y PostgreSQL. Luna deberá registrar cifras, método y umbrales concretos en el PR antes de activar el servicio; no inventar que 2 vCPU/4 GB sobran.
+Antes de habilitar la búsqueda pública y el scheduler, medir en el VPS real CPU, memoria, swapping, espacio, latencia p95 y errores de Grumphya durante un periodo basal y durante escaneos representativos. El perfil inicial limita la navegación a **una ejecución simultánea**, con presupuestos de páginas, bytes, tiempo y procesos fijados en [scanner-safety.md](scanner-safety.md). Establecer límites de CPU/memoria/pids por contenedor y una reserva de capacidad para Grumphya y PostgreSQL. El script de medición descrito abajo ayuda a recoger una parte de estas métricas; se deben registrar método y umbrales concretos en el PR antes de activar el servicio. No inventar que 2 vCPU/4 GB sobran.
+
+### Recolector de capacidad del VPS
+
+El script `apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-worker/scripts/measure-vps-capacity.mjs` recoge muestras de solo lectura del host Linux: load average, memoria disponible, swap total y usado, espacio disponible en `/`, número de CPU, y uso/PIDs de contenedores que informa `docker stats`. Resume percentiles y mínimos. La frecuencia de muestreo es configurable entre 5 y 60 segundos (por defecto, 10), y la duración entre 60 y 3600 segundos (por defecto, 300). Puede hacer, de forma opcional, un `GET` solo a `https://grumphya.com/api/health`; no sigue redirecciones y trata cualquier respuesta distinta de 200, incluidos los 3xx, como error. Resume número de solicitudes correctas/erróneas y p95 de latencia de las respuestas 200. El health GET no implementa DNS/IP pinning: si la resolución DNS estuviera comprometida podría alcanzar una dirección interna. Es un helper local de capacidad, no el futuro scanner controlado, y solo debe ejecutarse con controles de egress que impidan conexiones a redes internas. No ejecuta comandos que cambien configuración, no inicia contenedores, no encola ni inicia scans y no evalúa los resultados de seguridad. La opción `--label=controlled-scan` solo etiqueta la ventana observada; no inicia una prueba. La opción `--output` crea un archivo JSON nuevo con permisos de propietario y falla si ya existe.
+
+Este recolector todavía **no se ha ejecutado en el VPS**. Requiere Linux y acceso a Docker para obtener métricas de contenedor; el health check es opcional. El JSON contiene nombres de contenedores, métricas del host y estructura/configuración básica del entorno. El archivo creado con `--output` usa permisos `0600` y no sobrescribe archivos, pero sin esa opción el JSON se imprime por stdout y puede terminar en logs; no lo adjuntar a CI ni a logs públicos, y proteger también cualquier artefacto guardado. Tras autorización para medir capacidad, una línea base puede tomarse así desde la raíz del repositorio:
+
+```sh
+node apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-worker/scripts/measure-vps-capacity.mjs \
+  --label=baseline \
+  --duration-seconds=300 \
+  --interval-seconds=10 \
+  --health-url=https://grumphya.com/api/health \
+  --output=/tmp/ds-vps-capacity-baseline.json
+```
+
+Sin `--health-url`, no hace solicitudes de red. Usar `--label=controlled-scan` únicamente durante una prueba controlada que ya haya superado los gates de rúbrica, DNS/IP pinning, firewall/egress y capacidad. La ejecución real de esa prueba requiere autorización y el flujo operativo aprobado por separado; el recolector nunca la inicia. Revisar el JSON en almacenamiento con acceso controlado y consignar en el PR un resumen que no revele nombres de contenedores ni detalles innecesarios; adjuntar el artefacto solo si el destino tiene acceso restringido. El p95 del probe es solo la latencia del endpoint de salud, no la latencia p95 de usuarios en Grumphya; la evaluación de degradación y errores de la aplicación requiere métricas/monitorización complementarias.
 
 Puerta: cero OOM y swapping sostenido, sin incremento material de errores ni degradación de latencia p95 de Grumphya frente a la línea base acordada, y suficiente espacio para resultados/backups. Si falla, reducir el presupuesto o dejar la captura pública deshabilitada; la ficha dirá no evaluable o caducado. No degradar Grumphya para sostener un sello.
 
