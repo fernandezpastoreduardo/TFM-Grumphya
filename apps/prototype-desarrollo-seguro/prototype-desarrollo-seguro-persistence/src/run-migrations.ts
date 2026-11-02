@@ -10,6 +10,10 @@ const MIGRATIONS = [
     file: "003_guarded_worker_operations.sql",
   },
   { version: "004_scan_payload_guards", file: "004_scan_payload_guards.sql" },
+  {
+    version: "005_controls_v2_route_coverage",
+    file: "005_controls_v2_route_coverage.sql",
+  },
 ] as const;
 
 const MIGRATION_LOCK_ID = 728194032;

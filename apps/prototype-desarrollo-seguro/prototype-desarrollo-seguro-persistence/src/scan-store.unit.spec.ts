@@ -122,10 +122,52 @@ describe("PostgresScanStore unit behavior", () => {
     const store = new PostgresScanStore(makePool({ query }));
 
     await expect(
-      store.completeScan({ ...VALID_REPORT, profileVersion: "controls-v2" }),
+      store.completeScan({ ...VALID_REPORT, profileVersion: "controls-v3" }),
     ).rejects.toThrow("scan_profile_not_allowlisted");
     expect(query).not.toHaveBeenCalled();
   });
+
+  it("rejects incomplete controls-v2 coverage before writing to the database", async () => {
+    const query = vi.fn();
+    const store = new PostgresScanStore(makePool({ query }));
+
+    await expect(
+      store.completeScan({ ...VALID_REPORT, profileVersion: "controls-v2" }),
+    ).rejects.toThrow("scan_check_coverage_incomplete");
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { scope: ["/"], expectedCount: 10 },
+    { scope: ["/", "/precios"], expectedCount: 17 },
+    {
+      scope: ["/", "/precios", "/acreditaciones/DS-GRUMPHYA-2026-001"],
+      expectedCount: 24,
+    },
+  ])(
+    "submits exact controls-v2 coverage for $expectedCount checks",
+    async ({ scope, expectedCount }) => {
+      const query = vi.fn().mockResolvedValue({
+        rows: [{ ds_complete_scan: "run-id" }],
+      });
+      const store = new PostgresScanStore(makePool({ query }));
+
+      await expect(
+        store.completeScan({
+          ...VALID_REPORT,
+          profileVersion: "controls-v2",
+          verdict: "inconclusive",
+          scope,
+          checks: makeControlsV2Checks(scope),
+        }),
+      ).resolves.toBe("run-id");
+
+      const persistedChecks = JSON.parse(
+        query.mock.calls[0][1][7] as string,
+      ) as unknown[];
+      expect(persistedChecks).toHaveLength(expectedCount);
+    },
+  );
 
   it("rejects an out-of-scope path and method before writing to the database", async () => {
     const query = vi.fn();
@@ -305,3 +347,42 @@ describe("PostgresScanStore unit behavior", () => {
     } as unknown as Pool;
   }
 });
+
+function makeControlsV2Checks(scope: readonly string[]) {
+  const hostChecks = [
+    ["DS-DNS-01", "DNS"],
+    ["DS-TLS-01", "TLS"],
+    ["DS-TLS-02", "TLS"],
+  ] as const;
+  const routeChecks = [
+    ["DS-HTTP-01", "HEAD"],
+    ["DS-HTTP-01", "GET"],
+    ["DS-HDR-01", "GET"],
+    ["DS-PRIV-01", "GET"],
+    ["DS-PRIV-02", "GET"],
+    ["DS-PRIV-03", "GET"],
+    ["DS-QUAL-01", "GET"],
+  ] as const;
+  const commonCheck = VALID_REPORT.checks[0];
+
+  return [
+    ...hostChecks.map(([controlId, method]) => ({
+      ...commonCheck,
+      controlId,
+      status: "unknown" as const,
+      targetPath: "/",
+      method,
+      evidence: {},
+    })),
+    ...scope.flatMap((targetPath) =>
+      routeChecks.map(([controlId, method]) => ({
+        ...commonCheck,
+        controlId,
+        status: "unknown" as const,
+        targetPath,
+        method,
+        evidence: {},
+      })),
+    ),
+  ];
+}

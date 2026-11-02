@@ -3,6 +3,7 @@ import { ScanJobProcessor } from "./scan-job-processor.js";
 import {
   ScanLeaseLostError,
   type ClaimedScanJob,
+  type ScanCheck,
   type ScanJobStore,
   type ScanRunInput,
 } from "@grumphya/prototype-desarrollo-seguro-persistence";
@@ -96,6 +97,50 @@ describe("ScanJobProcessor", () => {
       "scan_scope_not_allowlisted",
     );
     expect(store.completeScan).not.toHaveBeenCalled();
+  });
+
+  it("does not persist controls-v2 results with incomplete route coverage", async () => {
+    const v2Job = { ...JOB, profileVersion: "controls-v2" };
+    const store = makeStore(v2Job);
+    const executor = { execute: vi.fn().mockResolvedValue(RESULT) };
+    const processor = new ScanJobProcessor(store, executor);
+
+    await expect(processor.processNext()).rejects.toThrow(
+      "scan_check_coverage_incomplete",
+    );
+    expect(store.completeScan).not.toHaveBeenCalled();
+  });
+
+  it("persists the complete controls-v2 check matrix", async () => {
+    const v2Job = { ...JOB, profileVersion: "controls-v2" };
+    const result = {
+      ...RESULT,
+      checks: makeControlsV2Checks(["/"]),
+    };
+    const store = makeStore(v2Job);
+    const executor = { execute: vi.fn().mockResolvedValue(result) };
+    const processor = new ScanJobProcessor(store, executor);
+
+    await expect(processor.processNext()).resolves.toBe("completed");
+    expect(store.completeScan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profileVersion: "controls-v2",
+        checks: expect.arrayContaining([
+          expect.objectContaining({
+            controlId: "DS-HTTP-01",
+            targetPath: "/",
+            method: "HEAD",
+          }),
+          expect.objectContaining({
+            controlId: "DS-HTTP-01",
+            targetPath: "/",
+            method: "GET",
+          }),
+        ]),
+      }),
+    );
+    const completed = vi.mocked(store.completeScan).mock.calls[0]?.[0];
+    expect(completed?.checks).toHaveLength(10);
   });
 
   it("validates the claimed hostname before invoking the executor", async () => {
@@ -200,3 +245,47 @@ describe("ScanJobProcessor", () => {
     };
   }
 });
+
+function makeControlsV2Checks(scope: readonly string[]): ScanCheck[] {
+  const hostChecks = [
+    ["DS-DNS-01", "DNS"],
+    ["DS-TLS-01", "TLS"],
+    ["DS-TLS-02", "TLS"],
+  ] as const;
+  const routeChecks = [
+    ["DS-HTTP-01", "HEAD"],
+    ["DS-HTTP-01", "GET"],
+    ["DS-HDR-01", "GET"],
+    ["DS-PRIV-01", "GET"],
+    ["DS-PRIV-02", "GET"],
+    ["DS-PRIV-03", "GET"],
+    ["DS-QUAL-01", "GET"],
+  ] as const;
+  const makeCheck = (
+    controlId: string,
+    targetPath: string,
+    method: string,
+  ): ScanCheck => ({
+    controlId,
+    status: "unknown",
+    required: true,
+    severity: "high",
+    observedAt: RESULT.completedAt,
+    targetPath,
+    method,
+    summary: "Test fixture",
+    limitation: "Test fixture",
+    evidence: {},
+  });
+
+  return [
+    ...hostChecks.map(([controlId, method]) =>
+      makeCheck(controlId, "/", method),
+    ),
+    ...scope.flatMap((targetPath) =>
+      routeChecks.map(([controlId, method]) =>
+        makeCheck(controlId, targetPath, method),
+      ),
+    ),
+  ];
+}

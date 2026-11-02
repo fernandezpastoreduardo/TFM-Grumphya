@@ -30,6 +30,11 @@ const CONTROLS_V1_IDS = [
   "DS-PRIV-03",
   "DS-QUAL-01",
 ] as const;
+const COMPLETE_GRUMPHYA_SCOPE = [
+  "/",
+  "/precios",
+  "/acreditaciones/DS-GRUMPHYA-2026-001",
+];
 
 const describePostgres = isSafePostgresTestTarget(
   ADMIN_DATABASE_URL,
@@ -158,6 +163,8 @@ describePostgres.sequential(
       const result = await targetAdminPool?.query<{
         database_owner: string;
         api_can_select: boolean;
+        api_can_mutate_profile_controls: boolean;
+        api_can_mutate_profile_check_rules: boolean;
         api_can_insert_jobs: boolean;
         api_can_write_reports: boolean;
         worker_can_update_state: boolean;
@@ -168,12 +175,22 @@ describePostgres.sequential(
         worker_can_execute_retention: boolean;
         worker_can_insert_reports: boolean;
         worker_can_delete_reports: boolean;
+        worker_can_mutate_profile_controls: boolean;
+        worker_can_mutate_profile_check_rules: boolean;
         reader_can_select: boolean;
         reader_can_insert: boolean;
       }>(
         `SELECT
          (SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = $1) AS database_owner,
          has_table_privilege('ds_api', 'ds_domains', 'SELECT') AS api_can_select,
+         (has_table_privilege('ds_api', 'public.ds_profile_controls', 'INSERT')
+           OR has_table_privilege('ds_api', 'public.ds_profile_controls', 'UPDATE')
+           OR has_table_privilege('ds_api', 'public.ds_profile_controls', 'DELETE')
+           OR has_table_privilege('ds_api', 'public.ds_profile_controls', 'TRUNCATE')) AS api_can_mutate_profile_controls,
+         (has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'INSERT')
+           OR has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'UPDATE')
+           OR has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'DELETE')
+           OR has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'TRUNCATE')) AS api_can_mutate_profile_check_rules,
          has_table_privilege('ds_api', 'ds_scan_jobs', 'INSERT') AS api_can_insert_jobs,
          has_table_privilege('ds_api', 'ds_scan_runs', 'INSERT') AS api_can_write_reports,
          has_column_privilege('ds_worker', 'ds_scan_jobs', 'state', 'UPDATE') AS worker_can_update_state,
@@ -184,6 +201,14 @@ describePostgres.sequential(
          has_function_privilege('ds_worker', 'public.ds_purge_expired_reports(timestamp with time zone)', 'EXECUTE') AS worker_can_execute_retention,
          has_table_privilege('ds_worker', 'ds_scan_runs', 'INSERT') AS worker_can_insert_reports,
          has_table_privilege('ds_worker', 'ds_scan_runs', 'DELETE') AS worker_can_delete_reports,
+         (has_table_privilege('ds_worker', 'public.ds_profile_controls', 'INSERT')
+           OR has_table_privilege('ds_worker', 'public.ds_profile_controls', 'UPDATE')
+           OR has_table_privilege('ds_worker', 'public.ds_profile_controls', 'DELETE')
+           OR has_table_privilege('ds_worker', 'public.ds_profile_controls', 'TRUNCATE')) AS worker_can_mutate_profile_controls,
+         (has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'INSERT')
+           OR has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'UPDATE')
+           OR has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'DELETE')
+           OR has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'TRUNCATE')) AS worker_can_mutate_profile_check_rules,
          has_table_privilege('ds_read', 'ds_scan_runs', 'SELECT') AS reader_can_select,
          has_table_privilege('ds_read', 'ds_scan_runs', 'INSERT') AS reader_can_insert`,
         [TEST_DATABASE_NAME],
@@ -192,6 +217,8 @@ describePostgres.sequential(
       expect(result?.rows[0]).toEqual({
         database_owner: "ds_migrator",
         api_can_select: true,
+        api_can_mutate_profile_controls: false,
+        api_can_mutate_profile_check_rules: false,
         api_can_insert_jobs: true,
         api_can_write_reports: false,
         worker_can_update_state: false,
@@ -202,6 +229,8 @@ describePostgres.sequential(
         worker_can_execute_retention: false,
         worker_can_insert_reports: false,
         worker_can_delete_reports: false,
+        worker_can_mutate_profile_controls: false,
+        worker_can_mutate_profile_check_rules: false,
         reader_can_select: true,
         reader_can_insert: false,
       });
@@ -253,7 +282,7 @@ describePostgres.sequential(
       const result = await targetAdminPool?.query(
         "SELECT count(*)::integer AS migration_count FROM public.ds_schema_migrations",
       );
-      expect(result?.rows[0].migration_count).toBe(4);
+      expect(result?.rows[0].migration_count).toBe(5);
     });
 
     it("lets the worker complete through the function but not insert reports directly", async () => {
@@ -365,6 +394,177 @@ describePostgres.sequential(
       }
     });
 
+    it("enforces complete controls-v2 route coverage for every verdict", async () => {
+      const job = await createRunningJob(
+        "v2-coverage",
+        false,
+        "controls-v2",
+        "grumphya.com",
+      );
+      const missingPassCheck = makeControlsV2Checks(
+        "pass",
+        COMPLETE_GRUMPHYA_SCOPE,
+      ).filter(
+        (check) =>
+          !(
+            check.controlId === "DS-HTTP-01" &&
+            check.targetPath === "/precios" &&
+            check.method === "GET"
+          ),
+      );
+      const missingInconclusiveCheck = makeControlsV2Checks(
+        "unknown",
+        COMPLETE_GRUMPHYA_SCOPE,
+      ).filter(
+        (check) =>
+          !(
+            check.controlId === "DS-QUAL-01" &&
+            check.targetPath === "/acreditaciones/DS-GRUMPHYA-2026-001"
+          ),
+      );
+      const client = await targetAdminPool!.connect();
+      try {
+        await client.query("SET ROLE ds_worker");
+        await expect(
+          callCompleteScan(
+            client,
+            job,
+            "pass",
+            missingPassCheck,
+            COMPLETE_GRUMPHYA_SCOPE,
+          ),
+        ).rejects.toThrow("scan_check_coverage_incomplete");
+        await expect(
+          callCompleteScan(
+            client,
+            job,
+            "inconclusive",
+            missingInconclusiveCheck,
+            COMPLETE_GRUMPHYA_SCOPE,
+          ),
+        ).rejects.toThrow("scan_check_coverage_incomplete");
+        const completeChecks = makeControlsV2Checks(
+          "pass",
+          COMPLETE_GRUMPHYA_SCOPE,
+        );
+        const report = await callCompleteScan(
+          client,
+          job,
+          "pass",
+          completeChecks,
+          COMPLETE_GRUMPHYA_SCOPE,
+        );
+        const storedCheckCount = await client.query<{ count: string }>(
+          "SELECT count(*)::text AS count FROM ds_check_results WHERE run_id = $1",
+          [report.id],
+        );
+        expect(storedCheckCount.rows[0]?.count).toBe("24");
+      } finally {
+        await client.query("RESET ROLE");
+        client.release();
+      }
+    });
+
+    it.each([
+      { scope: ["/"], expectedCount: 10 },
+      { scope: ["/", "/precios"], expectedCount: 17 },
+      { scope: COMPLETE_GRUMPHYA_SCOPE, expectedCount: 24 },
+    ])(
+      "accepts exactly $expectedCount controls-v2 rows for the declared scope",
+      async ({ scope, expectedCount }) => {
+        const job = await createRunningJob(
+          `v2-count-${expectedCount}`,
+          false,
+          "controls-v2",
+          scope.length === 1 ? undefined : "grumphya.com",
+        );
+        const checks = makeControlsV2Checks("unknown", scope);
+        const client = await targetAdminPool!.connect();
+        try {
+          await client.query("SET ROLE ds_worker");
+          const report = await callCompleteScan(
+            client,
+            job,
+            "inconclusive",
+            checks,
+            scope,
+          );
+          const storedCheckCount = await client.query<{ count: string }>(
+            "SELECT count(*)::text AS count FROM ds_check_results WHERE run_id = $1",
+            [report.id],
+          );
+          expect(storedCheckCount.rows[0]?.count).toBe(String(expectedCount));
+        } finally {
+          await client.query("RESET ROLE");
+          client.release();
+        }
+      },
+    );
+
+    it("rejects missing host-level controls-v2 checks on an inconclusive report", async () => {
+      const job = await createRunningJob(
+        "v2-host-coverage",
+        false,
+        "controls-v2",
+      );
+      const incompleteChecks = makeControlsV2Checks("unknown").filter(
+        (check) => check.controlId !== "DS-TLS-02",
+      );
+      const client = await targetAdminPool!.connect();
+      try {
+        await client.query("SET ROLE ds_worker");
+        await expect(
+          callCompleteScan(client, job, "inconclusive", incompleteChecks),
+        ).rejects.toThrow("scan_check_coverage_incomplete");
+      } finally {
+        await client.query("RESET ROLE");
+        client.release();
+      }
+    });
+
+    it.each([405, 501])(
+      "stores unsupported HTTPS HEAD status %s as unknown with complete v2 coverage",
+      async (statusCode) => {
+        const job = await createRunningJob(
+          `v2-head-unsupported-${statusCode}`,
+          false,
+          "controls-v2",
+        );
+        const checks = makeControlsV2Checks("unknown").map((check) => {
+          if (check.controlId !== "DS-HTTP-01" || check.method !== "HEAD") {
+            return check;
+          }
+          return {
+            ...check,
+            evidence: {
+              statusCode,
+              redirectedToHttps: true,
+              finalScheme: "https",
+            },
+          };
+        });
+        const client = await targetAdminPool!.connect();
+        try {
+          await client.query("SET ROLE ds_worker");
+          const report = await callCompleteScan(
+            client,
+            job,
+            "inconclusive",
+            checks,
+          );
+          const storedHead = await client.query<{ status: string }>(
+            `SELECT status FROM ds_check_results
+           WHERE run_id = $1 AND control_id = 'DS-HTTP-01' AND method = 'HEAD'`,
+            [report.id],
+          );
+          expect(storedHead.rows[0]?.status).toBe("unknown");
+        } finally {
+          await client.query("RESET ROLE");
+          client.release();
+        }
+      },
+    );
+
     it("rejects completion when the worker lease has expired", async () => {
       const job = await createRunningJob("expired", true);
       const client = await targetAdminPool!.connect();
@@ -397,16 +597,19 @@ describePostgres.sequential(
       suffix: string,
       expired = false,
       profileVersion = "controls-v1",
+      hostnameOverride?: string,
     ): Promise<{
       id: string;
       leaseToken: string;
       hostname: string;
       profileVersion: string;
     }> {
-      const hostname = `function-${suffix}-${randomUUID()}.example.net`;
+      const hostname =
+        hostnameOverride ?? `function-${suffix}-${randomUUID()}.example.net`;
       await targetAdminPool!.query(
         `INSERT INTO ds_domains(hostname, enrollment, profile_version)
-         VALUES($1, 'on_demand', $2)`,
+         VALUES($1, 'on_demand', $2)
+         ON CONFLICT(hostname) DO NOTHING`,
         [hostname, profileVersion],
       );
       const result = await targetAdminPool!.query<{
@@ -433,9 +636,10 @@ describePostgres.sequential(
 
     async function callCompleteScan(
       client: PoolClient,
-      job: { id: string; leaseToken: string },
+      job: { id: string; leaseToken: string; profileVersion?: string },
       verdict: "pass" | "inconclusive",
       checks: readonly ScanCheck[] = [makeCheck("DS-HTTP-01", "unknown")],
+      scope: readonly string[] = ["/"],
     ): Promise<{ id: string }> {
       const completedAt = new Date();
       const startedAt = new Date(completedAt.getTime() - 1000);
@@ -450,22 +654,32 @@ describePostgres.sequential(
           "scanner-test-version",
           startedAt,
           verdict,
-          JSON.stringify(["/"]),
+          JSON.stringify(scope),
           JSON.stringify(
-            checks.map((check) => ({ ...check, observedAt: completedAt })),
+            checks.map((check) => ({
+              ...check,
+              limitation: `Resultado limitado a las rutas públicas declaradas del perfil ${job.profileVersion ?? "controls-v1"}.`,
+              observedAt: completedAt,
+            })),
           ),
           JSON.stringify({
             requestsCount: 1,
             bytesCount: 0,
             durationMs: 1,
-            pagesCount: 1,
+            pagesCount: scope.length,
           }),
         ],
       );
       return { id: result.rows[0].id };
     }
 
-    function makeCheck(controlId: string, status: "pass" | "unknown" = "pass") {
+    function makeCheck(
+      controlId: string,
+      status: "pass" | "unknown" = "pass",
+      targetPath = "/",
+      method?: string,
+      profileVersion = "controls-v1",
+    ) {
       const methodByControl: Record<string, string> = {
         "DS-DNS-01": "DNS",
         "DS-TLS-01": "TLS",
@@ -483,13 +697,42 @@ describePostgres.sequential(
         required: true,
         severity: "high",
         observedAt: new Date(),
-        targetPath: "/",
-        method: methodByControl[controlId] ?? "GET",
+        targetPath,
+        method: method ?? methodByControl[controlId] ?? "GET",
         summary: `Comprobación ${controlId}: ${status}.`,
-        limitation:
-          "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+        limitation: `Resultado limitado a las rutas públicas declaradas del perfil ${profileVersion}.`,
         evidence: status === "pass" ? passingEvidence(controlId) : {},
       };
+    }
+
+    function makeControlsV2Checks(
+      status: "pass" | "unknown",
+      scope: readonly string[] = ["/"],
+    ): ScanCheck[] {
+      const hostChecks = [
+        ["DS-DNS-01", "DNS"],
+        ["DS-TLS-01", "TLS"],
+        ["DS-TLS-02", "TLS"],
+      ] as const;
+      const routeChecks = [
+        ["DS-HTTP-01", "HEAD"],
+        ["DS-HTTP-01", "GET"],
+        ["DS-HDR-01", "GET"],
+        ["DS-PRIV-01", "GET"],
+        ["DS-PRIV-02", "GET"],
+        ["DS-PRIV-03", "GET"],
+        ["DS-QUAL-01", "GET"],
+      ] as const;
+      return [
+        ...hostChecks.map(([controlId, method]) =>
+          makeCheck(controlId, status, "/", method, "controls-v2"),
+        ),
+        ...scope.flatMap((targetPath) =>
+          routeChecks.map(([controlId, method]) =>
+            makeCheck(controlId, status, targetPath, method, "controls-v2"),
+          ),
+        ),
+      ];
     }
 
     function passingEvidence(controlId: string): Record<string, unknown> {

@@ -1,6 +1,8 @@
 import { normalizeHostname } from "./scan-policy.js";
 
-const PROFILE_VERSION = "controls-v1";
+const PROFILE_VERSION_V1 = "controls-v1";
+const PROFILE_VERSION_V2 = "controls-v2";
+type ProfileVersion = typeof PROFILE_VERSION_V1 | typeof PROFILE_VERSION_V2;
 const MAX_SCOPE_PATHS = 3;
 const MAX_CHECKS = 32;
 const MAX_EVIDENCE_COUNT = 100_000;
@@ -125,7 +127,7 @@ export function sanitizeScanObservations(
   checks: unknown,
 ): SanitizedScanObservations {
   const safeHostname = normalizeHostname(hostname);
-  if (profileVersion !== PROFILE_VERSION) {
+  if (!isProfileVersion(profileVersion)) {
     throw new Error("scan_profile_not_allowlisted");
   }
 
@@ -140,7 +142,9 @@ export function sanitizeScanObservations(
     throw new Error("scan_checks_required");
   }
 
-  const safeChecks = checks.map((check) => sanitizeCheck(check, safeScope));
+  const safeChecks = checks.map((check) =>
+    sanitizeCheck(check, safeScope, profileVersion),
+  );
   const controlPaths = new Set(
     safeChecks.map(
       (check) => `${check.controlId}:${check.targetPath}:${check.method}`,
@@ -149,8 +153,46 @@ export function sanitizeScanObservations(
   if (controlPaths.size !== safeChecks.length) {
     throw new Error("scan_check_duplicate");
   }
+  if (profileVersion === PROFILE_VERSION_V2) {
+    assertCompleteCoverage(safeScope, safeChecks);
+  }
 
   return { scope: safeScope, checks: safeChecks };
+}
+
+function isProfileVersion(value: unknown): value is ProfileVersion {
+  return value === PROFILE_VERSION_V1 || value === PROFILE_VERSION_V2;
+}
+
+function assertCompleteCoverage(
+  scope: readonly string[],
+  checks: readonly SanitizedScanCheck[],
+): void {
+  const expectedCoverage = new Set<string>();
+  for (const [controlId, contract] of Object.entries(CONTROLS)) {
+    for (const targetPath of scope) {
+      const methods = contract.methodsByPath[targetPath] ?? [];
+      for (const method of methods) {
+        expectedCoverage.add(coverageKey(controlId, targetPath, method));
+      }
+    }
+  }
+
+  const submittedCoverage = new Set(
+    checks.map((check) =>
+      coverageKey(check.controlId, check.targetPath, check.method),
+    ),
+  );
+  if (
+    expectedCoverage.size !== submittedCoverage.size ||
+    [...expectedCoverage].some((key) => !submittedCoverage.has(key))
+  ) {
+    throw new Error("scan_check_coverage_incomplete");
+  }
+}
+
+function coverageKey(controlId: string, targetPath: string, method: string) {
+  return `${controlId}:${targetPath}:${method}`;
 }
 
 function sanitizeScope(
@@ -175,6 +217,7 @@ function sanitizeScope(
 function sanitizeCheck(
   check: unknown,
   scope: readonly string[],
+  profileVersion: ProfileVersion,
 ): SanitizedScanCheck {
   if (!isPlainRecord(check)) throw new Error("scan_check_invalid");
 
@@ -211,7 +254,13 @@ function sanitizeCheck(
   ) {
     throw new Error("scan_destination_not_public");
   }
-  const status = deriveSafeStatus(controlId, String(check.status), evidence);
+  const status = deriveSafeStatus(
+    profileVersion,
+    controlId,
+    method,
+    String(check.status),
+    evidence,
+  );
 
   return {
     controlId,
@@ -222,17 +271,28 @@ function sanitizeCheck(
     targetPath,
     method,
     summary: `Comprobación ${controlId}: ${status}.`,
-    limitation:
-      "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+    limitation: `Resultado limitado a las rutas públicas declaradas del perfil ${profileVersion}.`,
     evidence,
   };
 }
 
 function deriveSafeStatus(
+  profileVersion: ProfileVersion,
   controlId: string,
+  method: string,
   submittedStatus: string,
   evidence: Record<string, SafeEvidenceValue>,
 ): SanitizedScanCheck["status"] {
+  if (
+    profileVersion === PROFILE_VERSION_V2 &&
+    controlId === "DS-HTTP-01" &&
+    method === "HEAD" &&
+    [405, 501].includes(Number(evidence.statusCode)) &&
+    evidence.redirectedToHttps === true &&
+    evidence.finalScheme === "https"
+  ) {
+    return "unknown";
+  }
   if (submittedStatus === "not_applicable") return "unknown";
   if (submittedStatus !== "pass") {
     return submittedStatus as SanitizedScanCheck["status"];

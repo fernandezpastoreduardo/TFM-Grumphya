@@ -3,6 +3,8 @@ import { sanitizeScanObservations } from "./scan-ingestion-policy.js";
 
 const ALLOWED_PATHS = ["/", "/precios", "/acreditaciones/DS-GRUMPHYA-2026-001"];
 const MONITORED_HOSTNAME = "grumphya.com";
+const NEXT_PROFILE_VERSION = "controls-v2";
+const OBSERVED_AT = "2026-11-02T10:00:00.000Z";
 
 const SAFE_DNS_CHECK = {
   controlId: "DS-DNS-01",
@@ -24,6 +26,89 @@ const SAFE_DNS_CHECK = {
 };
 
 describe("sanitizeScanObservations", () => {
+  it("requires complete control, route, and method coverage for controls-v2", () => {
+    const checks = makeControlsV2Checks(["/", "/precios"]).filter(
+      (check) =>
+        !(
+          check.controlId === "DS-HTTP-01" &&
+          check.targetPath === "/precios" &&
+          check.method === "HEAD"
+        ),
+    );
+
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        NEXT_PROFILE_VERSION,
+        ["/", "/precios"],
+        checks,
+      ),
+    ).toThrow("scan_check_coverage_incomplete");
+  });
+
+  it("accepts complete controls-v2 coverage for all declared routes", () => {
+    const result = sanitizeScanObservations(
+      MONITORED_HOSTNAME,
+      NEXT_PROFILE_VERSION,
+      ALLOWED_PATHS,
+      makeControlsV2Checks(ALLOWED_PATHS),
+    );
+
+    expect(result.checks).toHaveLength(24);
+    expect(
+      result.checks.filter((check) => check.controlId === "DS-HTTP-01"),
+    ).toHaveLength(6);
+  });
+
+  it.each([
+    { scope: ["/"], expectedCount: 10 },
+    { scope: ["/", "/precios"], expectedCount: 17 },
+    { scope: ALLOWED_PATHS, expectedCount: 24 },
+  ])(
+    "requires the exact v2 check count for scope $scope",
+    ({ scope, expectedCount }) => {
+      const result = sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        NEXT_PROFILE_VERSION,
+        scope,
+        makeControlsV2Checks(scope),
+      );
+
+      expect(result.checks).toHaveLength(expectedCount);
+    },
+  );
+
+  it.each([405, 501])(
+    "treats unsupported HEAD status %s as unknown in controls-v2",
+    (statusCode) => {
+      const checks = makeControlsV2Checks(["/"]).map((check) => {
+        if (check.controlId !== "DS-HTTP-01" || check.method !== "HEAD") {
+          return check;
+        }
+        return {
+          ...check,
+          status: "pass",
+          evidence: {
+            statusCode,
+            redirectedToHttps: true,
+            finalScheme: "https",
+          },
+        };
+      });
+      const result = sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        NEXT_PROFILE_VERSION,
+        ["/"],
+        checks,
+      );
+
+      const headCheck = result.checks.find(
+        (check) => check.controlId === "DS-HTTP-01" && check.method === "HEAD",
+      );
+      expect(headCheck?.status).toBe("unknown");
+    },
+  );
+
   it("keeps only allowlisted scope and structured evidence, replacing free text", () => {
     const result = sanitizeScanObservations(
       MONITORED_HOSTNAME,
@@ -107,7 +192,7 @@ describe("sanitizeScanObservations", () => {
     expect(() =>
       sanitizeScanObservations(
         MONITORED_HOSTNAME,
-        "controls-v2",
+        "controls-v3",
         ALLOWED_PATHS,
         [SAFE_DNS_CHECK],
       ),
@@ -486,3 +571,51 @@ describe("sanitizeScanObservations", () => {
     ).toThrow("scan_scope_not_allowlisted");
   });
 });
+
+function makeControlsV2Checks(scope: readonly string[]) {
+  const hostChecks = [
+    { controlId: "DS-DNS-01", method: "DNS" },
+    { controlId: "DS-TLS-01", method: "TLS" },
+    { controlId: "DS-TLS-02", method: "TLS" },
+  ];
+  const routeChecks = [
+    { controlId: "DS-HTTP-01", methods: ["HEAD", "GET"] },
+    { controlId: "DS-HDR-01", methods: ["GET"] },
+    { controlId: "DS-PRIV-01", methods: ["GET"] },
+    { controlId: "DS-PRIV-02", methods: ["GET"] },
+    { controlId: "DS-PRIV-03", methods: ["GET"] },
+    { controlId: "DS-QUAL-01", methods: ["GET"] },
+  ];
+
+  return [
+    ...hostChecks.map((check) =>
+      makeUnknownCheck(check.controlId, "/", check.method),
+    ),
+    ...scope.flatMap((targetPath) =>
+      routeChecks.flatMap(({ controlId, methods }) =>
+        methods.map((method) =>
+          makeUnknownCheck(controlId, targetPath, method),
+        ),
+      ),
+    ),
+  ];
+}
+
+function makeUnknownCheck(
+  controlId: string,
+  targetPath: string,
+  method: string,
+) {
+  return {
+    controlId,
+    status: "unknown",
+    required: true,
+    severity: "high",
+    observedAt: OBSERVED_AT,
+    targetPath,
+    method,
+    summary: "ignored summary",
+    limitation: "ignored limitation",
+    evidence: {},
+  };
+}
