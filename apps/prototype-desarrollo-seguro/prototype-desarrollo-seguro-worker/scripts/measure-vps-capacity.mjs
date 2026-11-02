@@ -468,7 +468,7 @@ async function collectSample(healthUrl) {
   };
 }
 
-function summarizeHealth(samples) {
+export function summarizeHealth(samples) {
   const healthSamples = samples
     .map((sample) => sample.health)
     .filter((health) => health !== null);

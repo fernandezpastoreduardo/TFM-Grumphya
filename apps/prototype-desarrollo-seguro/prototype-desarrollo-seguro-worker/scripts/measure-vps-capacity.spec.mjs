@@ -5,6 +5,7 @@ import {
   parseLinuxLoadAverage,
   parseLinuxMemory,
   probeHealth,
+  summarizeHealth,
   summarizeSamples,
   validateHealthUrl,
 } from "./measure-vps-capacity.mjs";
@@ -117,6 +118,41 @@ describe("VPS capacity measurement helpers", () => {
       probeHealth("https://127.0.0.1/api/health", fetchImplementation),
     ).rejects.toThrow("capacity_health_url_invalid");
     expect(fetchImplementation).not.toHaveBeenCalled();
+  });
+
+  it("summarizes health successes, errors and nearest-rank success latency p95", () => {
+    expect(
+      summarizeHealth([
+        { health: { ok: true, statusCode: 200, latencyMs: 10 } },
+        { health: { ok: false, statusCode: 503, latencyMs: 2_000 } },
+        { health: null },
+        { health: { ok: true, statusCode: 200, latencyMs: 20 } },
+        { health: { ok: true, statusCode: 200, latencyMs: 30 } },
+      ]),
+    ).toEqual({
+      requestCount: 4,
+      successCount: 3,
+      errorCount: 1,
+      latencyP95Ms: 30,
+    });
+  });
+
+  it("returns null latency p95 when all configured health probes fail", () => {
+    expect(
+      summarizeHealth([
+        { health: { ok: false, statusCode: 503, latencyMs: 2_000 } },
+        { health: { ok: false, statusCode: null, latencyMs: 1_000 } },
+      ]),
+    ).toEqual({
+      requestCount: 2,
+      successCount: 0,
+      errorCount: 2,
+      latencyP95Ms: null,
+    });
+  });
+
+  it("returns null when health probing is disabled for every sample", () => {
+    expect(summarizeHealth([{ health: null }, { health: null }])).toBeNull();
   });
 
   it("parses available, total memory and swap from procfs", () => {
