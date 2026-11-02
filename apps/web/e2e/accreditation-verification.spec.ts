@@ -174,6 +174,65 @@ test("secure-development prototype uses no third parties or cookies", async ({
   ).toHaveAttribute("content", /script-src 'none'/);
 });
 
+test("prototype explains the operational report without presenting a scan result", async ({
+  page,
+}) => {
+  await page.goto("/desarrollo-seguro/");
+
+  const reportSection = page.locator("#estado");
+  await expect(
+    page.getByRole("link", { name: /estado del verificador/i }),
+  ).toHaveAttribute("href", "#estado");
+  await expect(
+    page.getByRole("heading", { name: /sin informes operativos/i }),
+  ).toBeVisible();
+  await expect(reportSection).toContainText(/no se han realizado escaneos/i);
+  await expect(
+    reportSection.getByRole("heading", { name: /aún no está activo/i }),
+  ).toBeVisible();
+
+  const readinessRows = reportSection.locator(".status-row");
+  await expect(
+    reportSection.getByRole("list", { name: "Preparación del proyecto" }),
+  ).toBeVisible();
+  await expect(readinessRows).toHaveCount(4);
+  await expect(readinessRows.nth(0)).toContainText("Listo en local");
+  await expect(readinessRows.nth(1)).toContainText("Listo en local");
+  await expect(readinessRows.nth(2)).toContainText("Pendiente");
+  await expect(readinessRows.nth(3)).toContainText("Pendiente");
+
+  const reportFields = reportSection.locator(".report-fields");
+  await expect(reportFields.locator("dd").nth(0)).toHaveText(
+    "El sitio solicitado",
+  );
+  await expect(reportFields.locator("dd").nth(1)).toHaveText(
+    "/ · /precios · /acreditaciones/DS-GRUMPHYA-2026-001",
+  );
+  await expect(reportFields.locator("dt").nth(1)).toHaveText("Rutas previstas");
+  await expect(reportFields.locator("dd").nth(2)).toContainText("VPS");
+
+  const reportDetails = page.locator("details.report-details");
+  await expect(reportDetails).toHaveAttribute("open", "");
+  await expect(reportDetails).toContainText("grumphya.com");
+  await expect(reportDetails).toContainText(
+    "no desde una entidad independiente",
+  );
+
+  const reportSummary = reportDetails.locator("summary");
+  await expect(reportSummary).toHaveText(/qué incluirá un informe/i);
+  await reportSummary.focus();
+  await reportSummary.press("Enter");
+  await expect(reportDetails).not.toHaveAttribute("open", "");
+  await reportSummary.press("Enter");
+  await expect(reportDetails).toHaveAttribute("open", "");
+  await expect(reportSection).toContainText(/medido desde el VPS/i);
+
+  await page.setViewportSize({ width: 320, height: 844 });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(320);
+});
+
 test("returns 404 for unknown secure-development prototype subpaths", async ({
   request,
 }) => {

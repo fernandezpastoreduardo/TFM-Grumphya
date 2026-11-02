@@ -41,7 +41,10 @@
           <a href="#enfoque">Enfoque</a>
           <a href="#practicas">Prácticas</a>
           <a href="#caso">Caso Grumphya</a>
-          <a class="nav-cta" href="#sello"
+          <a class="nav-cta" href="#estado"
+            >Estado del verificador <span aria-hidden="true">↘</span></a
+          >
+          <a class="nav-link-seal" href="#sello"
             >Consultar sello <span aria-hidden="true">↘</span></a
           >
           <label class="theme-toggle">
@@ -72,8 +75,8 @@
             respalda cada práctica, qué queda fuera y cuándo se comprobó. Sin
             sellos mágicos. Ya hay suficientes en internet.
           </p>
-          <a class="button button-primary" href="#practicas"
-            >Ver qué revisamos <span aria-hidden="true">↓</span></a
+          <a class="button button-primary" href="#estado"
+            >Ver estado y alcance <span aria-hidden="true">↓</span></a
           >
           <p class="academic-note">
             <strong>Prototipo académico ficticio.</strong> Sin certificación
@@ -122,6 +125,123 @@
           </p>
           <span class="asterisk" aria-hidden="true">✳</span>
         </div>
+      </section>
+
+      <section
+        class="verification-status section-shell"
+        id="estado"
+        aria-labelledby="status-title"
+      >
+        <div class="status-heading">
+          <p class="eyebrow">Estado actual · 2 de noviembre de 2026</p>
+          <h2 id="status-title">Sin informes operativos disponibles.</h2>
+          <p>
+            El verificador todavía no consulta sitios ni genera resultados. Lo
+            que sigue es una vista honesta de su preparación y de la información
+            que recibirá una persona cuando pueda solicitar una revisión real.
+          </p>
+        </div>
+        <div class="status-dashboard">
+          <article class="status-summary" aria-label="Estado del servicio">
+            <span class="status-indicator" aria-hidden="true">—</span>
+            <div>
+              <p class="card-kicker">SERVICIO DE VERIFICACIÓN</p>
+              <h3>Aún no está activo</h3>
+              <p>
+                No se han realizado escaneos ni se ha medido ningún dominio.
+              </p>
+            </div>
+          </article>
+          <ul class="status-checklist" aria-label="Preparación del proyecto">
+            <li class="status-row">
+              <span class="status-mark ready" aria-hidden="true">✓</span>
+              <span
+                ><strong>Contratos y persistencia</strong
+                ><small>Implementados y probados en entorno local</small></span
+              >
+              <span class="status-label">Listo en local</span>
+            </li>
+            <li class="status-row">
+              <span class="status-mark ready" aria-hidden="true">✓</span>
+              <span
+                ><strong>Admisión y validación de evidencias</strong
+                ><small
+                  >Rechaza entradas y observaciones fuera del contrato</small
+                ></span
+              >
+              <span class="status-label">Listo en local</span>
+            </li>
+            <li class="status-row">
+              <span class="status-mark waiting" aria-hidden="true">…</span>
+              <span
+                ><strong>Conexión segura y aislamiento de salida</strong
+                ><small
+                  >Faltan executor, firewall de salida probado y medición del
+                  VPS</small
+                ></span
+              >
+              <span class="status-label pending">Pendiente</span>
+            </li>
+            <li class="status-row">
+              <span class="status-mark waiting" aria-hidden="true">…</span>
+              <span
+                ><strong>Consulta e informes para usuarios</strong
+                ><small
+                  >La API disponible solo informa de salud interna</small
+                ></span
+              >
+              <span class="status-label pending">Pendiente</span>
+            </li>
+          </ul>
+        </div>
+        <div class="report-preview">
+          <div class="report-preview-copy">
+            <p class="eyebrow">Cuando esté operativo</p>
+            <h3>Un informe que enseña qué se comprobó.</h3>
+            <p>
+              Cada resultado tendrá alcance, fecha, evidencia resumida y
+              limitaciones. Si algo no se pudo comprobar, aparecerá como «no
+              evaluable»; nunca como aprobado.
+            </p>
+          </div>
+          <dl class="report-fields">
+            <div>
+              <dt>Dominio</dt>
+              <dd>El sitio solicitado</dd>
+            </div>
+            <div>
+              <dt>Rutas previstas</dt>
+              <dd>/ · /precios · /acreditaciones/DS-GRUMPHYA-2026-001</dd>
+            </div>
+            <div>
+              <dt>Origen de la medición</dt>
+              <dd>VPS de Grumphya, visible en el informe</dd>
+            </div>
+            <div>
+              <dt>Resultado</dt>
+              <dd>Aprobado, no superado o no evaluable, con evidencias</dd>
+            </div>
+          </dl>
+        </div>
+        <details class="report-details" open>
+          <summary>Qué incluirá un informe y qué falta para ofrecerlo</summary>
+          <div class="report-details-body">
+            <p>
+              El alcance previsto para grumphya.com se limita a la portada, la
+              página de precios y la ficha pública del sello. El informe
+              indicará las rutas consultadas y que fue medido desde el VPS de
+              Grumphya, no desde una entidad independiente.
+            </p>
+            <p>
+              Antes de activar consultas faltan pruebas de que cada conexión
+              queda fijada a una IP pública validada, que el VPS bloquea
+              destinos internos y terceros, y que la carga no degrada Grumphya.
+              Tampoco está conectada la interfaz de búsqueda. Por eso esta
+              página no muestra fechas de medición, puntuaciones ni resultados
+              ficticios.
+            </p>
+          </div>
+        </details>
       </section>
 
       <section
