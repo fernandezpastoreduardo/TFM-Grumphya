@@ -8,6 +8,12 @@ El worker rechaza hostname inválido/no canónico antes de llamar al puerto exec
 
 La rutina de retención de 90 días está instalada y su ejecución está autorizada para `ds_migrator`; API y worker no tienen ese permiso. La limpieza aún no tiene tarea programada: su invocación queda reservada al migrator bajo operación controlada hasta definir y probar el mantenimiento automático.
 
+## Auditoría de egress del VPS (solo lectura, 2 de noviembre de 2026)
+
+Se revisaron en modo lectura el firewall local de Linux/Docker y el estado de las redes Docker. No se cambiaron configuraciones ni reglas, no se enviaron probes, no se probó conectividad y no se ejecutaron scans. La revisión local **no demuestra que exista una barrera de egress efectiva para Desarrollo Seguro**. No se inspeccionó el firewall del proveedor/cloud ni se evaluó la ruta de red efectiva.
+
+El gate de firewall/egress sigue bloqueado hasta validar reglas efectivas de salida para IPv4 e IPv6, incluida la denegación de redes internas y destinos de terceros. Esta auditoría de estado no verifica el tráfico real ni habilita el executor, probes o scans.
+
 ## Topología y límites actuales
 
 La primera fase vive en el **mismo VPS y origen https://grumphya.com**, con el mismo repositorio y la misma release. Caddy sigue siendo el único proceso que publica 80/443. La aplicación Desarrollo Seguro se aísla por componentes, rutas, secretos, usuario y base lógica de PostgreSQL, y límites de recursos; no dispone de independencia física ni de una perspectiva de red externa al VPS. El informe público debe declarar esa perspectiva.
