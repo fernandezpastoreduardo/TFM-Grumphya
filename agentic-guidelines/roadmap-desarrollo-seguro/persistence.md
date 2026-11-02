@@ -1,62 +1,29 @@
-# Persistencia de la fase inicial
+# Persistencia y ejecución horaria
 
-## Decisión
+## Frontera de datos
 
-Usar PostgreSQL ya existente en TFM-Grumphya, con tablas prefijadas ds_ y repositorio aislado en el módulo de Desarrollo Seguro. Esta decisión es temporal para el prototipo: no crea base, volumen, usuario ni hosting independientes. El modelo evita claves foráneas a usuarios, ideas, sesiones y planes de Grumphya para que los datos puedan exportarse en una fase futura.
+Usar una **base lógica desarrollo_seguro y roles propios dentro de la instancia PostgreSQL existente**. Se comparte proceso, almacenamiento físico, TLS y VPS; no se comparten tablas, usuario de runtime, migrador ni credenciales de Grumphya. API y worker emplean pools pequeños y roles de mínimo privilegio. Las migraciones de Desarrollo Seguro viven en su app y se ejecutan como job de la misma release. La provisión de base/roles para un volumen ya existente es una tarea administrativa idempotente y auditada, no un script de initdb que solo funcionaría al crear el volumen. No hay claves foráneas a cuentas, ideas o sesiones de Grumphya.
 
-Las tablas de esta fase guardan **casos y evidencias internas**, no ejecuciones de escaneo. No crear aún scan_runs, scan_jobs ni una cola vacía. El plan estratégico describe esas entidades para otro incremento.
+## Tablas lógicas
 
-## Esquema lógico
+| Tabla            | Campos principales                                                                                                                               | Invariantes                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| ds_domains       | hostname canónico PK, enrollment, scope_version, opted_out_at, created_at                                                                        | Un hostname por dominio; monitored solo por alta del operador/titular. Buscar no cambia enrollment.      |
+| ds_scan_jobs     | UUID PK, hostname FK, profile_version, trigger, state, queued_at, available_at, lease_until, attempts, finished_at, public_error_code            | Un solo job activo por hostname + perfil mediante índice parcial; lease permite recuperar worker muerto. |
+| ds_scan_runs     | UUID PK, job_id único, hostname FK, profile_version, scanner_version, vantage, started_at, completed_at, expires_at, verdict, scope_json acotado | Resultado confirmado inmutable; expires_at calculado desde completed_at.                                 |
+| ds_check_results | run_id FK, control_id, status, required, severity, observed_at, target_path, method, summary, limitation, evidence_json redactado                | Un control/objetivo por run; no duplicados ni datos crudos.                                              |
+| ds_scan_metrics  | run_id FK, requests_count, bytes_count, duration_ms, pages_count                                                                                 | Datos agregados para coste y límites, sin IP de visitantes.                                              |
 
-### ds_cases
+El nombre concreto de tablas puede adaptarse al estilo SQL del proyecto, pero las invariantes y separación permanecen. Guardar profile_version como texto inmutable del catálogo, no un puntero mutable a reglas actuales. El caso académico histórico permanece en la API/almacenamiento Grumphya hasta que se retire con migración propia; no se copia como ejecución del escáner.
 
-| Columna                              | Tipo sugerido        | Regla                                                                                                                            |
-| ------------------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| id                                   | texto, PK            | ID público DS-GRUMPHYA-2026-001; patrón actual.                                                                                  |
-| issuer, application                  | texto no nulo        | «Desarrollo Seguro», «Grumphya» en el caso inicial.                                                                              |
-| status                               | texto no nulo        | CHECK demonstration, suspended, revoked, expired; unknown se proyecta ante estado no reconocido, no se persiste deliberadamente. |
-| issued_at, validated_at, expires_at  | timestamptz nullable | Conservar fechas históricas exactas del registro actual; no DEFAULT now.                                                         |
-| validation_method, scope, disclaimer | texto no nulo        | Copy público acotado.                                                                                                            |
-| created_at, updated_at               | timestamptz no nulo  | Auditoría de la fila; no confundir con fecha de observación.                                                                     |
+## Cola y single flight
 
-### ds_case_domains
+El endpoint y el scheduler llaman al mismo EnsureFreshScan en una transacción. Primero consultan el último run completo del perfil vigente. Si completed_at está dentro de los últimos 60 minutos, devuelven caché. Si no, intentan insertar un job activo; la restricción única resuelve carreras entre clics, búsquedas y scheduler. El worker reclama trabajos con bloqueo de fila tipo FOR UPDATE SKIP LOCKED, asigna lease corto y heartbeat. Al caducar el lease, otro worker puede recuperar; la finalización inserta run/checks y marca job completed en una única transacción. Repetir el cierre con el mismo job no duplica runs.
 
-| Columna          | Tipo sugerido | Regla                                           |
-| ---------------- | ------------- | ----------------------------------------------- |
-| case_id          | FK a ds_cases | Borrado restringido.                            |
-| canonical_domain | texto         | Minúsculas/IDNA; unique global en fase inicial. |
-| ordinal          | entero        | Orden de presentación.                          |
+El scheduler consulta solo dominios monitored y calcula due_at a partir del último resultado completo y del último intento; limita reintentos ante fallos para no generar una tormenta horaria. Un fallo del propio worker puede reintentarse con backoff acotado; una respuesta de rechazo del dominio se registra como inconclusive y espera a la siguiente ventana. La hora de publicación no depende de cron exacto: después de 60 minutos sin resultado completo el informe ya es stale aunque el job se retrase.
 
-La presencia de un dominio en esta tabla solo significa «incluido en esta ficha». No afirmar que DNS TXT o /.well-known hayan probado titularidad. Un caso puede tener varios dominios declarados, pero la búsqueda de cada uno conduce al mismo ID.
+## Retención y borrado
 
-### ds_criteria
+Por defecto, conservar informes y checks públicos 90 días para trazabilidad; datos de jobs fallidos/diagnósticos operativos 7 días; métricas agregadas 90 días. No guardar HTML, capturas, cuerpos de respuesta, valores de Cookie/Set-Cookie, parámetros de consulta, tokens ni IP de visitantes. El host consultado se guarda solo si el scan fue admitido; una búsqueda sin scan no crea fila. Permitir opt-out administrativo y purga de diagnósticos on_demand conforme a política documentada; una petición de exclusión no borra la evidencia de un incidente operativo que deba conservarse por obligación concreta. Revisar estos plazos antes de producción.
 
-case_id, ordinal y texto de criterio; clave única (case_id, ordinal). Conserva la lista actual en orden. Evita guardar una cadena JSON opaca que dificulte evolución y revisión.
-
-### ds_assurances
-
-| Columna                                           | Tipo sugerido        | Regla                                                               |
-| ------------------------------------------------- | -------------------- | ------------------------------------------------------------------- |
-| case_id, assurance_id                             | FK + ID local        | PK compuesta; conservar privacy, first-party, transport y delivery. |
-| ordinal, title, description, evidence, limitation | enteros/texto        | Copy actual sin ampliar afirmaciones automáticamente.               |
-| method                                            | texto                | internal_test, internal_review o descriptive.                       |
-| evidence_state                                    | texto                | verified_internal, documented_unverified u outdated.                |
-| observed_at                                       | timestamptz nullable | Solo fecha de comprobación real de esa afirmación.                  |
-| source_ref, version_ref                           | texto nullable       | Referencia interna segura; SHA cuando exista.                       |
-
-No introducir PII, cookies, IP, cuerpos de páginas, cabeceras completas, tokens o contenido de formularios. Los títulos y resúmenes de evidencia deben poder mostrarse públicamente.
-
-## Migración de la única ficha
-
-1. Luna comprueba el número de migración más alto de main; cuando se redactó este documento era 036. Crea la siguiente migración libre y la registra en apps/api/src/infrastructure/database/run-migrations.ts, siguiendo el patrón del proyecto.
-2. La migración crea las tablas y siembra el registro DS-GRUMPHYA-2026-001 con sus fechas, textos y dominios actuales. No recalcula fechas ni transforma demonstration en un estado de aprobación.
-3. Los nuevos campos de trazabilidad se siembran de forma conservadora: observed_at y version_ref null cuando no haya prueba exacta; evidence_state documented_unverified cuando el alcance de la afirmación exceda la prueba identificada. Una revisión posterior, con prueba real y SHA conocido, puede añadir una migración de datos o un procedimiento administrativo auditado.
-4. GetAccreditation lee el repositorio y construye explícitamente el DTO público. No se conserva la constante hardcoded como fallback silencioso: si PostgreSQL falla, responder error temporal y ocultar el sello.
-5. La migración se prueba sobre base vacía y base con datos existentes. Una segunda ejecución no duplica casos, dominios ni evidencias. El registro existente devuelve los mismos campos y valores históricos antes de añadir los nuevos campos.
-6. El despliegue respeta el flujo actual de backup, migración y smoke. No borrar tablas ni volúmenes de Grumphya.
-
-## Consulta y actualización
-
-Índice único de ds_case_domains.canonical_domain para búsqueda. Índices por case_id en tablas hijas; ordenar siempre por ordinal. Consultas públicas solo SELECT. No endpoint público de creación, edición o borrado. Para corregir evidencia, usar una migración de datos revisada o un procedimiento administrativo explícito que deje rastro de quién cambió qué; no actualizar por cada GET.
-
-La fase futura podrá exportar estas cuatro tablas a otra base, junto con un mapa de IDs y versiones. Las futuras ejecuciones automáticas irán en tablas nuevas con historial inmutable y expiración, sin convertir updated_at del caso en «última verificación».
+Backups: pg_dump de desarrollo_seguro verificable y restauración aislada. Aunque el dump sea separado, el volumen y el fallo físico de PostgreSQL siguen compartidos con Grumphya. El release debe probar que migraciones y rollback de código no corrompen datos existentes.

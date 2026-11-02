@@ -1,113 +1,85 @@
 # Desarrollo Seguro: plan de producto y arquitectura
 
-**Fecha:** 2 de noviembre de 2026. **Estado:** propuesta para valorar; no se ha adquirido `desarrolloseguro.com` ni se ha desplegado este servicio.
+**Fecha:** 2 de noviembre de 2026. **Estado:** diseño de la primera fase operativa dentro de TFM-Grumphya. No se ha adquirido desarrolloseguro.com ni se ha desplegado el nuevo escáner.
 
-## 1. Decisión propuesta
+## 1. Decisión de alcance
 
-**Alcance vigente de la fase inicial (2 de noviembre de 2026):** esta carpeta se desarrollará primero como prototipo académico dentro de TFM-Grumphya, sin dominio ni hosting propios. La búsqueda solo consulta casos registrados; la ficha presenta evidencias internas trazables y mantiene el estado `demonstration`. No se activa todavía un escáner remoto, programador horario ni una afirmación de vigencia. [README de ejecución](README.md), [features](features.md) y [execution](execution.md) concretan ese trabajo.
+La primera fase operativa **sí incluye escaneo real**: grumphya.com inscrito y observado cada hora, y cualquier dominio público admisible consultado bajo demanda desde un buscador. Clic en el sello y búsqueda usan el mismo caché de 60 minutos y el mismo trabajo en cola. La aplicación, API, worker, sonda y datos se separan lógicamente de Grumphya, pero comparten **VPS, dominio grumphya.com, repositorio, Compose/CI y release manual**. [README.md](README.md) define el alcance ejecutable; [execution.md](execution.md) lo ordena para Luna.
 
-La visión posterior es construir un motor que compruebe dominios públicos cada hora y permita consultas bajo demanda. Después se podrá extraer a un repositorio, base de datos, contenedores y despliegue propios en `desarrolloseguro.com`, compartiendo únicamente el VPS y el proxy HTTPS de entrada. Las secciones 3 a 6 describen ese **diseño futuro**; no son instrucciones para activar escaneo en la fase inicial.
+El sello y el informe se presentan como **«verificación técnica automatizada de superficies públicas»**. La fuente observable será el propio VPS de Grumphya, identificada como same_vps. No usar «certificación oficial», «auditoría independiente», «cumple RGPD», «sin vulnerabilidades» ni «estándares más altos» como veredicto global. [OWASP ASVS](https://asvs.owasp.org/) incluye controles internos que una sonda pública no puede verificar; [Mozilla Observatory](https://developer.mozilla.org/en-US/observatory/docs/faq) también limita la interpretación de su puntuación. La futura perspectiva de red independiente y la revisión de controles internos se planificarán por separado.
 
-Cuando exista el escáner externo, el resultado público deberá denominarse **«verificación externa periódica»** y mostrar exactamente qué se observó, cuándo y en qué páginas. «Certificado seguro», «cumple RGPD» o «sin vulnerabilidades» serían afirmaciones que un escaneo externo no puede sostener. [OWASP ASVS 5.0](https://asvs.owasp.org/) abarca controles internos, y [Mozilla Observatory](https://developer.mozilla.org/en-US/observatory/docs/faq) advierte que incluso su máxima nota no prueba seguridad completa.
+## 2. Punto de partida y evolución
 
-## 2. Punto de partida comprobado
+Hoy existe una landing HTML/CSS en prototype/ servida bajo /desarrollo-seguro/, un sello en el footer de Grumphya, y una ficha React en /acreditaciones/DS-GRUMPHYA-2026-001 respaldada por GET /api/accreditations/:id. El registro antiguo está fijado en código con estado demonstration; no constituye un escaneo. La primera entrega lo conserva como demostración histórica o lo remite al informe operativo, sin mezclar fechas ni estados.
 
-Este proyecto corresponde al repositorio [TFM-Grumphya](https://github.com/fernandezpastoreduardo/TFM-Grumphya). Allí hay un [prototipo HTML/CSS bajo `/desarrollo-seguro/`](https://github.com/fernandezpastoreduardo/TFM-Grumphya/blob/main/doc/desarrollo-seguro.md), un sello en el pie de Grumphya y una ficha React en `/acreditaciones/DS-GRUMPHYA-2026-001`. La ficha consulta `GET /api/accreditations/DS-GRUMPHYA-2026-001`; el registro está [fijado en código con estado `demonstration`](https://github.com/fernandezpastoreduardo/TFM-Grumphya/blob/main/apps/api/src/verify-accreditation/get-accreditation.service.ts). No existen hoy escaneo, buscador de dominios, caducidad horaria ni persistencia de resultados.
+El stack principal es React/Vite, NestJS/TypeScript, PostgreSQL, pnpm, Vitest/Playwright y Docker. Caddy ya ocupa 80/443 en el VPS. La aplicación DS operativa encaja bajo /desarrollo-seguro/app/ y /api/desarrollo-seguro/v1/, con procesos y base lógica propios dentro de la misma infraestructura. Véanse [components.md](components.md), [persistence.md](persistence.md) y [operations.md](operations.md).
 
-La aplicación usa React/Vite, NestJS/TypeScript, PostgreSQL, pnpm, Vitest, Playwright y Docker. Su [Compose de producción](https://github.com/fernandezpastoreduardo/TFM-Grumphya/blob/main/compose.production.yaml) ya incluye Caddy en 80/443. La futura aplicación deberá integrarse en ese proxy por nombre de dominio; no podrá publicar otro 80/443 en el mismo host.
+## 3. Contrato público y alcance de la afirmación
 
-## 3. Contrato público de verificación futura
+| Estado                                   | Condición pública                                                                                                                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vigente: cumple controles observables v1 | Escaneo completo del perfil vigente terminado hace menos de 60 minutos, muestra declarada y todos los controles obligatorios aplicables aprobados. |
+| Vigente: no cumple                       | Escaneo completo reciente con al menos un obligatorio fallido.                                                                                     |
+| No evaluable                             | Fallo de red, cobertura insuficiente, control obligatorio unknown o ejecución incompleta.                                                          |
+| En curso                                 | Existe trabajo compartido; el último resultado, si lo hay, aparece histórico y fechado.                                                            |
+| Caducado                                 | No hay escaneo completo vigente; ningún aprobado anterior sigue activo.                                                                            |
+| Demostración                             | Datos académicos anteriores, separados del informe operativo.                                                                                      |
 
-Los estados de esta sección solo podrán publicarse cuando exista un escaneo externo real con las garantías descritas. En la fase inicial, el caso de Grumphya permanece en `demonstration`; se conservan los estados de retirada y se sigue [DTOs.md](DTOs.md).
+El informe guarda dominio, perfil y motor versionados, inicio/fin/expiración UTC, origen de la solicitud, fuente same_vps, muestra, controles y evidencia mínima redactada. Cada control tiene URL/ruta, método, estado pass/fail/unknown/not_applicable y límite de interpretación. El historial es inmutable. Un perfil nuevo invalida el caché sin recalificar resultados antiguos. La UI explica que la observación es periódica y que los intervalos entre escaneos no están vigilados.
 
-| Estado                                       | Significado público                                                                                                    |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Vigente: cumple controles observables v1** | Último escaneo completo, perfil v1, hace menos de 60 minutos, todos los controles obligatorios evaluables y aprobados. |
-| **Vigente: no cumple**                       | Escaneo completo reciente con al menos un control obligatorio fallido.                                                 |
-| **No evaluable**                             | Error de red, bloqueo, cobertura insuficiente o control obligatorio sin evidencia; nunca equivale a aprobado.          |
-| **En curso**                                 | Se ha iniciado un escaneo; se ve el último resultado, fechado y claramente etiquetado como histórico.                  |
-| **Caducado**                                 | No existe escaneo completo válido en los últimos 60 minutos; se retira la afirmación de vigencia.                      |
-| **Demostración**                             | Datos simulados del TFM; no confundir con una verificación real.                                                       |
+Una búsqueda pública entrega un **diagnóstico puntual**, no implica que el titular avale el servicio. La monitorización horaria y un eventual sello para otros dominios exigen alta y prueba de control DNS TXT o /.well-known/ sin script. grumphya.com será el primer caso dado de alta. La titularidad y el veredicto son hechos distintos.
 
-Cada ejecución guarda `domain`, `profile_version`, `started_at`, `completed_at`, `expires_at`, resultado, lista de controles y versión del motor. Cada control conserva identificador, URL/host y método probados, evidencia mínima redactada, resultado `pass/fail/unknown/not_applicable`, severidad y límite de interpretación. El historial es inmutable; un cambio de reglas crea otra versión de perfil y no recalifica retrospectivamente resultados viejos. La ficha muestra hora UTC y hora local, antigüedad, alcance y causas concretas. No promedia resultados desconocidos como aprobados.
+## 4. Perfil de observación v1
 
-**Titularidad:** buscar cualquier dominio público genera un **diagnóstico abierto**, nunca un aval del titular. Para publicar el sello en un sitio se exige alta y prueba de control del dominio mediante DNS TXT o archivo `/.well-known/` sin JavaScript. `grumphya.com` puede ser el primer dominio dado de alta. La titularidad y la conformidad son hechos distintos.
+La muestra de grumphya.com se fija y publica: portada HTTPS y hasta dos rutas públicas relevantes. La búsqueda de un dominio ajeno se limita inicialmente a la portada. Solo se usan GET/HEAD, DNS, TLS y un navegador limpio y efímero sin consentimiento. No hay credenciales, formularios, fuzzing ni exploración de áreas privadas. [controls-and-evidence.md](controls-and-evidence.md) detalla cada control y su evidencia.
 
-## 4. Controles del perfil v1 futuro
+| Bloque                | Observación v1                                                                                                     | Límite                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Transporte            | DNS público, certificado TLS, HTTPS/redirección, ausencia de downgrade y mixed content en la muestra.              | No demuestra la seguridad de todos los clientes y rutas.                                                                       |
+| Seguridad web         | HSTS, CSP, anti-embed, nosniff, política de referente y atributos de cookies cuando aparezcan.                     | No prueba autorización, inyección ni gestión interna de secretos.                                                              |
+| Privacidad observable | Solicitudes a terceros, cookies y almacenamiento en un contexto limpio; intentos externos detectados y bloqueados. | No equivale a una revisión legal de tratamientos o políticas.                                                                  |
+| Calidad básica        | Disponibilidad, recursos esenciales y comprobaciones automáticas de accesibilidad/enlaces de la muestra.           | La automatización no certifica WCAG; [W3C](https://www.w3.org/WAI/test-evaluate/tools/selecting/) exige evaluación más amplia. |
 
-La fase inicial documenta evidencias internas según [controls-and-evidence.md](controls-and-evidence.md); no ejecuta este perfil contra Internet.
+Los indicadores no decisorios (security.txt, CAA/DNSSEC, rendimiento de laboratorio y tendencias) se distinguen del sello. Un hallazgo dudoso se marca unknown, se revisa y se explica; no se baja la regla para fabricar un pass. La [guía de cookies de AEPD](https://www.aepd.es/documento/guia-cookies.pdf) orienta la revisión, pero la afirmación jurídica necesita estudio propio.
 
-La muestra inicial se fija por dominio: página principal HTTPS, rutas públicas principales declaradas por el titular y, cuando sea razonable, una ruta de autenticación pública. Cada ficha enumera esas rutas. No se rastrea todo el sitio ni se accede a sesiones privadas.
+## 5. Mecánica horaria y experiencia
 
-| Bloque                    | Controles horarios obligatorios                                                                                                                                                                                        | Qué demuestra y qué no                                                                                                                                                                                    |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Transporte**            | DNS público resoluble; HTTPS con certificado válido para el host; redirección HTTP→HTTPS sin degradación; TLS bajo un perfil versionado; recursos de la muestra sin HTTP inseguro.                                     | Configuración observada desde el escáner en ese momento; no prueba todos los trayectos o clientes.                                                                                                        |
-| **Seguridad web**         | HSTS; CSP con reglas aplicables; protección frente a embebido; `X-Content-Type-Options`; política de referente; atributos `Secure`, `HttpOnly` y `SameSite` de cookies propias cuando procedan.                        | Cabeceras y cookies observadas; no prueba autorización, inyección, almacenamiento de contraseñas ni ausencia de vulnerabilidades.                                                                         |
-| **Privacidad observable** | Navegador limpio, sin consentimiento; registrar solicitudes a terceros y almacenamiento/cookies en las rutas muestreadas. Perfil estricto: ninguna solicitud a terceros ni cookie de terceros antes de consentimiento. | «No se observaron terceros en la muestra», nunca «no hay terceros en todo el producto». Las solicitudes detectadas se bloquean después de registrarse para no contactar a esos terceros desde el escáner. |
-| **Calidad básica**        | Disponibilidad y respuesta correcta de páginas muestreadas; recursos esenciales sin error; comprobaciones automáticas de accesibilidad y enlaces principales.                                                          | Observación sintética; no representa experiencia real de usuarios ni conformidad WCAG completa.                                                                                                           |
+1. El scheduler solicita cada 60 minutos un nuevo trabajo para grumphya.com inscrito/verificado, según completed_at del último resultado completo. No programa dominios buscados una sola vez.
+2. Al hacer clic en el sello o enviar una búsqueda, la API devuelve el informe completo del perfil vigente si tiene menos de 60 minutos. En otro caso, admite un trabajo único por dominio+perfil y responde 202 mientras se ejecuta.
+3. La web muestra el estado en curso y consulta el trabajo. Si falla o caduca, conserva el último informe solo como histórico y muestra no evaluable/caducado. Nunca prolonga un aprobado.
+4. El cálculo se hace en servidor con reloj UTC. Cambiar perfil invalida frescura anterior. El resultado declara exactamente las URLs evaluadas.
+5. El sello en Grumphya es enlace e imagen local neutral, sin JS, iframe, recurso tercero ni cookie. Cargar Grumphya no inicia una consulta al escáner; el clic sí. El informe y la búsqueda están bajo el mismo origen y tienen su información de privacidad operativa.
 
-Indicadores adicionales, **sin decidir el sello v1**: `security.txt`, DNS CAA/DNSSEC si aplican, rendimiento de laboratorio y tendencias, y más pruebas automáticas de accesibilidad. Mantenerlos separados evita convertir configuraciones opcionales o mediciones ruidosas en una falsa garantía. La [W3C](https://www.w3.org/WAI/test-evaluate/tools/selecting/) explica que las herramientas automáticas no determinan por sí solas la accesibilidad. La guía de la [AEPD](https://www.aepd.es/documento/guia-cookies.pdf) sirve para orientar la revisión de cookies, pero la conformidad legal requiere análisis del tratamiento real.
+Un escaneo externo de bajo impacto envía peticiones HTTP normales y puede quedar en logs del sitio objetivo. No es un análisis puramente pasivo. Para grumphya.com, la sonda se ejecuta desde el mismo VPS; incluso si llega al IP público, no ofrece independencia de red.
 
-Un nivel futuro, sujeto a consentimiento y revisión humana, podrá recibir evidencias del titular sobre OWASP ASVS, dependencias, control de acceso, backups, procesos de privacidad y accesibilidad. Esas evidencias llevarán fecha, autor y método de revisión; no se mezclarán con los controles horarios externos.
-
-## 5. Mecánica horaria futura y experiencia del sello
-
-Esta mecánica se implementará después del incremento inicial. La búsqueda de la primera fase nunca encola trabajos ni muestra un resultado horario.
-
-1. El planificador encola un nuevo escaneo de cada dominio **registrado y verificado** cuando se cumplen 60 minutos desde el último resultado completo. La consulta de cualquier dominio público también puede iniciar uno, con cuota y límites de uso.
-2. Al abrir el sello o buscar un dominio, si hay un resultado completo del perfil vigente con menos de 60 minutos, se devuelve ese resultado sin volver a escanear. Si no lo hay, se encola inmediatamente un escaneo; solicitudes simultáneas comparten el mismo trabajo.
-3. La página muestra «escaneando» y actualiza el resultado al terminar. Si el trabajo tarda más que una petición web, la API devuelve `202` y la página consulta su estado. Si falla, queda «no evaluable» o «caducado», con el último resultado histórico fechado; jamás se mantiene un aprobado vigente por una caída del escáner.
-4. El contador de 60 minutos se calcula desde `completed_at` del último escaneo válido. Un cambio de versión del perfil invalida el caché anterior. Las horas de ejecución y expiración se guardan en UTC.
-5. La periodicidad es una **observación cada hora**, no vigilancia continua. El informe explica el intervalo entre mediciones.
-
-Para la fase futura, el sello en Grumphya será un **SVG local y un enlace HTML normal** a `https://desarrolloseguro.com/d/grumphya.com`, con `rel="noreferrer noopener"` y `referrerpolicy="no-referrer"`. Texto recomendado: «Consultar verificación externa». No se insertan imagen, iframe, script, píxel, fuente ni `preconnect` servidos desde Desarrollo Seguro. Así, cargar Grumphya no causa petición alguna a ese tercero; el visitante solo contacta el nuevo sitio cuando decide abrirlo. Desarrollo Seguro tendrá su propia información de privacidad y registros mínimos. Se debe revisar el texto vigente de la política de Grumphya antes de afirmar que no requiere actualización jurídica.
-
-## 6. Arquitectura futura y seguridad del escáner
-
-El worker, el planificador, la cola y la protección de red quedan diferidos. La fase inicial usa el backend y PostgreSQL existentes de Grumphya, sin conexiones hacia dominios buscados.
+## 6. Arquitectura y protección
 
 ```text
-Grumphya: SVG y enlace local ── clic ──> Desarrollo Seguro (web)
-                                             │
-                                   API de consulta / búsqueda
-                                             │
-                                       PostgreSQL propio
-                                             │
-                                    cola + planificador
-                                             │
-                                  worker aislado de escaneo
-                                             │ GET/HEAD, DNS, TLS,
-                                             │ navegador efímero
-                                             └──> sitios públicos
+Sello local / buscador DS ──> Caddy + Nginx / DS web
+                                      │
+                                  DS API
+                                      │
+                     base lógica DS en PostgreSQL compartido
+                                      │
+                             cola + scheduler + worker
+                                      │
+                              probe efímero sin secretos
+                                      │
+                        conector de salida + egress filtrado
+                                      │
+                              dominios públicos 80/443
 ```
 
-**Motor:** aceptar solo un hostname normalizado (IDNA); no aceptar URLs arbitrarias, IP literales, credenciales, puertos, fragmentos ni rutas proporcionadas por visitantes. Resolver A/AAAA y bloquear direcciones no públicas, loopback, red privada, enlace local, multicast y metadatos. Conectar a la IP validada conservando Host/SNI, y volver a validar cada redirección, reintento y resolución para impedir DNS rebinding. Solo 80/443 y `GET`/`HEAD`; sin formularios, credenciales, fuzzing, payloads, fuerza bruta, búsquedas de rutas ocultas ni ZAP activo. Añadir protección de salida por red, límites de redirecciones, bytes, tiempo, URLs, tasa por IP/dominio y concurrencia. Respetar `robots.txt` para el rastreo de rutas y ofrecer identificación y contacto del escáner. Es un escaneo **externo de bajo impacto**, no puramente pasivo: las solicitudes HTTP sí llegan al sitio y generan sus logs habituales. [OWASP SSRF](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html) · [RFC 9110](https://datatracker.ietf.org/doc/html/rfc9110) · [RFC 9309](https://datatracker.ietf.org/doc/html/rfc9309)
+Aceptar solo hostnames normalizados, validar DNS A/AAAA y el destino de cada conexión/redirección, fijar IP manteniendo Host/SNI, y bloquear rangos internos, metadata, puertos no autorizados y rebinding. El conector y el firewall deben funcionar como capas independientes. Limitar tiempo, bytes, páginas, redirecciones, tasa y concurrencia; respetar robots para rutas; identificar el agente. [scanner-safety.md](scanner-safety.md) fija el modelo de amenazas y pruebas. La infraestructura compartida requiere prueba real de capacidad antes de publicar búsquedas arbitrarias. Un fallo de esta puerta impide la apertura pública del escáner.
 
-**Procesos:** web React/Vite y API NestJS; planificador y worker TypeScript en procesos/contenedores separados; PostgreSQL 17 para resultados y cola transaccional con lease, deduplicación por dominio+perfil y recuperación de trabajos interrumpidos. No hace falta pgvector ni IA para los controles v1. Guardar solo fragmentos de evidencia necesarios, sin cuerpo completo de páginas ni datos personales obtenidos accidentalmente. Establecer retención y borrado de diagnósticos públicos; logs de acceso con IP truncada o retención corta según necesidad operativa.
+## 7. Entregas y fase independiente posterior
 
-**Mismo VPS:** un solo Caddy publica 80/443 y enruta ambos nombres; cada aplicación conserva su red, secretos, usuario de base, volúmenes, backups y despliegue. El worker no recibe Docker socket ni acceso a la red de Grumphya o del host; solo alcanza su propia cola/base y los destinos públicos permitidos. Darle límites de CPU, memoria y procesos y solo una navegación concurrente inicial. En un VPS de 2 vCPU/4 GB, medir memoria, CPU y latencia de Grumphya bajo carga antes de activar el navegador horario. Si no cabe con margen, reducir dominios admitidos o mover el worker fuera del VPS: el requisito de mismo VPS queda condicionado por esa prueba. [Caddy HTTPS](https://caddyserver.com/docs/automatic-https) · [Docker resource constraints](https://docs.docker.com/engine/containers/resource_constraints/)
+| Fase                           | Entrega                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0. Contrato y seguridad        | Perfil versionado, estados, amenazas, fixtures, límites y presupuesto de capacidad.                                                                                                                                                                                                                           |
+| 1. Núcleo operativo compartido | Componentes DS, base lógica/roles propios, sonda segura, API, web, sello, caché/cola/scheduler horario para grumphya.com, tests y observabilidad.                                                                                                                                                             |
+| 2. Activación gradual          | Escaneos reales y varios ciclos horarios, revisión de falsos positivos, carga del VPS, smoke, backup/restore y publicación bajo workflow manual vigente.                                                                                                                                                      |
+| 3. Proyecto independiente      | Cuando exista dominio y decisión de inversión: repo, despliegue, contenedor(es), persistencia/backup propios, nuevo hostname en Caddy y migración de informes si conviene. Obtener una sonda en otro emplazamiento si se quiere afirmar independencia de red; otro dominio en el mismo VPS no la proporciona. |
+| 4. Garantía ampliada opcional  | Evidencias internas voluntarias, revisión humana ASVS/WCAG/privacidad, apelaciones y renovación.                                                                                                                                                                                                              |
 
-## 7. Bundle de trabajo por fases
-
-| Fase y entrega                                | Componentes / criterio de aceptación                                                                                                                                                                                                                    |           Esfuerzo orientativo* |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------: |
-| **0. Contrato verificable**                   | Perfil v1 versionado, matriz de controles, alcance de páginas, estados, método de titularidad, modelo de datos y amenaza SSRF documentados.                                                                                                             |                    2–4 jornadas |
-| **1. Prototipo académico inicial**            | Mantener `demonstration`; búsqueda sin red de casos conocidos, persistencia y evidencia interna trazable, UI accesible, contratos y tests. Sin motor remoto ni horario. Véase [execution.md](execution.md).                                             | Esfuerzo a medir al implementar |
-| **2. Escaneo externo posterior**              | Motor de red seguro, scheduler horario, caché, estados vigentes, controles observables, revisión de falsos positivos y prueba de capacidad. Requiere nueva decisión de alcance.                                                                         |             Estimar tras fase 1 |
-| **3. Proyecto independiente futuro**          | Extraer código sin reescribir el motor; repo y CI/CD propios; web/API/worker/DB/volúmenes/backups independientes; nuevo dominio y Caddy por hostname; migrar historial si aporta valor; cambiar enlace del sello y retirar o redirigir la demo antigua. |                   8–15 jornadas |
-| **4. Programa de garantía ampliada opcional** | Prueba de titularidad a escala, evidencias internas voluntarias, revisión humana ASVS/WCAG/privacidad, procedimiento de apelación y renovación.                                                                                                         |           Se presupuesta aparte |
-
-\*Rangos históricos de planificación para una persona familiarizada con el stack; **no son un presupuesto cerrado**. El alcance inicial se ha reducido respecto de la propuesta original: no contiene escáner real. El dominio, capacidad adicional, almacenamiento de backups y revisión especializada son costes futuros no contratados. Antes de las fases 2 y 3 hay que medir el margen real del VPS y, para la fase 3, verificar disponibilidad/precio del dominio.
-
-## 8. TDD y pruebas del escáner futuro
-
-Esta lista corresponde a las fases 2 y 3; las pruebas obligatorias de la fase inicial están en [test-plan.md](test-plan.md).
-
-- Reloj inyectable: resultado con 59:59 min se reutiliza; a 60:00 se genera un solo trabajo; cambio de perfil invalida el caché; solicitudes concurrentes no duplican escaneos.
-- Fallo crítico → `no cumple`; control obligatorio desconocido → `no evaluable`; timeout o worker caído → aprobado anterior caducado y nunca presentado como vigente.
-- DNS privado, IPv6 interna, redirección a `localhost`, metadata y DNS rebinding se rechazan antes de conectar; los límites de bytes y tiempo detienen respuestas maliciosas.
-- Navegador limpio: registrar intento de petición externa, cookie de tercero, HTTP mixto y cookies propias inseguras en fixtures de prueba; no cargar scripts de terceros reales durante la suite.
-- Integración con PostgreSQL: leases, reintentos, recuperación tras reinicio, historial inmutable y versión de reglas. E2E de búsqueda, ficha, enlace de sello y estados de carga/error.
-- Despliegue: ambos dominios responden con certificados correctos; API/DB/worker no tienen puertos públicos; reiniciar o desplegar Desarrollo Seguro no altera datos ni disponibilidad de Grumphya; restaurar backup de la base nueva en aislamiento.
-
-**Puerta futura para continuar a fase 3:** resultados reales estables durante al menos varios ciclos horarios, carga aceptable en el VPS, interpretación de hallazgos revisada y texto del sello aprobado como descripción fiel del alcance.
+No hay presupuesto cerrado hasta medir capacidad, coste del dominio e infraestructura futura. El plan de pruebas de la fase 1 está en [test-plan.md](test-plan.md). El despliegue productivo sigue siendo manual y requiere la aprobación del workflow actual; este plan documental no lo ejecuta.

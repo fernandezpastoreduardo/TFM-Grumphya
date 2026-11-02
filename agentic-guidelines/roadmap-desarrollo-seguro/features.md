@@ -1,49 +1,43 @@
-# Features de la fase inicial
+# Features de la primera fase operativa
 
-## F0. Preservar la verdad pública
+## F0. Separación e identidad honesta
 
-**Historia.** Como visitante quiero entender que el sello es una demostración académica y qué parte del caso se ha revisado realmente.
+Como visitante, quiero reconocer que Desarrollo Seguro pertenece al mismo proyecto académico y saber desde dónde se realizó la medición. El informe muestra proveedor de observación «worker del VPS de Grumphya», versión del perfil, fecha UTC y rutas cubiertas. No usa «certificación independiente» ni «cumple RGPD». El sello de Grumphya es local y neutral: «Consultar verificación técnica», sin imagen con texto de certificación. Se mantienen enlaces antiguos como ficha académica histórica o redirección clara al informe.
 
-**Trabajo.** Mantener la etiqueta demonstration, los límites y la comparación del dominio autorizado. Evitar que la nueva búsqueda convierta una ficha de revisión interna en una «verificación externa». Reutilizar la imagen del sello solo con el texto aclaratorio y la condición de hostname ya existentes. La frase «Aplicación certificada» incrustada en el WebP sigue requiriendo una aclaración visible; no ampliar su uso para otros dominios.
+**Aceptación:** cargar Grumphya no solicita recursos a Desarrollo Seguro como tercero; al estar en el mismo origen solo hay navegación voluntaria. Ningún resultado simulado o fecha manual aparece como escaneo operativo.
 
-**Aceptación.** En /, /precios, /desarrollo-seguro/ y /acreditaciones/DS-GRUMPHYA-2026-001 se ve «Demostración académica» o «Prototipo académico» junto a cualquier imagen de sello. Un fallo del registro no muestra imagen ni afirma vigencia. La ficha enumera método, fecha y límites de cada evidencia.
+## F1. Registro de dominios y búsqueda pública
 
-## F1. Buscar un dominio sin escanearlo
+grumphya.com es el primer dominio inscrito, configurado explícitamente por el operador y con muestra fija: /, /precios y una ruta pública de la ficha. Los dominios inscritos se escanean cada hora. El buscador acepta un hostname público normalizado, sin URL, IP, puerto ni ruta introducida por el visitante. Un dominio no inscrito puede solicitar un diagnóstico puntual de su página principal, con límites globales, por dominio y por IP; no queda inscrito ni recibe sello. Los resultados existentes pueden consultarse aunque el propietario no haya reclamado el dominio, con el alcance y la procedencia indicados. Ofrecer mecanismo administrativo de exclusión/opt-out y no publicar diagnósticos de un dominio excluido.
 
-**Historia.** Como visitante introduzco un dominio para encontrar una ficha disponible.
+**Aceptación:** una búsqueda nueva no crea alta horaria; entradas inválidas se rechazan antes de DNS; el endpoint no admite URL arbitraria. Un dominio inscrito y otro no inscrito reciben alcance diferente y copy distinto.
 
-**Entrada.** Un hostname, no una URL. El formulario acepta teclado y envío, tiene etiqueta visible e indica ejemplos. Se normaliza a ASCII/IDNA y minúsculas, se retira un punto final si existe y se validan longitud y etiquetas. No aceptar protocolo, ruta, consulta, puerto, usuario, IP literal ni espacios. El servidor vuelve a validar; el cliente solo ayuda a corregir.
+## F2. Escaneo público de bajo impacto
 
-**Salida.** grumphya.com resuelve al caso DS-GRUMPHYA-2026-001. Cualquier dominio público sintácticamente válido sin caso muestra «Aún no hay evaluación para este dominio» y una explicación de que la búsqueda no lo escanea. Entrada inválida muestra error de campo, sin eco inseguro. El desconocido no recibe 404 de infraestructura ni ficha vacía.
+El motor realiza DNS, negociación TLS, HEAD/GET de URLs públicas y navegación anónima limitada. No inicia sesión, no envía formularios, no hace fuzzing, fuerza bruta, enumeración de rutas ni DAST agresivo. Consulta robots.txt para rutas rastreadas y se identifica con User-Agent y contacto. La navegación registra intentos de recursos de terceros y los bloquea; un intento viola el perfil estricto de privacidad de la muestra. Cookies propias se evalúan por atributos aplicables, sin guardar valores. Ver [controls-and-evidence.md](controls-and-evidence.md) y [scanner-safety.md](scanner-safety.md).
 
-**Ruta propuesta.** Conservar la landing estática en /desarrollo-seguro/. Añadir allí un formulario GET del mismo origen hacia /acreditaciones/buscar con parámetro dominio. Esta ruta React realiza la consulta al endpoint nuevo. Cambiar solo la directiva form-action de la CSP estática a self, si el formulario lo necesita; conservar script-src none y los recursos propios. Si el router actual exige otro nombre, registrar la decisión y actualizar los enlaces de estos documentos en la implementación.
+**Aceptación:** cada control tiene resultado y evidencia mínima; un fallo de navegador o un bloqueo del sitio produce unknown, no pass. Las solicitudes por escaneo están acotadas y son visibles en métricas.
 
-**Aceptación.** La búsqueda no causa DNS, GET, HEAD ni navegador automatizado desde el servidor hacia el dominio consultado. No crea fila de caso ni evidencia. Funciona con JavaScript desactivado hasta la navegación al resultado, y la página React ofrece estados cargando, encontrado, sin evaluación y error temporal.
+## F3. Hora, caché y ejecución única
 
-## F2. Caso persistido y ficha compatible
+El scheduler programa los dominios inscritos cuando cumplen 60 minutos desde el último resultado completo. Al abrir el sello o buscar, si el último informe del perfil vigente terminó hace menos de 60 minutos, se devuelve sin red nueva. Si tiene 60 minutos o más, se crea o reutiliza un único trabajo por dominio/perfil; la UI muestra «actualizando». El reloj se inyecta en pruebas. Un trabajo fallido deja el último informe como histórico y el estado actual «no evaluable» o «caducado», nunca «conforme vigente». Los trabajos tienen lease, timeout, reintento acotado y recuperación tras reinicio.
 
-**Historia.** Como visitante quiero ver el caso de Grumphya servido por una fuente estable, con el mismo identificador público y sin fechas ficticias.
+**Aceptación:** frontera 59:59/60:00; diez clics simultáneos no originan diez escaneos; reiniciar worker no pierde ni duplica un resultado confirmado.
 
-**Trabajo.** Introducir tablas de la fase inicial descritas en [persistence.md](persistence.md). Migrar los datos del único caso actual sin cambiar el significado de issuedAt y validatedAt. Sustituir la constante de producción por repositorio, manteniendo el caso de uso y GET /api/accreditations/:id. Separar las evidencias internas de una hipotética observación externa futura. No añadir endpoint de edición pública.
+## F4. Informe y sello
 
-**Aceptación.** El endpoint existente conserva sus campos y estado demonstration. Un ID inexistente sigue devolviendo 404. La ficha solo cambia mediante migración de datos o procedimiento administrativo explícito y auditado; una petición pública nunca la modifica. Si la base falla, el endpoint falla de forma segura y el sello oculta la imagen.
+La landing actual en /desarrollo-seguro/ sigue siendo introductoria. La nueva aplicación de consulta, servida bajo /desarrollo-seguro/app/, contiene buscador, ficha por dominio, controles, fecha/hora, estado, alcance, fuente de observación, historial breve y errores. El sello local del footer enlaza directamente al informe de grumphya.com. Si el resultado está en curso, la página espera mediante consultas acotadas; el servidor nunca bloquea una petición web durante un escaneo completo.
 
-## F3. Evidencias internas trazables
+El veredicto visible es «supera controles observables», «no supera controles observables», «no evaluable», «en curso» o «caducado». «Supera» exige todos los controles obligatorios evaluados en la muestra. La página aclara que desde el mismo VPS no se verifica una perspectiva de Internet independiente ni el código interno.
 
-**Historia.** Como lector quiero saber qué prueba o revisión respalda cada afirmación y cuál es su límite.
+**Aceptación:** accesibilidad de teclado, lector de pantalla y 320 px; fallos y stale no muestran un sello de aprobación; la ruta antigua /acreditaciones/DS-GRUMPHYA-2026-001 no contradice el nuevo informe.
 
-**Trabajo.** Usar el catálogo de [controls-and-evidence.md](controls-and-evidence.md). Para cada evidencia publicada, guardar método, resumen, referencia a prueba o archivo, SHA o versión revisada cuando exista, fecha real de observación y limitación. Añadir o mejorar pruebas de navegador para las rutas públicas citadas por el copy actual, porque la prueba existente solo cubre completamente la página estática del prototipo. Un test que se incorpora ahora no retrovalida el pasado: su fecha de observación será la de su ejecución real.
+## F5. Operación compartida sin mezclar datos
 
-**Aceptación.** No aparece «comprobado cada hora» ni «último escaneo» en ausencia de un escaneo real. Si una evidencia no se puede reproducir, se muestra como no verificada o se retira del resumen. El reporte diferencia prueba automatizada interna, revisión de configuración y declaración descriptiva.
+Web estática propia, API propia y worker propio dentro del monorepo y de la misma release. Base lógica y roles propios en la instancia PostgreSQL existente; no compartir tablas ni credenciales con Grumphya. Proxy único por rutas del mismo host; solo Caddy publica 80/443. CI construye y escanea imágenes, ejecuta pruebas con red simulada y smoke integrado; el despliegue a producción conserva la confirmación manual actual. Recursos del worker y profundidad del escaneo se limitan para proteger la API y DB de Grumphya.
 
-## F4. Preparación para una extracción futura
+**Aceptación:** detener el worker no detiene Grumphya; un fallo de migración/imagen de Desarrollo Seguro bloquea la release antes de alterar producción; backups y restauración de sus datos se prueban sin tocar las tablas de Grumphya.
 
-**Historia.** Como mantenedor quiero trasladar Desarrollo Seguro a otro repositorio sin copiar lógica de Grumphya ni datos personales.
+## Límite de la fase
 
-**Trabajo.** Definir interfaces de lectura de casos, reloj y publicación de evidencias; separar modelos de Desarrollo Seguro de modelos de usuarios/ideas de Grumphya. Mantener rutas y enlaces centralizados. Documentar las futuras entradas de escaneo y cola, pero no crear contenedores o credenciales de escáner inactivos que parezcan funcionales.
-
-**Aceptación.** La lógica de búsqueda y proyección pública no importa servicios de autenticación, ideas, planes, OpenAI o correo. El módulo se puede probar con repositorio en memoria. La extracción futura tiene lista concreta de dependencias y datos a mover.
-
-## Fuera del incremento
-
-Registro automático de dominios de terceros, prueba de titularidad, sello para otros sitios, crawler, Playwright contra Internet, cron, cola, SSRF de runtime, revisión de sesiones privadas, ASVS completo, WCAG completa, declaración RGPD, dominio/hosting propio, cambio del proxy de producción y migración a otro repositorio. Las decisiones previstas se describen, pero Luna no las implementa en esta fase.
+No crear desarrolloseguro.com, hosting externo, repo separado, despliegue independiente, visita desde otra red, verificación de sesiones privadas, afirmación legal, auditoría humana ni nivel ASVS completo. Si la prueba de seguridad de salida o capacidad falla, el buscador de dominios ajenos permanece deshabilitado y el informe de Grumphya queda «no evaluable» cuando falte un control obligatorio; no se elimina el gate para publicar.

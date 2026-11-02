@@ -1,42 +1,57 @@
-# Secuencia de implementación para Luna
+# Orden de ejecución para Luna
 
-## Antes del primer cambio
+## Mandato y condiciones
 
-1. Leer AGENTS.md, el plan estratégico y los documentos de esta carpeta. Revisar el código real en main: prototype/, apps/web/src/features/accreditation-verification/, apps/web/src/shared/accreditation-verification.ts, apps/api/src/verify-accreditation/, migraciones y rutas de la SPA. Confirmar que la base técnica coincide con [README.md](README.md).
-2. Anotar en la descripción de trabajo el alcance: **prototipo académico interno, sin escaneo remoto activo ni dominio/hosting de Desarrollo Seguro**. Si una ruta propuesta colisiona con código nuevo, elegir equivalente mínimo y dejar la decisión documentada.
-3. Establecer pruebas existentes en verde antes de tocar código. La tarea futura de Luna sí implementará código; este archivo solo define la secuencia.
+Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). Este documento es una instrucción futura: su redacción no inicia tareas ni autoriza un despliegue ahora.
 
-## Slice A — Contrato y búsqueda honesta
+Antes de programar, sincronizar main, revisar AGENTS.md y estado real de repo/Compose/Caddy/Nginx/workflows, y registrar discrepancias con el diseño. No asumir que el prototipo o datos académicos son resultados reales. Mantener el cambio concentrado en DS, rutas compartidas necesarias y sello local.
 
-- Escribir primero pruebas de normalización y GET /api/development-security/domains/:hostname para conocido, ausente e inválido.
-- Implementar caso de uso de consulta con repositorio en memoria. No añadir cliente HTTP, DNS ni dependencia de crawler.
-- Añadir ruta React /acreditaciones/buscar y el formulario del prototipo. Mantener la landing HTML/CSS sin scripts; permitir únicamente form-action self si es necesario.
-- Probar recorridos teclado/móvil y que un dominio ausente nunca ofrece ficha/sello.
-- Cerrar el slice con un estado ejecutable y pruebas relevantes verdes.
+## Entregas en slices verticales
 
-## Slice B — Fuente persistida y compatibilidad
+### 0. Contrato, seguridad y prueba de capacidad
 
-- Escribir pruebas de migración/seed y contrato del endpoint existente antes de cambiar la fuente de datos.
-- Crear tablas ds_ según [persistence.md](persistence.md), con el siguiente número de migración libre y registro explícito. Conservar fechas/textos del caso inicial. Introducir repositorio PostgreSQL.
-- Sustituir la constante del servicio por lectura persistida. Actualizar la ficha y el sello solo si el DTO lo requiere; no romper sus condiciones de seguridad.
-- Probar base vacía/poblada, fallo de DB, 404, no-store y persistencia entre reinicios. No usar fallback silencioso a la constante.
-- Registrar cómo se podrá exportar el caso cuando haya repo y DB independientes, sin crear ahora esa infraestructura.
+- Congelar un perfil v1 versionado: controles obligatorios evaluables desde la muestra, URLs, umbrales, evidencia mínima, veredicto y lenguaje público. Resolver cualquier control que no pueda medirse con fiabilidad como unknown o asesoría; no aprobarlo por defecto.
+- Decidir y documentar arquitectura de probe/conector de salida, bloqueo de red incluso si falla la validación de aplicación, DNS pinning, rutas de grumphya.com y presupuesto de escaneo. Revisar viabilidad de IP pública desde el mismo VPS.
+- Levantar una línea base de capacidad del VPS y definir límites y umbrales en el PR. Si el hardware impide una sonda segura dentro de los límites, parar la publicación operativa y comunicar la causa.
+- Escribir tests de amenaza y veredicto que fallen antes de implementar.
 
-## Slice C — Evidencia y copy
+**Salida:** contratos y umbrales aprobables, fixtures de red, plan de observabilidad y evidencia de que el aislamiento es realizable.
 
-- Auditar cada assurance heredado frente a [controls-and-evidence.md](controls-and-evidence.md). Añadir método, estado, fuente, versión y fecha real o null; bajar a documented_unverified lo que no pueda acreditarse.
-- Ampliar E2E para las rutas que el copy dice haber revisado. Si las pruebas revelan terceros o cookies no esperadas, corregir la afirmación pública con precisión; no ocultar hallazgos.
-- Mostrar límites y fechas de evidencia en la ficha. Mantener la etiqueta demonstration en prototipo, ficha y sello.
-- Actualizar doc/desarrollo-seguro.md **cuando Luna implemente** para reflejar el nuevo estado real. Esta tarea actual solo edita Markdown de esta carpeta.
-- Ejecutar la matriz de [test-plan.md](test-plan.md) y revisar accesibilidad y privacidad en navegador.
+### 1. Núcleo y persistencia DS
 
-## Revisión final de Luna
+- Crear los componentes y paquetes DS sin imports de negocio Grumphya. Configurar build del monorepo y pruebas propias.
+- Aprovisionar base lógica y roles DS de forma idempotente en entorno de prueba, migraciones propias, tablas de dominios, jobs, runs y controles. Separar roles de lectura/ejecución/migración.
+- Implementar máquina de estados, cálculo de TTL exacto desde completed_at, historial inmutable, perfil versionado, lease, recuperación y singleflight.
+- Tests TDD para frescura, concurrencia, reintentos, aislamiento de roles e invariantes de veredicto.
 
-- Comparar el comportamiento con cada aceptación de [features.md](features.md) y anotar evidencia de cumplimiento.
-- Ejecutar gates de calidad y E2E; inspeccionar el diff para asegurar que no se añadieron conexiones a dominios buscados, nuevos terceros, credenciales o afirmaciones de escaneo horario.
-- Informar archivos cambiados, pruebas y límites restantes. Si un control no se pudo validar, dejarlo explícitamente no verificado en datos y UI.
-- Mantener fases de escaneo externo, cola, caducidad horaria, titularidad y despliegue independiente como backlog. No activar ni dejar endpoints que aparenten ejecutar esas funciones.
+**Salida:** API/worker compilan y persisten casos/resultados sintéticos, sin red pública todavía.
 
-## Decisiones que requieren una nueva fase
+### 2. Sonda externa de bajo impacto
 
-El paso a «verificación externa periódica» exige decidir ubicación real del worker fuera o dentro del VPS, prueba de capacidad, alcance legal/operativo del escaneo, control SSRF, políticas de frecuencia y método de titularidad. La separación a desarrolloseguro.com exige dominio, repo, base/volúmenes, proxy y despliegue propios. El plan estratégico describe esas decisiones, pero esta secuencia termina antes de ellas.
+- Implementar admisión de hostname, DNS/TLS/HTTP, comprobación de cabeceras y navegador limpio por fases, con presupuesto global y firewall/proxy de salida. Se registran y bloquean intentos de terceros. Aplicar robots a rutas muestreadas.
+- Probar cada control contra fixtures pass/fail/unknown y pruebas adversarias de SSRF reales. Registrar rutas, hora, método, versión y evidencia redactada.
+- Ejecutar un escaneo controlado de grumphya.com desde el VPS solo tras validar límites; comprobar la perspectiva pública real. Repetir hasta obtener resultados estables, sin forzar un aprobado.
+
+**Salida:** informe íntegro y trazable, con exactitud de fuente same_vps y cobertura.
+
+### 3. API pública, portal y sello
+
+- Implementar contratos de [DTOs.md](DTOs.md), búsqueda de dominio público acotada, cuotas, 200 de caché y 202 de trabajo único, polling y errores.
+- Montar web DS en /desarrollo-seguro/app/ y conservar la landing. Mostrar informe, historial, antigüedad, alcance, límites, resultados unknown y estados no vigentes. Accesibilidad y recursos locales.
+- En el footer, cambiar texto/arte neutral a un enlace local al informe operativo; no insertar scripts ni recursos terceros. Mantener la ficha /acreditaciones/ histórica como demostración y enlazar desde ella al informe.
+- Tests de UI/E2E y privacidad para entrada por búsqueda y por sello.
+
+**Salida:** ambos caminos generan la misma consulta, sin confundir datos del TFM con evidencia operativa.
+
+### 4. Horario, despliegue y activación gradual
+
+- Activar scheduler solo para grumphya.com verificado, con intervalo de 60 minutos, idempotencia, cuotas y prioridad limitada. Monitorear stale/errores, leases, carga y almacenamiento.
+- Integrar Caddy, Nginx, Dockerfile, Compose, CI y workflow manual de producción, con TLS interno y roles/secretos propios. Documentar aprovisionamiento, backup/restore, smoke y rollback.
+- Completar CI, pruebas de carga y seguridad, varios ciclos horarios reales y revisión humana de falsos positivos y textos. La aprobación de despliegue sigue el workflow_dispatch vigente; no activar la búsqueda pública antes de superar las puertas.
+- Si una puerta falla, dejar el estado como no evaluable/caducado y resolver el problema. No reducir silenciosamente el perfil para conseguir un sello.
+
+**Salida:** fase operativa verificable sin dominio ni hosting nuevo, con Grumphya estable y un procedimiento de reversión probado.
+
+## Criterio final de aceptación
+
+Se puede mostrar «cumple controles observables v1» **solo** con escaneo completo de menos de 60 minutos, perfil vigente, muestra declarada y todos los obligatorios evaluables aprobados. Fallo, unknown, error de red o vencimiento no dan aprobado. El informe debe revelar la fuente same_vps. El siguiente proyecto independiente se planifica cuando exista dominio y una decisión de migración; no forma parte de esta entrega.
