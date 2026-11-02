@@ -1,4 +1,8 @@
-import { evaluateVerdict } from "@grumphya/development-security-core";
+import {
+  evaluateVerdict,
+  normalizeHostname,
+  sanitizeScanObservations,
+} from "@grumphya/development-security-core";
 import {
   ScanLeaseLostError,
   type ClaimedScanJob,
@@ -10,7 +14,9 @@ export type ScanExecutor = {
   execute(
     job: ClaimedScanJob,
     signal: AbortSignal,
-  ): Promise<Omit<ScanRunInput, "jobId" | "leaseToken">>;
+  ): Promise<
+    Omit<ScanRunInput, "jobId" | "leaseToken" | "hostname" | "profileVersion">
+  >;
 };
 
 const DEFAULT_LEASE_DURATION_MS = 30_000;
@@ -30,6 +36,10 @@ export class ScanJobProcessor {
       DEFAULT_LEASE_DURATION_MS,
     );
     if (!claimed) return "idle";
+
+    if (normalizeHostname(claimed.hostname) !== claimed.hostname) {
+      throw new Error("invalid_hostname");
+    }
 
     const abortController = new AbortController();
     let leaseLost = false;
@@ -58,7 +68,10 @@ export class ScanJobProcessor {
     }, this.heartbeatIntervalMs);
     heartbeatTimer.unref?.();
 
-    let result: Omit<ScanRunInput, "jobId" | "leaseToken">;
+    let result: Omit<
+      ScanRunInput,
+      "jobId" | "leaseToken" | "hostname" | "profileVersion"
+    >;
     try {
       result = await this.executor.execute(claimed, abortController.signal);
     } finally {
@@ -66,15 +79,24 @@ export class ScanJobProcessor {
       await heartbeatInFlight;
     }
     if (leaseLost) return "lease_lost";
-    if (evaluateVerdict(result.checks) !== result.verdict) {
+    const observations = sanitizeScanObservations(
+      claimed.hostname,
+      claimed.profileVersion,
+      result.scope,
+      result.checks,
+    );
+    if (evaluateVerdict(observations.checks) !== result.verdict) {
       throw new Error("scan_verdict_does_not_match_checks");
     }
 
     try {
       await this.store.completeScan({
         ...result,
+        ...observations,
         jobId: claimed.id,
         leaseToken: claimed.leaseToken,
+        hostname: claimed.hostname,
+        profileVersion: claimed.profileVersion,
       });
       return "completed";
     } catch (error) {

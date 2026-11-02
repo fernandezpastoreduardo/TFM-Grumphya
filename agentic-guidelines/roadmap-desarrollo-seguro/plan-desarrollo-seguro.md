@@ -1,6 +1,6 @@
 # Desarrollo Seguro: plan de producto y arquitectura
 
-**Fecha:** 2 de noviembre de 2026. **Estado:** implementación local de los cimientos del slice 1 en curso dentro de TFM-Grumphya. Hay políticas puras, almacenamiento DS, health API y processor con puerto executor; faltan probe/conector, executor de red y endpoints de consulta. No se ha adquirido desarrolloseguro.com, no se han ejecutado scans reales ni se ha desplegado la nueva aplicación. El estado por componente y las puertas abiertas están en [components.md](components.md) y [operations.md](operations.md).
+**Fecha:** 2 de noviembre de 2026. **Estado:** la fase técnica 1 y el endurecimiento local de ingesta (fase técnica 2) están completados y verificados: PostgreSQL aislado pasó 50/50 y `pnpm quality:check` terminó con código 0. La etapa de executor/red sigue bloqueada por rúbricas pendientes, DNS/IP pinning, firewall/egress y medición de capacidad del VPS. Hay health API y processor con puerto executor, pero faltan probe/conector, executor de red y endpoints de consulta. No se ha adquirido desarrolloseguro.com, no se han ejecutado scans reales ni se ha desplegado la nueva aplicación. El estado por componente y las puertas abiertas están en [components.md](components.md) y [operations.md](operations.md).
 
 ## 1. Decisión de alcance
 

@@ -2,7 +2,7 @@
 
 ## Mandato y condiciones
 
-Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). El slice 0 está completado y el slice 1 está en curso: contratos y políticas puras, almacenamiento DS, health API y processor con puerto `ScanExecutor`. Aún no hay probe ni executor de red; no se realizan escaneos reales y nada está desplegado ni incluido en runtime/Compose de producción. El bootstrap standalone de API escucha en `0.0.0.0:3001`; antes de integrarla en Compose debe limitarse a red interna y quedar accesible solo desde Caddy. La autorización de desarrollo no autoriza escaneos públicos, cambios en la base productiva ni un despliegue; estos requieren superar sus gates y el flujo manual aprobado.
+Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). La fase técnica 1 y el endurecimiento local de ingesta (allowlists y predicados semánticos en TypeScript/SQL 004) están completados; PostgreSQL aislado pasó 50/50 y `pnpm quality:check` terminó con código 0 el 2 de noviembre de 2026. El worker valida hostname canónico antes de invocar el puerto `ScanExecutor`. Aún no hay probe ni executor de red, no se realizan escaneos reales y nada está desplegado ni incluido en runtime/Compose de producción. La etapa de executor/red permanece bloqueada hasta cerrar las rúbricas pendientes, DNS/IP pinning, firewall/egress y medición de capacidad real del VPS. El bootstrap standalone de API escucha en `0.0.0.0:3001`; antes de integrarla en Compose debe limitarse a red interna y quedar accesible solo desde Caddy. La autorización de desarrollo no autoriza escaneos públicos, cambios en la base productiva ni un despliegue; estos requieren superar sus gates y el flujo manual aprobado.
 
 Antes de cada siguiente slice, revisar AGENTS.md y el estado real del repo, Compose, Caddy/Nginx y workflows; registrar discrepancias con el diseño. No asumir que el prototipo o datos académicos son resultados reales. Mantener el cambio concentrado en DS, rutas compartidas necesarias y sello local.
 
@@ -24,11 +24,16 @@ Antes de cada siguiente slice, revisar AGENTS.md y el estado real del repo, Comp
 - Implementar máquina de estados, cálculo de TTL exacto desde completed_at, historial inmutable, perfil versionado, lease, recuperación y singleflight.
 - Tests TDD para frescura, concurrencia, reintentos, aislamiento de roles e invariantes de veredicto.
 
-**Estado:** hay paquetes API y worker, esquema y almacén PostgreSQL, y pruebas locales. La API solo expone health; el processor recibe un `ScanExecutor` inyectado, pero no existe una implementación de red ni un proceso worker arrancable. No se ha provisionado ni migrado PostgreSQL de producción.
+**Estado:** fase técnica 1 completada en local: paquetes, esquema y almacén PostgreSQL, contratos/pruebas, health API y processor. No se ha provisionado ni migrado PostgreSQL de producción.
 
-**Salida pendiente:** API/worker compilan y persisten casos/resultados sintéticos en una base aislada de prueba, sin red pública. El puerto de executor no convierte los jobs en escaneos reales.
+**Límites:** la API solo expone health; no hay proceso worker arrancable ni executor real. El puerto de executor no convierte los jobs en escaneos.
 
-### 2. Sonda externa de bajo impacto
+### 2. Guardas de ingesta completadas; executor/red bloqueado
+
+- El endurecimiento local de ingesta está implementado y verificado: allowlist de rutas, métodos, controles y campos/tipos de evidencia; summaries/limitaciones fijos; evidencia mínima y derivación de estado coherente entre TypeScript y `004_scan_payload_guards.sql`. Evidencia incompleta/`not_applicable` se transforma en `unknown`. PostgreSQL aislado pasó 50/50 y `pnpm quality:check` terminó con código 0 (2 de noviembre de 2026).
+- Para `grumphya.com`, el scope admitido queda limitado a `/`, `/precios` y `/acreditaciones/DS-GRUMPHYA-2026-001`; para otros dominios solo `/`. La política tipada por control está descrita en [controls-and-evidence.md](controls-and-evidence.md).
+- La cobertura actual exige los nueve IDs del perfil, pero no cada combinación control×ruta declarada. Quedan por definir umbrales concretos de cabeceras y HEAD/GET. El worker rechaza hostname no válido/no canónico antes de llamar al puerto executor, pero no resuelve ni fija una IP.
+- Estas guardas locales no conectan a ningún dominio ni equivalen a redacción/protección SSRF completa. La ejecución de red solo puede avanzar tras definir las rúbricas pendientes, añadir DNS/IP pinning y revalidación por conexión/redirección, disponer y probar firewall/egress que bloquee redes internas y terceros, y medir que el VPS soporta los límites del probe sin degradar Grumphya.
 
 - Implementar admisión de hostname, DNS/TLS/HTTP, comprobación de cabeceras y navegador limpio por fases, con presupuesto global y firewall/proxy de salida. Se registran y bloquean intentos de terceros. Aplicar robots a rutas muestreadas.
 - Probar cada control contra fixtures pass/fail/unknown y pruebas adversarias de SSRF reales. Registrar rutas, hora, método, versión y evidencia redactada.

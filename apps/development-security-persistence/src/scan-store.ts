@@ -1,5 +1,8 @@
 import type { Pool, PoolClient } from "pg";
-import { evaluateVerdict } from "@grumphya/development-security-core";
+import {
+  evaluateVerdict,
+  sanitizeScanObservations,
+} from "@grumphya/development-security-core";
 
 const ACTIVE_JOB_STATES = ["queued", "running"] as const;
 const MAX_LEASE_DURATION_MS = 5 * 60 * 1000;
@@ -47,6 +50,8 @@ export type ScanCheck = {
 export type ScanRunInput = {
   jobId: string;
   leaseToken: string;
+  hostname: string;
+  profileVersion: string;
   scannerVersion: string;
   startedAt: Date;
   completedAt: Date;
@@ -244,7 +249,13 @@ export class PostgresScanStore implements ScanJobStore {
   }
 
   async completeScan(input: ScanRunInput): Promise<string> {
-    if (evaluateVerdict(input.checks) !== input.verdict) {
+    const observations = sanitizeScanObservations(
+      input.hostname,
+      input.profileVersion,
+      input.scope,
+      input.checks,
+    );
+    if (evaluateVerdict(observations.checks) !== input.verdict) {
       throw new Error("scan_verdict_does_not_match_checks");
     }
 
@@ -260,8 +271,8 @@ export class PostgresScanStore implements ScanJobStore {
           input.scannerVersion,
           input.startedAt,
           input.verdict,
-          JSON.stringify(input.scope),
-          JSON.stringify(input.checks),
+          JSON.stringify(observations.scope),
+          JSON.stringify(observations.checks),
           JSON.stringify(input.metrics),
         ],
       );

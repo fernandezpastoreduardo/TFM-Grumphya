@@ -1,0 +1,488 @@
+import { describe, expect, it } from "vitest";
+import { sanitizeScanObservations } from "./scan-ingestion-policy.js";
+
+const ALLOWED_PATHS = ["/", "/precios", "/acreditaciones/DS-GRUMPHYA-2026-001"];
+const MONITORED_HOSTNAME = "grumphya.com";
+
+const SAFE_DNS_CHECK = {
+  controlId: "DS-DNS-01",
+  status: "unknown",
+  required: true,
+  severity: "high",
+  observedAt: "2026-11-02T10:00:00.000Z",
+  targetPath: "/",
+  method: "DNS",
+  summary: "texto externo que no debe persistir",
+  limitation: "límite externo que no debe persistir",
+  evidence: {
+    addressClass: "public",
+    aRecordCount: 1,
+    aaaaRecordCount: 0,
+    html: "<html>contenido privado</html>",
+    cookie: "session=secreto",
+  },
+};
+
+describe("sanitizeScanObservations", () => {
+  it("keeps only allowlisted scope and structured evidence, replacing free text", () => {
+    const result = sanitizeScanObservations(
+      MONITORED_HOSTNAME,
+      "controls-v1",
+      ALLOWED_PATHS,
+      [SAFE_DNS_CHECK],
+    );
+
+    expect(result.scope).toEqual(ALLOWED_PATHS);
+    expect(result.checks[0]).toMatchObject({
+      controlId: "DS-DNS-01",
+      status: "unknown",
+      required: true,
+      severity: "high",
+      targetPath: "/",
+      method: "DNS",
+      summary: expect.not.stringContaining("texto externo"),
+      limitation: expect.not.stringContaining("límite externo"),
+      evidence: {
+        addressClass: "public",
+        aRecordCount: 1,
+        aaaaRecordCount: 0,
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("contenido privado");
+    expect(JSON.stringify(result)).not.toContain("session=secreto");
+  });
+
+  it.each([
+    ["/precios?token=secret"],
+    ["//evil.example/"],
+    ["/../admin"],
+    ["https://grumphya.com/"],
+  ])("rejects scope outside the exact profile allowlist: %s", (scope) => {
+    expect(() =>
+      sanitizeScanObservations(MONITORED_HOSTNAME, "controls-v1", scope, [
+        SAFE_DNS_CHECK,
+      ]),
+    ).toThrow("scan_scope_not_allowlisted");
+  });
+
+  it.each([
+    { targetPath: "/precios?key=x", method: "GET" },
+    { targetPath: "/", method: "POST" },
+    { targetPath: "https://grumphya.com/", method: "GET" },
+    { targetPath: "/admin", method: "GET" },
+  ])("rejects a check path or method outside its contract: %s", (change) => {
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ALLOWED_PATHS,
+        [{ ...SAFE_DNS_CHECK, ...change }],
+      ),
+    ).toThrow("scan_check_scope_not_allowlisted");
+  });
+
+  it.each([
+    ["DS-DNS-01", "DNS"],
+    ["DS-TLS-01", "TLS"],
+    ["DS-TLS-02", "TLS"],
+    ["DS-HTTP-01", "HEAD"],
+    ["DS-HTTP-01", "GET"],
+    ["DS-HDR-01", "GET"],
+    ["DS-PRIV-01", "GET"],
+    ["DS-PRIV-02", "GET"],
+    ["DS-PRIV-03", "GET"],
+    ["DS-QUAL-01", "GET"],
+  ])("accepts the registered method %s/%s", (controlId, method) => {
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ["/"],
+        [{ ...SAFE_DNS_CHECK, controlId, method }],
+      ),
+    ).not.toThrow();
+  });
+
+  it("rejects unknown profiles and controls without logging their contents", () => {
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v2",
+        ALLOWED_PATHS,
+        [SAFE_DNS_CHECK],
+      ),
+    ).toThrow("scan_profile_not_allowlisted");
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ALLOWED_PATHS,
+        [{ ...SAFE_DNS_CHECK, controlId: "DS-UNKNOWN-99" }],
+      ),
+    ).toThrow("scan_control_not_allowlisted");
+  });
+
+  it("rejects malformed evidence rather than persisting raw values", () => {
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ALLOWED_PATHS,
+        [
+          {
+            ...SAFE_DNS_CHECK,
+            evidence: { addressClass: "<script>alert(1)</script>" },
+          },
+        ],
+      ),
+    ).toThrow("scan_evidence_invalid");
+  });
+
+  it("drops expiresAt because it is outside the current TLS evidence contract", () => {
+    const result = sanitizeScanObservations(
+      MONITORED_HOSTNAME,
+      "controls-v1",
+      ["/"],
+      [
+        {
+          ...SAFE_DNS_CHECK,
+          controlId: "DS-TLS-01",
+          method: "TLS",
+          evidence: {
+            protocol: "TLSv1.3",
+            certificateValid: true,
+            hostnameMatches: true,
+            expiresAt: "2027-04-05T06:07:08.000Z",
+          },
+        },
+      ],
+    );
+
+    expect(result.checks[0].evidence).toEqual({
+      protocol: "TLSv1.3",
+      certificateValid: true,
+      hostnameMatches: true,
+    });
+  });
+
+  it.each([
+    ["DS-DNS-01", "DNS"],
+    ["DS-TLS-01", "TLS"],
+    ["DS-TLS-02", "TLS"],
+    ["DS-HTTP-01", "GET"],
+    ["DS-HDR-01", "GET"],
+    ["DS-PRIV-01", "GET"],
+    ["DS-PRIV-02", "GET"],
+    ["DS-PRIV-03", "GET"],
+    ["DS-QUAL-01", "GET"],
+  ])(
+    "converts pass with empty evidence for %s to unknown",
+    (controlId, method) => {
+      const result = sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ["/"],
+        [
+          {
+            ...SAFE_DNS_CHECK,
+            controlId,
+            method,
+            status: "pass",
+            evidence: {},
+          },
+        ],
+      );
+
+      expect(result.checks[0].status).toBe("unknown");
+    },
+  );
+
+  it.each([
+    ["DS-DNS-01", "DNS", { addressClass: "private" }],
+    ["DS-DNS-01", "DNS", { addressClass: "reserved" }],
+  ])(
+    "rejects pass evidence that reports a prohibited DNS class",
+    (controlId, method, evidence) => {
+      expect(() =>
+        sanitizeScanObservations(
+          MONITORED_HOSTNAME,
+          "controls-v1",
+          ["/"],
+          [{ ...SAFE_DNS_CHECK, controlId, method, status: "pass", evidence }],
+        ),
+      ).toThrow();
+    },
+  );
+
+  it.each([
+    [
+      "DS-TLS-01",
+      "TLS",
+      { protocol: "TLSv1.3", certificateValid: false, hostnameMatches: true },
+    ],
+    [
+      "DS-TLS-01",
+      "TLS",
+      { protocol: "TLSv1.3", certificateValid: true, hostnameMatches: false },
+    ],
+    [
+      "DS-TLS-02",
+      "TLS",
+      {
+        tls10Accepted: true,
+        tls11Accepted: false,
+        tls12Accepted: true,
+        tls13Accepted: true,
+      },
+    ],
+    [
+      "DS-HTTP-01",
+      "GET",
+      { statusCode: 500, redirectedToHttps: true, finalScheme: "https" },
+    ],
+    [
+      "DS-HTTP-01",
+      "GET",
+      { statusCode: 200, redirectedToHttps: false, finalScheme: "https" },
+    ],
+    [
+      "DS-HTTP-01",
+      "GET",
+      { statusCode: 200, redirectedToHttps: true, finalScheme: "http" },
+    ],
+    ["DS-PRIV-01", "GET", { thirdPartyAttempts: 1, blockedRequests: 1 }],
+    [
+      "DS-PRIV-02",
+      "GET",
+      {
+        cookieCount: 1,
+        insecureCookieCount: 1,
+        thirdPartyCookieCount: 0,
+        inspected: true,
+      },
+    ],
+    [
+      "DS-PRIV-02",
+      "GET",
+      {
+        cookieCount: 1,
+        insecureCookieCount: 0,
+        thirdPartyCookieCount: 1,
+        inspected: true,
+      },
+    ],
+    ["DS-PRIV-03", "GET", { mixedContentCount: 1, insecureNavigationCount: 0 }],
+    ["DS-PRIV-03", "GET", { mixedContentCount: 0, insecureNavigationCount: 1 }],
+    [
+      "DS-QUAL-01",
+      "GET",
+      { documentStatusCode: 500, failedEssentialResourceCount: 0 },
+    ],
+    [
+      "DS-QUAL-01",
+      "GET",
+      { documentStatusCode: 200, failedEssentialResourceCount: 1 },
+    ],
+  ])(
+    "does not preserve pass when %s evidence contradicts it",
+    (controlId, method, evidence) => {
+      const result = sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ["/"],
+        [{ ...SAFE_DNS_CHECK, controlId, method, status: "pass", evidence }],
+      );
+
+      expect(result.checks[0].status).toBe("fail");
+    },
+  );
+
+  it.each([
+    [
+      "DS-DNS-01",
+      "DNS",
+      { addressClass: "public", aRecordCount: 1, aaaaRecordCount: 0 },
+    ],
+    [
+      "DS-TLS-01",
+      "TLS",
+      { protocol: "TLSv1.3", certificateValid: true, hostnameMatches: true },
+    ],
+    [
+      "DS-TLS-02",
+      "TLS",
+      {
+        tls10Accepted: false,
+        tls11Accepted: false,
+        tls12Accepted: true,
+        tls13Accepted: true,
+      },
+    ],
+    [
+      "DS-HTTP-01",
+      "GET",
+      { statusCode: 200, redirectedToHttps: true, finalScheme: "https" },
+    ],
+    [
+      "DS-HDR-01",
+      "GET",
+      {
+        hsts: true,
+        nosniff: true,
+        frameProtection: true,
+        referrerPolicy: true,
+        csp: true,
+      },
+    ],
+    ["DS-PRIV-01", "GET", { thirdPartyAttempts: 0, blockedRequests: 0 }],
+    [
+      "DS-PRIV-02",
+      "GET",
+      {
+        cookieCount: 0,
+        insecureCookieCount: 0,
+        thirdPartyCookieCount: 0,
+        inspected: true,
+      },
+    ],
+    ["DS-PRIV-03", "GET", { mixedContentCount: 0, insecureNavigationCount: 0 }],
+    [
+      "DS-QUAL-01",
+      "GET",
+      { documentStatusCode: 200, failedEssentialResourceCount: 0 },
+    ],
+  ])(
+    "preserves pass only with complete, non-failing %s evidence",
+    (controlId, method, evidence) => {
+      const result = sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ["/"],
+        [{ ...SAFE_DNS_CHECK, controlId, method, status: "pass", evidence }],
+      );
+
+      expect(result.checks[0].status).toBe("pass");
+    },
+  );
+
+  it("converts not-applicable to unknown because controls-v1 has no justification contract", () => {
+    const result = sanitizeScanObservations(
+      MONITORED_HOSTNAME,
+      "controls-v1",
+      ["/"],
+      [
+        {
+          ...SAFE_DNS_CHECK,
+          status: "not_applicable",
+          evidence: { addressClass: "public" },
+        },
+      ],
+    );
+
+    expect(result.checks[0].status).toBe("unknown");
+  });
+
+  it.each([100, 200, 599])("accepts HTTP status code %s", (statusCode) => {
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ["/"],
+        [
+          {
+            ...SAFE_DNS_CHECK,
+            controlId: "DS-HTTP-01",
+            method: "GET",
+            evidence: { statusCode },
+          },
+        ],
+      ),
+    ).not.toThrow();
+  });
+
+  it.each([99, 600, 200.5])(
+    "rejects invalid HTTP status code %s",
+    (statusCode) => {
+      expect(() =>
+        sanitizeScanObservations(
+          MONITORED_HOSTNAME,
+          "controls-v1",
+          ["/"],
+          [
+            {
+              ...SAFE_DNS_CHECK,
+              controlId: "DS-HTTP-01",
+              method: "GET",
+              evidence: { statusCode },
+            },
+          ],
+        ),
+      ).toThrow("scan_evidence_invalid");
+    },
+  );
+
+  it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects unsafe DNS evidence counts: %s",
+    (aRecordCount) => {
+      expect(() =>
+        sanitizeScanObservations(
+          MONITORED_HOSTNAME,
+          "controls-v1",
+          ["/"],
+          [
+            {
+              ...SAFE_DNS_CHECK,
+              evidence: { aRecordCount },
+            },
+          ],
+        ),
+      ).toThrow("scan_evidence_invalid");
+    },
+  );
+
+  it("rejects missing checks, duplicate paths and malformed observations", () => {
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ALLOWED_PATHS,
+        [],
+      ),
+    ).toThrow("scan_checks_required");
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ["/", "/"],
+        [SAFE_DNS_CHECK],
+      ),
+    ).toThrow("scan_scope_not_allowlisted");
+    expect(() =>
+      sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v1",
+        ALLOWED_PATHS,
+        [null],
+      ),
+    ).toThrow("scan_check_invalid");
+  });
+
+  it("limits unregistered domains to their root path", () => {
+    expect(() =>
+      sanitizeScanObservations(
+        "other.example.net",
+        "controls-v1",
+        ["/", "/precios"],
+        [SAFE_DNS_CHECK],
+      ),
+    ).toThrow("scan_scope_not_allowlisted");
+    expect(() =>
+      sanitizeScanObservations(
+        "www.grumphya.com",
+        "controls-v1",
+        ALLOWED_PATHS,
+        [SAFE_DNS_CHECK],
+      ),
+    ).toThrow("scan_scope_not_allowlisted");
+  });
+});

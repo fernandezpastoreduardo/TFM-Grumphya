@@ -133,6 +133,224 @@ describePostgres.sequential("PostgresScanStore", () => {
     expect(changedProfile.kind).toBe("queued");
   });
 
+  it("rejects a direct database completion outside the profile path allowlist", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(job, ["/", "/admin"], [safeDnsCheck()]),
+    ).rejects.toThrow("scan_scope_not_allowlisted");
+  });
+
+  it("does not allow another domain to use Grumphya-specific routes", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(job, ["/", "/precios"], [safeDnsCheck()]),
+    ).rejects.toThrow("scan_scope_not_allowlisted");
+  });
+
+  it("rejects raw evidence sent directly to the database function", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(
+        job,
+        ["/"],
+        [safeDnsCheck({ html: "<html>private page</html>" })],
+      ),
+    ).rejects.toThrow("scan_evidence_not_allowlisted");
+  });
+
+  it("rejects a method that is outside the control contract when bypassing the sanitizer", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(job, ["/"], [{ ...safeDnsCheck(), method: "POST" }]),
+    ).rejects.toThrow("scan_check_scope_not_allowlisted");
+  });
+
+  it("rejects an allowlisted evidence key with an invalid value when bypassing the sanitizer", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(
+        job,
+        ["/"],
+        [safeDnsCheck({ addressClass: "public", aRecordCount: -1 })],
+      ),
+    ).rejects.toThrow("scan_evidence_invalid");
+  });
+
+  it("accepts structured enum and count evidence allowed by the control contract", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(
+        job,
+        ["/"],
+        [
+          safeDnsCheck({
+            addressClass: "public",
+            aRecordCount: 1,
+            aaaaRecordCount: 0,
+          }),
+        ],
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejects TLS expiry metadata sent directly to SQL because it is not allowlisted", async () => {
+    const job = await queueAndClaim();
+    const check: ScanCheck = {
+      ...CHECK,
+      controlId: "DS-TLS-01",
+      summary: "Comprobación DS-TLS-01: unknown.",
+      method: "TLS",
+      evidence: {
+        protocol: "TLSv1.3",
+        certificateValid: true,
+        hostnameMatches: true,
+        expiresAt: "2027-04-05T06:07:08.000Z",
+      },
+    };
+
+    await expect(completeDirectly(job, ["/"], [check])).rejects.toThrow(
+      "scan_evidence_not_allowlisted",
+    );
+  });
+
+  it("enforces the HTTP status range on direct SQL writes", async () => {
+    const job = await queueAndClaim();
+    const makeHttpCheck = (statusCode: number): ScanCheck => ({
+      ...CHECK,
+      controlId: "DS-HTTP-01",
+      summary: "Comprobación DS-HTTP-01: unknown.",
+      method: "GET",
+      evidence: { statusCode },
+    });
+
+    await expect(
+      completeDirectly(job, ["/"], [makeHttpCheck(599)]),
+    ).resolves.toBeDefined();
+
+    const invalidJob = await queueAndClaim();
+    await expect(
+      completeDirectly(invalidJob, ["/"], [makeHttpCheck(600)]),
+    ).rejects.toThrow("scan_evidence_invalid");
+  });
+
+  it("rejects pass with missing minimum evidence for any required control", async () => {
+    const job = await queueAndClaim();
+    const checks = makePassingControls();
+
+    for (const check of checks) {
+      check.evidence = {};
+    }
+
+    await expect(
+      completeDirectly(job, ["/"], checks, "pass"),
+    ).rejects.toThrow();
+  });
+
+  it.each([
+    [
+      "DS-DNS-01",
+      { addressClass: "private", aRecordCount: 1, aaaaRecordCount: 0 },
+    ],
+    [
+      "DS-DNS-01",
+      { addressClass: "reserved", aRecordCount: 1, aaaaRecordCount: 0 },
+    ],
+    [
+      "DS-TLS-01",
+      { protocol: "TLSv1.3", certificateValid: false, hostnameMatches: true },
+    ],
+    [
+      "DS-TLS-01",
+      { protocol: "TLSv1.3", certificateValid: true, hostnameMatches: false },
+    ],
+    [
+      "DS-TLS-02",
+      {
+        tls10Accepted: true,
+        tls11Accepted: false,
+        tls12Accepted: true,
+        tls13Accepted: true,
+      },
+    ],
+    [
+      "DS-TLS-02",
+      {
+        tls10Accepted: false,
+        tls11Accepted: true,
+        tls12Accepted: true,
+        tls13Accepted: true,
+      },
+    ],
+    [
+      "DS-HTTP-01",
+      { statusCode: 500, redirectedToHttps: true, finalScheme: "https" },
+    ],
+    [
+      "DS-HTTP-01",
+      { statusCode: 200, redirectedToHttps: false, finalScheme: "https" },
+    ],
+    [
+      "DS-HTTP-01",
+      { statusCode: 200, redirectedToHttps: true, finalScheme: "http" },
+    ],
+    ["DS-PRIV-01", { thirdPartyAttempts: 1, blockedRequests: 1 }],
+    [
+      "DS-PRIV-02",
+      {
+        cookieCount: 1,
+        insecureCookieCount: 1,
+        thirdPartyCookieCount: 0,
+        inspected: true,
+      },
+    ],
+    [
+      "DS-PRIV-02",
+      {
+        cookieCount: 1,
+        insecureCookieCount: 0,
+        thirdPartyCookieCount: 1,
+        inspected: true,
+      },
+    ],
+    ["DS-PRIV-03", { mixedContentCount: 1, insecureNavigationCount: 0 }],
+    ["DS-PRIV-03", { mixedContentCount: 0, insecureNavigationCount: 1 }],
+    [
+      "DS-QUAL-01",
+      { documentStatusCode: 500, failedEssentialResourceCount: 0 },
+    ],
+    [
+      "DS-QUAL-01",
+      { documentStatusCode: 200, failedEssentialResourceCount: 1 },
+    ],
+  ])(
+    "rejects pass with contradictory %s evidence through direct SQL",
+    async (controlId, evidence) => {
+      const job = await queueAndClaim();
+      const checks = makePassingControls();
+      const targetCheck = checks.find((check) => check.controlId === controlId);
+      if (!targetCheck) throw new Error("expected_control_in_fixture");
+      targetCheck.evidence = evidence;
+
+      await expect(
+        completeDirectly(job, ["/"], checks, "pass"),
+      ).rejects.toThrow();
+    },
+  );
+
+  it("accepts a complete pass through direct SQL when every control has safe evidence", async () => {
+    const job = await queueAndClaim();
+
+    await expect(
+      completeDirectly(job, ["/"], makePassingControls(), "pass"),
+    ).resolves.toBeDefined();
+  });
+
   it("recovers expired leases and fails after the retry limit", async () => {
     const first = await queueAndClaim();
     await pool.query(
@@ -274,6 +492,8 @@ describePostgres.sequential("PostgresScanStore", () => {
     return store.completeScan({
       jobId: job.id,
       leaseToken: job.leaseToken,
+      hostname: job.hostname,
+      profileVersion: job.profileVersion,
       scannerVersion: TEST_SCANNER,
       startedAt,
       completedAt,
@@ -289,6 +509,105 @@ describePostgres.sequential("PostgresScanStore", () => {
     });
   }
 
+  function completeDirectly(
+    job: ClaimedScanJob,
+    scope: readonly string[],
+    checks: readonly ScanCheck[],
+    verdict: "pass" | "inconclusive" = "inconclusive",
+  ): Promise<unknown> {
+    const startedAt = new Date();
+    const completedAt = new Date(startedAt.getTime() + 1);
+    return pool.query(
+      `SELECT ds_complete_scan(
+        $1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9::jsonb
+      )`,
+      [
+        job.id,
+        job.leaseToken,
+        completedAt,
+        TEST_SCANNER,
+        startedAt,
+        verdict,
+        JSON.stringify(scope),
+        JSON.stringify(checks),
+        JSON.stringify({
+          requestsCount: 0,
+          bytesCount: 0,
+          durationMs: 1,
+          pagesCount: 0,
+        }),
+      ],
+    );
+  }
+
+  function safeDnsCheck(evidence: Record<string, unknown> = {}): ScanCheck {
+    return {
+      ...CHECK,
+      summary: "Comprobación DS-DNS-01: unknown.",
+      limitation:
+        "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+      evidence,
+    };
+  }
+
+  function makePassingControls(): ScanCheck[] {
+    const evidenceByControl: Record<string, Record<string, unknown>> = {
+      "DS-DNS-01": {
+        addressClass: "public",
+        aRecordCount: 1,
+        aaaaRecordCount: 0,
+      },
+      "DS-TLS-01": {
+        protocol: "TLSv1.3",
+        certificateValid: true,
+        hostnameMatches: true,
+      },
+      "DS-TLS-02": {
+        tls10Accepted: false,
+        tls11Accepted: false,
+        tls12Accepted: true,
+        tls13Accepted: true,
+      },
+      "DS-HTTP-01": {
+        statusCode: 200,
+        redirectedToHttps: true,
+        finalScheme: "https",
+      },
+      "DS-HDR-01": {
+        hsts: true,
+        nosniff: true,
+        frameProtection: true,
+        referrerPolicy: true,
+        csp: true,
+      },
+      "DS-PRIV-01": { thirdPartyAttempts: 0, blockedRequests: 0 },
+      "DS-PRIV-02": {
+        cookieCount: 0,
+        insecureCookieCount: 0,
+        thirdPartyCookieCount: 0,
+        inspected: true,
+      },
+      "DS-PRIV-03": { mixedContentCount: 0, insecureNavigationCount: 0 },
+      "DS-QUAL-01": {
+        documentStatusCode: 200,
+        failedEssentialResourceCount: 0,
+      },
+    };
+    const methodByControl: Record<string, string> = {
+      "DS-DNS-01": "DNS",
+      "DS-TLS-01": "TLS",
+      "DS-TLS-02": "TLS",
+    };
+    return Object.entries(evidenceByControl).map(([controlId, evidence]) => ({
+      ...CHECK,
+      controlId,
+      status: "pass",
+      summary: `Comprobación ${controlId}: pass.`,
+      method: methodByControl[controlId] ?? "GET",
+      evidence,
+    }));
+  }
+
   const CHECK: ScanCheck = {
     controlId: "DS-DNS-01",
     status: "unknown",
@@ -297,8 +616,9 @@ describePostgres.sequential("PostgresScanStore", () => {
     observedAt: TEST_NOW,
     targetPath: "/",
     method: "DNS",
-    summary: "No se evaluó en esta prueba de persistencia.",
-    limitation: "Prueba sintética; no representa un escaneo operativo.",
-    evidence: { result: "test_fixture" },
+    summary: "Comprobación DS-DNS-01: unknown.",
+    limitation:
+      "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+    evidence: {},
   };
 });

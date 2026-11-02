@@ -1,0 +1,406 @@
+import { normalizeHostname } from "./scan-policy.js";
+
+const PROFILE_VERSION = "controls-v1";
+const MAX_SCOPE_PATHS = 3;
+const MAX_CHECKS = 32;
+const MAX_EVIDENCE_COUNT = 100_000;
+const ALLOWED_SCOPE_PATHS = [
+  "/",
+  "/precios",
+  "/acreditaciones/DS-GRUMPHYA-2026-001",
+] as const;
+const ALLOWED_SEVERITIES = ["critical", "high", "medium", "low", "info"];
+const ALLOWED_STATUSES = ["pass", "fail", "unknown", "not_applicable"];
+
+type SafeEvidenceValue = boolean | number | string;
+
+export type SanitizedScanCheck = {
+  controlId: string;
+  status: "pass" | "fail" | "unknown" | "not_applicable";
+  required: true;
+  severity: string;
+  observedAt: Date;
+  targetPath: string;
+  method: string;
+  summary: string;
+  limitation: string;
+  evidence: Record<string, SafeEvidenceValue>;
+};
+
+export type SanitizedScanObservations = {
+  scope: readonly string[];
+  checks: readonly SanitizedScanCheck[];
+};
+
+type ControlContract = {
+  methodsByPath: Readonly<Record<string, readonly string[]>>;
+  evidence: Readonly<
+    Record<string, "boolean" | "count" | "http_status" | readonly string[]>
+  >;
+};
+
+const PAGE_PATHS = ALLOWED_SCOPE_PATHS;
+const READ_METHODS = ["GET"] as const;
+const HTTP_METHODS = ["HEAD", "GET"] as const;
+const CONTROLS: Readonly<Record<string, ControlContract>> = {
+  "DS-DNS-01": {
+    methodsByPath: { "/": ["DNS"] },
+    evidence: {
+      addressClass: ["public", "private", "reserved", "unresolved"],
+      aRecordCount: "count",
+      aaaaRecordCount: "count",
+    },
+  },
+  "DS-TLS-01": {
+    methodsByPath: { "/": ["TLS"] },
+    evidence: {
+      protocol: ["TLSv1.2", "TLSv1.3"],
+      certificateValid: "boolean",
+      hostnameMatches: "boolean",
+    },
+  },
+  "DS-TLS-02": {
+    methodsByPath: { "/": ["TLS"] },
+    evidence: {
+      tls10Accepted: "boolean",
+      tls11Accepted: "boolean",
+      tls12Accepted: "boolean",
+      tls13Accepted: "boolean",
+    },
+  },
+  "DS-HTTP-01": {
+    methodsByPath: pathsFor(HTTP_METHODS),
+    evidence: {
+      statusCode: "http_status",
+      redirectedToHttps: "boolean",
+      finalScheme: ["http", "https"],
+    },
+  },
+  "DS-HDR-01": {
+    methodsByPath: pathsFor(READ_METHODS),
+    evidence: {
+      hsts: "boolean",
+      nosniff: "boolean",
+      frameProtection: "boolean",
+      referrerPolicy: "boolean",
+      csp: "boolean",
+    },
+  },
+  "DS-PRIV-01": {
+    methodsByPath: pathsFor(READ_METHODS),
+    evidence: {
+      thirdPartyAttempts: "count",
+      blockedRequests: "count",
+    },
+  },
+  "DS-PRIV-02": {
+    methodsByPath: pathsFor(READ_METHODS),
+    evidence: {
+      cookieCount: "count",
+      insecureCookieCount: "count",
+      thirdPartyCookieCount: "count",
+      inspected: "boolean",
+    },
+  },
+  "DS-PRIV-03": {
+    methodsByPath: pathsFor(READ_METHODS),
+    evidence: {
+      mixedContentCount: "count",
+      insecureNavigationCount: "count",
+    },
+  },
+  "DS-QUAL-01": {
+    methodsByPath: pathsFor(READ_METHODS),
+    evidence: {
+      documentStatusCode: "http_status",
+      failedEssentialResourceCount: "count",
+    },
+  },
+};
+
+export function sanitizeScanObservations(
+  hostname: unknown,
+  profileVersion: unknown,
+  scope: unknown,
+  checks: unknown,
+): SanitizedScanObservations {
+  const safeHostname = normalizeHostname(hostname);
+  if (profileVersion !== PROFILE_VERSION) {
+    throw new Error("scan_profile_not_allowlisted");
+  }
+
+  const allowedPaths =
+    safeHostname === "grumphya.com" ? ALLOWED_SCOPE_PATHS : ["/"];
+  const safeScope = sanitizeScope(scope, allowedPaths);
+  if (
+    !Array.isArray(checks) ||
+    checks.length === 0 ||
+    checks.length > MAX_CHECKS
+  ) {
+    throw new Error("scan_checks_required");
+  }
+
+  const safeChecks = checks.map((check) => sanitizeCheck(check, safeScope));
+  const controlPaths = new Set(
+    safeChecks.map(
+      (check) => `${check.controlId}:${check.targetPath}:${check.method}`,
+    ),
+  );
+  if (controlPaths.size !== safeChecks.length) {
+    throw new Error("scan_check_duplicate");
+  }
+
+  return { scope: safeScope, checks: safeChecks };
+}
+
+function sanitizeScope(
+  scope: unknown,
+  allowedPaths: readonly string[],
+): readonly string[] {
+  if (
+    !Array.isArray(scope) ||
+    scope.length === 0 ||
+    scope.length > MAX_SCOPE_PATHS ||
+    scope.some(
+      (path) => typeof path !== "string" || !allowedPaths.includes(path),
+    ) ||
+    new Set(scope).size !== scope.length ||
+    !scope.includes("/")
+  ) {
+    throw new Error("scan_scope_not_allowlisted");
+  }
+  return [...scope];
+}
+
+function sanitizeCheck(
+  check: unknown,
+  scope: readonly string[],
+): SanitizedScanCheck {
+  if (!isPlainRecord(check)) throw new Error("scan_check_invalid");
+
+  const controlId = check.controlId;
+  if (typeof controlId !== "string" || !Object.hasOwn(CONTROLS, controlId)) {
+    throw new Error("scan_control_not_allowlisted");
+  }
+  const contract = CONTROLS[controlId];
+  const targetPath = check.targetPath;
+  const method = check.method;
+  if (
+    typeof targetPath !== "string" ||
+    typeof method !== "string" ||
+    !contract.methodsByPath[targetPath]?.includes(method) ||
+    (method !== "DNS" && method !== "TLS" && !scope.includes(targetPath))
+  ) {
+    throw new Error("scan_check_scope_not_allowlisted");
+  }
+
+  if (
+    !ALLOWED_STATUSES.includes(String(check.status)) ||
+    check.required !== true ||
+    typeof check.severity !== "string" ||
+    !ALLOWED_SEVERITIES.includes(check.severity) ||
+    !isValidDate(check.observedAt)
+  ) {
+    throw new Error("scan_check_invalid");
+  }
+
+  const evidence = sanitizeEvidence(contract, check.evidence);
+  if (
+    controlId === "DS-DNS-01" &&
+    ["private", "reserved"].includes(String(evidence.addressClass))
+  ) {
+    throw new Error("scan_destination_not_public");
+  }
+  const status = deriveSafeStatus(controlId, String(check.status), evidence);
+
+  return {
+    controlId,
+    status,
+    required: true,
+    severity: check.severity,
+    observedAt: new Date(check.observedAt),
+    targetPath,
+    method,
+    summary: `Comprobación ${controlId}: ${status}.`,
+    limitation:
+      "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+    evidence,
+  };
+}
+
+function deriveSafeStatus(
+  controlId: string,
+  submittedStatus: string,
+  evidence: Record<string, SafeEvidenceValue>,
+): SanitizedScanCheck["status"] {
+  if (submittedStatus === "not_applicable") return "unknown";
+  if (submittedStatus !== "pass") {
+    return submittedStatus as SanitizedScanCheck["status"];
+  }
+
+  const requiredEvidence = REQUIRED_EVIDENCE[controlId];
+  if (!requiredEvidence || !requiredEvidence.every((key) => key in evidence)) {
+    return "unknown";
+  }
+
+  const failed = CONTROL_FAILURES[controlId]?.(evidence) ?? false;
+  if (failed) return "fail";
+
+  return CONTROL_PASSES[controlId]?.(evidence) ? "pass" : "unknown";
+}
+
+const REQUIRED_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
+  "DS-DNS-01": ["addressClass", "aRecordCount", "aaaaRecordCount"],
+  "DS-TLS-01": ["protocol", "certificateValid", "hostnameMatches"],
+  "DS-TLS-02": [
+    "tls10Accepted",
+    "tls11Accepted",
+    "tls12Accepted",
+    "tls13Accepted",
+  ],
+  "DS-HTTP-01": ["statusCode", "redirectedToHttps", "finalScheme"],
+  "DS-HDR-01": ["hsts", "nosniff", "frameProtection", "referrerPolicy", "csp"],
+  "DS-PRIV-01": ["thirdPartyAttempts", "blockedRequests"],
+  "DS-PRIV-02": [
+    "cookieCount",
+    "insecureCookieCount",
+    "thirdPartyCookieCount",
+    "inspected",
+  ],
+  "DS-PRIV-03": ["mixedContentCount", "insecureNavigationCount"],
+  "DS-QUAL-01": ["documentStatusCode", "failedEssentialResourceCount"],
+};
+
+type EvidencePredicate = (
+  evidence: Record<string, SafeEvidenceValue>,
+) => boolean;
+
+const CONTROL_FAILURES: Readonly<Record<string, EvidencePredicate>> = {
+  "DS-TLS-01": (evidence) =>
+    evidence.certificateValid === false || evidence.hostnameMatches === false,
+  "DS-TLS-02": (evidence) =>
+    evidence.tls10Accepted === true || evidence.tls11Accepted === true,
+  "DS-HTTP-01": (evidence) =>
+    Number(evidence.statusCode) >= 400 ||
+    evidence.redirectedToHttps === false ||
+    evidence.finalScheme === "http",
+  "DS-HDR-01": (evidence) =>
+    ["hsts", "nosniff", "frameProtection", "referrerPolicy", "csp"].some(
+      (key) => evidence[key] === false,
+    ),
+  "DS-PRIV-01": (evidence) => Number(evidence.thirdPartyAttempts) > 0,
+  "DS-PRIV-02": (evidence) =>
+    Number(evidence.insecureCookieCount) > 0 ||
+    Number(evidence.thirdPartyCookieCount) > 0,
+  "DS-PRIV-03": (evidence) =>
+    Number(evidence.mixedContentCount) > 0 ||
+    Number(evidence.insecureNavigationCount) > 0,
+  "DS-QUAL-01": (evidence) =>
+    Number(evidence.documentStatusCode) >= 400 ||
+    Number(evidence.failedEssentialResourceCount) > 0,
+};
+
+const CONTROL_PASSES: Readonly<Record<string, EvidencePredicate>> = {
+  "DS-DNS-01": (evidence) =>
+    evidence.addressClass === "public" &&
+    Number(evidence.aRecordCount) + Number(evidence.aaaaRecordCount) > 0,
+  "DS-TLS-01": (evidence) =>
+    evidence.certificateValid === true && evidence.hostnameMatches === true,
+  "DS-TLS-02": (evidence) =>
+    evidence.tls10Accepted === false &&
+    evidence.tls11Accepted === false &&
+    (evidence.tls12Accepted === true || evidence.tls13Accepted === true),
+  "DS-HTTP-01": (evidence) =>
+    Number(evidence.statusCode) >= 200 &&
+    Number(evidence.statusCode) < 400 &&
+    evidence.redirectedToHttps === true &&
+    evidence.finalScheme === "https",
+  "DS-HDR-01": (evidence) =>
+    ["hsts", "nosniff", "frameProtection", "referrerPolicy", "csp"].every(
+      (key) => evidence[key] === true,
+    ),
+  "DS-PRIV-01": (evidence) =>
+    evidence.thirdPartyAttempts === 0 && evidence.blockedRequests === 0,
+  "DS-PRIV-02": (evidence) =>
+    evidence.inspected === true &&
+    evidence.insecureCookieCount === 0 &&
+    evidence.thirdPartyCookieCount === 0,
+  "DS-PRIV-03": (evidence) =>
+    evidence.mixedContentCount === 0 && evidence.insecureNavigationCount === 0,
+  "DS-QUAL-01": (evidence) =>
+    Number(evidence.documentStatusCode) >= 200 &&
+    Number(evidence.documentStatusCode) < 400 &&
+    evidence.failedEssentialResourceCount === 0,
+};
+
+function sanitizeEvidence(
+  contract: ControlContract,
+  evidence: unknown,
+): Record<string, SafeEvidenceValue> {
+  if (!isPlainRecord(evidence)) throw new Error("scan_evidence_invalid");
+
+  const sanitized: Record<string, SafeEvidenceValue> = {};
+  for (const [key, value] of Object.entries(evidence)) {
+    const rule = contract.evidence[key];
+    if (!rule) continue;
+    if (rule === "boolean" && typeof value === "boolean") {
+      sanitized[key] = value;
+      continue;
+    }
+    if (rule === "count" && isSafeCount(value)) {
+      sanitized[key] = value;
+      continue;
+    }
+    if (rule === "http_status" && isHttpStatus(value)) {
+      sanitized[key] = value;
+      continue;
+    }
+    if (
+      Array.isArray(rule) &&
+      typeof value === "string" &&
+      rule.includes(value)
+    ) {
+      sanitized[key] = value;
+      continue;
+    }
+    throw new Error("scan_evidence_invalid");
+  }
+  return sanitized;
+}
+
+function pathsFor(
+  methods: readonly string[],
+): Readonly<Record<string, readonly string[]>> {
+  return Object.fromEntries(PAGE_PATHS.map((path) => [path, methods]));
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isSafeCount(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0 &&
+    value <= MAX_EVIDENCE_COUNT
+  );
+}
+
+function isValidDate(value: unknown): value is string | Date {
+  if (!(typeof value === "string" || value instanceof Date)) return false;
+  return Number.isFinite(new Date(value).getTime());
+}
+
+function isHttpStatus(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 100 &&
+    value <= 599
+  );
+}

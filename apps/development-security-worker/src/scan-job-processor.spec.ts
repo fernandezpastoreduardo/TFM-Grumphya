@@ -18,7 +18,10 @@ const JOB: ClaimedScanJob = {
   leaseUntil: new Date("2026-11-02T10:01:00.000Z"),
 };
 
-const RESULT: Omit<ScanRunInput, "jobId" | "leaseToken"> = {
+const RESULT: Omit<
+  ScanRunInput,
+  "jobId" | "leaseToken" | "hostname" | "profileVersion"
+> = {
   scannerVersion: "scanner-test-version",
   startedAt: new Date("2026-11-02T10:00:00.000Z"),
   completedAt: new Date("2026-11-02T10:00:30.000Z"),
@@ -64,9 +67,45 @@ describe("ScanJobProcessor", () => {
     await expect(processor.processNext()).resolves.toBe("completed");
     expect(store.completeScan).toHaveBeenCalledWith({
       ...RESULT,
+      checks: [
+        {
+          ...RESULT.checks[0],
+          summary: "Comprobación DS-DNS-01: unknown.",
+          limitation:
+            "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+        },
+      ],
       jobId: JOB.id,
       leaseToken: LEASE_TOKEN,
+      hostname: JOB.hostname,
+      profileVersion: JOB.profileVersion,
     });
+  });
+
+  it("does not persist executor results outside the profile scope", async () => {
+    const store = makeStore(JOB);
+    const executor = {
+      execute: vi.fn().mockResolvedValue({
+        ...RESULT,
+        scope: ["/precios?token=secret"],
+      }),
+    };
+    const processor = new ScanJobProcessor(store, executor);
+
+    await expect(processor.processNext()).rejects.toThrow(
+      "scan_scope_not_allowlisted",
+    );
+    expect(store.completeScan).not.toHaveBeenCalled();
+  });
+
+  it("validates the claimed hostname before invoking the executor", async () => {
+    const unsafeJob = { ...JOB, hostname: "127.0.0.1" };
+    const store = makeStore(unsafeJob);
+    const executor = { execute: vi.fn().mockResolvedValue(RESULT) };
+    const processor = new ScanJobProcessor(store, executor);
+
+    await expect(processor.processNext()).rejects.toThrow("invalid_hostname");
+    expect(executor.execute).not.toHaveBeenCalled();
   });
 
   it("does not persist a verdict that contradicts the required checks", async () => {

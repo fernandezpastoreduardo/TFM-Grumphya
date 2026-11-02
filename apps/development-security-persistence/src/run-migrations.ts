@@ -9,6 +9,7 @@ const MIGRATIONS = [
     version: "003_guarded_worker_operations",
     file: "003_guarded_worker_operations.sql",
   },
+  { version: "004_scan_payload_guards", file: "004_scan_payload_guards.sql" },
 ] as const;
 
 const MIGRATION_LOCK_ID = 728194032;

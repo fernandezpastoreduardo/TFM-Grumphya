@@ -253,11 +253,11 @@ describePostgres.sequential(
       const result = await targetAdminPool?.query(
         "SELECT count(*)::integer AS migration_count FROM public.ds_schema_migrations",
       );
-      expect(result?.rows[0].migration_count).toBe(3);
+      expect(result?.rows[0].migration_count).toBe(4);
     });
 
     it("lets the worker complete through the function but not insert reports directly", async () => {
-      const job = await createRunningJob("permission");
+      const job = await createRunningJob("permission", false, "controls-v1");
       const client = await targetAdminPool!.connect();
       try {
         await client.query("SET ROLE ds_worker");
@@ -396,7 +396,7 @@ describePostgres.sequential(
     async function createRunningJob(
       suffix: string,
       expired = false,
-      profileVersion = `profile-${suffix}`,
+      profileVersion = "controls-v1",
     ): Promise<{
       id: string;
       leaseToken: string;
@@ -466,6 +466,17 @@ describePostgres.sequential(
     }
 
     function makeCheck(controlId: string, status: "pass" | "unknown" = "pass") {
+      const methodByControl: Record<string, string> = {
+        "DS-DNS-01": "DNS",
+        "DS-TLS-01": "TLS",
+        "DS-TLS-02": "TLS",
+        "DS-HTTP-01": "HEAD",
+        "DS-HDR-01": "GET",
+        "DS-PRIV-01": "GET",
+        "DS-PRIV-02": "GET",
+        "DS-PRIV-03": "GET",
+        "DS-QUAL-01": "GET",
+      };
       return {
         controlId,
         status,
@@ -473,11 +484,59 @@ describePostgres.sequential(
         severity: "high",
         observedAt: new Date(),
         targetPath: "/",
-        method: "HEAD",
-        summary: "Test fixture.",
-        limitation: "Integration test only.",
-        evidence: {},
+        method: methodByControl[controlId] ?? "GET",
+        summary: `Comprobación ${controlId}: ${status}.`,
+        limitation:
+          "Resultado limitado a las rutas públicas declaradas del perfil controls-v1.",
+        evidence: status === "pass" ? passingEvidence(controlId) : {},
       };
+    }
+
+    function passingEvidence(controlId: string): Record<string, unknown> {
+      const evidenceByControl: Record<string, Record<string, unknown>> = {
+        "DS-DNS-01": {
+          addressClass: "public",
+          aRecordCount: 1,
+          aaaaRecordCount: 0,
+        },
+        "DS-TLS-01": {
+          protocol: "TLSv1.3",
+          certificateValid: true,
+          hostnameMatches: true,
+        },
+        "DS-TLS-02": {
+          tls10Accepted: false,
+          tls11Accepted: false,
+          tls12Accepted: true,
+          tls13Accepted: true,
+        },
+        "DS-HTTP-01": {
+          statusCode: 200,
+          redirectedToHttps: true,
+          finalScheme: "https",
+        },
+        "DS-HDR-01": {
+          hsts: true,
+          nosniff: true,
+          frameProtection: true,
+          referrerPolicy: true,
+          csp: true,
+        },
+        "DS-PRIV-01": { thirdPartyAttempts: 0, blockedRequests: 0 },
+        "DS-PRIV-02": {
+          cookieCount: 0,
+          insecureCookieCount: 0,
+          thirdPartyCookieCount: 0,
+          inspected: true,
+        },
+        "DS-PRIV-03": { mixedContentCount: 0, insecureNavigationCount: 0 },
+        "DS-QUAL-01": {
+          documentStatusCode: 200,
+          failedEssentialResourceCount: 0,
+        },
+      };
+      const evidence = evidenceByControl[controlId];
+      return evidence ?? {};
     }
   },
 );
