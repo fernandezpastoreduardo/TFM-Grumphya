@@ -2,7 +2,7 @@
 
 Esta carpeta documenta el stack instalado, su operación y el estado de las features. El repositorio contiene el frontend y API, conexión a PostgreSQL/pgvector, captura de ideas, dictado de voz, evaluación configurable, búsqueda semántica y persistencia de ideas rechazadas.
 
-Desarrollo Seguro tiene cimientos locales en curso: políticas puras, código de almacenamiento PostgreSQL, health API y processor con puerto executor. No hay sonda ni escaneos reales; la provisión no se ha aplicado a PostgreSQL de producción, los paquetes no están en el runtime/Compose de producción y no hay despliegue. Consulta el [roadmap de Desarrollo Seguro](../agentic-guidelines/roadmap-desarrollo-seguro/README.md) y su [estado de componentes](../agentic-guidelines/roadmap-desarrollo-seguro/components.md).
+Desarrollo Seguro tiene cimientos locales en curso: políticas puras, código de almacenamiento PostgreSQL, health API y processor con puerto executor. No hay sonda ni escaneos reales; la provisión no se ha aplicado a PostgreSQL de producción, los paquetes no están en el runtime/Compose de producción y no hay despliegue. Consulta el [roadmap de Desarrollo Seguro](../agentic-guidelines/prototype-desarrollo-seguro/README.md) y su [estado de componentes](../agentic-guidelines/prototype-desarrollo-seguro/components.md).
 
 El alta con plan crea una cuenta pendiente y envía un enlace de verificación de un solo uso. Tras verificar el correo, la persona confirma explícitamente la contratación simulada; solo entonces se activan la cuenta, suscripción, compra y sesión en una transacción. No se procesa dinero real. Consulta [recuperación de contraseña](password-reset.md) para el flujo de restablecimiento. La autenticación usa access JWT de 10 minutos y refresh token rotatorio en cookie HttpOnly; el perfil y sus acciones requieren sesión válida y consultan los permisos del plan en el servidor. Las cuentas editan su avatar desde un diálogo con recorte, zoom y previsualización circular; la imagen se procesa en servidor a WebP de 128 × 128, se modera con OpenAI usando la clave existente y se conserva en un volumen Docker propio. El avatar aparece redondo en el perfil y, en rankings de cuenta, solo si la persona autorizó participar. La política de privacidad versión 4 está en [`Política de privacidad`](../apps/web/src/features/register-with-plan/privacy-policy.tsx); antes de producción deben verificarse contratos y ajustes efectivos de proveedores, copias, logs y medidas para menores. La contraseña exige 12–128 caracteres con mayúscula, minúscula, número y carácter especial.
 
@@ -27,7 +27,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 - [Usuarios, credenciales y secretos](credentials.md)
 - [Panel de administración](admin-dashboard.md)
 - [Sello demostrativo de Desarrollo Seguro](desarrollo-seguro.md)
-- [Roadmap de Desarrollo Seguro y estado de implementación](../agentic-guidelines/roadmap-desarrollo-seguro/README.md): cimientos locales de API, persistencia y processor; todavía no hay probe ni escaneos operativos.
+- [Roadmap de Desarrollo Seguro y estado de implementación](../agentic-guidelines/prototype-desarrollo-seguro/README.md): cimientos locales de API, persistencia y processor; todavía no hay probe ni escaneos operativos.
 - [Perfil, contratación de plan y avatar](user-profile.md)
 - [Recuperación de contraseña](password-reset.md)
 - [Baja física de cuenta](user-delete.md)
