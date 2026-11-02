@@ -20,6 +20,10 @@ El contrato semántico actual convierte `pass` con evidencia mínima ausente en 
 
 La prueba `test:postgres` puede crear/eliminar una base y crear/alterar/eliminar roles PostgreSQL, que son globales al cluster. Solo debe optarse por ejecutarla con `DS_TEST_POSTGRES_ISOLATED=1` contra un **cluster PostgreSQL local dedicado a pruebas**, URL de conexión a loopback (`localhost`, `127.0.0.1` o `::1`) y nombre de base que empiece por `development_security_test`. El opt-in afirma que el cluster no contiene roles o datos de otros proyectos. No apuntar a la instancia compartida de Grumphya ni a producción, aunque se use una base con prefijo de test.
 
+## Seguridad del aprovisionador manual
+
+El comando `provision-database` del paquete acepta `DS_PROVISION_ADMIN_URL` como URL administrativa y puede crear/modificar roles globales `ds_*`, además de crear la base indicada. Es una operación manual: no se invoca desde CI ni Compose y actualmente no comprueba que el destino sea local ni exige un opt-in de aislamiento. Hasta añadir un gate explícito de destino y opt-in para ese comando, usarlo **solo contra un cluster local dedicado**; no apuntarlo al cluster compartido de Grumphya ni a producción. Una futura provisión compartida/productiva requiere autorización y un flujo separado y controlado, con el gate correspondiente; no reutilizar el CLI actual sin esas salvaguardas.
+
 ## Frontera de datos
 
 Usar una **base lógica desarrollo_seguro y roles propios dentro de la instancia PostgreSQL existente**. Se comparte proceso, almacenamiento físico, TLS y VPS; no se comparten tablas, usuario de runtime, migrador ni credenciales de Grumphya. API y worker emplean pools pequeños y roles de mínimo privilegio. Las migraciones de Desarrollo Seguro viven en su app y se ejecutan como job de la misma release. La provisión de base/roles para un volumen ya existente es una tarea administrativa idempotente y auditada, no un script de initdb que solo funcionaría al crear el volumen. No hay claves foráneas a cuentas, ideas o sesiones de Grumphya.

@@ -1,5 +1,7 @@
 # Features de la primera fase operativa
 
+Este documento define el comportamiento objetivo, no capacidades disponibles hoy. La aplicación web de consulta, la admisión de solicitudes y el executor de red aún no existen; el estado implementado y sus gates están en [README.md](README.md) y [components.md](components.md).
+
 ## F0. Separación e identidad honesta
 
 Como visitante, quiero reconocer que Desarrollo Seguro pertenece al mismo proyecto académico y saber desde dónde se realizó la medición. El informe muestra proveedor de observación «worker del VPS de Grumphya», versión del perfil, fecha UTC y rutas cubiertas. No usa «certificación independiente» ni «cumple RGPD». El sello de Grumphya es local y neutral: «Consultar verificación técnica», sin imagen con texto de certificación. Se mantienen enlaces antiguos como ficha académica histórica o redirección clara al informe.
@@ -8,7 +10,7 @@ Como visitante, quiero reconocer que Desarrollo Seguro pertenece al mismo proyec
 
 ## F1. Registro de dominios y búsqueda pública
 
-grumphya.com es el primer dominio inscrito, configurado explícitamente por el operador y con muestra fija `/`, `/precios` y `/acreditaciones/DS-GRUMPHYA-2026-001`. Cualquier otro dominio solo admite `/`. Los dominios inscritos se escanean cada hora una vez habilitada la operación. El buscador acepta un hostname público normalizado, sin URL, IP, puerto ni ruta introducida por el visitante. Un dominio no inscrito puede solicitar un diagnóstico puntual de su página principal, con límites globales, por dominio y por IP; no queda inscrito ni recibe sello. Los resultados existentes pueden consultarse aunque el propietario no haya reclamado el dominio, con el alcance y la procedencia indicados. Ofrecer mecanismo administrativo de exclusión/opt-out y no publicar diagnósticos de un dominio excluido.
+El perfil objetivo contempla grumphya.com como primer dominio inscrito por el operador, con muestra fija `/`, `/precios` y `/acreditaciones/DS-GRUMPHYA-2026-001`. Cualquier otro dominio solo admitiría `/`. Una vez habilitada la operación, los dominios inscritos se escanearían cada hora. El buscador aceptaría un hostname público normalizado, sin URL, IP, puerto ni ruta introducida por el visitante. Un dominio no inscrito podría solicitar un diagnóstico puntual de su página principal, con límites globales, por dominio y por IP; no quedaría inscrito ni recibiría sello. Los resultados operativos podrían consultarse con el alcance y la procedencia indicados, y habría un mecanismo administrativo de exclusión/opt-out para no publicar diagnósticos de dominios excluidos.
 
 **Aceptación:** una búsqueda nueva no crea alta horaria; entradas inválidas se rechazan antes de DNS; el endpoint no admite URL arbitraria. Un dominio inscrito y otro no inscrito reciben alcance diferente y copy distinto.
 
@@ -26,7 +28,7 @@ El scheduler programa los dominios inscritos cuando cumplen 60 minutos desde el 
 
 ## F4. Informe y sello
 
-La landing actual en /desarrollo-seguro/ sigue siendo introductoria. La nueva aplicación de consulta, servida bajo /desarrollo-seguro/app/, contiene buscador, ficha por dominio, controles, fecha/hora, estado, alcance, fuente de observación, historial breve y errores. El sello local del footer enlaza directamente al informe de grumphya.com. Si el resultado está en curso, la página espera mediante consultas acotadas; el servidor nunca bloquea una petición web durante un escaneo completo.
+La landing actual en /desarrollo-seguro/ sigue siendo introductoria. La aplicación de consulta prevista se serviría bajo /desarrollo-seguro/app/ y mostraría buscador, ficha por dominio, controles, fecha/hora, estado, alcance, fuente de observación, historial breve y errores. El sello local del footer enlazaría al informe de grumphya.com. Si el resultado está en curso, la página consultaría el estado con sondeos acotados; el servidor no bloquearía una petición web durante el escaneo completo.
 
 El veredicto visible es «supera controles observables», «no supera controles observables», «no evaluable», «en curso» o «caducado». «Supera» exige todos los controles obligatorios evaluados en la muestra. La página aclara que desde el mismo VPS no se verifica una perspectiva de Internet independiente ni el código interno.
 
