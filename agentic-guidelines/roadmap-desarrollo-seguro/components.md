@@ -15,7 +15,11 @@ Aplicar AGENTS.md: las piezas usadas por una feature quedan locales; solo lo usa
 | apps/development-security-probe/                                | Navegador y sondas de páginas en contenedor efímero/con límites, sin credenciales de base; todo tráfico pasa por conector de salida validado.                                 |
 | apps/development-security-core/ o paquete workspace equivalente | DTOs, controles, cálculo de frescura/veredicto y puertos puros compartidos por API/worker/web solo donde proceda. No importará módulos de Grumphya ni infraestructura.        |
 
-El workspace actual contiene apps/_; Luna decide si el núcleo se ubica en apps/development-security-core o amplía pnpm-workspace.yaml para packages/_, dejando el razonamiento en una decisión de arquitectura. No crear un paquete compartido para una sola importación hipotética. Los procesos API y worker comparten contratos y la base propia, no objetos mutables en memoria. El probe y el conector de salida son la frontera de red del [modelo de amenazas](scanner-safety.md); pueden empaquetarse en imágenes separadas dentro del mismo Compose y release.
+## Slice 0 en curso: núcleo puro de políticas
+
+La implementación local encargada empieza por `apps/development-security-core/`, un paquete workspace sin infraestructura. El primer incremento expresa con pruebas los contratos puros de normalización de hostname, veredicto y frescura del informe; el test precede a la implementación de cada regla. Esto establece una base para el perfil y la integración posterior, pero **todavía no hay API, worker, persistencia ni sonda**, y el paquete no inicia ni habilita escaneos. La decisión de ubicarlo bajo `apps/` sigue la estructura actual del workspace; mantenerlo separado permite que las futuras aplicaciones DS compartan políticas sin importar código de negocio de Grumphya.
+
+El workspace actual contiene `apps/*`; el núcleo comienza en `apps/development-security-core/` sin añadir una nueva raíz `packages/*`. Se mantiene como parte del módulo de negocio de Desarrollo Seguro, no como utilidad global de Grumphya. No crear paquetes compartidos para consumidores hipotéticos fuera de esta feature. Cuando existan API y worker, compartirán contratos inmutables y persistencia propia, no objetos mutables en memoria. El probe y el conector de salida son la frontera de red del [modelo de amenazas](scanner-safety.md); pueden empaquetarse en imágenes separadas dentro del mismo Compose y release.
 
 ## Encaje con rutas y código existentes
 

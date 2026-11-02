@@ -2,9 +2,9 @@
 
 ## Mandato y condiciones
 
-Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). Este documento es una instrucción futura: su redacción no inicia tareas ni autoriza un despliegue ahora.
+Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). La implementación local está encargada y el slice 0 se encuentra en curso: contratos y políticas puras con pruebas, sin API, worker, persistencia ni sonda todavía. La autorización de desarrollo no autoriza escaneos públicos ni un despliegue; estos requieren superar sus gates y el flujo manual aprobado.
 
-Antes de programar, sincronizar main, revisar AGENTS.md y estado real de repo/Compose/Caddy/Nginx/workflows, y registrar discrepancias con el diseño. No asumir que el prototipo o datos académicos son resultados reales. Mantener el cambio concentrado en DS, rutas compartidas necesarias y sello local.
+Antes de cada siguiente slice, revisar AGENTS.md y el estado real del repo, Compose, Caddy/Nginx y workflows; registrar discrepancias con el diseño. No asumir que el prototipo o datos académicos son resultados reales. Mantener el cambio concentrado en DS, rutas compartidas necesarias y sello local.
 
 ## Entregas en slices verticales
 

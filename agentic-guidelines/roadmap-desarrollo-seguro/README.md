@@ -19,7 +19,7 @@ La fase posterior podrá mover el servicio a su propio dominio, repo, base/volum
 9. [execution.md](execution.md): slices ordenados y puertas de publicación.
 10. [plan-desarrollo-seguro.md](plan-desarrollo-seguro.md): visión completa y fases posteriores.
 
-Este README y los documentos 1–9 definen la primera fase. El plan general se interpreta conforme a ellos. Luna debe volver a revisar main antes de programar: las rutas y scripts pueden cambiar.
+Este README y los documentos 1–9 definen la primera fase. El plan general se interpreta conforme a ellos. La implementación local ya se ha encargado y el slice 0 está en curso: por ahora se trabaja solo en contratos y políticas puras dentro de `apps/development-security-core/`, con pruebas. Antes de ampliar el alcance hay que revisar el estado actual de main, AGENTS.md y las rutas/scripts del despliegue. El encargo de implementación no autoriza escaneos públicos ni despliegues; siguen vigentes los gates de seguridad y capacidad y la publicación manual aprobada.
 
 ## Límites de separación dentro del monorepo
 
@@ -36,4 +36,4 @@ La primera fase puede dejar la landing estática de prototype/ como introducció
 - El worker no puede alcanzar redes internas, metadatos ni puertos ajenos a 80/443; la protección se prueba con redirecciones y DNS adversarios. Los límites de CPU/memoria y la carga real del VPS superan la puerta de [operations.md](operations.md).
 - El despliegue sigue el flujo actual: PR con CI, release desde main mediante workflow_dispatch con confirmación manual. No se publica un escáner abierto si falla una puerta de seguridad o capacidad.
 
-Este turno solo actualiza documentación. Luna ejecutará la fase cuando se le encargue; leer estos documentos no inicia escaneos ni despliegues.
+El trabajo local de implementación está en curso conforme al slice 0. Leer o modificar estos documentos no inicia escaneos ni despliegues. Los escaneos operativos y la publicación siguen bloqueados hasta superar las puertas de seguridad y capacidad y usar el flujo manual aprobado.

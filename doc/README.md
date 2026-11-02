@@ -25,6 +25,7 @@ Las cuotas anónimas son 3 evaluaciones y 3 roasts por perfil de navegador, en c
 - [Usuarios, credenciales y secretos](credentials.md)
 - [Panel de administración](admin-dashboard.md)
 - [Sello demostrativo de Desarrollo Seguro](desarrollo-seguro.md)
+- [Roadmap de Desarrollo Seguro y estado del núcleo](../agentic-guidelines/roadmap-desarrollo-seguro/README.md): implementación local del paquete puro de políticas en curso; todavía no es un escáner operativo ni ejecuta escaneos.
 - [Perfil, contratación de plan y avatar](user-profile.md)
 - [Recuperación de contraseña](password-reset.md)
 - [Baja física de cuenta](user-delete.md)
