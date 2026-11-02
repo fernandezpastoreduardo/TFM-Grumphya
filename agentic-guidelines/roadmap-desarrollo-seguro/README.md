@@ -19,7 +19,7 @@ La fase posterior podrá mover el servicio a su propio dominio, repo, base/volum
 9. [execution.md](execution.md): slices ordenados y puertas de publicación.
 10. [plan-desarrollo-seguro.md](plan-desarrollo-seguro.md): visión completa y fases posteriores.
 
-Este README y los documentos 1–9 definen la primera fase. El plan general se interpreta conforme a ellos. La implementación local ya se ha encargado y el slice 0 está en curso: por ahora se trabaja solo en contratos y políticas puras dentro de `apps/development-security-core/`, con pruebas. Antes de ampliar el alcance hay que revisar el estado actual de main, AGENTS.md y las rutas/scripts del despliegue. El encargo de implementación no autoriza escaneos públicos ni despliegues; siguen vigentes los gates de seguridad y capacidad y la publicación manual aprobada.
+Este README y los documentos 1–9 definen la primera fase. El plan general se interpreta conforme a ellos. La implementación local de slice 0 está completada y slice 1 está en curso: hay políticas puras, persistencia DS, un endpoint de health y un processor con puerto `ScanExecutor`. Aún no existe una sonda ni un executor de red, no se realizan escaneos reales y estos paquetes no forman parte de las imágenes finales ni de los servicios de Compose de producción. Antes de integrar la API, hay que restringir su escucha a la red interna y enrutarla solo desde Caddy. Antes de ampliar el alcance hay que revisar el estado del repo, AGENTS.md y las rutas/scripts del despliegue. El encargo de implementación no autoriza escaneos públicos, cambios en la base productiva ni despliegues; siguen vigentes los gates de seguridad y capacidad y la publicación manual aprobada. Véase [components.md](components.md) para el estado por paquete.
 
 ## Límites de separación dentro del monorepo
 
@@ -36,4 +36,4 @@ La primera fase puede dejar la landing estática de prototype/ como introducció
 - El worker no puede alcanzar redes internas, metadatos ni puertos ajenos a 80/443; la protección se prueba con redirecciones y DNS adversarios. Los límites de CPU/memoria y la carga real del VPS superan la puerta de [operations.md](operations.md).
 - El despliegue sigue el flujo actual: PR con CI, release desde main mediante workflow_dispatch con confirmación manual. No se publica un escáner abierto si falla una puerta de seguridad o capacidad.
 
-El trabajo local de implementación está en curso conforme al slice 0. Leer o modificar estos documentos no inicia escaneos ni despliegues. Los escaneos operativos y la publicación siguen bloqueados hasta superar las puertas de seguridad y capacidad y usar el flujo manual aprobado.
+El trabajo local está en curso conforme al slice 1. Leer o modificar estos documentos no inicia escaneos ni despliegues. Los escaneos operativos y la publicación siguen bloqueados hasta implementar y verificar la sonda y superar las puertas de seguridad y capacidad, y usar el flujo manual aprobado.

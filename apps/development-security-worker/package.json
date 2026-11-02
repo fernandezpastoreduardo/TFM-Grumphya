@@ -1,0 +1,28 @@
+{
+  "name": "@grumphya/development-security-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "pnpm --filter @grumphya/development-security-core build && pnpm --filter @grumphya/development-security-persistence build",
+    "build": "tsc -p tsconfig.json",
+    "pretest": "pnpm --filter @grumphya/development-security-core build && pnpm --filter @grumphya/development-security-persistence build",
+    "test": "vitest run src",
+    "pretypecheck": "pnpm --filter @grumphya/development-security-core build && pnpm --filter @grumphya/development-security-persistence build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src --max-warnings=0"
+  },
+  "dependencies": {
+    "@grumphya/development-security-core": "workspace:*",
+    "@grumphya/development-security-persistence": "workspace:*",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.15.5",
+    "eslint": "^10.0.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^4.1.12"
+  }
+}

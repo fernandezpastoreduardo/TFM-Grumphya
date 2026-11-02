@@ -1,0 +1,18 @@
+import "reflect-metadata";
+import { NestFactory } from "@nestjs/core";
+import { DevelopmentSecurityApiModule } from "./development-security-api.module.js";
+
+const DEFAULT_PORT = 3001;
+const API_PREFIX = "api/desarrollo-seguro/v1";
+
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(DevelopmentSecurityApiModule);
+  app.setGlobalPrefix(API_PREFIX);
+  app.enableShutdownHooks();
+  await app.listen(Number(process.env.DS_API_PORT ?? DEFAULT_PORT), "0.0.0.0");
+}
+
+bootstrap().catch(() => {
+  process.stderr.write("development_security_api_startup_failed\n");
+  process.exitCode = 1;
+});

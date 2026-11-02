@@ -1,0 +1,242 @@
+import { Pool } from "pg";
+import { pathToFileURL } from "node:url";
+import { runDevelopmentSecurityMigrations } from "./run-migrations.js";
+
+const DEFAULT_DATABASE_NAME = "development_seguro";
+const DATABASE_NAME_PATTERN = /^[a-z][a-z0-9_]{0,62}$/u;
+const MANAGED_ROLE_COMMENT = "development_security: managed role v1";
+const REQUIRED_SETTINGS = [
+  "DS_PROVISION_ADMIN_URL",
+  "DS_MIGRATOR_PASSWORD",
+  "DS_API_PASSWORD",
+  "DS_WORKER_PASSWORD",
+] as const;
+
+export type ProvisioningSettings = {
+  adminUrl: string;
+  databaseName: string;
+  migratorPassword: string;
+  apiPassword: string;
+  workerPassword: string;
+};
+
+async function main(): Promise<void> {
+  const settings = readSettings(process.env);
+  await provisionDevelopmentSecurityDatabase(settings);
+  process.stdout.write("development_security_database_ready\n");
+}
+
+export async function provisionDevelopmentSecurityDatabase(
+  settings: ProvisioningSettings,
+): Promise<void> {
+  const adminPool = new Pool({ connectionString: settings.adminUrl, max: 1 });
+  try {
+    await ensureRole(adminPool, "ds_read", null);
+    await ensureRole(adminPool, "ds_migrator", settings.migratorPassword);
+    await ensureRole(adminPool, "ds_api", settings.apiPassword);
+    await ensureRole(adminPool, "ds_worker", settings.workerPassword);
+    await ensureDatabase(adminPool, settings.databaseName);
+    await adminPool.query(
+      `GRANT CONNECT ON DATABASE ${quoteIdentifier(settings.databaseName)}
+       TO ds_read, ds_api, ds_worker, ds_migrator`,
+    );
+    await adminPool.query(
+      `REVOKE ALL ON DATABASE ${quoteIdentifier(settings.databaseName)} FROM PUBLIC`,
+    );
+    await adminPool.query("GRANT ds_read TO ds_api, ds_worker");
+  } finally {
+    await adminPool.end();
+  }
+
+  const migratorPool = new Pool({
+    connectionString: buildConnectionUrl(
+      settings.adminUrl,
+      settings.databaseName,
+      "ds_migrator",
+      settings.migratorPassword,
+    ),
+    max: 1,
+  });
+  try {
+    await migratorPool.query(
+      "REVOKE ALL ON SCHEMA public FROM PUBLIC; GRANT USAGE, CREATE ON SCHEMA public TO ds_migrator",
+    );
+    await runDevelopmentSecurityMigrations(migratorPool);
+    await applyRuntimeGrants(migratorPool);
+  } finally {
+    await migratorPool.end();
+  }
+}
+
+function readSettings(environment: NodeJS.ProcessEnv): ProvisioningSettings {
+  for (const name of REQUIRED_SETTINGS) {
+    if (!environment[name])
+      throw new Error("development_security_settings_missing");
+  }
+
+  const databaseName = environment.DS_DATABASE_NAME ?? DEFAULT_DATABASE_NAME;
+  if (!DATABASE_NAME_PATTERN.test(databaseName)) {
+    throw new Error("development_security_database_name_invalid");
+  }
+
+  return {
+    adminUrl: environment.DS_PROVISION_ADMIN_URL ?? "",
+    databaseName,
+    migratorPassword: environment.DS_MIGRATOR_PASSWORD ?? "",
+    apiPassword: environment.DS_API_PASSWORD ?? "",
+    workerPassword: environment.DS_WORKER_PASSWORD ?? "",
+  };
+}
+
+async function ensureRole(
+  pool: Pool,
+  roleName: "ds_read" | "ds_migrator" | "ds_api" | "ds_worker",
+  password: string | null,
+): Promise<void> {
+  const existing = await pool.query<{
+    role_exists: boolean;
+    role_comment: string | null;
+  }>(
+    `SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = $1) AS role_exists,
+       (SELECT shobj_description(oid, 'pg_authid') FROM pg_roles WHERE rolname = $1)
+         AS role_comment`,
+    [roleName],
+  );
+  if (
+    existing.rows[0]?.role_exists &&
+    existing.rows[0].role_comment !== MANAGED_ROLE_COMMENT
+  ) {
+    throw new Error("development_security_role_name_collision");
+  }
+  if (existing.rows[0]?.role_exists) {
+    await assertExpectedRoleMemberships(pool, roleName);
+  }
+  if (roleName === "ds_read") {
+    if (!existing.rows[0]?.role_exists) {
+      await pool.query(
+        `CREATE ROLE ${quoteIdentifier(roleName)} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
+      );
+    } else {
+      await pool.query(
+        `ALTER ROLE ${quoteIdentifier(roleName)} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
+      );
+    }
+    await pool.query(
+      `COMMENT ON ROLE ${quoteIdentifier(roleName)} IS ${quoteLiteral(MANAGED_ROLE_COMMENT)}`,
+    );
+    return;
+  }
+
+  if (!password) throw new Error("development_security_role_password_missing");
+  const passwordSql = quoteLiteral(password);
+  const roleSql = quoteIdentifier(roleName);
+  if (existing.rows[0]?.role_exists) {
+    await pool.query(
+      `ALTER ROLE ${roleSql} WITH LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD ${passwordSql}`,
+    );
+    return;
+  }
+  await pool.query(
+    `CREATE ROLE ${roleSql} WITH LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD ${passwordSql}`,
+  );
+  await pool.query(
+    `COMMENT ON ROLE ${roleSql} IS ${quoteLiteral(MANAGED_ROLE_COMMENT)}`,
+  );
+}
+
+async function assertExpectedRoleMemberships(
+  pool: Pool,
+  roleName: "ds_read" | "ds_migrator" | "ds_api" | "ds_worker",
+): Promise<void> {
+  const expected =
+    roleName === "ds_api" || roleName === "ds_worker" ? ["ds_read"] : [];
+  const memberships = await pool.query<{ granted_role: string }>(
+    `SELECT granted.rolname AS granted_role
+     FROM pg_auth_members AS membership
+     JOIN pg_roles AS granted ON granted.oid = membership.roleid
+     JOIN pg_roles AS member ON member.oid = membership.member
+     WHERE member.rolname = $1
+     ORDER BY granted.rolname`,
+    [roleName],
+  );
+  if (
+    memberships.rows.length > 0 &&
+    (memberships.rows.length !== expected.length ||
+      memberships.rows.some(
+        (row, index) => row.granted_role !== expected[index],
+      ))
+  ) {
+    throw new Error("development_security_role_membership_mismatch");
+  }
+}
+
+async function ensureDatabase(pool: Pool, databaseName: string): Promise<void> {
+  const database = await pool.query<{ owner: string }>(
+    `SELECT pg_get_userbyid(datdba) AS owner
+     FROM pg_database WHERE datname = $1`,
+    [databaseName],
+  );
+  if (!database.rows[0]) {
+    await pool.query(
+      `CREATE DATABASE ${quoteIdentifier(databaseName)}
+       OWNER ds_migrator TEMPLATE template0 ENCODING 'UTF8'`,
+    );
+    return;
+  }
+  if (database.rows[0].owner !== "ds_migrator") {
+    throw new Error("development_security_database_owner_mismatch");
+  }
+}
+
+async function applyRuntimeGrants(pool: Pool): Promise<void> {
+  await pool.query(`
+    GRANT USAGE ON SCHEMA public TO ds_read, ds_api, ds_worker;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO ds_read;
+    GRANT INSERT ON ds_domains, ds_scan_jobs TO ds_api;
+    REVOKE UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public
+      FROM ds_read, ds_api, ds_worker;
+    REVOKE INSERT ON ds_scan_runs, ds_check_results, ds_scan_metrics FROM ds_worker;
+    REVOKE UPDATE (state, lease_until, lease_token, attempts, available_at,
+      finished_at, public_error_code) ON ds_scan_jobs FROM ds_worker;
+    GRANT EXECUTE ON FUNCTION ds_claim_next_scan(integer),
+      ds_renew_scan_lease(uuid, uuid, integer),
+      ds_recover_expired_scan_leases(integer),
+      ds_complete_scan(uuid, uuid, timestamptz, text, timestamptz, text, jsonb, jsonb, jsonb)
+      TO ds_worker;
+    ALTER DEFAULT PRIVILEGES FOR ROLE ds_migrator IN SCHEMA public
+      GRANT SELECT ON TABLES TO ds_read;
+    ALTER DEFAULT PRIVILEGES FOR ROLE ds_migrator IN SCHEMA public
+      REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+  `);
+}
+
+function buildConnectionUrl(
+  baseUrl: string,
+  databaseName: string,
+  username: string,
+  password: string,
+): string {
+  const databaseUrl = new URL(baseUrl);
+  databaseUrl.pathname = `/${databaseName}`;
+  databaseUrl.username = username;
+  databaseUrl.password = password;
+  return databaseUrl.toString();
+}
+
+function quoteIdentifier(value: string): string {
+  return `"${value.replaceAll('"', '""')}"`;
+}
+
+function quoteLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main().catch(() => {
+    process.stderr.write("development_security_database_provisioning_failed\n");
+    process.exitCode = 1;
+  });
+}

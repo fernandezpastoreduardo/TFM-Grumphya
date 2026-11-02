@@ -12,6 +12,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/development-security-core/package.json apps/development-security-core/package.json
+COPY apps/development-security-persistence/package.json apps/development-security-persistence/package.json
+COPY apps/development-security-api/package.json apps/development-security-api/package.json
+COPY apps/development-security-worker/package.json apps/development-security-worker/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY . .
@@ -59,6 +62,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/development-security-core/package.json apps/development-security-core/package.json
+COPY apps/development-security-persistence/package.json apps/development-security-persistence/package.json
+COPY apps/development-security-api/package.json apps/development-security-api/package.json
+COPY apps/development-security-worker/package.json apps/development-security-worker/package.json
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN printf '{"revision":"%s"}\n' "$DEPLOY_SHA" > apps/web/public/build.json
@@ -84,6 +90,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
 COPY apps/development-security-core/package.json apps/development-security-core/package.json
+COPY apps/development-security-persistence/package.json apps/development-security-persistence/package.json
+COPY apps/development-security-api/package.json apps/development-security-api/package.json
+COPY apps/development-security-worker/package.json apps/development-security-worker/package.json
 RUN pnpm install --prod --filter @grumphya/api --frozen-lockfile --ignore-scripts
 
 FROM node-base AS production

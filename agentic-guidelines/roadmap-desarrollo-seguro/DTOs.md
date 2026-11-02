@@ -1,5 +1,7 @@
 # DTOs y API operativa
 
+Los contratos de búsqueda, trabajos e informes de este documento son objetivo de implementación, no endpoints disponibles hoy. La API local actual solo expone `GET /api/desarrollo-seguro/v1/health`; aún no existe API pública para solicitar/consultar scans ni DTO implementados para esos flujos. No presentar las rutas siguientes como servicio activo.
+
 ## Reglas comunes
 
 Todos los datos procedentes de HTTP, DNS, TLS y navegador se tratan como unknown y se validan antes de usarlos. Los DTO públicos son proyecciones explícitas, sin filas completas, valores de cookies, cuerpos HTML, tokens, IP de visitantes ni cabeceras con datos personales. Fechas ISO 8601 UTC; la UI puede añadir hora Europe/Madrid. Los contratos versionados viven en el núcleo de Desarrollo Seguro y se prueban entre API, worker y web. Las rutas aquí propuestas son del **mismo origen grumphya.com**.

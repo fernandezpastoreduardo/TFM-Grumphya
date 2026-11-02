@@ -2,7 +2,7 @@
 
 ## Mandato y condiciones
 
-Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). La implementación local está encargada y el slice 0 se encuentra en curso: contratos y políticas puras con pruebas, sin API, worker, persistencia ni sonda todavía. La autorización de desarrollo no autoriza escaneos públicos ni un despliegue; estos requieren superar sus gates y el flujo manual aprobado.
+Implementar la **primera fase operativa dentro del despliegue actual de Grumphya**: mismo dominio grumphya.com, VPS, repositorio y release manual, con componentes DS aislados y escaneo real de bajo impacto. Seguir [README.md](README.md), el perfil [controls-and-evidence.md](controls-and-evidence.md), la seguridad [scanner-safety.md](scanner-safety.md), y el gate operativo [operations.md](operations.md). El slice 0 está completado y el slice 1 está en curso: contratos y políticas puras, almacenamiento DS, health API y processor con puerto `ScanExecutor`. Aún no hay probe ni executor de red; no se realizan escaneos reales y nada está desplegado ni incluido en runtime/Compose de producción. El bootstrap standalone de API escucha en `0.0.0.0:3001`; antes de integrarla en Compose debe limitarse a red interna y quedar accesible solo desde Caddy. La autorización de desarrollo no autoriza escaneos públicos, cambios en la base productiva ni un despliegue; estos requieren superar sus gates y el flujo manual aprobado.
 
 Antes de cada siguiente slice, revisar AGENTS.md y el estado real del repo, Compose, Caddy/Nginx y workflows; registrar discrepancias con el diseño. No asumir que el prototipo o datos académicos son resultados reales. Mantener el cambio concentrado en DS, rutas compartidas necesarias y sello local.
 
@@ -24,7 +24,9 @@ Antes de cada siguiente slice, revisar AGENTS.md y el estado real del repo, Comp
 - Implementar máquina de estados, cálculo de TTL exacto desde completed_at, historial inmutable, perfil versionado, lease, recuperación y singleflight.
 - Tests TDD para frescura, concurrencia, reintentos, aislamiento de roles e invariantes de veredicto.
 
-**Salida:** API/worker compilan y persisten casos/resultados sintéticos, sin red pública todavía.
+**Estado:** hay paquetes API y worker, esquema y almacén PostgreSQL, y pruebas locales. La API solo expone health; el processor recibe un `ScanExecutor` inyectado, pero no existe una implementación de red ni un proceso worker arrancable. No se ha provisionado ni migrado PostgreSQL de producción.
+
+**Salida pendiente:** API/worker compilan y persisten casos/resultados sintéticos en una base aislada de prueba, sin red pública. El puerto de executor no convierte los jobs en escaneos reales.
 
 ### 2. Sonda externa de bajo impacto
 
