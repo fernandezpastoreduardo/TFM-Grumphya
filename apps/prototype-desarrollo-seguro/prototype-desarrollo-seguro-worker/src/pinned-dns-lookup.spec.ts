@@ -28,6 +28,14 @@ function runLookup(
   });
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
 describe("createPinnedLookup", () => {
   it("returns validated public IPv4 addresses using a normalized hostname", async () => {
     const resolver = vi.fn().mockResolvedValue([PUBLIC_IPV4]);
@@ -238,5 +246,61 @@ describe("createPinnedLookup", () => {
       error: { code: "EHOSTUNREACH" },
       address: [],
     });
+  });
+
+  it("keeps timed-out lookup slots occupied until the underlying DNS promises settle", async () => {
+    vi.useFakeTimers();
+    const pendingResolutions = Array.from({ length: 5 }, () =>
+      createDeferred<LookupAddress[]>(),
+    );
+    let nextResolution = 0;
+    const resolver = vi.fn(() => {
+      const resolution = pendingResolutions[nextResolution];
+      nextResolution += 1;
+      if (!resolution) return Promise.reject(new Error("unexpected lookup"));
+      return resolution.promise;
+    });
+    const lookup = createPinnedLookup(resolver);
+    const firstFour = Array.from({ length: 4 }, () =>
+      runLookup(lookup, HOSTNAME, { all: true }),
+    );
+
+    expect(resolver).toHaveBeenCalledTimes(4);
+    await expect(
+      runLookup(lookup, HOSTNAME, { all: true }),
+    ).resolves.toMatchObject({
+      error: { code: "EHOSTUNREACH" },
+      address: [],
+    });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(await Promise.all(firstFour)).toHaveLength(4);
+
+    await expect(
+      runLookup(lookup, HOSTNAME, { all: true }),
+    ).resolves.toMatchObject({
+      error: { code: "EHOSTUNREACH" },
+      address: [],
+    });
+    expect(resolver).toHaveBeenCalledTimes(4);
+
+    pendingResolutions[0]?.resolve([PUBLIC_IPV4]);
+    await pendingResolutions[0]?.promise;
+    const afterUnderlyingResolution = runLookup(lookup, HOSTNAME, {
+      all: true,
+    });
+    expect(resolver).toHaveBeenCalledTimes(5);
+
+    pendingResolutions[1]?.resolve([PUBLIC_IPV4]);
+    pendingResolutions[2]?.resolve([PUBLIC_IPV4]);
+    pendingResolutions[3]?.resolve([PUBLIC_IPV4]);
+    pendingResolutions[4]?.resolve([PUBLIC_IPV6]);
+    await expect(afterUnderlyingResolution).resolves.toEqual({
+      error: null,
+      address: [PUBLIC_IPV6],
+      family: undefined,
+    });
+    await Promise.all(
+      pendingResolutions.slice(1, 4).map(({ promise }) => promise),
+    );
   });
 });

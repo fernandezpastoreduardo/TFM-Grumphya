@@ -4,6 +4,7 @@ import { isIP, type LookupFunction } from "node:net";
 import { normalizeHostname } from "@grumphya/prototype-desarrollo-seguro-core";
 
 const MAX_DNS_ANSWERS = 32;
+const MAX_CONCURRENT_DNS_LOOKUPS = 4;
 const DNS_LOOKUP_TIMEOUT_MS = 5_000;
 const LOOKUP_FAILURE_CODE = "EHOSTUNREACH";
 const LOOKUP_FAILURE_MESSAGE = "pinned_dns_lookup_failed";
@@ -48,8 +49,35 @@ const defaultResolver: Resolver = async (hostname) =>
 export function createPinnedLookup(
   resolver: Resolver = defaultResolver,
 ): LookupFunction {
+  let activeLookups = 0;
+  const limitedResolver: Resolver = (hostname) => {
+    if (activeLookups >= MAX_CONCURRENT_DNS_LOOKUPS) {
+      return Promise.reject(createLookupError());
+    }
+
+    activeLookups += 1;
+    let resolution: Promise<readonly LookupAddress[]>;
+    try {
+      resolution = resolver(hostname);
+    } catch {
+      activeLookups -= 1;
+      return Promise.reject(createLookupError());
+    }
+
+    return resolution.then(
+      (addresses) => {
+        activeLookups -= 1;
+        return addresses;
+      },
+      () => {
+        activeLookups -= 1;
+        throw createLookupError();
+      },
+    );
+  };
+
   return (hostname, options, callback) => {
-    void resolvePublicAddresses(hostname, resolver).then(
+    void resolvePublicAddresses(hostname, limitedResolver).then(
       (addresses) => {
         const family = options.family;
         const eligible = getEligibleAddresses(addresses, family);
