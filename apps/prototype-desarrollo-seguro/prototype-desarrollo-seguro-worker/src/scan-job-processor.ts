@@ -2,13 +2,13 @@ import {
   evaluateVerdict,
   normalizeHostname,
   sanitizeScanObservations,
-} from "@grumphya/development-security-core";
+} from "@grumphya/prototype-desarrollo-seguro-core";
 import {
   ScanLeaseLostError,
   type ClaimedScanJob,
   type ScanJobStore,
   type ScanRunInput,
-} from "@grumphya/development-security-persistence";
+} from "@grumphya/prototype-desarrollo-seguro-persistence";
 
 export type ScanExecutor = {
   execute(

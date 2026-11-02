@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - apps/prototype-desarrollo-seguro/*
 allowBuilds:
   "@parcel/watcher": false
   esbuild: true

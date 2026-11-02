@@ -2,7 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import {
   evaluateVerdict,
   sanitizeScanObservations,
-} from "@grumphya/development-security-core";
+} from "@grumphya/prototype-desarrollo-seguro-core";
 
 const ACTIVE_JOB_STATES = ["queued", "running"] as const;
 const MAX_LEASE_DURATION_MS = 5 * 60 * 1000;

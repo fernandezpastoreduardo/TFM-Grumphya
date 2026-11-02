@@ -7,7 +7,7 @@ import {
   OnApplicationShutdown,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { PostgresScanStore } from "@grumphya/development-security-persistence";
+import { PostgresScanStore } from "@grumphya/prototype-desarrollo-seguro-persistence";
 import { Pool } from "pg";
 
 @Injectable()

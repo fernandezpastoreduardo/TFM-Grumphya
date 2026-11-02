@@ -5,7 +5,7 @@ import {
   type ClaimedScanJob,
   type ScanJobStore,
   type ScanRunInput,
-} from "@grumphya/development-security-persistence";
+} from "@grumphya/prototype-desarrollo-seguro-persistence";
 
 const LEASE_TOKEN = "fixture-lease-token";
 const JOB: ClaimedScanJob = {

@@ -17,8 +17,8 @@ const ADMIN_DATABASE_URL = process.env.DS_TEST_DATABASE_URL;
 const POSTGRES_TEST_OPT_IN_VALUE_FROM_ENV = process.env[POSTGRES_TEST_OPT_IN];
 const TEST_DATABASE_NAME = "development_security_test_provisioned";
 const MIGRATOR_PASSWORD = "development-security-migrator-test-only";
-const API_PASSWORD = "development-security-api-test-only";
-const WORKER_PASSWORD = "development-security-worker-test-only";
+const API_PASSWORD = "prototype-desarrollo-seguro-api-test-only";
+const WORKER_PASSWORD = "prototype-desarrollo-seguro-worker-test-only";
 const CONTROLS_V1_IDS = [
   "DS-DNS-01",
   "DS-TLS-01",
