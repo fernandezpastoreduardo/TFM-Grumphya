@@ -523,4 +523,37 @@ describe("security middleware", () => {
     expect(response.status).not.toHaveBeenCalledWith(429);
     expect(next).toHaveBeenCalledTimes(11);
   });
+
+  it("does not apply the session refresh limit when the refresh cookie is absent", () => {
+    const middleware = createSecurityMiddleware({
+      sessionRefreshRequestLimit: 1,
+    });
+    const next = vi.fn() as NextFunction;
+    const refreshRequest = createRequest("/api/auth/refresh", "POST");
+
+    middleware(refreshRequest, createResponse().response, next);
+    const secondResponse = createResponse();
+    middleware(refreshRequest, secondResponse.response, next);
+
+    expect(secondResponse.response.status).not.toHaveBeenCalledWith(429);
+    expect(next).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the session refresh limit when the refresh cookie is present", () => {
+    const middleware = createSecurityMiddleware({
+      sessionRefreshRequestLimit: 1,
+    });
+    const next = vi.fn() as NextFunction;
+    const refreshRequest = {
+      ...createRequest("/api/auth/refresh", "POST"),
+      headers: { cookie: "grumphya_refresh=session-token" },
+    } as unknown as Request;
+
+    middleware(refreshRequest, createResponse().response, next);
+    const secondResponse = createResponse();
+    middleware(refreshRequest, secondResponse.response, next);
+
+    expect(secondResponse.response.status).toHaveBeenCalledWith(429);
+    expect(next).toHaveBeenCalledOnce();
+  });
 });

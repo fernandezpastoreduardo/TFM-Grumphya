@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { readCookie } from "../infrastructure/http/read-cookie";
 import { LoginAbuseProtection } from "./login-abuse-protection.service";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -8,6 +9,7 @@ const EVALUATION_REQUEST_LIMIT = 10;
 const REGISTRATION_REQUEST_LIMIT = 8;
 const REGISTRATION_INTENT_REQUEST_LIMIT = 20;
 const REGISTRATION_VERIFY_REQUEST_LIMIT = 10;
+const REFRESH_COOKIE = "grumphya_refresh";
 const LOGIN_REQUEST_LIMIT = 5;
 const SESSION_LOGOUT_REQUEST_LIMIT = 10;
 const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
@@ -157,6 +159,8 @@ export function createSecurityMiddleware(
       request.method === "POST" && request.path.startsWith("/api/registration");
     const isRefreshPost =
       request.method === "POST" && request.path === "/api/auth/refresh";
+    const hasRefreshCookie =
+      isRefreshPost && readCookie(request, REFRESH_COOKIE) !== undefined;
     const isLoginPost =
       request.method === "POST" && request.path === "/api/auth/login";
     if (isLoginPost) {
@@ -248,7 +252,9 @@ export function createSecurityMiddleware(
       isAccountDelete ||
       isContactMessagePost
     ) {
-      limits.push([registrationScope, registrationLimit]);
+      if (!isRefreshPost || hasRefreshCookie) {
+        limits.push([registrationScope, registrationLimit]);
+      }
     }
 
     for (const [scope, limit] of limits) {
