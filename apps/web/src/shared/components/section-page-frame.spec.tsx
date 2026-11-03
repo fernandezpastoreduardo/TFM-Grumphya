@@ -1,0 +1,52 @@
+import { render } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SectionPageFrame } from "./section-page-frame";
+
+vi.mock("../hooks/use-navigation-overflow", () => ({
+  useNavigationOverflow: () => false,
+}));
+
+vi.mock("../../infrastructure/auth/use-session-status", () => ({
+  useSessionStatus: () => ({
+    isAuthenticated: false,
+    accountAttempts: null,
+    avatarUrl: null,
+    isSigningOut: false,
+    signOut: vi.fn(),
+  }),
+}));
+
+vi.mock("./accreditation-seal", () => ({
+  AccreditationSeal: () => null,
+}));
+
+describe("SectionPageFrame mobile mascot", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("loads its local mascot image lazily and asynchronously", () => {
+    const { container } = render(
+      <SectionPageFrame
+        page={{
+          title: "Peores ideas",
+          intro: "Un ranking sin autores.",
+          theme: "mint",
+          mascot: "worst-ideas",
+        }}
+      >
+        <p>Contenido de la sección</p>
+      </SectionPageFrame>,
+    );
+
+    const image = container.querySelector(".section-mobile-mascot img");
+
+    expect(image).toHaveAttribute(
+      "src",
+      "/assets/grumphya/worst-ideas-wall.webp",
+    );
+    expect(image).toHaveAttribute("loading", "lazy");
+    expect(image).toHaveAttribute("decoding", "async");
+    expect(image).toHaveAttribute("alt", "");
+  });
+});

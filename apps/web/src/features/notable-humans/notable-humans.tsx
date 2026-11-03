@@ -58,6 +58,8 @@ export function NotableHumans() {
           src="/assets/grumphya/notable-humans-callout.svg"
           alt=""
           aria-hidden="true"
+          loading="lazy"
+          decoding="async"
         />
         <span className="eyebrow">Tu turno</span>
         <h2>La próxima idea brillante podría ser tuya.</h2>

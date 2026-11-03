@@ -56,6 +56,19 @@ describe("WorstIdeasAll", () => {
     expect(screen.queryByText(/datos de ejemplo/i)).not.toBeInTheDocument();
   });
 
+  it("hides decorative ranking numbers while retaining ordered-list semantics", async () => {
+    render(<WorstIdeasAll />);
+
+    const list = await screen.findByRole("list", {
+      name: "Ranking semanal de ideas rechazadas",
+    });
+    const firstPosition = list.querySelector(".ranking-position");
+
+    expect(firstPosition).toHaveTextContent("01");
+    expect(firstPosition).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getAllByRole("listitem")).toHaveLength(RANKING.length);
+  });
+
   it("reserves space for the maximum public ranking immediately while loading", () => {
     vi.stubGlobal(
       "fetch",

@@ -33,6 +33,8 @@ export function RoastFailureDialog({ open, onClose }: RoastFailureDialogProps) {
         className={styles.mascot}
         src="/assets/grumphya/evaluation-error-spilled-coffee.svg"
         alt="Grumphya triste junto a una taza de café derramada"
+        loading="lazy"
+        decoding="async"
       />
       <h2 id="roast-failure-title">Se nos ha derramado el café</h2>
       <p id="roast-failure-copy">

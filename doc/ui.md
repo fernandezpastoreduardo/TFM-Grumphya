@@ -325,10 +325,11 @@ capturado el 30 de octubre a las 16:54 UTC, registró rendimiento 0,76, LCP
 la mascota móvil mientras se resolvía la sesión; el skeleton ahora reproduce
 las dimensiones del formulario anónimo y del sello. Una prueba E2E comprueba
 que la altura y la posición de la mascota varían como máximo un píxel al mostrar
-el formulario. Como Lighthouse identificó esa ilustración (56.075 B) como LCP
-y señaló que el fondo CSS no se descubre en el HTML inicial, la ruta prerenderizada
-de Contacto precarga el SVG con prioridad alta solo hasta 700 px. Hace falta
-otra medición Lighthouse para confirmar el efecto en LCP, CLS y rendimiento.
+el formulario. En una revisión posterior se retiró la precarga móvil del SVG de
+Contacto: la mascota se muestra después del contenido principal y cargarla antes
+competía con los recursos iniciales. Las mascotas de sección en móvil se
+representan ahora como imágenes diferidas; las versiones de escritorio
+conservan sus fondos CSS.
 Los ajustes publicados el 30 de octubre
 para responder a los informes anteriores también precargan el telón compartido
 `stage-curtain-v2.webp` desde `apps/web/index.html` con prioridad alta, fijan
@@ -382,6 +383,19 @@ Las versiones SVGOMG activas de la ilustración de Descárgate y las dos tarjeta
 de tono pesan 205.536 B en conjunto: `descargate-boxing-bag.svg`, 67.914 B;
 `idea-tone-soft-bandage-v2.svg`, 72.991 B; y `idea-tone-hard-boxing-v2.svg`,
 64.631 B. Las tres conservan transparencia.
+
+La última revisión de carga móvil añade desde el HTML una precarga con prioridad
+alta para `audience-rounded.webp`, el recurso decorativo compartido que se usa
+en las secciones públicas. Las ilustraciones de contenido que aparecen más
+abajo o dentro de un diálogo llevan `loading="lazy"` y `decoding="async"`;
+esta decisión no debe extenderse a una ilustración que sea el LCP inicial de
+una ruta. Las filas del ranking de Peores ideas mantienen el puesto mediante
+la numeración nativa de `<ol>`; el número visual no se anuncia por duplicado en
+un `<span>`. El estado vacío del historial tiene un fondo oscuro explícito en
+tema oscuro para conservar el contraste de su texto claro. No hay una medición
+Lighthouse posterior comparable que permita atribuir una mejora de puntuación
+a estos cambios; la precarga solo confirma el descubrimiento del recurso desde
+el HTML inicial.
 
 ## Ranking público de ideas rechazadas
 

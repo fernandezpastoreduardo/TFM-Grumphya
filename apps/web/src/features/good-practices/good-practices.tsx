@@ -57,6 +57,8 @@ export function GoodPractices() {
           src="/assets/grumphya/good-practices-validate-idea.svg"
           alt=""
           aria-hidden="true"
+          loading="lazy"
+          decoding="async"
         />
         <div>
           <strong>Sobre IA y vibe-coding</strong>
