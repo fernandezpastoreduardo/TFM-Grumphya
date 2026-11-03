@@ -117,6 +117,19 @@ describe("Home", () => {
       );
       expect(image).toHaveAttribute("alt", "");
     });
+
+    const desktopHeroImage = document.querySelector(
+      ".home-hero-stage:not(.home-hero-stage-mobile) img.home-creature-image",
+    );
+    const mobileDecorativeImage = document.querySelector(
+      ".home-hero-stage-mobile img.home-creature-image",
+    );
+
+    expect(desktopHeroImage).not.toHaveAttribute("loading", "lazy");
+    expect(desktopHeroImage).not.toHaveAttribute("fetchpriority", "low");
+    expect(mobileDecorativeImage).toHaveAttribute("loading", "lazy");
+    expect(mobileDecorativeImage).toHaveAttribute("fetchpriority", "low");
+    expect(mobileDecorativeImage).toHaveAttribute("decoding", "async");
   });
 
   it("shows the admin control panel in the home navigation", async () => {

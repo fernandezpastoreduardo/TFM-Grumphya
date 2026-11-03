@@ -549,6 +549,8 @@ export function Home() {
               width="400"
               height="400"
               alt=""
+              loading="lazy"
+              fetchPriority="low"
               decoding="async"
             />
           </span>
