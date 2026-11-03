@@ -1,4 +1,5 @@
 import type { AiUsageRecord } from "../infrastructure/ai/ai-usage";
+import type { AnonymousAnalyticsSnapshot } from "../anonymous-analytics/anonymous-analytics.models";
 
 export type AdminDashboardSnapshot = {
   recentAiActivity: Array<{
@@ -136,6 +137,7 @@ export type ContactMessageReplyClaim = {
 
 export interface AdminDashboardRepository {
   getSnapshot(): Promise<AdminDashboardSnapshot>;
+  getAnonymousAnalytics(): Promise<AnonymousAnalyticsSnapshot>;
   getApplicationError(id: string): Promise<AdminApplicationErrorDetail | null>;
   listContactMessages(): Promise<AdminContactMessage[]>;
   claimContactMessageReply(

@@ -51,6 +51,29 @@ type DashboardData = {
     latestDiagnosticCode: string | null;
   }>;
 };
+type AnalyticsPage =
+  | "home"
+  | "precios"
+  | "buenas-practicas"
+  | "humanos-notables"
+  | "lo-peor-de-lo-peor"
+  | "contacto"
+  | "descargate"
+  | "other_public_pages";
+type AnonymousAnalyticsData = {
+  viewsByPage: Array<{ page: AnalyticsPage; count: number }>;
+  deviceShares: Array<{ device: "mobile" | "desktop"; percentage: number }>;
+  monthlyPlanSelections: Array<{
+    month: string;
+    plan: "ILUMINADO" | "FALTON";
+    count: number;
+  }>;
+  monthlyPlanActivations: Array<{
+    month: string;
+    plan: "ILUMINADO" | "FALTON";
+    count: number;
+  }>;
+};
 type RecentAiActivity = {
   hour: string;
   operation: "idea_evaluation" | "roast";
@@ -101,7 +124,12 @@ type AiCostTrendWeek = AiCostByActor & { weekStart: string; totalUsd: number };
 type DashboardState =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; data: DashboardData; messages: AdminContactMessage[] };
+  | {
+      status: "ready";
+      data: DashboardData;
+      messages: AdminContactMessage[];
+      anonymousAnalytics: AnonymousAnalyticsData;
+    };
 
 const DASHBOARD_ERROR = "No se han podido consultar los datos del panel.";
 const EUR = new Intl.NumberFormat("es-ES", {
@@ -161,6 +189,7 @@ const ADMIN_TABS = [
   { id: "benchmark", label: "Benchmark de IA" },
   { id: "telemetry", label: "Telemetría de IA" },
   { id: "security", label: "Seguridad y acceso" },
+  { id: "anonymous", label: "Analítica anónima" },
 ] as const;
 type AdminTab = (typeof ADMIN_TABS)[number]["id"];
 
@@ -242,6 +271,73 @@ function isRecentAiActivity(value: unknown): value is RecentAiActivity {
     isTokenVolumeBucket(value.cachedInputTokenBucket) &&
     isTokenVolumeBucket(value.outputTokenBucket) &&
     isNullableCount(value.estimatedCostUsd)
+  );
+}
+const ANALYTICS_PAGES: readonly string[] = [
+  "home",
+  "precios",
+  "buenas-practicas",
+  "humanos-notables",
+  "lo-peor-de-lo-peor",
+  "contacto",
+  "descargate",
+  "other_public_pages",
+];
+function isAnonymousAnalyticsData(
+  value: unknown,
+): value is AnonymousAnalyticsData {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.viewsByPage) ||
+    !Array.isArray(value.deviceShares) ||
+    !Array.isArray(value.monthlyPlanSelections) ||
+    !Array.isArray(value.monthlyPlanActivations)
+  )
+    return false;
+  return (
+    value.viewsByPage.every(
+      (entry) =>
+        isRecord(entry) &&
+        hasExactKeys(entry, ["page", "count"]) &&
+        typeof entry.page === "string" &&
+        ANALYTICS_PAGES.includes(entry.page) &&
+        isSuppressedCount(entry.count),
+    ) &&
+    value.deviceShares.every(
+      (entry) =>
+        isRecord(entry) &&
+        hasExactKeys(entry, ["device", "percentage"]) &&
+        (entry.device === "mobile" || entry.device === "desktop") &&
+        typeof entry.percentage === "number" &&
+        Number.isInteger(entry.percentage) &&
+        entry.percentage >= 0 &&
+        entry.percentage <= 100 &&
+        entry.percentage % 5 === 0,
+    ) &&
+    (value.deviceShares.length !== 2 ||
+      value.deviceShares.reduce(
+        (sum, entry) =>
+          sum +
+          (isRecord(entry) && typeof entry.percentage === "number"
+            ? entry.percentage
+            : 0),
+        0,
+      ) === 100) &&
+    value.monthlyPlanSelections.every(isMonthlyPlanMetric) &&
+    value.monthlyPlanActivations.every(isMonthlyPlanMetric)
+  );
+}
+function isSuppressedCount(value: unknown): value is number {
+  return isCount(value) && Number.isSafeInteger(value) && value >= 10;
+}
+function isMonthlyPlanMetric(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ["month", "plan", "count"]) &&
+    typeof value.month === "string" &&
+    /^\d{4}-(0[1-9]|1[0-2])$/u.test(value.month) &&
+    (value.plan === "ILUMINADO" || value.plan === "FALTON") &&
+    isSuppressedCount(value.count)
   );
 }
 const LOGIN_SECURITY_KEYS = [
@@ -476,31 +572,41 @@ function AdminDashboardOverview() {
     Promise.all([
       authenticatedFetch("/api/admin/dashboard"),
       authenticatedFetch("/api/admin/contact-messages"),
+      authenticatedFetch("/api/admin/anonymous-analytics"),
     ])
-      .then(async ([dashboardResponse, contactsResponse]) => {
-        const [dashboardBody, contactsBody]: [unknown, unknown] =
-          await Promise.all([
+      .then(
+        async ([dashboardResponse, contactsResponse, analyticsResponse]) => {
+          const [dashboardBody, contactsBody, analyticsBody]: [
+            unknown,
+            unknown,
+            unknown,
+          ] = await Promise.all([
             dashboardResponse.json(),
             contactsResponse.json(),
+            analyticsResponse.json(),
           ]);
-        if (!active) return;
-        if (
-          !dashboardResponse.ok ||
-          !contactsResponse.ok ||
-          !isDashboardData(dashboardBody) ||
-          !isRecord(contactsBody) ||
-          !Array.isArray(contactsBody.messages) ||
-          !contactsBody.messages.every(isContact)
-        ) {
-          setState({ status: "error" });
-          return;
-        }
-        setState({
-          status: "ready",
-          data: dashboardBody,
-          messages: contactsBody.messages,
-        });
-      })
+          if (!active) return;
+          if (
+            !dashboardResponse.ok ||
+            !contactsResponse.ok ||
+            !analyticsResponse.ok ||
+            !isDashboardData(dashboardBody) ||
+            !isAnonymousAnalyticsData(analyticsBody) ||
+            !isRecord(contactsBody) ||
+            !Array.isArray(contactsBody.messages) ||
+            !contactsBody.messages.every(isContact)
+          ) {
+            setState({ status: "error" });
+            return;
+          }
+          setState({
+            status: "ready",
+            data: dashboardBody,
+            messages: contactsBody.messages,
+            anonymousAnalytics: analyticsBody,
+          });
+        },
+      )
       .catch(() => {
         if (active) setState({ status: "error" });
       });
@@ -800,7 +906,203 @@ function AdminDashboardOverview() {
         {activeTab === "benchmark" ? <BenchmarkTab /> : null}
         {activeTab === "telemetry" ? <TelemetryTab data={data} /> : null}
         {activeTab === "security" ? <SecurityTab data={data} /> : null}
+        {activeTab === "anonymous" ? (
+          <AnonymousAnalyticsTab data={state.anonymousAnalytics} />
+        ) : null}
       </section>
+    </div>
+  );
+}
+
+const ANALYTICS_PAGE_LABELS: Readonly<Record<AnalyticsPage, string>> = {
+  home: "Inicio",
+  precios: "Planes",
+  "buenas-practicas": "Buenas prácticas",
+  "humanos-notables": "Humanos notables",
+  "lo-peor-de-lo-peor": "El muro de la vergüenza",
+  contacto: "Contacto",
+  descargate: "Descárgate",
+  other_public_pages: "Otras secciones",
+};
+const ANALYTICS_PLAN_LABELS = {
+  ILUMINADO: "Iluminado",
+  FALTON: "Faltón",
+} as const;
+const ANALYTICS_MONTH = new Intl.DateTimeFormat("es-ES", {
+  month: "short",
+  year: "2-digit",
+  timeZone: "UTC",
+});
+
+function AnonymousAnalyticsTab({ data }: { data: AnonymousAnalyticsData }) {
+  const completeDeviceBreakdown = data.deviceShares.length === 2;
+  return (
+    <section
+      className="admin-analytics"
+      aria-labelledby="admin-analytics-title"
+    >
+      <header className="admin-dashboard-card">
+        <span className="eyebrow">
+          Sin visitas únicas. Sin perseguir a nadie.
+        </span>
+        <h2 id="admin-analytics-title">Analítica anónima</h2>
+        <p>
+          Recuentos propios por periodo y categoría. Una recarga vuelve a
+          contar; estos números describen actividad, no personas ni sesiones.
+        </p>
+      </header>
+      <section
+        className="admin-dashboard-card"
+        aria-labelledby="admin-views-title"
+      >
+        <h2 id="admin-views-title">
+          Páginas públicas más vistas · últimos 30 días cerrados
+        </h2>
+        <AnalyticsBarList
+          empty="Todavía no hay categorías con diez vistas o más."
+          entries={data.viewsByPage.map((entry) => ({
+            label: ANALYTICS_PAGE_LABELS[entry.page],
+            count: entry.count,
+          }))}
+        />
+      </section>
+      <div className="admin-analytics-grid">
+        <section
+          className="admin-dashboard-card"
+          aria-labelledby="admin-device-title"
+        >
+          <h2 id="admin-device-title">
+            Tamaño de pantalla · últimos 30 días cerrados
+          </h2>
+          {completeDeviceBreakdown ? (
+            <AnalyticsBarList
+              entries={data.deviceShares.map((entry) => ({
+                label:
+                  entry.device === "mobile"
+                    ? "Móvil · estrecha"
+                    : "Escritorio · amplia",
+                count: entry.percentage,
+                suffix: `${entry.percentage} %`,
+              }))}
+            />
+          ) : (
+            <p>
+              No se muestra el reparto hasta que ambas categorías alcancen diez
+              vistas.
+            </p>
+          )}
+          <p className="admin-dashboard-note">
+            Es una estimación basada en el ancho de ventana, no en la identidad
+            ni el modelo del dispositivo.
+          </p>
+        </section>
+        <section
+          className="admin-dashboard-card"
+          aria-labelledby="admin-plans-title"
+        >
+          <h2 id="admin-plans-title">
+            Interés en los planes · últimos 6 meses cerrados
+          </h2>
+          <p>Selecciones y activaciones simuladas agregadas por mes y plan.</p>
+          <AnalyticsPlanMonths
+            selections={data.monthlyPlanSelections}
+            activations={data.monthlyPlanActivations}
+          />
+          <p className="admin-dashboard-note">
+            No se enlaza una vista con una selección o activación. Son recuentos
+            paralelos, no una tasa individual de conversión.
+          </p>
+        </section>
+      </div>
+      <p className="admin-dashboard-note">
+        Solo se guardan contadores diarios. No se guardan IP, cookies, agente de
+        navegador, URL completa, cuenta, identificador de visita ni texto
+        enviado. Las páginas de poco tráfico se agrupan; los grupos de plan con
+        menos de diez eventos se omiten. Los datos se eliminan tras trece meses.
+      </p>
+    </section>
+  );
+}
+
+function AnalyticsBarList({
+  entries,
+  empty = "No hay suficientes datos para mostrar estas categorías.",
+}: {
+  entries: Array<{ label: string; count: number; suffix?: string }>;
+  empty?: string;
+}) {
+  if (!entries.length) return <p>{empty}</p>;
+  const maximum = Math.max(...entries.map((entry) => entry.count));
+  return (
+    <ul className="admin-analytics-bar-list">
+      {entries.map((entry) => (
+        <li key={entry.label}>
+          <span>{entry.label}</span>
+          <span className="admin-analytics-bar-track" aria-hidden="true">
+            <span
+              className="admin-analytics-bar"
+              style={{
+                width: `${Math.max(4, (entry.count / maximum) * 100)}%`,
+              }}
+            />
+          </span>
+          <strong>{entry.suffix ?? entry.count}</strong>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function AnalyticsPlanMonths({
+  selections,
+  activations,
+}: {
+  selections: AnonymousAnalyticsData["monthlyPlanSelections"];
+  activations: AnonymousAnalyticsData["monthlyPlanActivations"];
+}) {
+  const months = [
+    ...new Set([
+      ...selections.map((entry) => entry.month),
+      ...activations.map((entry) => entry.month),
+    ]),
+  ].sort();
+  if (!months.length)
+    return <p>Aún no hay grupos mensuales con diez eventos.</p>;
+  return (
+    <div className="admin-table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Mes</th>
+            <th scope="col">Plan</th>
+            <th scope="col">Clics en «Elegir»</th>
+            <th scope="col">Activaciones simuladas</th>
+          </tr>
+        </thead>
+        <tbody>
+          {months.flatMap((month) =>
+            (["ILUMINADO", "FALTON"] as const).map((plan) => {
+              const chosen = selections.find(
+                (entry) => entry.month === month && entry.plan === plan,
+              );
+              const activated = activations.find(
+                (entry) => entry.month === month && entry.plan === plan,
+              );
+              if (!chosen && !activated) return null;
+              return (
+                <tr key={`${month}:${plan}`}>
+                  <th scope="row">
+                    {ANALYTICS_MONTH.format(new Date(`${month}-01T12:00:00Z`))}
+                  </th>
+                  <td>{ANALYTICS_PLAN_LABELS[plan]}</td>
+                  <td>{chosen?.count ?? "No mostrado"}</td>
+                  <td>{activated?.count ?? "No mostrado"}</td>
+                </tr>
+              );
+            }),
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

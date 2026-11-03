@@ -98,6 +98,11 @@ const EXPIRED_DATA_DELETIONS = [
      ORDER BY occurred_at LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED
    ) DELETE FROM application_error_events AS event USING due WHERE event.id=due.id`,
   `WITH due AS (
+     SELECT ctid FROM anonymous_analytics_daily
+     WHERE metric_date < (now() AT TIME ZONE 'Europe/Madrid')::date - interval '13 months'
+     ORDER BY metric_date LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED
+   ) DELETE FROM anonymous_analytics_daily AS metric USING due WHERE metric.ctid=due.ctid`,
+  `WITH due AS (
      SELECT user_id, idempotency_hash FROM account_roast_message_events
      WHERE created_at <= now() - interval '12 months'
      ORDER BY created_at LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED

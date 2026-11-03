@@ -131,7 +131,14 @@ describe("Pricing registration intent", () => {
       );
 
       await waitFor(() => expect(assign).toHaveBeenCalledWith("/perfil"));
-      expect(fetchMock).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/anonymous-analytics",
+        expect.objectContaining({ credentials: "omit" }),
+      );
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        "/api/registration-intents",
+        expect.anything(),
+      );
     },
   );
 });

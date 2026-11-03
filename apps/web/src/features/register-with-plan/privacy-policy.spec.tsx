@@ -12,7 +12,7 @@ describe("PrivacyPolicy", () => {
       screen.getByRole("heading", { name: /política de privacidad/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Versión 4 · 26 de octubre de 2026/i),
+      screen.getByText(/Versión 5 · 3 de noviembre de 2026/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/borrador/i)).not.toBeInTheDocument();
     expect(

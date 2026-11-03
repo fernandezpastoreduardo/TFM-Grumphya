@@ -213,7 +213,7 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
     const userInsert = clientQuery.mock.calls.find(([sql]) =>
       String(sql).includes("privacy_policy_version"),
     );
-    expect(userInsert?.[1]).toContain("v4");
+    expect(userInsert?.[1]).toContain("v5");
     expect(client.release).toHaveBeenCalledOnce();
   });
 
@@ -682,7 +682,7 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
         input.username,
         "persona",
         "password-hash",
-        "v4",
+        "v5",
       ],
     );
     expect(clientQuery).toHaveBeenLastCalledWith("COMMIT");
