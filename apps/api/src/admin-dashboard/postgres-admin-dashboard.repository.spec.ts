@@ -151,6 +151,73 @@ describe("PostgresAdminDashboardRepository", () => {
     );
   });
 
+  it("returns only thresholded daily audience and plan aggregates", async () => {
+    const query = vi.fn((sql: string) => {
+      if (sql.includes("GROUP BY page_code"))
+        return Promise.resolve({
+          rows: [{ page_code: "precios", event_count: "12" }],
+        });
+      if (sql.includes("GROUP BY device_class"))
+        return Promise.resolve({
+          rows: [
+            { device_class: "desktop", event_count: "10" },
+            { device_class: "mobile", event_count: "12" },
+          ],
+        });
+      if (sql.includes("event_name = 'plan_selection'"))
+        return Promise.resolve({
+          rows: [
+            { month: "2026-11", plan_code: "ILUMINADO", event_count: "11" },
+          ],
+        });
+      if (sql.includes("FROM simulated_purchases"))
+        return Promise.resolve({
+          rows: [
+            { month: "2026-11", plan_code: "ILUMINADO", purchase_count: "10" },
+          ],
+        });
+      return Promise.resolve({ rows: [] });
+    });
+    const repository = new PostgresAdminDashboardRepository({
+      query,
+    } as unknown as Pool);
+
+    await expect(repository.getAnonymousAnalytics()).resolves.toEqual({
+      viewsByPage: [{ page: "precios", count: 12 }],
+      deviceShares: [
+        { device: "mobile", percentage: 55 },
+        { device: "desktop", percentage: 45 },
+      ],
+      monthlyPlanSelections: [
+        { month: "2026-11", plan: "ILUMINADO", count: 11 },
+      ],
+      monthlyPlanActivations: [
+        { month: "2026-11", plan: "ILUMINADO", count: 10 },
+      ],
+    });
+    expect(query).toHaveBeenCalledTimes(4);
+    expect(
+      query.mock.calls.find(([sql]) =>
+        String(sql).includes("GROUP BY page_code"),
+      )?.[0],
+    ).toContain("WHERE event_count >= 10");
+    expect(
+      query.mock.calls.find(([sql]) =>
+        String(sql).includes("GROUP BY device_class"),
+      )?.[0],
+    ).toContain("HAVING sum(event_count) >= 10");
+    expect(
+      query.mock.calls.find(([sql]) =>
+        String(sql).includes("event_name = 'plan_selection'"),
+      )?.[0],
+    ).toContain("HAVING sum(event_count) >= 10");
+    expect(
+      query.mock.calls.find(([sql]) =>
+        String(sql).includes("FROM simulated_purchases"),
+      )?.[0],
+    ).toContain("HAVING count(*) >= 10");
+  });
+
   it("ignores legacy context supplied by callers", async () => {
     const query = vi.fn().mockResolvedValue({ rowCount: 1 });
     const repository = new PostgresAdminDashboardRepository({

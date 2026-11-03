@@ -181,6 +181,28 @@ pestaña **Resumen**, y añade tres vistas informativas de operación:
   base PostgreSQL. CI también ejecuta auditoría de dependencias y análisis de
   vulnerabilidades de la imagen. El detalle está en [`ci-cd.md`](ci-cd.md) y
   [`ai-evaluation-and-observability.md`](ai-evaluation-and-observability.md).
+- **Analítica anónima** muestra vistas agregadas de páginas públicas, tamaño
+  aproximado de ventana, clics para elegir plan y activaciones simuladas por mes.
+  La web solo envía códigos cerrados de página/acción y categoría de ancho con
+  `credentials: omit`; el cuerpo no incluye URL, referer, agente, IP, cuenta,
+  cookie, identificador o texto, y la API no consulta ni persiste esas señales
+  para estas métricas. El servidor incrementa directamente contadores diarios
+  en PostgreSQL: no existe una tabla de eventos individuales. Las recargas
+  cuentan de nuevo, así que son vistas y clics, no visitantes o sesiones únicos.
+  Los gráficos usan periodos cerrados: 30 días y seis meses completos, sin
+  mostrar el día o mes en curso. Las páginas con menos de diez vistas se
+  combinan en «Otras secciones»; esa categoría también se omite si suma menos
+  de diez. El reparto móvil/escritorio se muestra como porcentajes redondeados
+  a múltiplos de cinco y solo si ambas categorías alcanzan diez vistas. Los
+  datos se eliminan a los trece meses. Las activaciones
+  proceden de compras simuladas existentes, agrupadas por mes y plan. No se
+  enlazan vistas, clics y activaciones; la comparación no es una conversión por
+  persona. No se deriva ni muestra ubicación geográfica a partir de IP. La
+  pestaña está protegida por la autorización admin de las demás
+  métricas. El endpoint es público y valida `Origin` como defensa CSRF, no como
+  identidad del cliente; un cliente no navegador puede falsificar eventos. Los
+  límites existentes por IP y proceso reducen abuso, pero no lo eliminan ni se
+  comparten entre réplicas.
 
 Las pestañas son información de operación y documentación. No lanzan
 benchmarks, escaneos ni pruebas desde el navegador.

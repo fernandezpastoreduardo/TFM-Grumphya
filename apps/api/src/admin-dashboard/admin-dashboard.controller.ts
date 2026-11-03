@@ -37,6 +37,11 @@ export class AdminDashboardController {
     return this.dashboard.getSnapshot();
   }
 
+  @Get("anonymous-analytics")
+  getAnonymousAnalytics() {
+    return this.dashboard.getAnonymousAnalytics();
+  }
+
   @Get("application-errors/:eventId")
   getApplicationError(@Param("eventId") eventId: string) {
     return this.dashboard.getApplicationError(eventId);

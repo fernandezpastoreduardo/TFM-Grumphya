@@ -14,6 +14,7 @@ import type {
   AdminDashboardSnapshot,
   TokenVolumeBucket,
 } from "./admin-dashboard.models";
+import type { AnonymousAnalyticsSnapshot } from "../anonymous-analytics/anonymous-analytics.models";
 
 const CONTACT_MESSAGE_LIMIT = 100;
 const MAX_ERROR_CODE_LENGTH = 100;
@@ -479,6 +480,135 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
         lastOccurredAt: error.last_occurred_at.toISOString(),
         latestDiagnosticCode: error.latest_diagnostic_code,
       })),
+    };
+  }
+
+  async getAnonymousAnalytics(): Promise<AnonymousAnalyticsSnapshot> {
+    await this.ensureSchema();
+    const [
+      viewsByPage,
+      deviceShares,
+      monthlyPlanSelections,
+      monthlyPlanActivations,
+    ] = await Promise.all([
+      this.pool.query<{ page_code: string; event_count: string }>(`
+          WITH page_counts AS (
+            SELECT page_code, sum(event_count)::bigint AS event_count
+            FROM anonymous_analytics_daily
+            WHERE event_name = 'page_view'
+              AND metric_date >= (now() AT TIME ZONE 'Europe/Madrid')::date - 30
+              AND metric_date < (now() AT TIME ZONE 'Europe/Madrid')::date
+            GROUP BY page_code
+          )
+          SELECT page_code, event_count::text AS event_count
+          FROM (
+            SELECT page_code, event_count
+            FROM page_counts WHERE event_count >= 10
+            UNION ALL
+            SELECT 'other_public_pages' AS page_code, sum(event_count) AS event_count
+            FROM page_counts WHERE event_count < 10
+            HAVING sum(event_count) >= 10
+          ) AS visible_pages
+          ORDER BY event_count::bigint DESC, page_code
+        `),
+      this.pool.query<{ device_class: string; event_count: string }>(`
+          SELECT device_class, sum(event_count)::text AS event_count
+          FROM anonymous_analytics_daily
+          WHERE event_name = 'page_view'
+            AND metric_date >= (now() AT TIME ZONE 'Europe/Madrid')::date - 30
+            AND metric_date < (now() AT TIME ZONE 'Europe/Madrid')::date
+          GROUP BY device_class
+          HAVING sum(event_count) >= 10
+          ORDER BY device_class
+        `),
+      this.pool.query<{
+        month: string;
+        plan_code: string;
+        event_count: string;
+      }>(`
+          SELECT to_char(date_trunc('month', metric_date), 'YYYY-MM') AS month,
+            plan_code, sum(event_count)::text AS event_count
+          FROM anonymous_analytics_daily
+          WHERE event_name = 'plan_selection'
+            AND metric_date >= date_trunc('month', (now() AT TIME ZONE 'Europe/Madrid'))::date - interval '6 months'
+            AND metric_date < date_trunc('month', now() AT TIME ZONE 'Europe/Madrid')::date
+          GROUP BY date_trunc('month', metric_date), plan_code
+          HAVING sum(event_count) >= 10
+          ORDER BY date_trunc('month', metric_date), plan_code
+        `),
+      this.pool.query<{
+        month: string;
+        plan_code: string;
+        purchase_count: string;
+      }>(`
+          SELECT to_char(date_trunc('month', purchase.confirmed_at AT TIME ZONE 'Europe/Madrid'), 'YYYY-MM') AS month,
+            subscription.plan_code, count(*)::text AS purchase_count
+          FROM simulated_purchases purchase
+          JOIN subscriptions subscription ON subscription.id = purchase.subscription_id
+          WHERE purchase.status = 'confirmed'
+            AND purchase.confirmed_at >= (date_trunc('month', now() AT TIME ZONE 'Europe/Madrid') - interval '6 months') AT TIME ZONE 'Europe/Madrid'
+            AND purchase.confirmed_at < date_trunc('month', now() AT TIME ZONE 'Europe/Madrid') AT TIME ZONE 'Europe/Madrid'
+          GROUP BY date_trunc('month', purchase.confirmed_at AT TIME ZONE 'Europe/Madrid'), subscription.plan_code
+          HAVING count(*) >= 10
+          ORDER BY date_trunc('month', purchase.confirmed_at AT TIME ZONE 'Europe/Madrid'), subscription.plan_code
+        `),
+    ]);
+
+    const toPage = (code: string) =>
+      code === "other_public_pages" ||
+      code === "home" ||
+      code === "precios" ||
+      code === "buenas-practicas" ||
+      code === "humanos-notables" ||
+      code === "lo-peor-de-lo-peor" ||
+      code === "contacto" ||
+      code === "descargate"
+        ? code
+        : null;
+    const toPlan = (code: string) =>
+      code === "ILUMINADO" || code === "FALTON" ? code : null;
+    const deviceCounts = deviceShares.rows.flatMap((row) => {
+      if (row.device_class !== "mobile" && row.device_class !== "desktop")
+        return [];
+      return [{ device: row.device_class, count: Number(row.event_count) }];
+    });
+    const deviceTotal = deviceCounts.reduce(
+      (total, row) => total + row.count,
+      0,
+    );
+    const roundedMobilePercentage =
+      deviceTotal > 0
+        ? Math.round(
+            ((deviceCounts.find((row) => row.device === "mobile")?.count ?? 0) /
+              deviceTotal) *
+              20,
+          ) * 5
+        : 0;
+    const visibleDeviceShares: AnonymousAnalyticsSnapshot["deviceShares"] =
+      deviceCounts.length === 2
+        ? [
+            { device: "mobile", percentage: roundedMobilePercentage },
+            { device: "desktop", percentage: 100 - roundedMobilePercentage },
+          ]
+        : [];
+    return {
+      viewsByPage: viewsByPage.rows.flatMap((row) => {
+        const page = toPage(row.page_code);
+        return page ? [{ page, count: Number(row.event_count) }] : [];
+      }),
+      deviceShares: visibleDeviceShares,
+      monthlyPlanSelections: monthlyPlanSelections.rows.flatMap((row) => {
+        const plan = toPlan(row.plan_code);
+        return plan
+          ? [{ month: row.month, plan, count: Number(row.event_count) }]
+          : [];
+      }),
+      monthlyPlanActivations: monthlyPlanActivations.rows.flatMap((row) => {
+        const plan = toPlan(row.plan_code);
+        return plan
+          ? [{ month: row.month, plan, count: Number(row.purchase_count) }]
+          : [];
+      }),
     };
   }
 
