@@ -2,6 +2,11 @@
 
 Fecha de verificación: 2026-10-09, macOS Apple Silicon.
 
+Este documento conserva los resultados y comandos de aquella sesión; no es un
+informe de la última ejecución. La versión de Node.js anotada abajo pertenece a
+ese registro histórico. Para requisitos y versiones vigentes, consulta
+[Desarrollo local](development.md) y [Stack instalado](stack.md).
+
 ## Resultado de esta sesión
 
 - `node --version`: `v24.20.0`; `pnpm --version`: `12.5.1`.
@@ -89,7 +94,7 @@ Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 Actualización del validador del contrato interno, 12 de octubre de 2026:
 
 - RED: las pruebas de contrato fallaron porque no existía `validateModelDecision`; GREEN: sus 36 casos actuales aceptan estados válidos y rechazan prefijos/IDs incorrectos, puntuaciones inválidas, vetos inconsistentes, fragmentos ajenos y mensajes fuera de formato.
-- El validador comprueba que un rechazo termina en el primer score menor de 15, y que `stop_at` y `reason_code` coinciden con el criterio; `SIN_BLOQUEO_EVIDENTE` exige los diez criterios, C10 puntuado y ningún veto, e `IDEA_INSUFICIENTE` no admite criterios ni datos de veto.
+- El validador comprueba que un rechazo termina en el primer score menor de 15, y que `stop_at` y `reason_code` coinciden con el criterio; los estados sin veto exigen los diez criterios, C10 puntuado y ningún veto. La respuesta pública es `REQUIERE_REVISION` si la media queda por debajo de 7/10; `IDEA_INSUFICIENTE` no admite criterios ni datos de veto.
 - La salida validada se reconstruye campo a campo: descarta propiedades adicionales del proveedor y no muta la respuesta original. Los errores usan un mensaje constante y no incluyen la idea ni el texto crudo del proveedor.
 - Revisión de seguridad acotada: el validador comprueba en runtime que la decisión sea un objeto y que la idea de referencia sea texto; limita criterios a diez, scores a enteros 0–79 y mensajes a 25 palabras/160 unidades UTF-16. No se detectó una vulnerabilidad nueva en este incremento.
 - Limitación en ese incremento: el validador aún no estaba conectado al caso de uso. Se conecta en la actualización descrita a continuación; las pruebas demuestran consistencia estructural, no la corrección semántica del juicio.

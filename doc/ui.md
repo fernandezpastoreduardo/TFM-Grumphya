@@ -1,9 +1,9 @@
 # Dirección e implementación de la UI
 
-Este documento resume las decisiones visuales aprobadas que guían la Home y el
-resto de las secciones. La dirección completa está en
-[`agentic-guidelines/UI-aestethics.md`](../agentic-guidelines/UI-aestethics.md);
-la lámina maestra está en
+Este documento recoge para lectores humanos las decisiones visuales aprobadas
+que guían la Home y el resto de las secciones. La guía interna de
+[`agentic-guidelines/UI-aestethics.md`](../agentic-guidelines/UI-aestethics.md)
+detalla instrucciones de implementación para agentes; la lámina maestra está en
 [`ideas-and-designs/revision-vectorial/referencia-maestra.png`](../ideas-and-designs/revision-vectorial/referencia-maestra.png).
 
 ## Identidad y composición

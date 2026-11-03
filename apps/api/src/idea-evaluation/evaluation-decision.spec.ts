@@ -24,14 +24,16 @@ const MALFORMED_PRODUCT_EXAMPLE_VALUES: unknown[] = [
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
 const VALID_MESSAGE =
-  "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+  "La propuesta describe un uso concreto y podría aportar una utilidad reconocible. Aun así, faltan señales para saber si resolvería una necesidad frecuente. Conviene validar ese punto antes de darla por buena.";
+const MIN_CLEAR_ASSESSMENT_MESSAGE =
+  "La propuesta resuelve una tarea concreta y ofrece una utilidad reconocible para usuarios. Sin embargo, falta comprobar si el resultado será fiable antes de decidir.";
 const REJECTION_MESSAGE =
   "Pagar por declaraciones que nadie verifica convierte el engaño en el negocio más rentable de tu app.";
 const HARD_REJECTION_MESSAGE_PREFIX =
   "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
 const INSUFFICIENT_MESSAGE =
   "Esto todavía no describe una idea evaluable; hay más misterio que producto y eso no ayuda a puntuarlo.";
-const MAX_NEUTRAL_MESSAGE = `${"amable ".repeat(39)}limpio.`;
+const MAX_NEUTRAL_MESSAGE = `${"claro ".repeat(22)}bien. ${"útil ".repeat(22)}bien. ${"simple ".repeat(21)}bien. ${"seguro ".repeat(21)}final.`;
 const MAX_REJECTION_MESSAGE = `${"idea ".repeat(119)}${"x".repeat(304)}.`;
 const CRITERION_IDS = [
   "C01",
@@ -546,8 +548,8 @@ describe("validateModelDecision", () => {
     "• " + VALID_MESSAGE,
     "Texto de respuesta demasiado corto.",
     "El bloqueo conceptual deja al usuario sin una salida clara.",
-    `${"palabra ".repeat(41)}termina.`,
-    "x".repeat(281) + ".",
+    `${"palabra ".repeat(91)}termina.`,
+    "x".repeat(701) + ".",
   ])("rejects malformed neutral message: %s", (message) => {
     expect(() =>
       validateModelDecision(
@@ -557,23 +559,48 @@ describe("validateModelDecision", () => {
     ).toThrow(/respuesta del evaluador no válida/i);
   });
 
-  it.each([
-    ["complete", createCompleteDecision],
-    ["insufficient", createInsufficientDecision],
-  ] as const)(
-    "accepts a %s message at the 280-character and 40-word limits",
-    (_label, createDecision) => {
-      expect(MAX_NEUTRAL_MESSAGE).toHaveLength(280);
-      expect(MAX_NEUTRAL_MESSAGE.split(/\s+/u)).toHaveLength(40);
+  it("accepts a detailed assessment at the 25-word minimum", () => {
+    expect(MIN_CLEAR_ASSESSMENT_MESSAGE.split(/\s+/u)).toHaveLength(25);
 
-      const result = validateModelDecision(
-        { ...createDecision(), message: MAX_NEUTRAL_MESSAGE },
+    expect(
+      validateModelDecision(
+        { ...createCompleteDecision(), message: MIN_CLEAR_ASSESSMENT_MESSAGE },
         IDEA_TEXT,
-      );
+      ).message,
+    ).toBe(MIN_CLEAR_ASSESSMENT_MESSAGE);
+  });
 
-      expect(result.message).toBe(MAX_NEUTRAL_MESSAGE);
-    },
-  );
+  it("rejects a detailed assessment written as a single sentence", () => {
+    const singleSentence =
+      "La propuesta ofrece una utilidad concreta para organizar una tarea, pero todavía no explica cómo se obtiene el resultado ni qué señales permitirían comprobar que funciona de forma fiable para quienes la usarían.";
+
+    expect(() =>
+      validateModelDecision(
+        { ...createCompleteDecision(), message: singleSentence },
+        IDEA_TEXT,
+      ),
+    ).toThrow(/respuesta del evaluador no válida/i);
+  });
+
+  it("accepts a detailed assessment at the expanded limits", () => {
+    expect(MAX_NEUTRAL_MESSAGE.split(/\s+/u)).toHaveLength(90);
+
+    const result = validateModelDecision(
+      { ...createCompleteDecision(), message: MAX_NEUTRAL_MESSAGE },
+      IDEA_TEXT,
+    );
+
+    expect(result.message).toBe(MAX_NEUTRAL_MESSAGE);
+  });
+
+  it("keeps insufficient-idea messages brief", () => {
+    const result = validateModelDecision(
+      createInsufficientDecision(),
+      IDEA_TEXT,
+    );
+
+    expect(result.status).toBe("IDEA_INSUFICIENTE");
+  });
 
   it("accepts a rejection message at the 900-character and 120-word limits", () => {
     expect(MAX_REJECTION_MESSAGE).toHaveLength(900);

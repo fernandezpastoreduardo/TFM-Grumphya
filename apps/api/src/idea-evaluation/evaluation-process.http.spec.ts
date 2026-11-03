@@ -290,11 +290,11 @@ describe("evaluation process HTTP endpoint", () => {
       expect(await response.json()).toEqual({
         status: "evaluated",
         result: {
-          status: "SIN_BLOQUEO_EVIDENTE",
+          status: "REQUIERE_REVISION",
           score: 6.77,
-          headline: "La idea pasa este primer repaso, con confeti prudente.",
+          headline: "La idea aún necesita más trabajo.",
           message:
-            "¡Qué ilusión poder acompañarte con todo el cariño! Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.",
+            "Con cariño, esta idea todavía necesita trabajo: La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.",
         },
       });
     } finally {
