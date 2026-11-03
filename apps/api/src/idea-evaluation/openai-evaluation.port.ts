@@ -17,7 +17,7 @@ import {
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
-const DEFAULT_REASONING_EFFORT = "medium";
+const DEFAULT_REASONING_EFFORT = "low";
 const MAX_OUTPUT_TOKENS = 6_000;
 const OPENAI_RESPONSE_ERROR = "OpenAI evaluation response is invalid.";
 const OUTPUT_SCHEMA_NAME = "grumphya_evaluation_decision";

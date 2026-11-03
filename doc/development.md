@@ -258,7 +258,7 @@ reinicia `pnpm dev`:
 ```dotenv
 EVALUATION_PROVIDER=openai
 OPENAI_MODEL=gpt-5.4-mini
-OPENAI_REASONING_EFFORT=medium
+OPENAI_REASONING_EFFORT=low
 ```
 
 Guarda `OPENAI_API_KEY` en el archivo local ignorado `.env`. El valor de

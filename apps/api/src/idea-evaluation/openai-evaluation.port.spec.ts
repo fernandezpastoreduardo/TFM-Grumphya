@@ -147,7 +147,7 @@ describe("OpenAiEvaluationPort", () => {
     const requestBody: unknown = JSON.parse(String(init.body));
     expect(requestBody).toMatchObject({
       model: MODEL_NAME,
-      reasoning: { effort: "medium" },
+      reasoning: { effort: "low" },
       store: false,
       max_output_tokens: 6_000,
       text: {

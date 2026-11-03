@@ -2,6 +2,12 @@
 
 Este archivo reúne mejoras y asuntos pendientes de valorar e incorporar a un roadmap. Una entrada aquí no significa que esté aprobada ni planificada: conserva el contexto para priorizarla más adelante.
 
+## Prioridad alta: reducir la espera de las evaluaciones
+
+**Estado:** mitigación de latencia aplicada; medir con tráfico real antes de ajustar más.
+
+Las respuestas de evaluación han ganado interés y detalle, pero tardan demasiado. La primera mitigación reduce el esfuerzo de razonamiento predeterminado a `low` sin tocar la rúbrica ni el copy, y reintenta una vez si el modelo devuelve campos de decisión inconsistentes (`decision_fields`). Medir tiempo de respuesta y tasa de errores en producción; si baja la calidad percibida, comparar ajustes intermedios antes de cambiar el prompt.
+
 ## Registro histórico: estado de publicación en IONOS (22 de octubre de 2026)
 
 Este apartado conserva la situación observada el 22 de octubre de 2026. Sus valores de variables, versión publicada y próximos pasos no describen el estado actual; para la incidencia más reciente consulta [el registro del 28 de octubre](../doc/incident-vps-access-and-deployment-2026-10.md).

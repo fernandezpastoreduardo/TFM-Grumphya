@@ -524,6 +524,24 @@ describe("EvaluationProcessService", () => {
     );
   });
 
+  it("retries once when decision fields are internally inconsistent", async () => {
+    const invalidDecision = {
+      ...createCompleteDecision(),
+      basis: "unpaired field",
+    };
+    const port = createPort(invalidDecision);
+    vi.mocked(port.evaluate)
+      .mockResolvedValueOnce(invalidDecision)
+      .mockResolvedValueOnce(createCompleteDecision());
+    const service = new EvaluationProcessService(port);
+
+    await expect(
+      service.evaluate({ ideaText: VALID_IDEA, tone: "soft" }),
+    ).resolves.toMatchObject({ status: "SIN_BLOQUEO_EVIDENTE" });
+
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps a clear assessment at exactly 7 out of 10 outside review", async () => {
     const decisionAtReviewBoundary = {
       ...createCompleteDecision(),

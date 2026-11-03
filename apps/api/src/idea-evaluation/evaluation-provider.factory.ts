@@ -23,7 +23,7 @@ function isReasoningEffort(value: string): value is OpenAiReasoningEffort {
 
 function getReasoningEffort(): OpenAiReasoningEffort {
   const configuredEffort = process.env[OPENAI_REASONING_EFFORT_ENV];
-  if (!configuredEffort) return "medium";
+  if (!configuredEffort) return "low";
   if (isReasoningEffort(configuredEffort)) return configuredEffort;
   throw new Error("OPENAI_REASONING_EFFORT is not supported.");
 }

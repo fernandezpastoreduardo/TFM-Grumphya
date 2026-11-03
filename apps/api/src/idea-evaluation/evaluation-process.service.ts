@@ -38,6 +38,7 @@ const DEFAULT_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_SEMANTIC_RETRIES = 1;
 const RETRYABLE_VISIBLE_MESSAGE_VALIDATION = "visible_message";
+const RETRYABLE_DECISION_FIELDS_VALIDATION = "decision_fields";
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
 const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
 const VISIBLE_SCORE_DECIMAL_SCALE = 100;
@@ -260,7 +261,8 @@ function isRetryableDecisionValidation(
 ): boolean {
   return (
     error.validationCode.startsWith("semantic_") ||
-    error.validationCode === RETRYABLE_VISIBLE_MESSAGE_VALIDATION
+    error.validationCode === RETRYABLE_VISIBLE_MESSAGE_VALIDATION ||
+    error.validationCode === RETRYABLE_DECISION_FIELDS_VALIDATION
   );
 }
 

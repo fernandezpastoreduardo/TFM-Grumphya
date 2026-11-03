@@ -77,6 +77,17 @@ describe("createEvaluationProvider", () => {
     });
   });
 
+  it("defaults OpenAI reasoning effort to low for faster evaluations", () => {
+    vi.stubEnv(PROVIDER_ENV, "openai");
+    vi.stubEnv(API_KEY_ENV, "test-key");
+    vi.stubEnv(REASONING_EFFORT_ENV, "");
+
+    const provider = createEvaluationProvider();
+
+    expect(provider).toBeInstanceOf(OpenAiEvaluationPort);
+    expect(provider).toMatchObject({ reasoningEffort: "low" });
+  });
+
   it("rejects unsupported reasoning effort configuration", () => {
     vi.stubEnv(PROVIDER_ENV, "openai");
     vi.stubEnv(API_KEY_ENV, "test-key");
