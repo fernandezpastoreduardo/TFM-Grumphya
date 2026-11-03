@@ -1045,6 +1045,18 @@ test("uses the section hero assets with transparent pixels", async ({
           body: JSON.stringify({ messages: [] }),
         }),
       );
+      await page.route("**/api/admin/anonymous-analytics", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            viewsByPage: [],
+            deviceShares: [],
+            monthlyPlanSelections: [],
+            monthlyPlanActivations: [],
+          }),
+        }),
+      );
     }
     await page.goto(hero.path);
     const mascot = page.locator(`.section-hero-mascot.${hero.mascotClass}`);

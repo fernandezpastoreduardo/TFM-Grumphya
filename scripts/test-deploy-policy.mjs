@@ -28,6 +28,7 @@ const DEPLOY_ONLY_SECRETS = [
 ];
 
 const workflow = await readFile(WORKFLOW_PATH, "utf8");
+const lockfile = await readFile("pnpm-lock.yaml", "utf8");
 const ciVerify = await readFile(CI_VERIFY_PATH, "utf8");
 const productionCompose = await readFile(PRODUCTION_COMPOSE_PATH, "utf8");
 const vpsDeployHelper = await readFile(VPS_DEPLOY_HELPER_PATH, "utf8");
@@ -163,9 +164,21 @@ assert.doesNotMatch(
   /actions\/upload-artifact@/,
   "production releases must not consume the repository artifact quota",
 );
+const webImporterStart = lockfile.indexOf("  apps/web:\n");
+const webImporterEnd = lockfile.indexOf("\n  apps/api:", webImporterStart);
+const webImporter = lockfile.slice(webImporterStart, webImporterEnd);
+const playwrightVersion = webImporter.match(
+  /^      '@playwright\/test':\n        specifier: [^\n]+\n        version: (\d+\.\d+\.\d+)/m,
+)?.[1];
+assert.ok(
+  playwrightVersion,
+  "lockfile must pin @playwright/test for the web app",
+);
 assert.match(
   workflow,
-  /container:\s*\n\s+image:\s*mcr\.microsoft\.com\/playwright:v1\.64\.0-noble/,
+  new RegExp(
+    `container:\\s*\\n\\s+image:\\s*mcr\\.microsoft\\.com/playwright:v${playwrightVersion}-noble`,
+  ),
 );
 const conditionBlock = deploymentStep.match(
   /if:\s*>-\s*([\s\S]*?)\n\s*env:/,
