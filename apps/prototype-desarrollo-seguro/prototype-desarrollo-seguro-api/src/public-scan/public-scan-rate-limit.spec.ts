@@ -104,6 +104,63 @@ describe("PublicScanRateLimiter", () => {
     }
   });
 
+  it("does not consume tracking capacity or the global budget for rejected requests", () => {
+    const limiter = new PublicScanRateLimiter();
+
+    for (let request = 0; request < DOMAIN_LIMIT; request += 1) {
+      expect(
+        limiter.consume({
+          clientIp: `hot-domain-source-${request}`,
+          hostname: "hot.example.net",
+        }),
+      ).toMatchObject({ allowed: true });
+    }
+
+    expect(
+      limiter.consume({
+        clientIp: "rejected-domain-source",
+        hostname: "hot.example.net",
+      }),
+    ).toMatchObject({ allowed: false });
+    expect(limiter.trackedKeyCount).toBe(DOMAIN_LIMIT + 1);
+
+    for (let request = 0; request < REPORT_LIMIT; request += 1) {
+      expect(
+        limiter.consume({
+          clientIp: `hot-report-source-${request}`,
+          hostname: null,
+          reportId: VALID_REPORT_ID,
+        }),
+      ).toMatchObject({ allowed: true });
+    }
+
+    const trackingCountBeforeRejectedReport = limiter.trackedKeyCount;
+    expect(
+      limiter.consume({
+        clientIp: "rejected-report-source",
+        hostname: null,
+        reportId: VALID_REPORT_ID,
+      }),
+    ).toMatchObject({ allowed: false });
+    expect(limiter.trackedKeyCount).toBe(trackingCountBeforeRejectedReport);
+
+    for (
+      let request = 0;
+      request < GLOBAL_LIMIT - DOMAIN_LIMIT - REPORT_LIMIT;
+      request += 1
+    ) {
+      expect(
+        limiter.consume({
+          clientIp: `global-budget-source-${request}`,
+          hostname: null,
+        }),
+      ).toMatchObject({ allowed: true });
+    }
+    expect(
+      limiter.consume({ clientIp: "global-budget-overflow", hostname: null }),
+    ).toMatchObject({ allowed: false });
+  });
+
   it("does not allocate origin keys or consume global budget for a capped report", () => {
     const limiter = new PublicScanRateLimiter();
 

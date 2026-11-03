@@ -137,6 +137,10 @@ const developmentSecurityPrototypePlugin: Plugin = {
 function createDevelopmentSecurityMiddleware(): Connect.NextHandleFunction {
   return async (request, response, next) => {
     const pathname = new URL(request.url ?? "/", "http://vite.local").pathname;
+    if (pathname === `${DEVELOPMENT_SECURITY_PREFIX}/app`) {
+      next();
+      return;
+    }
     if (
       !pathname.startsWith(`${DEVELOPMENT_SECURITY_PREFIX}/`) &&
       pathname !== DEVELOPMENT_SECURITY_PREFIX

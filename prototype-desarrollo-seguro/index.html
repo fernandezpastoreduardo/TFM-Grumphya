@@ -78,6 +78,9 @@
           <a class="button button-primary" href="#estado"
             >Ver estado y alcance <span aria-hidden="true">↓</span></a
           >
+          <a class="button button-secondary" href="/desarrollo-seguro/app"
+            >Consultar informes <span aria-hidden="true">↗</span></a
+          >
           <p class="academic-note">
             <strong>Prototipo académico ficticio.</strong> Sin certificación
             oficial ni auditoría independiente. Desarrollo Seguro se ha creado
@@ -133,7 +136,7 @@
         aria-labelledby="status-title"
       >
         <div class="status-heading">
-          <p class="eyebrow">Estado actual · 2 de noviembre de 2026</p>
+          <p class="eyebrow">Estado del proyecto</p>
           <h2 id="status-title">Sin informes operativos disponibles.</h2>
           <p>
             El verificador todavía no consulta sitios ni genera resultados. Lo
@@ -185,12 +188,13 @@
             <li class="status-row">
               <span class="status-mark waiting" aria-hidden="true">…</span>
               <span
-                ><strong>Consulta e informes para usuarios</strong
+                ><strong>Interfaz de consulta e informes</strong
                 ><small
-                  >La API disponible solo informa de salud interna</small
+                  >Disponible en el código; aún falta conectarla al despliegue y
+                  a los informes reales</small
                 ></span
               >
-              <span class="status-label pending">Pendiente</span>
+              <span class="status-label">Listo en local</span>
             </li>
           </ul>
         </div>
@@ -236,9 +240,11 @@
               Antes de activar consultas faltan pruebas de que cada conexión
               queda fijada a una IP pública validada, que el VPS bloquea
               destinos internos y terceros, y que la carga no degrada Grumphya.
-              Tampoco está conectada la interfaz de búsqueda. Por eso esta
-              página no muestra fechas de medición, puntuaciones ni resultados
-              ficticios.
+              La interfaz de consulta ya está disponible en
+              <a href="/desarrollo-seguro/app">Desarrollo Seguro</a>, pero el
+              servicio aún no está desplegado ni guarda informes reales. Por eso
+              esta página no muestra fechas de medición, puntuaciones ni
+              resultados ficticios.
             </p>
           </div>
         </details>

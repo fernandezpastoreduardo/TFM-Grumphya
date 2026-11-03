@@ -106,6 +106,20 @@ describe("App", () => {
     expect(screen.getByText("Por aquí no hay ninguna sección.")).toBeVisible();
   });
 
+  it("routes the development security portal outside account navigation", async () => {
+    render(<App initialPath="/desarrollo-seguro/app" />);
+
+    expect(
+      await screen.findByRole("heading", { name: "¿Qué se ve desde fuera?" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Dominio que quieres consultar" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Ni galletitas ni galletitos" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("redirects an authenticated visitor away from create-account to their profile", async () => {
     window.history.pushState({}, "", "/crear-cuenta");
     const replace = vi.fn();

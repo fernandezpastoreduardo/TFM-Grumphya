@@ -22,11 +22,17 @@ let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 const Home = lazy(() =>
   import("./views/home").then((module) => ({ default: module.Home })),
 );
+const PublicScanPortal = lazy(() =>
+  import("@grumphya/prototype-desarrollo-seguro-web").then((module) => ({
+    default: module.PublicScanPortal,
+  })),
+);
 const PREVIEW_ERROR_PATHS: Record<string, ErrorPageStatus> = {
   "/__preview/errors/404": "404",
   "/__preview/errors/429": "429",
   "/__preview/errors/500": "500",
 };
+const DEVELOPMENT_SECURITY_PORTAL_PATH = "/desarrollo-seguro/app";
 
 type AuthenticatedRole = "user" | "admin";
 
@@ -63,13 +69,16 @@ export function App({ initialPath }: { initialPath?: string } = {}) {
         >
           <AppRoute path={path} />
         </Suspense>
-        <CookieNotice deferInitialStorage={isPrerenderedPublicPath(path)} />
+        {path !== DEVELOPMENT_SECURITY_PORTAL_PATH && (
+          <CookieNotice deferInitialStorage={isPrerenderedPublicPath(path)} />
+        )}
       </>
     </ErrorPagesBoundary>
   );
 }
 
 function AppRoute({ path }: { path: string }) {
+  if (path === DEVELOPMENT_SECURITY_PORTAL_PATH) return <PublicScanPortal />;
   if (import.meta.env.DEV && path in PREVIEW_ERROR_PATHS) {
     return <ErrorPages status={PREVIEW_ERROR_PATHS[path]} />;
   }

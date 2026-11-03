@@ -1,5 +1,11 @@
 [
   {
+    "path": "/desarrollo-seguro/app",
+    "manifestEntry": "../prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/src/index.ts",
+    "developmentStyles": [],
+    "requiredCopy": ["Observación técnica acotada", "¿Qué se ve desde fuera?"]
+  },
+  {
     "path": "/",
     "manifestEntry": "src/views/home.tsx",
     "developmentStyles": ["/src/views/home.scss"],

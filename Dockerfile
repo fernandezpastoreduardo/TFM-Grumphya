@@ -11,6 +11,7 @@ FROM pnpm-base AS development
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json
@@ -61,6 +62,7 @@ ARG DEPLOY_SHA=local
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json
@@ -89,6 +91,7 @@ FROM pnpm-base AS production-dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY apps/web/package.json apps/web/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json
 COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json

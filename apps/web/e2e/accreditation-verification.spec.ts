@@ -199,7 +199,10 @@ test("prototype explains the operational report without presenting a scan result
   await expect(readinessRows.nth(0)).toContainText("Listo en local");
   await expect(readinessRows.nth(1)).toContainText("Listo en local");
   await expect(readinessRows.nth(2)).toContainText("Pendiente");
-  await expect(readinessRows.nth(3)).toContainText("Pendiente");
+  await expect(readinessRows.nth(3)).toContainText("Listo en local");
+  await expect(readinessRows.nth(3)).toContainText(
+    "aún falta conectarla al despliegue",
+  );
 
   const reportFields = reportSection.locator(".report-fields");
   await expect(reportFields.locator("dd").nth(0)).toHaveText(

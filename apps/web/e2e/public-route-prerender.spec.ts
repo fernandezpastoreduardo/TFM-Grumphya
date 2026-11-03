@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 const PRICING_ROUTE = "/precios";
 const PRICING_HERO = "Once usos. Sí, once.";
+const DEVELOPMENT_SECURITY_PORTAL_PATH = "/desarrollo-seguro/app";
 const PUBLIC_PRERENDERED_PAGES = [
   { path: "/", heading: "Antes de construirla," },
   { path: "/lo-peor-de-lo-peor", heading: "El muro de la vergüenza" },
@@ -30,6 +31,45 @@ test("serves all public section content in its initial HTML", async ({
       `${path} should include its page heading`,
     ).toContain(heading);
   }
+});
+
+test("serves and hydrates the development security portal as a public route", async ({
+  request,
+  page,
+}) => {
+  const response = await request.get(DEVELOPMENT_SECURITY_PORTAL_PATH);
+  const html = await response.text();
+
+  expect(response.ok()).toBe(true);
+  expect(html).toContain("¿Qué se ve desde fuera?");
+  expect(html).toContain("Dominio que quieres consultar");
+  expect(html).not.toContain("Ni galletitas ni galletitos");
+
+  const apiRequests: string[] = [];
+  page.on("request", (browserRequest) => {
+    if (browserRequest.url().includes("/api/desarrollo-seguro/v1/")) {
+      apiRequests.push(browserRequest.url());
+    }
+  });
+
+  await page.goto(DEVELOPMENT_SECURITY_PORTAL_PATH);
+  await expect(
+    page.getByRole("heading", { name: "¿Qué se ve desde fuera?" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Dominio que quieres consultar" }),
+  ).toBeVisible();
+  expect(apiRequests).toEqual([]);
+
+  const themeButton = page.getByRole("button", { name: "Tema oscuro" });
+  await themeButton.click();
+  await expect(page.locator(".ds-portal")).toHaveAttribute(
+    "data-theme",
+    "dark",
+  );
+  await expect(
+    page.getByRole("button", { name: "Tema claro" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
 test("prerenders the roast conversation skeleton before client hydration", async ({

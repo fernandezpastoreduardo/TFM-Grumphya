@@ -425,6 +425,16 @@ body:has(#theme-switch:checked) .theme-toggle {
   background: #e9e5dc;
 }
 
+.button-secondary {
+  border-color: #f8f5ee;
+  color: #f8f5ee;
+  background: transparent;
+}
+
+.button-secondary:hover {
+  background: rgb(248 245 238 / 12%);
+}
+
 .academic-note {
   max-width: 490px;
   margin: 27px 0 0;
