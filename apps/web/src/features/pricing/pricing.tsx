@@ -159,6 +159,8 @@ export function Pricing() {
             src="/assets/grumphya/ultrachachi-reality-check.svg"
             alt=""
             aria-hidden="true"
+            loading="lazy"
+            decoding="async"
           />
           <span className="eyebrow">Una lección gratis</span>
           <h2 id="ultra-dialog-title">¿Aún estamos así de verde?</h2>

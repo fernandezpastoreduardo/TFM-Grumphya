@@ -122,7 +122,7 @@ function RankingList({
     <ol className="idea-ranking" aria-label={label}>
       {ideas.map((idea, index) => (
         <li key={`${idea.safeTitle}-${index}`}>
-          <span className="ranking-position" aria-label={`Puesto ${index + 1}`}>
+          <span className="ranking-position" aria-hidden="true">
             {String(index + 1).padStart(2, "0")}
           </span>
           <span className="ranking-title">{idea.safeTitle}</span>

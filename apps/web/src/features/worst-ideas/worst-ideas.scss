@@ -13,8 +13,10 @@
 
 .section-hero-mascot.mascot-worst-ideas,
 .section-mobile-mascot.mascot-worst-ideas {
-  background-image: url("/assets/grumphya/worst-ideas-wall.webp");
   transform: none;
+}
+.section-hero-mascot.mascot-worst-ideas {
+  background-image: url("/assets/grumphya/worst-ideas-wall.webp");
 }
 .ranking-card > .content-card-heading {
   margin-bottom: clamp(22px, 3vw, 28px);
@@ -246,6 +248,7 @@
 
 .theme-dark .personal-empty {
   color: #f3fff3;
+  background: #315c56;
 }
 
 .personal-empty {

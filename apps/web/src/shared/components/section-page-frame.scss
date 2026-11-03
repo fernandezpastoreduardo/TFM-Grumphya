@@ -216,43 +216,59 @@
 }
 .section-hero-mascot.mascot-pointing,
 .section-mobile-mascot.mascot-pointing {
-  background-image: url("/assets/grumphya/mascot-pointing.svg");
   transform: rotate(2deg);
+}
+.section-hero-mascot.mascot-pointing {
+  background-image: url("/assets/grumphya/mascot-pointing.svg");
 }
 .section-hero-mascot.mascot-plans,
 .section-mobile-mascot.mascot-plans {
-  background-image: url("/assets/grumphya/plans-coffee.svg");
   transform: scaleX(-1);
+}
+.section-hero-mascot.mascot-plans {
+  background-image: url("/assets/grumphya/plans-coffee.svg");
 }
 .section-hero-mascot.mascot-good-practices,
 .section-mobile-mascot.mascot-good-practices {
-  background-image: url("/assets/grumphya/good-practices-checklist.svg");
   transform: none;
+}
+.section-hero-mascot.mascot-good-practices {
+  background-image: url("/assets/grumphya/good-practices-checklist.svg");
 }
 .section-hero-mascot.mascot-notable-humans,
 .section-mobile-mascot.mascot-notable-humans {
-  background-image: url("/assets/grumphya/notable-humans-hero.svg");
   transform: none;
+}
+.section-hero-mascot.mascot-notable-humans {
+  background-image: url("/assets/grumphya/notable-humans-hero.svg");
 }
 .section-hero-mascot.mascot-contact,
 .section-mobile-mascot.mascot-contact {
-  background-image: url("/assets/grumphya/contact-hero-phone.svg");
   transform: none;
+}
+.section-hero-mascot.mascot-contact {
+  background-image: url("/assets/grumphya/contact-hero-phone.svg");
 }
 .section-hero-mascot.mascot-roast,
 .section-mobile-mascot.mascot-roast {
-  background-image: url("/assets/grumphya/descargate-boxing-bag.svg");
   transform: none;
+}
+.section-hero-mascot.mascot-roast {
+  background-image: url("/assets/grumphya/descargate-boxing-bag.svg");
 }
 .section-hero-mascot.mascot-login,
 .section-mobile-mascot.mascot-login {
-  background-image: url("/assets/grumphya/login-credentials.svg");
   transform: none;
+}
+.section-hero-mascot.mascot-login {
+  background-image: url("/assets/grumphya/login-credentials.svg");
 }
 .section-hero-mascot.mascot-admin,
 .section-mobile-mascot.mascot-admin {
-  background-image: url("/assets/grumphya/admin-dashboard-audit.svg");
   transform: none;
+}
+.section-hero-mascot.mascot-admin {
+  background-image: url("/assets/grumphya/admin-dashboard-audit.svg");
 }
 .section-content-grid {
   display: grid;
@@ -1631,7 +1647,16 @@
     no-repeat;
   filter: drop-shadow(4px 8px 0 #1a4e5040);
   transform: scaleX(-1) rotate(3deg);
+  background: none;
   animation: section-mascot-float 5.8s ease-in-out 500ms infinite;
+}
+
+.section-mobile-mascot-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
 }
 
 .app-page::before {
