@@ -37,10 +37,9 @@ assert.doesNotMatch(
   "the isolated smoke database must not expose a host port or persist data",
 );
 assert.match(apiLaunch[1], /--network "\$NETWORK_NAME"/);
-assert.match(apiLaunch[1], /--publish '127\.0\.0\.1::3001'/);
 assert.doesNotMatch(
   apiLaunch[1],
-  /--privileged|--network host|--publish '(?!127\.0\.0\.1)/u,
+  /--privileged|--network host|--publish/u,
   "the API smoke container must not gain host or privileged access",
 );
 assert.match(apiLaunch[1], /--mount .*database_url.*readonly/);
@@ -51,16 +50,24 @@ assert.match(apiLaunch[1], /--env NODE_ENV=production/);
 assert.match(smokeScript, /DS_API_TLS_REQUIRED=true/);
 assert.match(smokeScript, /DS_DATABASE_TLS_REQUIRED=true/);
 assert.match(smokeScript, /CREATE ROLE ds_api LOGIN PASSWORD .*NOSUPERUSER/);
+assert.match(smokeScript, /NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION/);
 assert.doesNotMatch(smokeScript, /POSTGRES_USER=ds_api/);
 assert.match(smokeScript, /DS_DATABASE_URL_FILE=\/run\/secrets\/database_url/);
 assert.match(smokeScript, /hostnossl all all all reject/);
 assert.match(smokeScript, /subjectAltName=DNS:db,DNS:localhost/);
-assert.match(smokeScript, /curl[^\n]*--cacert[^\n]*\\\n\s*"\$HEALTH_URL"/u);
 assert.match(
   smokeScript,
-  /https:\/\/localhost:\$API_PORT\/api\/desarrollo-seguro\/v1\/health/,
+  /docker exec \\\n\s+--env NODE_EXTRA_CA_CERTS=\/run\/tls\/database-ca\.crt \\\n\s+"\$API_NAME" node --input-type=module -e/u,
+  "the HTTPS probe must run from the API container and trust only the temporary CA",
 );
-assert.match(smokeScript, /\[\[ \$response == '\{"status":"ok"\}' \]\]/);
+assert.match(smokeScript, /NODE_EXTRA_CA_CERTS=\/run\/tls\/database-ca\.crt/);
+assert.match(
+  smokeScript,
+  /fetch\("https:\/\/localhost:3001\/api\/desarrollo-seguro\/v1\/health"\)/,
+);
+assert.match(smokeScript, /!response\.ok/);
+assert.match(smokeScript, /body\.status !== "ok"/);
+assert.doesNotMatch(smokeScript, /curl|wget|--publish/u);
 assert.match(smokeScript, /trap cleanup EXIT/);
 assert.match(smokeScript, /docker rm --force "\$API_NAME" "\$DATABASE_NAME"/);
 assert.match(smokeScript, /docker network rm "\$NETWORK_NAME"/);

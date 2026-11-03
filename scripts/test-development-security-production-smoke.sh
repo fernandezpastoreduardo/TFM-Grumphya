@@ -123,7 +123,6 @@ docker run --detach \
   --name "$API_NAME" \
   --network "$NETWORK_NAME" \
   --label "com.grumphya.smoke.stack=$STACK_ID" \
-  --publish '127.0.0.1::3001' \
   --mount "type=bind,src=$TEMP_ROOT/secrets/database_url,dst=/run/secrets/database_url,readonly" \
   --mount "type=bind,src=$TEMP_ROOT/tls/ca.crt,dst=/run/tls/database-ca.crt,readonly" \
   --mount "type=bind,src=$TEMP_ROOT/tls/server.crt,dst=/run/tls/api.crt,readonly" \
@@ -137,22 +136,24 @@ docker run --detach \
   --env DS_DATABASE_TLS_CA_FILE=/run/tls/database-ca.crt \
   "$IMAGE" >/dev/null
 
-readonly API_PORT=$(docker port "$API_NAME" 3001/tcp | sed 's/.*://')
-readonly HEALTH_URL="https://localhost:$API_PORT/api/desarrollo-seguro/v1/health"
 health_ready=0
 for _ in $(seq 1 60); do
-  response=$(curl --silent --show-error --fail --cacert "$TEMP_ROOT/tls/ca.crt" \
-    "$HEALTH_URL" 2>/dev/null || true)
-  if [[ $response == '{"status":"ok"}' ]]; then
+  if docker exec \
+    --env NODE_EXTRA_CA_CERTS=/run/tls/database-ca.crt \
+    "$API_NAME" node --input-type=module -e '
+      const response = await fetch("https://localhost:3001/api/desarrollo-seguro/v1/health");
+      const body = await response.json();
+      if (!response.ok || body.status !== "ok") process.exit(1);
+    ' >/dev/null 2>&1; then
     health_ready=1
     break
   fi
   sleep 1
 done
 [[ $health_ready == 1 ]] || {
-  printf 'Production API failed the HTTPS and PostgreSQL TLS health smoke.\n' >&2
+  printf 'Production API failed the in-container HTTPS and PostgreSQL TLS health smoke.\n' >&2
   docker logs "$API_NAME" >&2 || true
   exit 1
 }
 
-printf 'Desarrollo Seguro production image smoke passed with isolated PostgreSQL and verified TLS.\n'
+printf 'Desarrollo Seguro production image smoke passed with isolated PostgreSQL and verified TLS; no host ports were published.\n'
