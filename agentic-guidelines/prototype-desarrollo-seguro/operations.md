@@ -20,6 +20,12 @@ La ruta del portal está integrada localmente en el router/build web y Nginx; es
 
 La rutina de retención de 90 días está instalada y su ejecución está autorizada para `ds_migrator`; API y worker no tienen ese permiso. La limpieza aún no tiene tarea programada: su invocación queda reservada al migrator bajo operación controlada hasta definir y probar el mantenimiento automático.
 
+## Suite de integración PostgreSQL DS en CI
+
+El workflow `.github/workflows/ci.yml` inicia un servicio efímero `pgvector/pgvector:0.8.7-pg17` separado de la base de pruebas de Grumphya. Publica PostgreSQL en el loopback del runner con el mapeo `127.0.0.1:5433:5432` y crea la base administrativa `development_security_test_admin` con credenciales ficticias exclusivas del job; el job activa `DS_TEST_POSTGRES_ISOLATED=1` y `DS_TEST_DATABASE_URL` con esa dirección antes de ejecutar `pnpm --filter @grumphya/prototype-desarrollo-seguro-persistence test:postgres`. La suite comprueba los guards de destino, provisionamiento y límites de roles/grants, migraciones y funciones SQL, privacidad de columnas, reglas de perfiles v1/v2/v3, lease/veredicto y operaciones de frescura/cola/informes. El spec crea en el servicio efímero la base destino de test y roles `ds_*`, y los limpia al terminar.
+
+Esta integración prueba el comportamiento PostgreSQL de las migraciones y consultas contra un servicio temporal local del job. Usa datos/fixtures de test; no conecta con el VPS, producción ni dominios públicos, y no ejecuta scans. Tampoco valida el certificado o handshake TLS de PostgreSQL desplegado, configuración Compose/Caddy, firewall/egress efectivo, datos de producción, restauración de backups ni capacidad bajo carga. El resultado verde de CI no sustituye la prueba de una instalación aislada ni habilita migraciones o despliegues productivos.
+
 ## Auditoría de egress del VPS (solo lectura, 2 de noviembre de 2026)
 
 Se revisaron en modo lectura el firewall local de Linux/Docker y el estado de las redes Docker. No se cambiaron configuraciones ni reglas, no se enviaron probes, no se probó conectividad y no se ejecutaron scans. La revisión local **no demuestra que exista una barrera de egress efectiva para Desarrollo Seguro**. No se inspeccionó el firewall del proveedor/cloud ni se evaluó la ruta de red efectiva.

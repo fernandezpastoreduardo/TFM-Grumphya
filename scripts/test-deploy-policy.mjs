@@ -128,6 +128,79 @@ for (const jobName of [
   );
 }
 
+const qualityJobStart = workflow.indexOf("  quality-and-e2e:");
+const qualityJobEnd = workflow.indexOf("\n  e2e:", qualityJobStart);
+assert.ok(qualityJobStart >= 0 && qualityJobEnd > qualityJobStart);
+const qualityJob = workflow.slice(qualityJobStart, qualityJobEnd);
+const qualityServicesStart = qualityJob.indexOf("\n    services:\n");
+const qualityEnvironmentStart = qualityJob.indexOf(
+  "\n    env:\n",
+  qualityServicesStart,
+);
+assert.ok(
+  qualityServicesStart >= 0 && qualityEnvironmentStart > qualityServicesStart,
+);
+const qualityServices = qualityJob.slice(
+  qualityServicesStart,
+  qualityEnvironmentStart,
+);
+const grumphyaPostgresStart = qualityServices.indexOf("\n      postgres:\n");
+const developmentSecurityPostgresStart = qualityServices.indexOf(
+  "\n      development-security-postgres:\n",
+);
+assert.ok(
+  grumphyaPostgresStart >= 0 &&
+    developmentSecurityPostgresStart > grumphyaPostgresStart,
+);
+const grumphyaPostgresService = qualityServices.slice(
+  grumphyaPostgresStart,
+  developmentSecurityPostgresStart,
+);
+const developmentSecurityPostgresService = qualityServices.slice(
+  developmentSecurityPostgresStart,
+);
+assert.match(
+  grumphyaPostgresService,
+  /postgres:\s*\n\s+image: pgvector\/pgvector:0\.8\.7-pg17[\s\S]*?POSTGRES_DB: grumphya_test[\s\S]*?ports:\s*\n\s+- 5432:5432[\s\S]*?pg_isready -U grumphya_test -d grumphya_test/,
+  "Grumphya PostgreSQL tests must stay on their own service and port",
+);
+assert.match(
+  developmentSecurityPostgresService,
+  /development-security-postgres:\s*\n\s+image: pgvector\/pgvector:0\.8\.7-pg17[\s\S]*?POSTGRES_DB: development_security_test_admin[\s\S]*?ports:\s*\n\s+- 127\.0\.0\.1:5433:5432[\s\S]*?pg_isready -U postgres -d development_security_test_admin/,
+  "DS persistence tests must use a dedicated ephemeral PostgreSQL service",
+);
+assert.match(
+  qualityJob,
+  /DS_TEST_POSTGRES_ISOLATED: "1"[\s\S]*?DS_TEST_DATABASE_URL: postgresql:\/\/postgres:[^@\n]+@127\.0\.0\.1:5433\/development_security_test_admin/,
+  "the destructive DS test suite must opt into the dedicated loopback cluster explicitly",
+);
+const grumphyaTestDatabaseUrl = qualityJob.match(
+  /^\s+TEST_DATABASE_URL:\s*(\S+)\s*$/m,
+)?.[1];
+const developmentSecurityTestDatabaseUrl = qualityJob.match(
+  /^\s+DS_TEST_DATABASE_URL:\s*(\S+)\s*$/m,
+)?.[1];
+assert.equal(
+  grumphyaTestDatabaseUrl,
+  "postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test",
+  "Grumphya test clients must use the Grumphya cluster on port 5432",
+);
+assert.equal(
+  developmentSecurityTestDatabaseUrl,
+  "postgresql://postgres:development-security-test-admin-password@127.0.0.1:5433/development_security_test_admin",
+  "DS destructive tests must use only the isolated cluster on port 5433",
+);
+assert.notEqual(
+  developmentSecurityTestDatabaseUrl,
+  grumphyaTestDatabaseUrl,
+  "DS and Grumphya test clients must never share a database URL",
+);
+assert.match(
+  qualityJob,
+  /- name: Run Desarrollo Seguro PostgreSQL integration suite\n\s+run: pnpm --filter @grumphya\/prototype-desarrollo-seguro-persistence test:postgres/,
+  "CI must run the isolated PostgreSQL persistence suite",
+);
+
 assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e, dependency-audit\]/);
 assert.match(
   releaseJob,

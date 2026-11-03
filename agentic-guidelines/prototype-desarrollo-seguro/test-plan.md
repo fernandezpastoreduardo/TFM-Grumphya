@@ -6,6 +6,8 @@ La implementación local actual cuenta con pruebas unitarias/de integración del
 
 **Estado verificado el 3 de noviembre de 2026:** después de aplicar la migración 006, la suite PostgreSQL aislada pasó 65/65, con 0 omitidas. La suite del paquete API pasó 52/52, incluidas comprobaciones HTTP con listener de loopback y servicio stub local; estas pruebas no usan base de datos ni red externa. La suite PostgreSQL aislada indicada arriba es una ejecución separada. Repetir el conjunto aislado en los gates previos a cualquier release.
 
+En CI, `.github/workflows/ci.yml` ejecuta `test:postgres` con un servicio efímero DS separado (`pgvector/pgvector:0.8.7-pg17`, loopback del runner `127.0.0.1:5433` → contenedor `5432`, base admin `development_security_test_admin` y credenciales de prueba ficticias) y `DS_TEST_POSTGRES_ISOLATED=1`. El test provisiona el destino `development_security_test_provisioned` y roles DS, y verifica permisos, migraciones, restricciones SQL y comportamiento del almacén. No toca el PostgreSQL de Grumphya/producción, el VPS o servicios externos; tampoco valida TLS/certificados reales, egress ni carga. CI ejecuta fixtures locales, no scans.
+
 Los siguientes incrementos siguen Red → Green → Refactor con tests que expresen el contrato observable antes del código. Priorizar los riesgos que pueden causar daños al VPS o mostrar un aprobado falso: SSRF, límites de escaneo, caducidad, concurrencia, privacidad y aislamiento de Grumphya. Usar reloj, DNS, transporte y navegador inyectables; CI trabaja con fixtures locales y **nunca escanea dominios públicos reales**. Pruebas con grumphya.com se reservan para un smoke controlado tras la preparación operativa.
 
 ## Matriz obligatoria
