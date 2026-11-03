@@ -43,7 +43,7 @@ test("prerenders the roast conversation skeleton before client hydration", async
   expect(html).toContain("skeleton-roast-bubble reply");
 });
 
-test("adds the mobile-only contact mascot preload to the prerendered document", async ({
+test("keeps the mobile contact mascot lazy-loaded in the prerendered document", async ({
   request,
 }) => {
   const response = await request.get("/contacto");
@@ -51,7 +51,10 @@ test("adds the mobile-only contact mascot preload to the prerendered document", 
 
   expect(response.ok()).toBe(true);
   expect(html).toContain(
-    '<link rel="preload" as="image" href="/assets/grumphya/contact-hero-phone.svg" fetchpriority="high" media="(max-width: 700px)" />',
+    '<img class="section-mobile-mascot-image" src="/assets/grumphya/contact-hero-phone.svg" alt="" aria-hidden="true" loading="lazy" decoding="async"/>',
+  );
+  expect(html).not.toContain(
+    '<link rel="preload" as="image" href="/assets/grumphya/contact-hero-phone.svg"',
   );
 });
 

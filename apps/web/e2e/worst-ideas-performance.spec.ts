@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
-const OPTIMIZED_MASCOT_ASSET = "worst-ideas-wall.webp";
+const OPTIMIZED_MASCOT_ASSET = "/assets/grumphya/worst-ideas-wall.webp";
 const MAX_RANKING_ITEMS = 10;
 
 test("uses the optimized illustration for the Worst Ideas mascot", async ({
@@ -14,11 +14,13 @@ test("uses the optimized illustration for the Worst Ideas mascot", async ({
     ".section-mobile-mascot.mascot-worst-ideas",
   );
   await expect(mobileMascot).toBeVisible();
-  await expect
-    .poll(() =>
-      mobileMascot.evaluate((node) => getComputedStyle(node).backgroundImage),
-    )
-    .toContain(OPTIMIZED_MASCOT_ASSET);
+  const mobileMascotImage = mobileMascot.locator("img");
+  await expect(mobileMascotImage).toBeVisible();
+  await expect(mobileMascotImage).toHaveAttribute(
+    "src",
+    OPTIMIZED_MASCOT_ASSET,
+  );
+  await expect(mobileMascotImage).toHaveAttribute("loading", "lazy");
 });
 
 test("keeps the weekly ranking card height when its maximum results load", async ({
