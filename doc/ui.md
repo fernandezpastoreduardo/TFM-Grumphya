@@ -397,6 +397,17 @@ Lighthouse posterior comparable que permita atribuir una mejora de puntuación
 a estos cambios; la precarga solo confirma el descubrimiento del recurso desde
 el HTML inicial.
 
+Las precargas de Nunito Sans y Fredoka ahora sirven subconjuntos WOFF2 con los
+caracteres latinos y símbolos empleados por la interfaz española. Los originales
+se conservan como respaldo. Los subconjuntos mantienen los ejes variables y
+reducen la descarga conjunta de 295.264 B a 163.376 B (131.888 B menos, un
+44,7 %). Los caracteres fuera del subconjunto usan las fuentes de reserva del
+sistema; hay que validar visualmente las rutas públicas y volver a medir
+Lighthouse en producción para confirmar el efecto en LCP y puntuación.
+La ilustración decorativa inferior de Home en móvil se solicita con carga
+diferida y prioridad baja, porque aparece después del contenido inicial y no es
+el LCP previsto. La ilustración del hero de escritorio conserva su carga normal.
+
 ## Ranking público de ideas rechazadas
 
 La ruta `/lo-peor-de-lo-peor` presenta «El muro de la vergüenza». Antes de enviar una idea, el formulario avisa: «Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Peores ideas». El filtro no garantiza anonimato. Consulta la política de privacidad.» En móvil, el aviso deja 12 px de separación antes de la acción «Adelante». Primero,
