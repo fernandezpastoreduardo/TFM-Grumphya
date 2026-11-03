@@ -252,6 +252,9 @@ importers:
 
   apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api:
     dependencies:
+      '@grumphya/prototype-desarrollo-seguro-core':
+        specifier: workspace:*
+        version: link:../prototype-desarrollo-seguro-core
       '@grumphya/prototype-desarrollo-seguro-persistence':
         specifier: workspace:*
         version: link:../prototype-desarrollo-seguro-persistence

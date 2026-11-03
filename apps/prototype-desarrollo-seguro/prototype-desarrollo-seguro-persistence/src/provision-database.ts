@@ -43,7 +43,8 @@ export async function provisionDevelopmentSecurityDatabase(
     await adminPool.query(
       `REVOKE ALL ON DATABASE ${quoteIdentifier(settings.databaseName)} FROM PUBLIC`,
     );
-    await adminPool.query("GRANT ds_read TO ds_api, ds_worker");
+    await adminPool.query("REVOKE ds_read FROM ds_worker");
+    await adminPool.query("GRANT ds_read TO ds_api");
   } finally {
     await adminPool.end();
   }
@@ -148,8 +149,7 @@ async function assertExpectedRoleMemberships(
   pool: Pool,
   roleName: "ds_read" | "ds_migrator" | "ds_api" | "ds_worker",
 ): Promise<void> {
-  const expected =
-    roleName === "ds_api" || roleName === "ds_worker" ? ["ds_read"] : [];
+  const expected = roleName === "ds_api" ? ["ds_read"] : [];
   const memberships = await pool.query<{ granted_role: string }>(
     `SELECT granted.rolname AS granted_role
      FROM pg_auth_members AS membership
@@ -166,6 +166,14 @@ async function assertExpectedRoleMemberships(
         (row, index) => row.granted_role !== expected[index],
       ))
   ) {
+    if (
+      roleName === "ds_worker" &&
+      memberships.rows.length === 1 &&
+      memberships.rows[0]?.granted_role === "ds_read"
+    ) {
+      await pool.query("REVOKE ds_read FROM ds_worker");
+      return;
+    }
     throw new Error("development_security_role_membership_mismatch");
   }
 }
@@ -191,8 +199,23 @@ async function ensureDatabase(pool: Pool, databaseName: string): Promise<void> {
 async function applyRuntimeGrants(pool: Pool): Promise<void> {
   await pool.query(`
     GRANT USAGE ON SCHEMA public TO ds_read, ds_api, ds_worker;
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO ds_read;
-    GRANT INSERT ON ds_domains, ds_scan_jobs TO ds_api;
+    REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public
+      FROM ds_read, ds_api, ds_worker;
+    GRANT SELECT (hostname, enrollment, profile_version, opted_out_at)
+      ON public.ds_domains TO ds_read;
+    GRANT SELECT (id, hostname, profile_version, state, queued_at)
+      ON public.ds_scan_jobs TO ds_read;
+    GRANT SELECT (id, hostname, profile_version, scanner_version, vantage,
+      trigger, started_at, completed_at, expires_at, verdict, scope_json)
+      ON public.ds_scan_runs TO ds_read;
+    GRANT SELECT (
+      run_id, control_id, status, required, severity, observed_at,
+      target_path, method, summary, limitation
+    ) ON public.ds_check_results TO ds_read;
+    GRANT INSERT (hostname, enrollment, profile_version)
+      ON public.ds_domains TO ds_api;
+    GRANT INSERT (hostname, profile_version, trigger, state, queued_at, available_at)
+      ON public.ds_scan_jobs TO ds_api;
     REVOKE UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public
       FROM ds_read, ds_api, ds_worker;
     REVOKE INSERT ON ds_scan_runs, ds_check_results, ds_scan_metrics FROM ds_worker;
@@ -204,7 +227,7 @@ async function applyRuntimeGrants(pool: Pool): Promise<void> {
       ds_complete_scan(uuid, uuid, timestamptz, text, timestamptz, text, jsonb, jsonb, jsonb)
       TO ds_worker;
     ALTER DEFAULT PRIVILEGES FOR ROLE ds_migrator IN SCHEMA public
-      GRANT SELECT ON TABLES TO ds_read;
+      REVOKE SELECT ON TABLES FROM ds_read;
     ALTER DEFAULT PRIVILEGES FOR ROLE ds_migrator IN SCHEMA public
       REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
   `);

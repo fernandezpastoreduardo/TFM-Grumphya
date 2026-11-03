@@ -119,6 +119,50 @@ describePostgres.sequential("PostgresScanStore", () => {
     expect(atExpiry.kind).toBe("queued");
   });
 
+  it("reads a public domain report without returning persisted evidence", async () => {
+    const job = await queueAndClaim();
+    const reportId = await complete(job);
+
+    const snapshot = await store.readPublicDomainSnapshot(TEST_HOSTNAME);
+    const report = await store.readPublicReport(reportId);
+
+    expect(snapshot).toMatchObject({
+      hostname: TEST_HOSTNAME,
+      enrollment: "monitored",
+      profileVersion: TEST_PROFILE,
+      optedOut: false,
+      activeJobId: null,
+      lastReport: {
+        id: reportId,
+        verdict: "inconclusive",
+        vantage: "same_vps",
+      },
+    });
+    expect(snapshot?.lastReport?.checks[0]).not.toHaveProperty("evidence");
+    expect(report).toMatchObject({ id: reportId, hostname: TEST_HOSTNAME });
+    expect(report?.checks[0]).not.toHaveProperty("evidence");
+    await expect(
+      store.readPublicDomainSnapshot("unregistered.example.net"),
+    ).resolves.toBeNull();
+    await expect(
+      store.readPublicReport("00000000-0000-4000-8000-000000000000"),
+    ).resolves.toBeNull();
+  });
+
+  it("hides reports when an operator opts a domain out of public reporting", async () => {
+    const job = await queueAndClaim();
+    const reportId = await complete(job);
+    await pool.query(
+      "UPDATE ds_domains SET opted_out_at = now() WHERE hostname = $1",
+      [TEST_HOSTNAME],
+    );
+
+    await expect(store.readPublicReport(reportId)).resolves.toBeNull();
+    await expect(
+      store.readPublicDomainSnapshot(TEST_HOSTNAME),
+    ).resolves.toMatchObject({ optedOut: true });
+  });
+
   it("does not reuse a fresh report when the profile version changes", async () => {
     const job = await queueAndClaim();
     const reportId = await complete(job);

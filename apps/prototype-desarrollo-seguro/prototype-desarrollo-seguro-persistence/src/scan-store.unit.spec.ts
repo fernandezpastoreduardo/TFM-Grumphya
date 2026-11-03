@@ -48,6 +48,109 @@ describe("PostgresScanStore unit behavior", () => {
     await expect(store.healthCheck()).resolves.toBe(false);
   });
 
+  it("projects public reports without selecting raw evidence", async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        makePublicReportRow({
+          checks: [
+            {
+              ...makePublicReportCheck(),
+              evidence: { html: "<private response body>" },
+              internalTrace: "database-detail",
+            },
+          ],
+        }),
+      ],
+    });
+    const store = new PostgresScanStore(makePool({ query }));
+
+    const report = await store.readPublicReport(
+      "8d140e17-68d6-489a-b451-7e87408187ae",
+    );
+
+    expect(report?.checks[0]).not.toHaveProperty("evidence");
+    expect(report?.checks[0].controlId).toBe("DS-HDR-01");
+    expect(JSON.stringify(report)).not.toContain("<private response body>");
+    expect(JSON.stringify(report)).not.toContain("database-detail");
+    expect(query.mock.calls[0][0]).not.toContain("evidence_json");
+  });
+
+  it("projects status snapshots without selecting raw evidence", async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        makePublicReportRow({
+          hostname: "grumphya.com",
+          enrollment: "monitored",
+          profile_version: "controls-v3",
+          opted_out_at: null,
+          active_job_id: null,
+          checks: [
+            {
+              ...makePublicReportCheck(),
+              evidence: { cookie: "session=private" },
+            },
+          ],
+        }),
+      ],
+    });
+    const store = new PostgresScanStore(makePool({ query }));
+
+    const snapshot = await store.readPublicDomainSnapshot("grumphya.com");
+
+    expect(snapshot?.lastReport?.checks[0]).not.toHaveProperty("evidence");
+    expect(JSON.stringify(snapshot)).not.toContain("session=private");
+    expect(query.mock.calls[0][0]).not.toContain("evidence_json");
+  });
+
+  it("rejects malformed persisted public report rows", async () => {
+    const query = vi.fn().mockResolvedValue({
+      rows: [makePublicReportRow({ report_scope: ["/", 4] })],
+    });
+    const store = new PostgresScanStore(makePool({ query }));
+
+    await expect(
+      store.readPublicReport("8d140e17-68d6-489a-b451-7e87408187ae"),
+    ).rejects.toThrow("invalid_public_report_row");
+  });
+
+  it.each([
+    ["vantage", { report_vantage: "third_party" }],
+    ["profile", { report_profile_version: "controls-v99" }],
+    ["trigger", { report_trigger: "external" }],
+    ["verdict", { report_verdict: "approved" }],
+    ["timestamp", { report_completed_at: "not-a-date" }],
+    [
+      "check status",
+      { checks: [{ ...makePublicReportCheck(), status: "private" }] },
+    ],
+    [
+      "check timestamp",
+      { checks: [{ ...makePublicReportCheck(), observedAt: "not-a-date" }] },
+    ],
+  ])(
+    "rejects persisted public report rows with invalid %s",
+    async (_field, overrides) => {
+      const query = vi.fn().mockResolvedValue({
+        rows: [makePublicReportRow(overrides)],
+      });
+      const store = new PostgresScanStore(makePool({ query }));
+
+      await expect(
+        store.readPublicReport("8d140e17-68d6-489a-b451-7e87408187ae"),
+      ).rejects.toThrow("invalid_public_report_row");
+    },
+  );
+
+  it("filters reports belonging to opted-out domains", async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const store = new PostgresScanStore(makePool({ query }));
+
+    await expect(
+      store.readPublicReport("8d140e17-68d6-489a-b451-7e87408187ae"),
+    ).resolves.toBeNull();
+    expect(query.mock.calls[0][0]).toContain("domains.opted_out_at IS NULL");
+  });
+
   it.each([0, -1, 5 * 60 * 1000 + 1, 1.5, Number.NaN])(
     "rejects invalid lease duration %s before querying the database",
     async (leaseDurationMs) => {
@@ -377,6 +480,38 @@ describe("PostgresScanStore unit behavior", () => {
       end: vi.fn(),
       ...overrides,
     } as unknown as Pool;
+  }
+
+  function makePublicReportRow(overrides: Record<string, unknown> = {}) {
+    return {
+      report_id: "8d140e17-68d6-489a-b451-7e87408187ae",
+      report_hostname: "grumphya.com",
+      report_profile_version: "controls-v3",
+      report_scanner_version: "scanner-v1",
+      report_vantage: "same_vps",
+      report_trigger: "scheduled",
+      report_started_at: new Date("2026-11-03T10:00:00.000Z"),
+      report_completed_at: new Date("2026-11-03T10:01:00.000Z"),
+      report_expires_at: new Date("2026-11-03T11:01:00.000Z"),
+      report_verdict: "inconclusive",
+      report_scope: ["/"],
+      checks: [],
+      ...overrides,
+    };
+  }
+
+  function makePublicReportCheck() {
+    return {
+      controlId: "DS-HDR-01",
+      status: "unknown",
+      required: true,
+      severity: "high",
+      observedAt: "2026-11-03T10:00:30.000Z",
+      targetPath: "/",
+      method: "GET",
+      summary: "Comprobación DS-HDR-01: unknown.",
+      limitation: "Resultado limitado al perfil controls-v3.",
+    };
   }
 });
 

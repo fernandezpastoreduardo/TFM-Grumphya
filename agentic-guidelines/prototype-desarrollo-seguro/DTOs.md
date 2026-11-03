@@ -1,6 +1,6 @@
 # DTOs y API operativa
 
-Los contratos de búsqueda, trabajos e informes de este documento son objetivo de implementación, no endpoints disponibles hoy. La API local actual solo expone `GET /api/desarrollo-seguro/v1/health`; aún no existe API pública para solicitar/consultar scans ni DTO implementados para esos flujos. No presentar las rutas siguientes como servicio activo.
+La API local implementa health y dos endpoints públicos de **solo lectura**: `GET /api/desarrollo-seguro/v1/domains/:hostname/status` y `GET /api/desarrollo-seguro/v1/reports/:reportId`. Ambas respuestas usan `Cache-Control: no-store`; proyectan campos públicos y excluyen `evidence_json` crudo. PostgreSQL refuerza la proyección: roles runtime no pueden seleccionar la columna `evidence_json` ni el `lease_token`. Leer estado no genera tráfico al dominio, no crea ni encola trabajos y nunca inicia un scan. Si no hay datos del dominio, devuelve `not_scanned`. Estos endpoints aún no están desplegados ni conectados a una UI de consulta. Antes de hacerlos públicos hay que añadir y probar rate limiting en la API o proxy; siguen sin definirse los umbrales. Las rutas de admisión y seguimiento de trabajos descritas más abajo siguen siendo contratos objetivo, no servicio disponible.
 
 ## Reglas comunes
 
@@ -10,7 +10,7 @@ Todos los datos procedentes de HTTP, DNS, TLS y navegador se tratan como unknown
 
 ## GET /api/desarrollo-seguro/v1/domains/:hostname/status
 
-Lectura sin efecto de red. Devuelve 200 con:
+Lectura local de persistencia, sin efecto de red. Devuelve 200 con:
 
 | Campo       | Tipo                                              | Semántica                                                                   |
 | ----------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -21,7 +21,7 @@ Lectura sin efecto de red. Devuelve 200 con:
 | lastReport  | PublicReport o null                               | Último informe completo, incluso histórico, con etiqueta de antigüedad.     |
 | checkedAt   | instante UTC                                      | Hora del servidor usada para calcular fresh/stale.                          |
 
-Un informe anterior puede acompañar updating o stale, pero la UI no lo muestra como aprobación vigente. Respuesta Cache-Control: no-store.
+Si no existe snapshot, responde `state=not_scanned`, `enrollment=on_demand`, `activeJobId=null` y `lastReport=null`. Un informe anterior puede acompañar updating o stale, pero la UI no debe mostrarlo como aprobación vigente. La respuesta lleva `Cache-Control: no-store`. El endpoint no crea ni encola un trabajo.
 
 ## POST /api/desarrollo-seguro/v1/scan-requests
 
@@ -35,7 +35,7 @@ Responde queued, running, completed o failed, con reportId cuando termina. Expon
 
 ## GET /api/desarrollo-seguro/v1/reports/:reportId
 
-Informe público inmutable:
+Informe público inmutable existente. Un identificador inválido, inexistente o perteneciente a un dominio excluido devuelve 404; la exclusión administrativa oculta también las consultas directas por ID. Un fallo de almacenamiento devuelve 503. Respuesta `Cache-Control: no-store`. La proyección omite `evidence_json` y cualquier valor privado de persistencia:
 
 | Campo                                        | Tipo                        | Semántica                                                                          |
 | -------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------- |
@@ -48,7 +48,7 @@ Informe público inmutable:
 | checks                                       | lista PublicCheck           | Evidencia mínima y limitaciones.                                                   |
 | disclaimer                                   | texto                       | «Comprobación técnica acotada desde el mismo VPS; no certificación independiente». |
 
-Cada PublicCheck incluye controlId, profileVersion, status pass/fail/unknown/not_applicable, required, severity, observedAt, targetPath, method, summary y limitation. La lógica: un fail obligatorio determina fail; si no hay fail y existe unknown obligatorio, inconclusive; si todos los obligatorios aplicables pasan, pass. not_applicable requiere justificación publicada; nunca se usa para tapar error. Una ejecución parcialmente interrumpida no produce un pass.
+Cada `PublicCheck` incluye `controlId`, `status`, `required`, `severity`, `observedAt`, `targetPath`, `method`, `summary` y `limitation`; la versión del perfil está en el informe. La lógica objetivo: un fail obligatorio determina fail; si no hay fail y existe unknown obligatorio, inconclusive; si todos los obligatorios aplicables pasan, pass. not_applicable requiere justificación publicada; nunca se usa para tapar error. Una ejecución parcialmente interrumpida no produce un pass.
 
 ## Compatibilidad del prototipo anterior
 

@@ -5,7 +5,7 @@ import {
   provisionDevelopmentSecurityDatabase,
   type ProvisioningSettings,
 } from "./provision-database.js";
-import type { ScanCheck } from "./scan-store.js";
+import { PostgresScanStore, type ScanCheck } from "./scan-store.js";
 import {
   assertSafePostgresTestTarget,
   isSafePostgresTestTarget,
@@ -165,7 +165,12 @@ describePostgres.sequential(
         api_can_select: boolean;
         api_can_mutate_profile_controls: boolean;
         api_can_mutate_profile_check_rules: boolean;
+        api_can_select_public_check_columns: boolean;
+        api_can_select_raw_evidence: boolean;
+        api_can_select_lease_token: boolean;
+        api_can_select_metrics: boolean;
         api_can_insert_jobs: boolean;
+        api_can_insert_job_columns: boolean;
         api_can_write_reports: boolean;
         worker_can_update_state: boolean;
         worker_can_update_hostname: boolean;
@@ -177,6 +182,10 @@ describePostgres.sequential(
         worker_can_delete_reports: boolean;
         worker_can_mutate_profile_controls: boolean;
         worker_can_mutate_profile_check_rules: boolean;
+        worker_can_select_public_check_columns: boolean;
+        worker_can_select_raw_evidence: boolean;
+        worker_can_select_lease_token: boolean;
+        worker_is_reader_member: boolean;
         reader_can_select: boolean;
         reader_can_insert: boolean;
       }>(
@@ -191,7 +200,17 @@ describePostgres.sequential(
            OR has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'UPDATE')
            OR has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'DELETE')
            OR has_table_privilege('ds_api', 'public.ds_profile_check_rules', 'TRUNCATE')) AS api_can_mutate_profile_check_rules,
+         has_column_privilege('ds_api', 'public.ds_check_results', 'summary', 'SELECT') AS api_can_select_public_check_columns,
+         has_column_privilege('ds_api', 'public.ds_check_results', 'evidence_json', 'SELECT') AS api_can_select_raw_evidence,
+         has_column_privilege('ds_api', 'public.ds_scan_jobs', 'lease_token', 'SELECT') AS api_can_select_lease_token,
+         has_table_privilege('ds_api', 'public.ds_scan_metrics', 'SELECT') AS api_can_select_metrics,
          has_table_privilege('ds_api', 'ds_scan_jobs', 'INSERT') AS api_can_insert_jobs,
+         (has_column_privilege('ds_api', 'public.ds_scan_jobs', 'hostname', 'INSERT')
+           AND has_column_privilege('ds_api', 'public.ds_scan_jobs', 'profile_version', 'INSERT')
+           AND has_column_privilege('ds_api', 'public.ds_scan_jobs', 'trigger', 'INSERT')
+           AND has_column_privilege('ds_api', 'public.ds_scan_jobs', 'state', 'INSERT')
+           AND has_column_privilege('ds_api', 'public.ds_scan_jobs', 'queued_at', 'INSERT')
+           AND has_column_privilege('ds_api', 'public.ds_scan_jobs', 'available_at', 'INSERT')) AS api_can_insert_job_columns,
          has_table_privilege('ds_api', 'ds_scan_runs', 'INSERT') AS api_can_write_reports,
          has_column_privilege('ds_worker', 'ds_scan_jobs', 'state', 'UPDATE') AS worker_can_update_state,
          has_column_privilege('ds_worker', 'ds_scan_jobs', 'hostname', 'UPDATE') AS worker_can_update_hostname,
@@ -209,6 +228,10 @@ describePostgres.sequential(
            OR has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'UPDATE')
            OR has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'DELETE')
            OR has_table_privilege('ds_worker', 'public.ds_profile_check_rules', 'TRUNCATE')) AS worker_can_mutate_profile_check_rules,
+         has_column_privilege('ds_worker', 'public.ds_check_results', 'summary', 'SELECT') AS worker_can_select_public_check_columns,
+         has_column_privilege('ds_worker', 'public.ds_check_results', 'evidence_json', 'SELECT') AS worker_can_select_raw_evidence,
+         has_column_privilege('ds_worker', 'public.ds_scan_jobs', 'lease_token', 'SELECT') AS worker_can_select_lease_token,
+         pg_has_role('ds_worker', 'ds_read', 'MEMBER') AS worker_is_reader_member,
          has_table_privilege('ds_read', 'ds_scan_runs', 'SELECT') AS reader_can_select,
          has_table_privilege('ds_read', 'ds_scan_runs', 'INSERT') AS reader_can_insert`,
         [TEST_DATABASE_NAME],
@@ -216,10 +239,15 @@ describePostgres.sequential(
 
       expect(result?.rows[0]).toEqual({
         database_owner: "ds_migrator",
-        api_can_select: true,
+        api_can_select: false,
         api_can_mutate_profile_controls: false,
         api_can_mutate_profile_check_rules: false,
-        api_can_insert_jobs: true,
+        api_can_select_public_check_columns: true,
+        api_can_select_raw_evidence: false,
+        api_can_select_lease_token: false,
+        api_can_select_metrics: false,
+        api_can_insert_jobs: false,
+        api_can_insert_job_columns: true,
         api_can_write_reports: false,
         worker_can_update_state: false,
         worker_can_update_hostname: false,
@@ -231,7 +259,11 @@ describePostgres.sequential(
         worker_can_delete_reports: false,
         worker_can_mutate_profile_controls: false,
         worker_can_mutate_profile_check_rules: false,
-        reader_can_select: true,
+        worker_can_select_public_check_columns: false,
+        worker_can_select_raw_evidence: false,
+        worker_can_select_lease_token: false,
+        worker_is_reader_member: false,
+        reader_can_select: false,
         reader_can_insert: false,
       });
     });
@@ -266,12 +298,47 @@ describePostgres.sequential(
       );
       expect(memberships?.rows).toEqual([
         { member_role: "ds_api", granted_role: "ds_read" },
-        { member_role: "ds_worker", granted_role: "ds_read" },
       ]);
+    });
+
+    it("runs public snapshot and report reads with only the API column grants", async () => {
+      const job = await createRunningJob(
+        "api-read-grants",
+        false,
+        "controls-v1",
+      );
+      const checks = CONTROLS_V1_IDS.map((controlId) =>
+        makeCheck(controlId, "unknown"),
+      );
+      const client = await targetAdminPool!.connect();
+      try {
+        const report = await callCompleteScan(
+          client,
+          job,
+          "inconclusive",
+          checks,
+        );
+        await client.query("SET ROLE ds_api");
+        const store = new PostgresScanStore({
+          query: client.query.bind(client),
+        } as unknown as Pool);
+        const snapshot = await store.readPublicDomainSnapshot(job.hostname);
+        const publicReport = await store.readPublicReport(report.id);
+        expect(snapshot?.lastReport?.id).toBe(report.id);
+        expect(publicReport?.id).toBe(report.id);
+        expect(publicReport?.checks).toHaveLength(CONTROLS_V1_IDS.length);
+      } finally {
+        await client.query("RESET ROLE");
+        client.release();
+      }
     });
 
     it("can be rerun without duplicating schema or changing role boundaries", async () => {
       if (!ADMIN_DATABASE_URL) return;
+      await targetAdminPool?.query(
+        `ALTER DEFAULT PRIVILEGES FOR ROLE ds_migrator IN SCHEMA public
+         GRANT SELECT ON TABLES TO ds_read`,
+      );
       await provisionDevelopmentSecurityDatabase({
         adminUrl: ADMIN_DATABASE_URL,
         databaseName: TEST_DATABASE_NAME,
@@ -283,6 +350,25 @@ describePostgres.sequential(
         "SELECT count(*)::integer AS migration_count FROM public.ds_schema_migrations",
       );
       expect(result?.rows[0].migration_count).toBe(6);
+
+      const client = await targetAdminPool!.connect();
+      try {
+        await client.query("SET ROLE ds_migrator");
+        await client.query(
+          "CREATE TABLE public.ds_future_grant_probe (id integer)",
+        );
+        await client.query("RESET ROLE");
+        const futureTableGrant = await client.query<{ can_select: boolean }>(
+          `SELECT has_column_privilege(
+            'ds_read', 'public.ds_future_grant_probe', 'id', 'SELECT'
+          ) AS can_select`,
+        );
+        expect(futureTableGrant.rows[0]?.can_select).toBe(false);
+        await client.query("DROP TABLE public.ds_future_grant_probe");
+      } finally {
+        await client.query("RESET ROLE");
+        client.release();
+      }
     });
 
     it("lets the worker complete through the function but not insert reports directly", async () => {
@@ -302,11 +388,15 @@ describePostgres.sequential(
           can_execute: true,
           can_insert: false,
         });
+        await expect(client.query("SELECT 1")).resolves.toMatchObject({
+          rows: [{ "?column?": 1 }],
+        });
         await expect(
           client.query("INSERT INTO ds_scan_runs DEFAULT VALUES"),
         ).rejects.toThrow(/permission denied/u);
 
         const report = await callCompleteScan(client, job, "inconclusive");
+        await client.query("RESET ROLE");
         const persisted = await client.query(
           `SELECT runs.hostname, runs.profile_version, runs.trigger,
                   jobs.hostname AS job_hostname,
@@ -381,6 +471,7 @@ describePostgres.sequential(
           required: control.required,
         }));
         const report = await callCompleteScan(client, job, "pass", checks);
+        await client.query("RESET ROLE");
         const storedControls = await client.query<{ control_id: string }>(
           "SELECT control_id FROM ds_check_results WHERE run_id = $1 ORDER BY control_id",
           [report.id],
@@ -454,6 +545,7 @@ describePostgres.sequential(
           completeChecks,
           COMPLETE_GRUMPHYA_SCOPE,
         );
+        await client.query("RESET ROLE");
         const storedCheckCount = await client.query<{ count: string }>(
           "SELECT count(*)::text AS count FROM ds_check_results WHERE run_id = $1",
           [report.id],
@@ -491,6 +583,7 @@ describePostgres.sequential(
         const report = await callCompleteScan(client, job, "pass", checks, [
           "/",
         ]);
+        await client.query("RESET ROLE");
         const headerCheck = await client.query<{
           status: string;
           evidence_json: Record<string, unknown>;
@@ -563,6 +656,7 @@ describePostgres.sequential(
             makeControlsV3Checks("unknown", scope),
             scope,
           );
+          await client.query("RESET ROLE");
           const storedCheckCount = await client.query<{ count: string }>(
             "SELECT count(*)::text AS count FROM ds_check_results WHERE run_id = $1",
             [report.id],
@@ -628,6 +722,7 @@ describePostgres.sequential(
             checks,
             scope,
           );
+          await client.query("RESET ROLE");
           const storedCheckCount = await client.query<{ count: string }>(
             "SELECT count(*)::text AS count FROM ds_check_results WHERE run_id = $1",
             [report.id],
@@ -691,6 +786,7 @@ describePostgres.sequential(
             "inconclusive",
             checks,
           );
+          await client.query("RESET ROLE");
           const storedHead = await client.query<{ status: string }>(
             `SELECT status FROM ds_check_results
            WHERE run_id = $1 AND control_id = 'DS-HTTP-01' AND method = 'HEAD'`,

@@ -9,6 +9,8 @@ import {
 } from "@nestjs/common";
 import { PostgresScanStore } from "@grumphya/prototype-desarrollo-seguro-persistence";
 import { Pool } from "pg";
+import { PublicScanController } from "./public-scan/public-scan.controller.js";
+import { PublicScanService } from "./public-scan/public-scan.service.js";
 
 @Injectable()
 export class DevelopmentSecurityDatabase implements OnApplicationShutdown {
@@ -57,7 +59,16 @@ export class DevelopmentSecurityHealthController {
 }
 
 @Module({
-  controllers: [DevelopmentSecurityHealthController],
-  providers: [DevelopmentSecurityDatabase, DevelopmentSecurityHealthService],
+  controllers: [DevelopmentSecurityHealthController, PublicScanController],
+  providers: [
+    DevelopmentSecurityDatabase,
+    DevelopmentSecurityHealthService,
+    {
+      provide: PublicScanService,
+      inject: [DevelopmentSecurityDatabase],
+      useFactory: (database: DevelopmentSecurityDatabase) =>
+        new PublicScanService(database),
+    },
+  ],
 })
 export class DevelopmentSecurityApiModule {}
