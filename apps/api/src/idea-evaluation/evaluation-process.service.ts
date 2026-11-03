@@ -11,6 +11,7 @@ import {
   InvalidModelDecisionError,
   renderHeadline,
   renderMessage,
+  renderReviewMessage,
   validateModelDecision,
   type ModelDecisionValidationCode,
   type ModelDecision,
@@ -23,7 +24,7 @@ import {
 } from "./evaluation-process";
 
 export type EvaluationProcessResponse = {
-  status: ModelDecision["status"];
+  status: ModelDecision["status"] | "REQUIERE_REVISION";
   score: number | null;
   headline: string;
   message: string;
@@ -32,7 +33,7 @@ export type EvaluationProcessResponse = {
   failedCriteria?: string[];
 };
 
-const POLICY_VERSION = "grumphya-concept-v9";
+const POLICY_VERSION = "grumphya-concept-v10";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_SEMANTIC_RETRIES = 1;
@@ -41,6 +42,7 @@ const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
 const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
 const VISIBLE_SCORE_DECIMAL_SCALE = 100;
 const REJECTION_SCORE_THRESHOLD = 15;
+const MIN_CLEAR_SCORE = 7;
 const FAILED_CRITERION_COPY = {
   C01: "La idea deja la puerta abierta a tus datos.",
   C02: "Hay una parte de la idea que juega con fuego.",
@@ -142,15 +144,29 @@ function getPublicScore(decision: ModelDecision): number | null {
   return rejectingCriterion.score / CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR;
 }
 
+function getReviewHeadline(tone: "soft" | "hard"): string {
+  if (tone === "soft") return "La idea aún necesita más trabajo.";
+  return "Todavía no convence lo suficiente.";
+}
+
 function toPublicResponse(
   decision: ModelDecision,
   tone: "soft" | "hard",
 ): EvaluationProcessResponse {
+  const score = getPublicScore(decision);
+  const needsReview =
+    decision.status === "SIN_BLOQUEO_EVIDENTE" &&
+    score !== null &&
+    score < MIN_CLEAR_SCORE;
   const response: EvaluationProcessResponse = {
-    status: decision.status,
-    score: getPublicScore(decision),
-    headline: renderHeadline(decision.status, tone, decision.headline),
-    message: renderMessage(decision, tone),
+    status: needsReview ? "REQUIERE_REVISION" : decision.status,
+    score,
+    headline: needsReview
+      ? getReviewHeadline(tone)
+      : renderHeadline(decision.status, tone, decision.headline),
+    message: needsReview
+      ? renderReviewMessage(decision.message, tone)
+      : renderMessage(decision, tone),
   };
   if (decision.status === "RECHAZADA" && decision.safeTitle) {
     response.safeTitle = decision.safeTitle;

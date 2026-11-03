@@ -298,6 +298,37 @@ describe("IdeaSubmissionService", () => {
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
 
+  it("replays a cached review-required evaluation with its score and message", async () => {
+    const reviewResponse = {
+      status: "evaluated",
+      result: {
+        ...PROMISING_EVALUATION_RESULT,
+        status: "REQUIERE_REVISION" as const,
+        score: 6.99,
+        headline: "La idea aún necesita más trabajo.",
+        message:
+          "Con cariño, esta idea todavía necesita trabajo: La propuesta ayuda a organizar una tarea concreta. Aún falta definir cómo se comprobaría el resultado antes de confiar en él.",
+      },
+    };
+    const { service, search, evaluation, anonymousUsage, goodIdeas } =
+      createDependencies();
+    vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
+      state: "cached",
+      response: reviewResponse,
+      usage: {
+        ideas: { limit: 3, used: 1, remaining: 2 },
+        roasts: { limit: 3, used: 0, remaining: 3 },
+      },
+    });
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+    ).resolves.toEqual(reviewResponse);
+    expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+    expect(goodIdeas.saveGoodIdea).not.toHaveBeenCalled();
+  });
+
   it("rejects empty text before reserving usage", async () => {
     const { service, search, evaluation, anonymousUsage } =
       createDependencies();
@@ -688,6 +719,26 @@ describe("IdeaSubmissionService", () => {
       IDEMPOTENCY_HASH,
       REQUEST_HASH,
     );
+  });
+
+  it("does not store an evaluation that requires review as promising", async () => {
+    const reviewResult = {
+      ...PROMISING_EVALUATION_RESULT,
+      status: "REQUIERE_REVISION" as const,
+    };
+    const { service, goodIdeas } = createDependencies(
+      { kind: "no-match" },
+      reviewResult,
+    );
+
+    await service.submit(
+      VALID_REQUEST,
+      IDEMPOTENCY_KEY,
+      undefined,
+      "00000000-0000-4000-8000-000000000001",
+    );
+
+    expect(goodIdeas.saveGoodIdea).not.toHaveBeenCalled();
   });
 
   it("does not store a promising evaluation for an anonymous visitor", async () => {

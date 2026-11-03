@@ -83,10 +83,8 @@ afterEach(() => {
 
 describe("App", () => {
   it("loads the idea input and project purpose for the home route", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise(() => undefined)),
-    );
+    const fetchMock = vi.fn(() => new Promise(() => undefined));
+    vi.stubGlobal("fetch", fetchMock);
     render(<App />);
     expect(
       await screen.findByRole("heading", {
@@ -99,6 +97,20 @@ describe("App", () => {
     expect(
       screen.getByRole("textbox", { name: /escribe o pega tu idea/i }),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/anonymous-analytics",
+        expect.objectContaining({
+          credentials: "omit",
+          body: JSON.stringify({
+            event: "page_view",
+            page: "home",
+            plan: null,
+            device: "desktop",
+          }),
+        }),
+      ),
+    );
     vi.unstubAllGlobals();
   });
 

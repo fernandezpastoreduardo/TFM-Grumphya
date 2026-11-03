@@ -10,6 +10,7 @@ type EvaluationResultProps = {
 
 const STATUS_LABELS: Record<EvaluationProcessResult["status"], string> = {
   RECHAZADA: "Fuera de juego",
+  REQUIERE_REVISION: "Necesita más trabajo",
   SIN_BLOQUEO_EVIDENTE: "Sigue en pie, por ahora",
   IDEA_INSUFICIENTE: "Falta la idea",
 };

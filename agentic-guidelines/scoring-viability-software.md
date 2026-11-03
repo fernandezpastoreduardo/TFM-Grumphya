@@ -1,6 +1,6 @@
 # grumphya — Filtro conceptual de ideas y scoring con revisión completa
 
-**Versión:** 3.4 — 16 de octubre de 2026
+**Versión:** 3.5 — 3 de noviembre de 2026
 **Entrada de la evaluación:** una idea escrita en un textarea, breve o muy breve.
 **Objetivo:** detectar errores de bulto y devolver un score de 0 a 10 con dos decimales, un titular con personalidad y una explicación concreta de los aspectos mediocres y el defecto decisivo.
 **Sustituye:** el sistema de evaluación exhaustiva de la versión 1.0.
@@ -9,21 +9,21 @@
 
 Esta revisión incorpora los cuatro requisitos: entrada conceptual, integración como feature, evaluación de todos los criterios aunque haya suspensos y especificación implementable mediante TDD, adaptándose al repositorio real.
 
-**Estado de implementación (27 de octubre de 2026):** la rúbrica `grumphya-concept-v9` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea, las instrucciones de política y el tono limitado al copy visible; genera un titular nuevo para cada resultado. El servidor valida el titular y usa un fallback seguro si no cumple las reglas; el tono no puede cambiar el veredicto ni la puntuación. Si C10 es el primer veto (`stop_at: C10`), la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
+**Estado de implementación (3 de noviembre de 2026):** la rúbrica `grumphya-concept-v10` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea, las instrucciones de política y el tono limitado al copy visible; genera un titular nuevo para cada resultado. El servidor valida el titular y usa un fallback seguro si no cumple las reglas; el tono no puede cambiar el veredicto ni la puntuación. Si C10 es el primer veto (`stop_at: C10`), la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
 
 **Orden de lectura para Luna:** resumen y alcance (secciones 1–3), rúbrica (4), contrato (8), prompt (9) y plan TDD (12). La sección 12 fija las decisiones de implementación; los ejemplos conceptuales de la sección 10 no sustituyen sus pruebas deterministas.
 
 ## 1. Cambio de enfoque
 
-| Versión anterior                                     | Modelo para la feature                                                         |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Plan con alcance, presupuesto, datos y pruebas       | Texto libre con una idea                                                       |
-| Investigar demanda, competencia, regulación y costes | Identificar contradicciones y riesgos estructurales evidentes                  |
-| Desconocido podía puntuar <15                        | Lo desconocido queda sin puntuación y no provoca rechazo                       |
-| Completar todos los criterios y subcriterios         | Revisar los diez criterios; conservar el primer suspenso como motivo principal |
-| Media, mínimos críticos y aprobación condicionada    | Veto conceptual <15; score del filtro conceptual, no de viabilidad real        |
-| Informe con causas y plan de validación              | Una sola frase sobre un solo motivo                                            |
-| Evidencia externa y revisión profesional             | Texto del usuario, conocimiento general acotado y razonamiento conceptual      |
+| Versión anterior                                     | Modelo para la feature                                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Plan con alcance, presupuesto, datos y pruebas       | Texto libre con una idea                                                                    |
+| Investigar demanda, competencia, regulación y costes | Identificar contradicciones y riesgos estructurales evidentes                               |
+| Desconocido podía puntuar <15                        | Lo desconocido queda sin puntuación y no provoca rechazo                                    |
+| Completar todos los criterios y subcriterios         | Revisar los diez criterios; conservar el primer suspenso como motivo principal              |
+| Media, mínimos críticos y aprobación condicionada    | Veto conceptual <15; score del filtro conceptual, no de viabilidad real                     |
+| Informe con causas y plan de validación              | Explicación concreta de fortalezas, límites y qué conviene validar, sin enumerar la rúbrica |
+| Evidencia externa y revisión profesional             | Texto del usuario, conocimiento general acotado y razonamiento conceptual                   |
 
 La detección de ideas duplicadas es una feature independiente. En los envíos
 iniciales, cuatro clasificadores deterministas locales del servidor se ejecutan
@@ -79,12 +79,13 @@ exóticos o meramente imaginables en vetos.
 
 ### 2.3 Estados
 
-| Estado interno         | Cuándo                                                             | Qué recibe el usuario                                                           |
-| ---------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| `RECHAZADA`            | Uno o más criterios puntúan por debajo de 15 tras revisar los diez | Score global del primer suspenso y explicación de todos los criterios suspensos |
-| `SIN_BLOQUEO_EVIDENTE` | No se detecta un fallo de bulto con lo escrito                     | Una frase prudente y score; nunca «negocio viable»                              |
-| `IDEA_INSUFICIENTE`    | No se reconoce una propuesta funcional                             | Una frase que indica que no hay propuesta evaluable; score `null`               |
-| `ERROR_EVALUACION`     | Fallo técnico, salida inválida o límite de servicio                | Mensaje breve del servicio; sin veredicto inventado                             |
+| Estado interno         | Cuándo                                                                     | Qué recibe el usuario                                                                     |
+| ---------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `RECHAZADA`            | Uno o más criterios puntúan por debajo de 15 tras revisar los diez         | Score global del primer suspenso y explicación de todos los criterios suspensos           |
+| `REQUIERE_REVISION`    | Estado público derivado si no hay veto y la media queda por debajo de 7/10 | Score y explicación concreta; no se considera aprobada ni se guarda como idea prometedora |
+| `SIN_BLOQUEO_EVIDENTE` | No se detecta un fallo de bulto y la media es al menos 7/10                | Score y explicación prudente; nunca «negocio viable»                                      |
+| `IDEA_INSUFICIENTE`    | No se reconoce una propuesta funcional                                     | Una frase que indica que no hay propuesta evaluable; score `null`                         |
+| `ERROR_EVALUACION`     | Fallo técnico, salida inválida o límite de servicio                        | Mensaje breve del servicio; sin veredicto inventado                                       |
 
 Una idea de una línea puede ser evaluable. «Una app para guardar recetas y crear la lista de compra» permite identificar una propuesta. «Una app revolucionaria» no.
 
@@ -113,6 +114,8 @@ Se mantiene la escala 0–100 por aspecto, pero cambia lo que representa:
 El techo 79 es una **decisión conservadora de producto**, no un límite científico. La puntuación expresa solidez conceptual estimable, no originalidad ni viabilidad real.
 
 Usar pocos valores, preferentemente múltiplos de 5. Para vetos, usar 0, 5 o 10. No gastar tokens distinguiendo artificialmente entre 11 y 12.
+
+La falta de información no equivale a solidez: marca `INDETERMINADO` si el texto no da base suficiente para puntuar un aspecto. En particular, si no se describen ingresos o costes, C08 queda `INDETERMINADO`; no recibe una nota alta solo porque no aparezca una contradicción económica.
 
 ### 3.2 Puntuación y motivo deben coincidir
 
@@ -156,10 +159,15 @@ escala conceptual de `0–100` dividiendo entre 10; por ejemplo, un `13`
 conceptual se presenta como `1,30/10`. No se promedian criterios para un
 rechazo. Se evalúan los diez criterios y se informa de todos los que suspenden.
 
-En `SIN_BLOQUEO_EVIDENTE`, el score es la media aritmética de los criterios
+En evaluaciones sin veto, el score es la media aritmética de los criterios
 `PUNTUADO` visitados, convertida a escala 0–10 dividiendo entre 10 y redondeada
 a dos decimales. C10 debe ser `PUNTUADO`, por lo que una idea funcional nunca
 termina sin nota. `INDETERMINADO` y `NO_APLICA` no entran en la media.
+Una media inferior a 7/10 produce `REQUIERE_REVISION`: evita presentar una
+idea con debilidades extendidas como aprobada solo porque ningún defecto aislado
+alcance el umbral de veto. El umbral 7/10 es una puerta de producto prudente,
+no una probabilidad de éxito. Solo `SIN_BLOQUEO_EVIDENTE` se guarda como idea
+prometedora.
 `IDEA_INSUFICIENTE` siempre usa
 `score: null`; no equivale a cero ni a rechazo.
 
@@ -256,7 +264,7 @@ material.
 4. En cada criterio, evaluar solo si existe una base concreta en el texto y continuar aunque un criterio suspenda.
 5. Registrar todos los criterios puntuados por debajo de 15. El primero fija `stop_at` y `reason_code`, pero no detiene el análisis.
 6. Si hay uno o más suspensos, devolver `RECHAZADA` y explicar todos sus defectos y perjuicios previsibles.
-7. Si termina sin suspensos, devolver `SIN_BLOQUEO_EVIDENTE` con una frase prudente.
+7. Si termina sin suspensos, devolver `SIN_BLOQUEO_EVIDENTE`; el servidor proyecta como `REQUIERE_REVISION` las medias inferiores a 7/10. En los demás casos sin veto, explicar el valor, la limitación principal y qué conviene validar, sin enumerar criterios.
 
 El primer criterio fallido conserva el papel de motivo principal y determina `stop_at` y `reason_code`. Los criterios posteriores también se evalúan para que la persona conozca todos los defectos detectados.
 
@@ -285,18 +293,18 @@ Un fallo comercial, ético o de privacidad normalmente necesita interpretar el m
 
 Valores de partida propuestos para la feature, sujetos a prueba; no son requisitos heredados del proyecto:
 
-| Control                    | Propuesta inicial                                                                                                                                             | Objetivo                                            |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Tamaño del textarea        | Máximo 2.000 caracteres, visible al usuario                                                                                                                   | Acotar entrada y evitar convertirlo en un plan      |
-| Contexto                   | Idea actual + política compacta + tono limitado al copy                                                                                                       | Evitar historial y documentos innecesarios          |
-| Llamadas                   | Una por envío válido                                                                                                                                          | Evitar cascadas de modelos                          |
-| Tokens de salida           | Límite configurable bajo; empezar probando 500 tokens                                                                                                         | Cubrir JSON compacto y una frase                    |
-| Resultado                  | Titular nuevo generado para estado y tono + explicación factual (8–120 palabras al rechazar; 8–40 en otros estados) + score visible de 0–10 con dos decimales | Feedback con personalidad y motivos concretos       |
-| Modelo                     | El menos costoso que supere las pruebas de calidad                                                                                                            | Ahorrar sin aumentar vetos inventados               |
-| Ejecución                  | Sin búsquedas, herramientas ni análisis externo                                                                                                               | Coste acotado                                       |
-| Duplicación de solicitudes | Bloquear doble envío e identificar reintentos del mismo envío                                                                                                 | Evitar llamadas repetidas                           |
-| Reintentos                 | Cero reintentos LLM por defecto; no repetir ante timeout o JSON inválido                                                                                      | Impedir bucles de gasto                             |
-| Protección de uso          | Cuotas de negocio fuera de `evaluationProcess`, en un orquestador/feature posterior                                                                           | Mantener separadas evaluación y autorización de uso |
+| Control                    | Propuesta inicial                                                                                                                                      | Objetivo                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Tamaño del textarea        | Máximo 2.000 caracteres, visible al usuario                                                                                                            | Acotar entrada y evitar convertirlo en un plan      |
+| Contexto                   | Idea actual + política compacta + tono limitado al copy                                                                                                | Evitar historial y documentos innecesarios          |
+| Llamadas                   | Una por envío válido                                                                                                                                   | Evitar cascadas de modelos                          |
+| Tokens de salida           | Hasta 6.000 tokens configurados para cubrir el esquema y las explicaciones de la rúbrica                                                               | Evitar truncar la salida estructurada               |
+| Resultado                  | Titular nuevo + explicación factual (25–90 palabras y 2–4 frases sin veto; 8–120 al rechazar; 8–40 si la idea es insuficiente) + score visible de 0–10 | Feedback concreto sin enumerar criterios            |
+| Modelo                     | El menos costoso que supere las pruebas de calidad                                                                                                     | Ahorrar sin aumentar vetos inventados               |
+| Ejecución                  | Sin búsquedas, herramientas ni análisis externo                                                                                                        | Coste acotado                                       |
+| Duplicación de solicitudes | Bloquear doble envío e identificar reintentos del mismo envío                                                                                          | Evitar llamadas repetidas                           |
+| Reintentos                 | Cero reintentos LLM por defecto; no repetir ante timeout o JSON inválido                                                                               | Impedir bucles de gasto                             |
+| Protección de uso          | Cuotas de negocio fuera de `evaluationProcess`, en un orquestador/feature posterior                                                                    | Mantener separadas evaluación y autorización de uso |
 
 No truncar silenciosamente una idea larga: la restricción se comunica en el textarea. El servidor vuelve a validar. El límite de caracteres es una aproximación de coste, no una cuenta exacta de tokens.
 
@@ -340,10 +348,14 @@ mensaje dirigido a la persona. El prompt pide descripciones comprensibles; tras
 validar y aplicar el tono, el backend reemplaza cualquier alias conocido por
 una explicación breve en español común antes de construir la respuesta pública.
 
-**Límites de `message`:** si no hay rechazo, 8–40 palabras y ≤280 unidades
-UTF-16. En `RECHAZADA`, 8–120 palabras y ≤900 unidades UTF-16 para explicar
-todos los suspensos. En ambos casos, una frase, un solo párrafo, sin Markdown,
-listas, preguntas ni saltos de línea. Se renderiza como texto plano. `headline`
+**Límites de `message`:** en `SIN_BLOQUEO_EVIDENTE`, 25–90 palabras, ≤700
+unidades UTF-16 y de dos a cuatro frases; debe identificar el valor que sí se
+desprende de la idea, la debilidad o incertidumbre principal y qué conviene
+validar o definir. No enumera la rúbrica ni inventa hechos ausentes. En
+`IDEA_INSUFICIENTE`, 8–40 palabras y ≤280 unidades UTF-16. En `RECHAZADA`,
+8–120 palabras y ≤900 unidades UTF-16 para explicar todos los suspensos. Todos
+los mensajes van en un solo párrafo, sin Markdown, listas ni saltos de línea;
+el rechazo y la insuficiencia usan una frase. Se renderiza como texto plano. `headline`
 debe ser breve, estar en español, respetar el tono y no contener «bloqueo» ni
 información identificativa. Se comprueban longitud, formato y fragmentos
 copiados de la idea; un titular inválido cae al fallback, sin invalidar una
@@ -400,8 +412,8 @@ No guardar este fragmento ni la idea en telemetría general por defecto. Los reg
 - En `RECHAZADA`, se devuelven los diez criterios y C10 queda puntuado. `stop_at` es el primer criterio, en orden, con score <15; los suspensos posteriores permanecen en `evaluated`.
 - Fragmento `basis` no vacío y presente en la entrada para un rechazo.
 - El código de rechazo pertenece al criterio señalado.
-- En `SIN_BLOQUEO_EVIDENTE`, se han visitado los diez criterios, C10 tiene score ≥15 y ningún criterio puntuado tiene score <15.
-- En `SIN_BLOQUEO_EVIDENTE`, el score público es la media de los criterios `PUNTUADO` dividida entre 10 y redondeada a dos decimales; si no hay puntuados, es `null`.
+- En `SIN_BLOQUEO_EVIDENTE`, se han visitado los diez criterios, C10 tiene score ≥15, ningún criterio puntuado tiene score <15 y la media pública alcanza 7/10. `REQUIERE_REVISION` no es un estado del modelo: el servidor lo proyecta cuando una salida válida `SIN_BLOQUEO_EVIDENTE` queda por debajo de ese umbral.
+- En ambos resultados sin veto, el score público es la media de los criterios `PUNTUADO` dividida entre 10 y redondeada a dos decimales; si no hay puntuados, es `null`.
 - En `IDEA_INSUFICIENTE`, no hay puntuaciones ni criterio de parada y el score público es `null`.
 - En estados sin rechazo, `stop_at`, `reason_code` y `basis` son `null`.
 - El mensaje base cumple los límites de la sección 7; si hay rechazo, resume todos los criterios suspensos y sus consecuencias sin inventar causas.
@@ -520,7 +532,7 @@ nuevo, breve y acorde con estado y tono. El titular solo afecta a la
 presentación; no cambia la evaluación. La media de los demás estados se calcula
 en servidor.
 
-message: explicación clara, neutral y factual. Si no hay rechazo, 8-40 palabras y máximo 280 unidades UTF-16. Si hay rechazo, 8-120 palabras y máximo 900 unidades UTF-16; explica todos los criterios con score <15 y el perjuicio de cada uno. Sin llamarlo «bloqueo» ni usar jerga de informe.
+message: explicación clara, neutral y factual. En SIN_BLOQUEO_EVIDENTE: 25-90 palabras, máximo 700 unidades UTF-16 y de dos a cuatro oraciones; explica el valor concreto, la limitación principal y qué conviene validar, sin enumerar criterios ni inventar datos ausentes. En IDEA_INSUFICIENTE: 8-40 palabras y máximo 280 unidades UTF-16. En RECHAZADA: 8-120 palabras, máximo 900 unidades UTF-16; explica todos los criterios con score <15 y el perjuicio de cada uno. Sin llamarlo «bloqueo» ni usar jerga de informe.
 No incluyas en message IDs internos C01–C10 ni reason codes; explica el defecto
 con palabras comunes. Estos identificadores pueden aparecer en campos
 estructurados internos, pero nunca en la explicación visible.
@@ -583,7 +595,7 @@ Probar también:
 - Entrada demasiado larga: validación previa, sin truncamiento silencioso.
 - Timeout, JSON inválido o puerto sin proveedor: error del servicio, no rechazo conceptual ni resultado fake en runtime.
 
-Estas son pruebas necesarias antes de integración; **no se ha ejecutado una evaluación empírica con un modelo ni implementado la feature en esta revisión**.
+Estos son casos sintéticos del corpus de regresión. La implementación actual usa `grumphya-concept-v10`; el benchmark requiere una ejecución separada para medir el comportamiento del modelo, porque las pruebas deterministas no acreditan la calidad semántica de cada juicio.
 
 ## 11. Qué se conserva y qué se retira
 
@@ -595,7 +607,7 @@ Las fuentes de la versión 1.0 fundamentaban una evaluación amplia. No es neces
 
 El cuarto aspecto queda incorporado en la sección 12: contratos, responsabilidades, inspección del repositorio, incrementos TDD y criterios verificables de terminación.
 
-**Regla final:** detectar un fallo claro, detenerse y decirlo en una frase; si no se ve un fallo, no fabricarlo para mantener el personaje.
+**Regla final:** no fabricar fallos para mantener el personaje. Si hay rechazo, explicar en una frase el defecto y sus consecuencias; sin veto, detallar en dos a cuatro frases el valor, la limitación principal y qué conviene validar.
 
 ## 12. Especificación de implementación para Luna en esfuerzo medio con TDD
 
@@ -719,7 +731,7 @@ Si ya existe un resultado externo con otra estructura, adaptar en el borde del b
 | Entrada vacía              | Error de validación sin llamada LLM; no simular un veredicto                                                                                                                                                                                                             |
 | Texto breve/vago no vacío  | Los casos deterministas de texto muy breve se responden antes de similitud; otras entradas ordinarias válidas las interpreta el modelo, que puede devolver IDEA_INSUFICIENTE                                                                                             |
 | Ruta HTTP                  | Reutilizar `POST /api/evaluation-process` y el campo existente `ideaText`; añadir `tone` sin cambiar el prefijo                                                                                                                                                          |
-| Política                   | Constante versionada `grumphya-concept-v9`; no modificable desde el textarea                                                                                                                                                                                             |
+| Política                   | Constante versionada `grumphya-concept-v10`; no modificable desde el textarea                                                                                                                                                                                            |
 | Herramientas del proveedor | Desactivadas para esta llamada                                                                                                                                                                                                                                           |
 | Payload del proveedor      | Idea + instrucciones/política + tono limitado al copy visible; no incluye historial                                                                                                                                                                                      |
 | Salida                     | OpenAI Responses API con esquema JSON estricto, validación semántica local y máximo de 6.000 tokens de salida                                                                                                                                                            |
@@ -752,7 +764,7 @@ Estos nombres son propuestas; se pueden reutilizar equivalentes existentes.
 **Validación de copy visible:**
 
 - `headline` se genera para cada respuesta según estado y tono; se valida y se sustituye por un titular local seguro si incumple el contrato. No contiene «bloqueo».
-- `message` es texto no vacío y trim. En `RECHAZADA`, admite 8–120 palabras y ≤900 unidades UTF-16 para explicar todos los criterios fallidos; en otros estados, 8–40 palabras y ≤280 unidades. Usa español sencillo y evita jerga.
+- `message` es texto no vacío y trim. En `RECHAZADA`, admite 8–120 palabras y ≤900 unidades UTF-16 para explicar todos los criterios fallidos; en `SIN_BLOQUEO_EVIDENTE`, 25–90 palabras, ≤700 unidades y dos a cuatro frases; en `IDEA_INSUFICIENTE`, 8–40 palabras y ≤280 unidades. Usa español sencillo y evita jerga.
 - Un solo párrafo sin saltos de línea ni formato Markdown de lista.
 - Debe identificar un defecto del mecanismo y su consecuencia, no atacar a la persona.
 - La UI renderiza headline y message como texto, nunca como HTML.
