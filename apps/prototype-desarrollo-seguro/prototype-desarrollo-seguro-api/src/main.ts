@@ -1,13 +1,16 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { DevelopmentSecurityApiModule } from "./development-security-api.module.js";
+import { resolveHttpsListenerOptions } from "./https-listener.js";
 import { parseTrustedProxyCidrs } from "./trusted-proxy-cidrs.js";
 
 const DEFAULT_PORT = 3001;
 const API_PREFIX = "api/desarrollo-seguro/v1";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(DevelopmentSecurityApiModule);
+  const app = await NestFactory.create(DevelopmentSecurityApiModule, {
+    httpsOptions: resolveHttpsListenerOptions(process.env),
+  });
   app
     .getHttpAdapter()
     .getInstance()

@@ -123,3 +123,50 @@ USER node
 EXPOSE 3000
 
 CMD ["node", "apps/api/dist/main.js"]
+
+# Separate runtime for the read-only Desarrollo Seguro API. Build and runtime
+# dependencies stay scoped to the DS API and its workspace packages; this
+# target is opt-in and does not alter Grumphya's existing production target.
+FROM development AS development-security-build
+
+RUN pnpm --filter @grumphya/prototype-desarrollo-seguro-api build
+
+FROM pnpm-base AS development-security-production-dependencies
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-web/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json
+COPY apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-worker/package.json apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-worker/package.json
+RUN pnpm install --prod --filter @grumphya/prototype-desarrollo-seguro-api... --frozen-lockfile --ignore-scripts
+
+FROM node-base AS development-security-production
+
+ENV NODE_ENV=production
+ENV DS_API_PORT=3001
+ENV DS_API_TLS_REQUIRED=true
+
+COPY --from=development-security-production-dependencies --chown=node:node /workspace/node_modules /workspace/node_modules
+COPY --from=development-security-production-dependencies --chown=node:node /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/node_modules /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/node_modules
+COPY --from=development-security-production-dependencies --chown=node:node /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/node_modules /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/node_modules
+COPY --from=development-security-production-dependencies /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/package.json
+COPY --from=development-security-production-dependencies /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/package.json
+COPY --from=development-security-production-dependencies /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/package.json
+COPY --from=development-security-build --chown=node:node /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/dist /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/dist
+COPY --from=development-security-build --chown=node:node /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/dist /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-core/dist
+COPY --from=development-security-build --chown=node:node /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/dist /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/dist
+COPY --chown=node:node apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/migrations /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/migrations
+
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /opt/yarn-v1.22.22 /usr/local/bin/npm /usr/local/bin/npx \
+    /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+    /usr/local/bin/pnpm /usr/local/bin/pnpx
+
+USER node
+
+EXPOSE 3001
+
+CMD ["node", "apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/dist/main.js"]

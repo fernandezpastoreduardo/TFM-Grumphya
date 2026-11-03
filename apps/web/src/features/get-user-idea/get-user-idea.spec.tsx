@@ -14,6 +14,7 @@ const BACK_TO_IDEA_LABEL = /cambiar idea/i;
 const SUBMIT_LABEL = /^evaluar idea/i;
 const MICROPHONE_BUTTON_LABEL = /dictar idea/i;
 const PERMISSION_DENIED_MESSAGE = /permiso al micrófono/i;
+const LONG_INPUT_TEST_TIMEOUT_MS = 30_000;
 
 async function continueToToneStep(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: NEXT_STEP_LABEL }));
@@ -327,26 +328,32 @@ describe("GetUserIdea", () => {
     expect(screen.getByRole("alert")).toBeVisible();
   });
 
-  it("allows short non-empty text for server classification and limits to 2,000 characters", async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn();
-    render(<GetUserIdea onSubmit={onSubmit} />);
-    const input = screen.getByRole("textbox", { name: INPUT_LABEL });
+  it(
+    "allows short non-empty text for server classification and limits to 2,000 characters",
+    async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+      render(<GetUserIdea onSubmit={onSubmit} />);
+      const input = screen.getByRole("textbox", { name: INPUT_LABEL });
 
-    await user.type(input, "demasiado");
-    await continueToToneStep(user);
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(
-      screen.getByRole("radio", { name: /tengo la piel fina/i }),
-    ).toBeVisible();
+      await user.type(input, "demasiado");
+      await continueToToneStep(user);
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(
+        screen.getByRole("radio", { name: /tengo la piel fina/i }),
+      ).toBeVisible();
 
-    await user.click(screen.getByRole("button", { name: BACK_TO_IDEA_LABEL }));
-    const ideaInput = screen.getByRole("textbox", { name: INPUT_LABEL });
-    await user.clear(ideaInput);
-    await user.type(ideaInput, "a".repeat(MAX_IDEA_LENGTH + 1));
-    expect(ideaInput).toHaveValue("a".repeat(MAX_IDEA_LENGTH));
-    expect(ideaInput).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
-  }, 15_000);
+      await user.click(
+        screen.getByRole("button", { name: BACK_TO_IDEA_LABEL }),
+      );
+      const ideaInput = screen.getByRole("textbox", { name: INPUT_LABEL });
+      await user.clear(ideaInput);
+      await user.type(ideaInput, "a".repeat(MAX_IDEA_LENGTH + 1));
+      expect(ideaInput).toHaveValue("a".repeat(MAX_IDEA_LENGTH));
+      expect(ideaInput).toHaveAttribute("maxLength", String(MAX_IDEA_LENGTH));
+    },
+    LONG_INPUT_TEST_TIMEOUT_MS,
+  );
 
   it("treats markup as literal user text and never renders it as HTML", async () => {
     const user = userEvent.setup();

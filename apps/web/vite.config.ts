@@ -5,9 +5,12 @@ import { prerenderToNodeStream } from "react-dom/static";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import prerenderedPublicRoutes from "./src/shared/prerendered-public-routes.json";
+import { createDevelopmentSecurityApiProxy } from "./src/features/development-security/development-security-api-proxy.js";
 
 const API_PROXY_TARGET =
   process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3000";
+const DEVELOPMENT_SECURITY_API_PROXY_TARGET =
+  process.env.DEVELOPMENT_SECURITY_API_PROXY_TARGET ?? "http://127.0.0.1:3001";
 const ROOT_ELEMENT = '<div id="root"></div>';
 const DEVELOPMENT_SECURITY_PREFIX = "/desarrollo-seguro";
 const DEVELOPMENT_SECURITY_FILES = new Map([
@@ -197,7 +200,10 @@ export default defineConfig({
       "Permissions-Policy":
         "microphone=(self), on-device-speech-recognition=(self)",
     },
-    proxy: { "/api": API_PROXY_TARGET },
+    proxy: createDevelopmentSecurityApiProxy(
+      API_PROXY_TARGET,
+      DEVELOPMENT_SECURITY_API_PROXY_TARGET,
+    ),
   },
   test: {
     environment: "jsdom",
