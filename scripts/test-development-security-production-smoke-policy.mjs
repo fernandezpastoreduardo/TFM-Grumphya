@@ -79,7 +79,7 @@ assert.doesNotMatch(
 );
 assert.match(
   workflow,
-  /Run Desarrollo Seguro production image smoke\n\s+run: bash scripts\/test-development-security-production-smoke\.sh development-security-production:\$\{\{ github\.sha \}\}/,
+  /Run Desarrollo Seguro production image smoke\n\s+run: bash scripts\/test-development-security-production-smoke\.sh development-security-api:\$\{\{ github\.sha \}\}/,
   "the smoke must exercise the image built from this workflow revision",
 );
 assert.match(

@@ -15,6 +15,16 @@ readonly INTERNAL_TLS_SECRETS=(
   web_tls.crt web_tls.key
   postgres_tls.crt postgres_tls.key
 )
+readonly DEVELOPMENT_SECURITY_SECRETS=(
+  development_security_admin_password
+  development_security_admin_url
+  development_security_migrator_password
+  development_security_api_database_url
+  development_security_database_tls.crt
+  development_security_database_tls.key
+  development_security_api_tls.crt
+  development_security_api_tls.key
+)
 
 fail() {
   printf 'FAIL: %s\n' "$1" >&2
@@ -108,11 +118,13 @@ fi
 if [[ $1 == compose ]]; then
   file=''
   action=''
+  service=''
   previous=''
   while (($#)); do
     case $1 in
       --file) shift; file=${1:-} ;;
       config|up|run|stop) action=$1 ;;
+      api) service=$1 ;;
     esac
     shift
   done
@@ -122,7 +134,7 @@ if [[ $1 == compose ]]; then
   if [[ $action == up && ${FAIL_UP_SHA:-} && $file == *"/$FAIL_UP_SHA/"* ]]; then
     exit 42
   fi
-  if [[ $action == run && ${FAIL_AI_SMOKE_SHA:-} && $file == *"/$FAIL_AI_SMOKE_SHA/"* ]]; then
+  if [[ $action == run && $service == api && ${FAIL_AI_SMOKE_SHA:-} && $file == *"/$FAIL_AI_SMOKE_SHA/"* ]]; then
     exit 43
   fi
   exit 0
@@ -165,6 +177,10 @@ if [[ ${FAIL_CURRENT_STATE_MOVE_ONCE:-0} == 1 && "$destination" == "$TEST_ROOT/s
   : > "$TEST_ROOT/failed-current-move"
   exit 1
 fi
+if [[ ${FAIL_BASELINE_STATE_MOVE_ONCE:-0} == 1 && "$destination" == "$TEST_ROOT/state/development_security_migration_baseline" && ! -e $TEST_ROOT/failed-baseline-move ]]; then
+  : > "$TEST_ROOT/failed-baseline-move"
+  exit 1
+fi
 exec /bin/mv "$@"
 MV_STUB
   chmod +x "$TEST_BIN/mv"
@@ -173,6 +189,7 @@ MV_STUB
   export GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy"
   export GRUMPHYA_TESTING=1
   unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_AI_SMOKE_SHA FAIL_CURRENT_STATE_MOVE_ONCE || true
+  unset FAIL_BASELINE_STATE_MOVE_ONCE || true
 }
 
 cleanup_fixture() {
@@ -220,6 +237,11 @@ DATABASE_IMAGE=grumphya-database:$sha
 PROXY_IMAGE=grumphya-proxy:$sha
 DEPLOY_SHA=$sha
 EOF
+  refresh_bundle
+}
+
+refresh_bundle() {
+  local dir="$TEST_ROOT/payload"
   tar -C "$dir" -czf "$TEST_ROOT/bundle.tar.gz" .
   BUNDLE_BYTES=$(wc -c < "$TEST_ROOT/bundle.tar.gz" | tr -d '[:space:]')
   BUNDLE_HASH=$(sha256sum "$TEST_ROOT/bundle.tar.gz" | awk '{print $1}')
@@ -256,6 +278,447 @@ ALTER TABLE baseline ADD COLUMN note text;'
   fi
   if grep -Eq '(^| )down( |$)|-v|--volumes|volume prune' "$DOCKER_LOG"; then
     fail 'deploy used a volume-destructive command'
+  fi
+  cleanup_fixture
+}
+
+enable_development_security_bundle() {
+  local dir=$1 sha=$2
+  mkdir -p "$dir/development-security-migrations"
+  if ! compgen -G "$dir/development-security-migrations/*.sql" >/dev/null; then
+    cat > "$dir/development-security-migrations/001_baseline.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_test_baseline (id integer PRIMARY KEY);
+SQL
+  fi
+  printf 'services:\n  development-security-api: {}\n  development-security-database: {}\n' > \
+    "$dir/compose.development-security.production.yaml"
+  cat >> "$dir/release.env" <<EOF
+DEVELOPMENT_SECURITY_ENABLED=1
+DEVELOPMENT_SECURITY_IMAGE=development-security-api:$sha
+DEVELOPMENT_SECURITY_DATABASE_IMAGE=development-security-database:$sha
+EOF
+}
+
+install_development_security_secrets() {
+  local secret
+  for secret in "${DEVELOPMENT_SECURITY_SECRETS[@]}"; do
+    printf 'TEST_SECRET=placeholder\n' > "$TEST_ROOT/.secrets/$secret"
+    chmod 600 "$TEST_ROOT/.secrets/$secret"
+  done
+}
+
+test_base_release_does_not_require_development_security_secrets() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  "$DEPLOY_HELPER" preflight "$NEW_SHA" 1 >/dev/null ||
+    fail 'base release preflight incorrectly required Development Security secrets'
+  cleanup_fixture
+}
+
+test_current_development_security_release_requires_all_secrets() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  enable_development_security_bundle "$TEST_ROOT/releases/$OLD_SHA" "$OLD_SHA"
+  if "$DEPLOY_HELPER" preflight "$NEW_SHA" 1 >/dev/null 2>&1; then
+    fail 'preflight accepted an enabled Development Security release without its secrets'
+  fi
+  install_development_security_secrets
+  "$DEPLOY_HELPER" preflight "$NEW_SHA" 1 >/dev/null ||
+    fail 'preflight rejected an enabled Development Security release with all secrets'
+  cleanup_fixture
+}
+
+test_development_security_candidate_requires_all_secrets_before_image_load() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  tar -C "$TEST_ROOT/payload" -czf "$TEST_ROOT/bundle.tar.gz" .
+  BUNDLE_BYTES=$(wc -c < "$TEST_ROOT/bundle.tar.gz" | tr -d '[:space:]')
+  BUNDLE_HASH=$(sha256sum "$TEST_ROOT/bundle.tar.gz" | awk '{print $1}')
+
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'Development Security candidate without its secrets unexpectedly deployed'
+  fi
+  if grep -Fq 'load --input' "$DOCKER_LOG"; then
+    fail 'Development Security images loaded before candidate secret validation'
+  fi
+  cleanup_fixture
+}
+
+test_development_security_release_loads_overlay_and_images() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  tar -C "$TEST_ROOT/payload" -czf "$TEST_ROOT/bundle.tar.gz" .
+  BUNDLE_BYTES=$(wc -c < "$TEST_ROOT/bundle.tar.gz" | tr -d '[:space:]')
+  BUNDLE_HASH=$(sha256sum "$TEST_ROOT/bundle.tar.gz" | awk '{print $1}')
+  install_development_security_secrets
+
+  run_deploy "$NEW_SHA" >/dev/null || fail 'Development Security release scenario failed'
+
+  assert_contains "$DOCKER_LOG" "image inspect development-security-api:$NEW_SHA"
+  assert_contains "$DOCKER_LOG" "image inspect development-security-database:$NEW_SHA"
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$NEW_SHA/compose.development-security.production.yaml"
+  cleanup_fixture
+}
+
+test_first_development_security_enable_allows_baseline_migrations() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  cat > "$TEST_ROOT/payload/development-security-migrations/002_jobs.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_scan_jobs (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+  install_development_security_secrets
+
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'first Development Security enable rejected additive baseline migrations'
+
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after first Development Security enable'
+  cleanup_fixture
+}
+
+test_development_security_update_preserves_migrations_byte_for_byte() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  mkdir -p "$TEST_ROOT/releases/$OLD_SHA/development-security-migrations"
+  cat > "$TEST_ROOT/releases/$OLD_SHA/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/releases/$OLD_SHA" "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cp "$TEST_ROOT/releases/$OLD_SHA/development-security-migrations/001_domains.sql" \
+    "$TEST_ROOT/payload/development-security-migrations/001_domains.sql"
+  cat > "$TEST_ROOT/payload/development-security-migrations/002_ds_index.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE INDEX ds_domains_created_idx ON ds_domains (id);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+  install_development_security_secrets
+
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'Development Security update rejected compatible migrations'
+
+  cmp -s "$TEST_ROOT/releases/$OLD_SHA/development-security-migrations/001_domains.sql" \
+    "$TEST_ROOT/releases/$NEW_SHA/development-security-migrations/001_domains.sql" ||
+    fail 'Development Security update changed an existing migration'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after Development Security update'
+  cleanup_fixture
+}
+
+test_development_security_reenable_preserves_all_prior_migrations() {
+  local history_change
+  for history_change in altered removed; do
+    new_fixture
+    seed_release "$OLD_SHA"
+
+    make_bundle "$NEW_SHA" ''
+    mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+    cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+    enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+    refresh_bundle
+    install_development_security_secrets
+    run_deploy "$NEW_SHA" >/dev/null || fail 'initial Development Security release failed'
+
+    make_bundle "$THIRD_SHA" ''
+    run_deploy "$THIRD_SHA" >/dev/null || fail 'base release after Development Security failed'
+
+    make_bundle "$FOURTH_SHA" ''
+    mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+    if [[ $history_change == altered ]]; then
+      cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY, created_at timestamptz NOT NULL);
+SQL
+    fi
+    enable_development_security_bundle "$TEST_ROOT/payload" "$FOURTH_SHA"
+    refresh_bundle
+    install_development_security_secrets
+
+    if run_deploy "$FOURTH_SHA" >/dev/null 2>&1; then
+      fail "re-enabled Development Security release accepted $history_change prior migration history"
+    fi
+    assert_eq "$(cat "$TEST_ROOT/state/current")" "$THIRD_SHA" \
+      "current state after re-enable with $history_change migration history"
+    cleanup_fixture
+  done
+}
+
+test_new_migration_without_rollback_marker_is_rejected() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  printf 'CREATE TABLE unreviewed_table (id integer);\n' > \
+    "$TEST_ROOT/payload/development-security-migrations/001_unreviewed.sql"
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'new migration without rollback compatibility marker was accepted'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after migration without rollback marker'
+  cleanup_fixture
+}
+
+test_rollback_marker_does_not_allow_destructive_migrations() {
+  local migration_sql
+  for migration_sql in \
+    'DROP TABLE baseline;' \
+    'drop table baseline;' \
+    'DROP /*x*/ TABLE baseline;' \
+    'DROP OWNED BY ds_api;' \
+    'TRUNCATE TABLE baseline;' \
+    'Truncate table baseline;' \
+    'DELETE FROM baseline;' \
+    'delete FROM baseline;' \
+    'DELETE /*x*/ FROM baseline;' \
+    'UPDATE baseline SET note = NULL;' \
+    'Update baseline SET note = NULL;' \
+    'UPDATE ONLY baseline SET note = NULL;' \
+    'UPDATE public . ds_domains SET hostname = hostname;'; do
+    new_fixture
+    seed_release "$OLD_SHA"
+    make_bundle "$NEW_SHA" ''
+    mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+    printf '%s\n%s\n' '-- deployment-rollback-compatible: true' "$migration_sql" > \
+      "$TEST_ROOT/payload/development-security-migrations/001_destructive.sql"
+    enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+    refresh_bundle
+
+    if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+      fail "rollback marker allowed destructive migration: $migration_sql"
+    fi
+    assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+      "current state after destructive migration: $migration_sql"
+    cleanup_fixture
+  done
+}
+
+test_idempotent_drop_trigger_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+  install_development_security_secrets
+  run_deploy "$NEW_SHA" >/dev/null || fail 'baseline Development Security release failed'
+
+  make_bundle "$THIRD_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cp "$TEST_ROOT/releases/$NEW_SHA/development-security-migrations/001_domains.sql" \
+    "$TEST_ROOT/payload/development-security-migrations/001_domains.sql"
+  cat > "$TEST_ROOT/payload/development-security-migrations/002_drop_trigger.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+DROP TRIGGER IF EXISTS ds_test_trigger ON ds_domains;
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$THIRD_SHA"
+  refresh_bundle
+
+  run_deploy "$THIRD_SHA" >/dev/null ||
+    fail 'idempotent DROP TRIGGER was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$THIRD_SHA" \
+    'current state after idempotent trigger removal'
+  cleanup_fixture
+}
+
+test_drop_trigger_without_if_exists_is_rejected() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+  install_development_security_secrets
+  run_deploy "$NEW_SHA" >/dev/null || fail 'baseline Development Security release failed'
+
+  make_bundle "$THIRD_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cp "$TEST_ROOT/releases/$NEW_SHA/development-security-migrations/001_domains.sql" \
+    "$TEST_ROOT/payload/development-security-migrations/001_domains.sql"
+  cat > "$TEST_ROOT/payload/development-security-migrations/002_drop_trigger.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+DROP TRIGGER ds_test_trigger ON ds_domains;
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$THIRD_SHA"
+  refresh_bundle
+
+  if run_deploy "$THIRD_SHA" >/dev/null 2>&1; then
+    fail 'non-idempotent DROP TRIGGER was incorrectly accepted'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after non-idempotent trigger removal'
+  cleanup_fixture
+}
+
+test_retry_reuses_persisted_migration_baseline() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+  install_development_security_secrets
+  export FAIL_AI_SMOKE_SHA=$NEW_SHA
+
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'failed AI smoke unexpectedly committed the Development Security release'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after failed Development Security smoke'
+  assert_eq "$(cat "$TEST_ROOT/state/development_security_migration_baseline")" "$NEW_SHA" \
+    'persistent migration baseline after the migration completed'
+
+  unset FAIL_AI_SMOKE_SHA
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'retry with the already persisted migration baseline failed'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after retry with the persisted migration baseline'
+  cleanup_fixture
+}
+
+test_pending_baseline_blocks_destructive_migration_after_interrupted_finalization() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cat > "$TEST_ROOT/payload/development-security-migrations/001_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+CREATE TABLE ds_domains (id uuid PRIMARY KEY);
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$NEW_SHA"
+  refresh_bundle
+  install_development_security_secrets
+  export FAIL_BASELINE_STATE_MOVE_ONCE=1
+
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'baseline finalization failure unexpectedly committed the release'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after interrupted migration baseline finalization'
+  assert_eq "$(cat "$TEST_ROOT/state/development_security_migration_pending")" "$NEW_SHA" \
+    'pending baseline after interrupted finalization'
+  [[ -d "$TEST_ROOT/state/development-security-migrations-$NEW_SHA" ]] ||
+    fail 'candidate migrations were not snapshotted before execution'
+  unset FAIL_BASELINE_STATE_MOVE_ONCE
+
+  make_bundle "$THIRD_SHA" ''
+  mkdir -p "$TEST_ROOT/payload/development-security-migrations"
+  cp "$TEST_ROOT/state/development-security-migrations-$NEW_SHA/001_domains.sql" \
+    "$TEST_ROOT/payload/development-security-migrations/001_domains.sql"
+  cat > "$TEST_ROOT/payload/development-security-migrations/002_drop_domains.sql" <<'SQL'
+-- deployment-rollback-compatible: true
+DROP TABLE ds_domains;
+SQL
+  enable_development_security_bundle "$TEST_ROOT/payload" "$THIRD_SHA"
+  refresh_bundle
+
+  if run_deploy "$THIRD_SHA" >/dev/null 2>&1; then
+    fail 'pending baseline allowed a destructive migration after interrupted finalization'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after pending baseline compatibility rejection'
+  cleanup_fixture
+}
+
+test_disabling_development_security_removes_only_its_containers() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  enable_development_security_bundle "$TEST_ROOT/releases/$OLD_SHA" "$OLD_SHA"
+  install_development_security_secrets
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'base release failed while disabling Development Security'
+
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after opting out'
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$OLD_SHA/compose.development-security.production.yaml rm --stop --force development-security-api development-security-database development-security-migrate"
+  if grep -Eq '(^| )down( |$)|--volumes|volume prune| rm .* -v' "$DOCKER_LOG"; then
+    fail 'opting out of Development Security removed persistent volumes'
+  fi
+  cleanup_fixture
+}
+
+test_failed_opt_out_keeps_development_security_active() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  enable_development_security_bundle "$TEST_ROOT/releases/$OLD_SHA" "$OLD_SHA"
+  install_development_security_secrets
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  export FAIL_UP_SHA=$NEW_SHA
+
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'failed base release unexpectedly disabled Development Security'
+  fi
+
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after failed opt-out'
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$OLD_SHA/compose.development-security.production.yaml up -d --no-build --wait"
+  if grep -Fq ' rm --stop --force development-security-api' "$DOCKER_LOG"; then
+    fail 'failed opt-out removed the active Development Security containers'
+  fi
+  cleanup_fixture
+}
+
+test_rollback_from_development_security_removes_only_its_services() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  seed_release "$NEW_SHA"
+  enable_development_security_bundle "$TEST_ROOT/releases/$NEW_SHA" "$NEW_SHA"
+  printf '%s\n' "$OLD_SHA" > "$TEST_ROOT/state/previous"
+  printf '%s\n' "$NEW_SHA" > "$TEST_ROOT/state/current"
+  install_development_security_secrets
+
+  "$DEPLOY_HELPER" rollback >/dev/null || fail 'rollback from Development Security release failed'
+
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$NEW_SHA/compose.development-security.production.yaml rm --stop --force development-security-api development-security-database development-security-migrate"
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$OLD_SHA/compose.production.yaml up -d --no-build --wait"
+  if grep -Eq '(^| )down( |$)|--volumes|volume prune| rm .* -v' "$DOCKER_LOG"; then
+    fail 'Development Security rollback used a volume-destructive command'
   fi
   cleanup_fixture
 }
@@ -593,7 +1056,7 @@ test_gateway_accepts_only_allowlisted_commands() {
   status_output=$(SSH_ORIGINAL_COMMAND=status "$DEPLOY_HELPER" gateway)
   assert_eq "$status_output" none 'gateway status command'
   status_output=$(SSH_ORIGINAL_COMMAND=helper-version "$DEPLOY_HELPER" gateway)
-  assert_eq "$status_output" 2 'gateway helper version command'
+  assert_eq "$status_output" 3 'gateway helper version command'
   for command in \
     'status extra' \
     'rollback --volumes' \
@@ -610,6 +1073,22 @@ test_gateway_accepts_only_allowlisted_commands() {
 
 for test_case in \
   test_deploy_ok \
+  test_base_release_does_not_require_development_security_secrets \
+  test_current_development_security_release_requires_all_secrets \
+  test_development_security_candidate_requires_all_secrets_before_image_load \
+  test_development_security_release_loads_overlay_and_images \
+  test_first_development_security_enable_allows_baseline_migrations \
+  test_development_security_update_preserves_migrations_byte_for_byte \
+  test_development_security_reenable_preserves_all_prior_migrations \
+  test_new_migration_without_rollback_marker_is_rejected \
+  test_rollback_marker_does_not_allow_destructive_migrations \
+  test_idempotent_drop_trigger_is_rollback_compatible \
+  test_drop_trigger_without_if_exists_is_rejected \
+  test_retry_reuses_persisted_migration_baseline \
+  test_pending_baseline_blocks_destructive_migration_after_interrupted_finalization \
+  test_disabling_development_security_removes_only_its_containers \
+  test_failed_opt_out_keeps_development_security_active \
+  test_rollback_from_development_security_removes_only_its_services \
   test_all_time_ranking_migration_is_rollback_compatible \
   test_ai_cached_input_migration_is_rollback_compatible \
   test_approved_illuminado_repricing_migration_is_rollback_compatible \

@@ -13,6 +13,7 @@
     "prebuild": "pnpm --filter @grumphya/prototype-desarrollo-seguro-core build",
     "build": "tsc -p tsconfig.json",
     "provision-database": "node dist/provision-database.js",
+    "provision-database:production": "node dist/production-provision-database.js",
     "pretest": "pnpm --filter @grumphya/prototype-desarrollo-seguro-core build",
     "test": "vitest run",
     "test:postgres": "pnpm --filter @grumphya/prototype-desarrollo-seguro-core build && vitest run --config vitest.postgres.config.ts",

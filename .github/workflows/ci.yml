@@ -9,6 +9,11 @@ on:
         type: boolean
         required: true
         default: false
+      enable_development_security:
+        description: Activa la API DS y su base aislada en esta release
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -159,7 +164,7 @@ jobs:
           WEB_IMAGE: grumphya-web:${{ github.sha }}
           DATABASE_IMAGE: grumphya-database:${{ github.sha }}
           PROXY_IMAGE: grumphya-proxy:${{ github.sha }}
-          DEVELOPMENT_SECURITY_IMAGE: development-security-production:${{ github.sha }}
+          DEVELOPMENT_SECURITY_IMAGE: development-security-api:${{ github.sha }}
           BUILDX_BUILDER: ${{ steps.buildx.outputs.name }}
         shell: bash
         run: |
@@ -220,7 +225,7 @@ jobs:
       - name: Test production image contract
         run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
       - name: Run Desarrollo Seguro production image smoke
-        run: bash scripts/test-development-security-production-smoke.sh development-security-production:${{ github.sha }}
+        run: bash scripts/test-development-security-production-smoke.sh development-security-api:${{ github.sha }}
       - name: Scan production images sequentially
         shell: bash
         env:
@@ -228,12 +233,16 @@ jobs:
           WEB_IMAGE: grumphya-web:${{ github.sha }}
           DATABASE_IMAGE: grumphya-database:${{ github.sha }}
           PROXY_IMAGE: grumphya-proxy:${{ github.sha }}
-          DEVELOPMENT_SECURITY_IMAGE: development-security-production:${{ github.sha }}
+          DEVELOPMENT_SECURITY_IMAGE: development-security-api:${{ github.sha }}
+          DEVELOPMENT_SECURITY_DATABASE_IMAGE: development-security-database:${{ github.sha }}
+          DEVELOPMENT_SECURITY_DATABASE_BASE_IMAGE: pgvector/pgvector:0.8.7-pg17
         run: |
           set -euo pipefail
+          docker pull "$DEVELOPMENT_SECURITY_DATABASE_BASE_IMAGE"
+          docker tag "$DEVELOPMENT_SECURITY_DATABASE_BASE_IMAGE" "$DEVELOPMENT_SECURITY_DATABASE_IMAGE"
           scan_dir=$(mktemp -d "$RUNNER_TEMP/trivy-scans.XXXXXX")
           scan_status=0
-          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE" "$DEVELOPMENT_SECURITY_IMAGE"; do
+          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE" "$DEVELOPMENT_SECURITY_IMAGE" "$DEVELOPMENT_SECURITY_DATABASE_IMAGE"; do
             name=${image%%:*}
             if TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image \
               --skip-version-check \
@@ -249,7 +258,7 @@ jobs:
               scan_status=1
             fi
           done
-          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE" "$DEVELOPMENT_SECURITY_IMAGE"; do
+          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE" "$DEVELOPMENT_SECURITY_IMAGE" "$DEVELOPMENT_SECURITY_DATABASE_IMAGE"; do
             cat "$scan_dir/${image%%:*}.log"
           done
           exit "$scan_status"
@@ -270,14 +279,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          echo "Saving the five scanned images for $GITHUB_SHA."
-          docker image inspect development-security-production:${{ github.sha }} >/dev/null
+          echo "Saving the six scanned images for $GITHUB_SHA."
+          docker image inspect development-security-api:${{ github.sha }} >/dev/null
+          docker image inspect development-security-database:${{ github.sha }} >/dev/null
           docker save --output release/images.tar \
             grumphya-api:${{ github.sha }} \
             grumphya-web:${{ github.sha }} \
             grumphya-database:${{ github.sha }} \
             grumphya-proxy:${{ github.sha }} \
-            development-security-production:${{ github.sha }}
+            development-security-api:${{ github.sha }} \
+            development-security-database:${{ github.sha }}
           du -h release/images.tar
       - name: Assemble production release bundle
         if: >-
@@ -299,6 +310,11 @@ jobs:
           cp compose.production.yaml release/compose.production.yaml
           cp -R docker/. release/docker/
           cp apps/api/migrations/*.sql release/migrations/
+          if [[ "${{ inputs.enable_development_security }}" == "true" ]]; then
+            cp compose.development-security.production.yaml release/compose.development-security.production.yaml
+            mkdir -p release/development-security-migrations
+            cp apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-persistence/migrations/*.sql release/development-security-migrations/
+          fi
           cat > release/release.env <<'EOF'
           DEPLOY_SHA=${{ github.sha }}
           API_IMAGE=grumphya-api:${{ github.sha }}
@@ -306,7 +322,18 @@ jobs:
           DATABASE_IMAGE=grumphya-database:${{ github.sha }}
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
           EOF
-          tar -C release -czf release-bundle.tar.gz compose.production.yaml docker migrations images.tar release.env
+          if [[ "${{ inputs.enable_development_security }}" == "true" ]]; then
+            cat >> release/release.env <<'EOF'
+          DEVELOPMENT_SECURITY_ENABLED=1
+          DEVELOPMENT_SECURITY_IMAGE=development-security-api:${{ github.sha }}
+          DEVELOPMENT_SECURITY_DATABASE_IMAGE=development-security-database:${{ github.sha }}
+          EOF
+          fi
+          bundle_paths=(compose.production.yaml docker migrations images.tar release.env)
+          if [[ "${{ inputs.enable_development_security }}" == "true" ]]; then
+            bundle_paths+=(compose.development-security.production.yaml development-security-migrations)
+          fi
+          tar -C release -czf release-bundle.tar.gz "${bundle_paths[@]}"
           du -h release-bundle.tar.gz
       - name: Preflight production deployment
         id: production-preflight
@@ -328,6 +355,7 @@ jobs:
           PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
           PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
           PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          ENABLE_DEVELOPMENT_SECURITY: ${{ inputs.enable_development_security }}
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -356,8 +384,12 @@ jobs:
             echo '::error::The VPS deployment helper is outdated or unreachable. Recover administrative SSH access and install the reviewed helper before retrying.'
             exit 1
           fi
-          if [[ "$helper_version" != 2 ]]; then
-            echo "::error::The VPS deployment helper is version $helper_version; version 2 is required. Recover administrative SSH access and install the reviewed helper before retrying."
+          required_helper_version=2
+          if [[ "$ENABLE_DEVELOPMENT_SECURITY" == "true" ]]; then
+            required_helper_version=3
+          fi
+          if [[ ! "$helper_version" =~ ^[0-9]+$ ]] || (( 10#$helper_version < required_helper_version )); then
+            echo "::error::The VPS deployment helper is version $helper_version; version $required_helper_version or newer is required for this release. Recover administrative SSH access and install the reviewed helper before retrying."
             exit 1
           fi
           echo "Checking VPS capacity and current release before transferring $release_bytes bytes."
@@ -387,6 +419,7 @@ jobs:
           PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
           PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
           PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          ENABLE_DEVELOPMENT_SECURITY: ${{ inputs.enable_development_security }}
           RELEASE_BYTES: ${{ steps.production-preflight.outputs.release_bytes }}
           RELEASE_SHA256: ${{ steps.production-preflight.outputs.release_sha256 }}
           PREVIOUS_RELEASE_SHA: ${{ steps.production-preflight.outputs.previous_sha }}
@@ -447,6 +480,11 @@ jobs:
           node -e 'const health = require(process.argv[1]); if (health.revision !== process.argv[2] || health.status !== "ok") process.exit(1)' "$RUNNER_TEMP/health.json" "$GITHUB_SHA"
           curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/build.json" > "$RUNNER_TEMP/web-build.json"
           node -e 'const build = require(process.argv[1]); if (build.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/web-build.json" "$GITHUB_SHA"
+          if [[ "$ENABLE_DEVELOPMENT_SECURITY" == "true" ]]; then
+            curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/desarrollo-seguro/app" >/dev/null
+            curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/api/desarrollo-seguro/v1/health" > "$RUNNER_TEMP/development-security-health.json"
+            node -e 'const health = require(process.argv[1]); if (health.status !== "ok") process.exit(1)' "$RUNNER_TEMP/development-security-health.json"
+          fi
           trap - ERR
   deploy-production:
     name: Production deployment confirmed

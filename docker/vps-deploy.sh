@@ -18,9 +18,19 @@ readonly EXPECTED_SECRETS=(
   web_tls.crt
   web_tls.key
 )
+readonly DEVELOPMENT_SECURITY_SECRETS=(
+  development_security_admin_password
+  development_security_admin_url
+  development_security_migrator_password
+  development_security_api_database_url
+  development_security_database_tls.crt
+  development_security_database_tls.key
+  development_security_api_tls.crt
+  development_security_api_tls.key
+)
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
-readonly HELPER_VERSION=2
+readonly HELPER_VERSION=3
 readonly DEFAULT_ROOT=/opt/grumphya
 readonly MIN_FREE_BYTES_DEFAULT=536870912
 
@@ -34,6 +44,8 @@ fi
 STATE_DIR="$ROOT/state"
 RELEASES_DIR="$ROOT/releases"
 SECRETS_DIR="$ROOT/.secrets"
+readonly DEVELOPMENT_SECURITY_MIGRATION_BASELINE_KEY=development_security_migration_baseline
+readonly DEVELOPMENT_SECURITY_MIGRATION_PENDING_KEY=development_security_migration_pending
 ENV_FILE="$ROOT/.env.production"
 LOCK_FD=9
 DEPLOY_TEMP_DIR=''
@@ -102,7 +114,16 @@ release_is_complete() {
   [[ -d $dir && -f $dir/compose.production.yaml && -f $dir/release.env && \
     -f $dir/images.tar && -d $dir/docker && -f $dir/docker/Caddyfile && \
     -d $dir/migrations && -L $dir/.secrets && -e $dir/.secrets ]] || return 1
-  [[ $(read_release_sha "$dir/release.env") == "$sha" ]]
+  [[ $(read_release_sha "$dir/release.env") == "$sha" ]] || return 1
+  if release_development_security_enabled "$dir"; then
+    [[ -f $dir/compose.development-security.production.yaml && \
+      -d $dir/development-security-migrations ]] || return 1
+  fi
+}
+
+release_development_security_enabled() {
+  local dir=$1
+  grep -Fxq 'DEVELOPMENT_SECURITY_ENABLED=1' "$dir/release.env"
 }
 
 read_release_sha() {
@@ -149,9 +170,25 @@ check_secrets() {
   done
 }
 
+check_development_security_secrets() {
+  local secret secret_path mode
+  for secret in "${DEVELOPMENT_SECURITY_SECRETS[@]}"; do
+    secret_path="$SECRETS_DIR/$secret"
+    [[ -r $secret_path && -f $secret_path && ! -L $secret_path ]] ||
+      die 'an enabled Development Security release is missing a required secret file'
+    mode=$(stat -c '%a' "$secret_path") || die 'cannot inspect Development Security secret permissions'
+    if [[ ${GRUMPHYA_TESTING:-0} != 1 ]]; then
+      [[ $(stat -c '%u' "$secret_path") == 0 ]] ||
+        die 'Development Security secrets must be owned by root'
+    fi
+    (( (8#$mode & 077) == 0 )) ||
+      die 'Development Security secret file permissions are too broad'
+  done
+}
+
 check_tools() {
   local tool
-  for tool in docker flock tar sha256sum df awk wc head mktemp mv cp rm find sort grep stat tr; do
+  for tool in docker flock tar sha256sum df awk wc head mktemp mv cp rm find sort grep stat tr diff; do
     command -v "$tool" >/dev/null 2>&1 || die "required command is unavailable: $tool"
   done
   docker compose version >/dev/null 2>&1 || die 'Docker Compose v2 is unavailable'
@@ -163,6 +200,9 @@ check_current_release() {
   current=$(read_state current)
   if [[ -n $current ]]; then
     release_is_complete "$current" || die 'current release state is incomplete; refusing deployment'
+    if release_development_security_enabled "$RELEASES_DIR/$current"; then
+      check_development_security_secrets
+    fi
     compose_for "$RELEASES_DIR/$current" config --quiet >/dev/null ||
       die 'current production Compose configuration is invalid'
     verify_release_images "$current" || die 'current release images are unavailable; refusing deployment'
@@ -173,10 +213,29 @@ check_current_release() {
 compose_for() {
   local dir=$1
   shift
+  local -a compose_files=(--file "$dir/compose.production.yaml")
+  if release_development_security_enabled "$dir"; then
+    compose_files+=(--file "$dir/compose.development-security.production.yaml")
+  fi
   GRUMPHYA_SECRETS_DIR="$SECRETS_DIR" docker compose --project-name grumphya \
     --env-file "$ENV_FILE" \
     --env-file "$dir/release.env" \
-    --file "$dir/compose.production.yaml" "$@"
+    "${compose_files[@]}" "$@"
+}
+
+remove_development_security_services() {
+  local dir=$1
+  release_development_security_enabled "$dir" || return 0
+  compose_for "$dir" rm --stop --force \
+    development-security-api development-security-database development-security-migrate >/dev/null ||
+    die 'could not stop and remove Development Security services; persistent volumes were left untouched'
+}
+
+reconcile_development_security_services() {
+  local target_dir=$1 stale_dir=$2
+  release_development_security_enabled "$target_dir" && return 0
+  [[ -d $stale_dir ]] || return 0
+  remove_development_security_services "$stale_dir"
 }
 
 free_bytes() {
@@ -215,7 +274,7 @@ validate_bundle_listing() {
     [[ -n $entry ]] || die 'bundle contains an empty path'
     case "$entry" in
       /*|../*|*/../*|*/..|..|./*|*/./*) die 'bundle contains an unsafe path' ;;
-      compose.production.yaml|release.env|images.tar|docker|docker/*|migrations|migrations/*) ;;
+      compose.production.yaml|compose.development-security.production.yaml|release.env|images.tar|docker|docker/*|migrations|migrations/*|development-security-migrations|development-security-migrations/|development-security-migrations/*.sql) ;;
       *) die 'bundle contains an unexpected path' ;;
     esac
   done < "$listing"
@@ -229,12 +288,13 @@ validate_bundle_listing() {
 validate_release_env() {
   local dir=$1 sha=$2 line key value
   local seen=' ' API_IMAGE='' WEB_IMAGE='' DATABASE_IMAGE='' PROXY_IMAGE='' DEPLOY_SHA=''
+  local DEVELOPMENT_SECURITY_ENABLED='' DEVELOPMENT_SECURITY_IMAGE='' DEVELOPMENT_SECURITY_DATABASE_IMAGE=''
   while IFS= read -r line || [[ -n $line ]]; do
     [[ $line =~ ^([A-Z_]+)=([A-Za-z0-9_./:@-]+)$ ]] || die 'release metadata has invalid syntax'
     key=${BASH_REMATCH[1]}
     value=${BASH_REMATCH[2]}
     case "$key" in
-      API_IMAGE|WEB_IMAGE|DATABASE_IMAGE|PROXY_IMAGE|DEPLOY_SHA) ;;
+      API_IMAGE|WEB_IMAGE|DATABASE_IMAGE|PROXY_IMAGE|DEPLOY_SHA|DEVELOPMENT_SECURITY_ENABLED|DEVELOPMENT_SECURITY_IMAGE|DEVELOPMENT_SECURITY_DATABASE_IMAGE) ;;
       *) die 'release metadata contains an unexpected key' ;;
     esac
     [[ $seen != *" $key "* ]] || die 'release metadata contains a duplicate key'
@@ -245,6 +305,9 @@ validate_release_env() {
       DATABASE_IMAGE) DATABASE_IMAGE=$value ;;
       PROXY_IMAGE) PROXY_IMAGE=$value ;;
       DEPLOY_SHA) DEPLOY_SHA=$value ;;
+      DEVELOPMENT_SECURITY_ENABLED) DEVELOPMENT_SECURITY_ENABLED=$value ;;
+      DEVELOPMENT_SECURITY_IMAGE) DEVELOPMENT_SECURITY_IMAGE=$value ;;
+      DEVELOPMENT_SECURITY_DATABASE_IMAGE) DEVELOPMENT_SECURITY_DATABASE_IMAGE=$value ;;
     esac
   done < "$dir/release.env"
   [[ -n $DEPLOY_SHA && -n $API_IMAGE && -n $WEB_IMAGE && -n $DATABASE_IMAGE && -n $PROXY_IMAGE ]] ||
@@ -255,6 +318,16 @@ validate_release_env() {
     $DATABASE_IMAGE == "grumphya-database:$sha" && \
     $PROXY_IMAGE == "grumphya-proxy:$sha" ]] ||
     die 'release image tags do not match the requested SHA'
+  if [[ -n $DEVELOPMENT_SECURITY_ENABLED || -n $DEVELOPMENT_SECURITY_IMAGE || -n $DEVELOPMENT_SECURITY_DATABASE_IMAGE ]]; then
+    [[ $DEVELOPMENT_SECURITY_ENABLED == 1 && \
+      $DEVELOPMENT_SECURITY_IMAGE == "development-security-api:$sha" && \
+      $DEVELOPMENT_SECURITY_DATABASE_IMAGE == "development-security-database:$sha" && \
+      -f $dir/compose.development-security.production.yaml && \
+      -d $dir/development-security-migrations ]] ||
+      die 'Development Security release metadata or overlay is incomplete'
+  elif [[ -e $dir/compose.development-security.production.yaml ]]; then
+    die 'release includes a Development Security overlay without explicit activation'
+  fi
 }
 
 install_release_helper() {
@@ -302,7 +375,7 @@ is_approved_application_error_context_redaction_migration() {
 }
 
 migrations_compatible() {
-  local previous_dir=$1 candidate_dir=$2 file name old_content new_content
+  local previous_dir=$1 candidate_dir=$2 file name old_content new_content normalized_new_content
   local marker='-- deployment-rollback-compatible: true'
   local destructive='(^|[^[:alnum:]_])(DROP|TRUNCATE|DELETE|UPDATE)([^[:alnum:]_]|$)'
   local alter_destructive='ALTER[[:space:]]+TABLE[^;]*(DROP|RENAME|TYPE|SET[[:space:]]+NOT[[:space:]]+NULL)'
@@ -342,10 +415,147 @@ migrations_compatible() {
   done
 }
 
+development_security_migrations_compatible() {
+  local previous_dir=$1 candidate_dir=$2 file name old_content new_content
+  local previous_migrations baseline_sha pending_sha found_previous=0 marker_count sql_without_marker
+  local candidate_migrations="$candidate_dir/development-security-migrations"
+  local marker='-- deployment-rollback-compatible: true'
+  local destructive='(^|[^[:alnum:]_])(DROP[[:space:]]+(OWNED|TABLE|SCHEMA|DATABASE|COLUMN|TYPE|FUNCTION|PROCEDURE|INDEX|CONSTRAINT|SEQUENCE|TRIGGER)|TRUNCATE|DELETE[[:space:]]+FROM[[:space:]]+(ONLY[[:space:]]+)?[[:alnum:]_."]+|UPDATE([[:space:]]|$)|ALTER[[:space:]]+TABLE[^;]*(DROP|RENAME|TYPE|SET[[:space:]]+NOT[[:space:]]+NULL))([^[:alnum:]_]|$)'
+  local unapproved_trigger_content
+
+  # The first opt-in provisions the isolated database. Later opt-ins compare
+  # against a persistent snapshot, including after one or more base releases.
+  release_development_security_enabled "$candidate_dir" || return 0
+  baseline_sha=$(read_state "$DEVELOPMENT_SECURITY_MIGRATION_BASELINE_KEY")
+  pending_sha=$(read_state "$DEVELOPMENT_SECURITY_MIGRATION_PENDING_KEY")
+  [[ -z $pending_sha ]] || baseline_sha=$pending_sha
+  if [[ -n $baseline_sha ]]; then
+    previous_migrations="$STATE_DIR/development-security-migrations-$baseline_sha"
+  elif release_development_security_enabled "$previous_dir"; then
+    previous_migrations="$previous_dir/development-security-migrations"
+  else
+    return 0
+  fi
+  [[ -d $previous_migrations && -d $candidate_migrations ]] || {
+    log 'Development Security migration compatibility blocked: migration history is missing'
+    return 1
+  }
+
+  for file in "$previous_migrations"/*.sql; do
+    [[ -f $file ]] || continue
+    found_previous=1
+    name=${file##*/}
+    [[ -f $candidate_migrations/$name ]] || {
+      log "Development Security migration compatibility blocked: removed migration $name"
+      return 1
+    }
+    old_content=$(<"$file")
+    new_content=$(<"$candidate_migrations/$name")
+    [[ $old_content == "$new_content" ]] || {
+      log "Development Security migration compatibility blocked: modified migration $name"
+      return 1
+    }
+  done
+
+  for file in "$candidate_migrations"/*.sql; do
+    [[ -f $file ]] || continue
+    name=${file##*/}
+    [[ -f $previous_migrations/$name ]] && continue
+    new_content=$(<"$file")
+    marker_count=$(grep -Fxc -- "$marker" <<< "$new_content" || true)
+    if [[ $marker_count != 1 ]]; then
+      log "Development Security migration compatibility blocked: new migration $name lacks the compatibility marker"
+      return 1
+    fi
+    sql_without_marker=$(sed -E "/^$marker\$/d" <<< "$new_content")
+    if grep -Eq -- '(/\*|\*/|--)' <<< "$sql_without_marker"; then
+      log "Development Security migration compatibility blocked: new migration $name uses SQL comments the safety check cannot analyze"
+      return 1
+    fi
+    normalized_new_content=$(tr '[:lower:]' '[:upper:]' <<< "$new_content" | sed -E 's/[[:space:]]*\.[[:space:]]*/./g')
+    unapproved_trigger_content=$(sed -E 's/DROP[[:space:]]+TRIGGER[[:space:]]+IF[[:space:]]+EXISTS//g' <<< "$normalized_new_content")
+    if [[ $unapproved_trigger_content =~ $destructive ]]; then
+      log "Development Security migration compatibility blocked: new migration $name contains a destructive operation"
+      return 1
+    fi
+  done
+  if (( found_previous == 0 )); then
+    log 'Development Security migration compatibility blocked: prior migration history is empty'
+    return 1
+  fi
+}
+
+prepare_development_security_migration_baseline() {
+  local release_dir=$1 sha source_dir snapshot_dir temporary file found=0
+  release_development_security_enabled "$release_dir" || return 0
+  sha=$(read_release_sha "$release_dir/release.env")
+  source_dir="$release_dir/development-security-migrations"
+  snapshot_dir="$STATE_DIR/development-security-migrations-$sha"
+  [[ -d $source_dir ]] || {
+    log 'Development Security migration baseline cannot be safely recorded'
+    return 1
+  }
+  if [[ -d $snapshot_dir ]]; then
+    diff -qr -- "$source_dir" "$snapshot_dir" >/dev/null || {
+      log 'Development Security migration baseline conflicts with an existing snapshot'
+      return 1
+    }
+  elif [[ -e $snapshot_dir ]]; then
+    log 'Development Security migration baseline cannot be safely recorded'
+    return 1
+  else
+    temporary=$(mktemp -d "$STATE_DIR/.development-security-migrations.XXXXXX") || return 1
+    if ! cp -a "$source_dir/." "$temporary/"; then
+      rm -rf -- "$temporary"
+      return 1
+    fi
+    for file in "$temporary"/*.sql; do
+      [[ -f $file ]] || continue
+      chmod 600 "$file"
+      found=1
+    done
+    if (( found == 0 )); then
+      rm -rf -- "$temporary"
+      log 'Development Security migration baseline has no SQL files'
+      return 1
+    fi
+    chmod 700 "$temporary"
+    if ! mv "$temporary" "$snapshot_dir"; then
+      rm -rf -- "$temporary"
+      return 1
+    fi
+  fi
+
+  # Record the candidate history before PostgreSQL applies migrations. If the
+  # host stops around commit, the next release still has a conservative basis.
+  write_state "$DEVELOPMENT_SECURITY_MIGRATION_PENDING_KEY" "$sha"
+}
+
+record_development_security_migration_baseline() {
+  local release_dir=$1 sha source_dir snapshot_dir
+  release_development_security_enabled "$release_dir" || return 0
+  sha=$(read_release_sha "$release_dir/release.env")
+  source_dir="$release_dir/development-security-migrations"
+  snapshot_dir="$STATE_DIR/development-security-migrations-$sha"
+  [[ -d $source_dir && -d $snapshot_dir ]] || {
+    log 'Development Security migration baseline cannot be safely finalized'
+    return 1
+  }
+  diff -qr -- "$source_dir" "$snapshot_dir" >/dev/null || {
+    log 'Development Security migration baseline conflicts with an existing snapshot'
+    return 1
+  }
+  write_state "$DEVELOPMENT_SECURITY_MIGRATION_BASELINE_KEY" "$sha" || return 1
+  rm -f -- "$STATE_DIR/$DEVELOPMENT_SECURITY_MIGRATION_PENDING_KEY" || return 1
+}
+
 validate_previous_release() {
   local previous=$1
   [[ -n $previous ]] || return 0
   release_is_complete "$previous" || die 'previous release state is incomplete; refusing rollback'
+  if release_development_security_enabled "$RELEASES_DIR/$previous"; then
+    check_development_security_secrets
+  fi
   compose_for "$RELEASES_DIR/$previous" config --quiet >/dev/null ||
     die 'previous production Compose configuration is invalid'
   verify_release_images "$previous" || die 'previous release images are unavailable; refusing deployment'
@@ -357,13 +567,23 @@ load_release_images() {
   for image in "grumphya-api:$sha" "grumphya-web:$sha" "grumphya-database:$sha" "grumphya-proxy:$sha"; do
     docker image inspect "$image" >/dev/null 2>&1 || die 'loaded image archive is missing an expected image'
   done
+  if release_development_security_enabled "$dir"; then
+    for image in "development-security-api:$sha" "development-security-database:$sha"; do
+      docker image inspect "$image" >/dev/null 2>&1 || die 'loaded image archive is missing an expected Development Security image'
+    done
+  fi
 }
 
 verify_release_images() {
-  local sha=$1 image
+  local sha=$1 image dir="$RELEASES_DIR/$1"
   for image in "grumphya-api:$sha" "grumphya-web:$sha" "grumphya-database:$sha" "grumphya-proxy:$sha"; do
     docker image inspect "$image" >/dev/null 2>&1 || return 1
   done
+  if release_development_security_enabled "$dir"; then
+    for image in "development-security-api:$sha" "development-security-database:$sha"; do
+      docker image inspect "$image" >/dev/null 2>&1 || return 1
+    done
+  fi
 }
 
 verify_bootstrap_revision() {
@@ -389,15 +609,22 @@ recover_pending_state() {
   [[ -n $pending && -n $current ]] || die 'incomplete interrupted deployment journal; refusing further changes'
   if [[ $current == "$pending" ]]; then
     release_is_complete "$current" || die 'completed deployment journal points to an incomplete release'
+    if release_development_security_enabled "$RELEASES_DIR/$current"; then
+      check_development_security_secrets
+    fi
     verify_release_images "$current" || die 'completed deployment journal images are unavailable'
     clear_pending_state
     return 0
   fi
   release_is_complete "$current" || die 'interrupted deployment has no complete last-known-good release'
+  if release_development_security_enabled "$RELEASES_DIR/$current"; then
+    check_development_security_secrets
+  fi
   verify_release_images "$current" || die 'last-known-good images are unavailable for interrupted deployment recovery'
   log "recovering interrupted deployment by restoring release $current"
   compose_for "$RELEASES_DIR/$current" up -d --no-build --wait >/dev/null ||
     die 'interrupted deployment recovery could not restore the last-known-good release'
+  reconcile_development_security_services "$RELEASES_DIR/$current" "$RELEASES_DIR/$pending"
   write_state previous "$previous"
   prune_old_releases "$current" "$previous"
   clear_pending_state
@@ -432,6 +659,9 @@ prune_old_releases() {
     [[ $sha =~ $SHA_PATTERN ]] || continue
     [[ $sha == "$current" || $sha == "$previous" ]] && continue
     for image in "grumphya-api:$sha" "grumphya-web:$sha" "grumphya-database:$sha" "grumphya-proxy:$sha"; do
+      docker image rm "$image" >/dev/null 2>&1 || true
+    done
+    for image in "development-security-api:$sha" "development-security-database:$sha"; do
       docker image rm "$image" >/dev/null 2>&1 || true
     done
     rm -rf -- "$dir"
@@ -491,9 +721,14 @@ deploy() {
   tar --no-same-owner -xzf "$bundle_dir" -C "$candidate_dir"
   ln -s "$SECRETS_DIR" "$candidate_dir/.secrets"
   validate_release_env "$candidate_dir" "$sha"
+  if release_development_security_enabled "$candidate_dir"; then
+    check_development_security_secrets
+  fi
   if [[ -n $previous ]]; then
     migrations_compatible "$RELEASES_DIR/$previous" "$candidate_dir" ||
       die 'migrations are not safe for application rollback'
+    development_security_migrations_compatible "$RELEASES_DIR/$previous" "$candidate_dir" ||
+      die 'Development Security migrations are not safe for application rollback'
   fi
 
   compose_for "$candidate_dir" config --quiet >/dev/null || die 'candidate production Compose configuration is invalid'
@@ -511,7 +746,20 @@ deploy() {
   ROLLOUT_IN_PROGRESS=1
   trap 'deploy_exit_recovery $?' EXIT
   log "starting atomic Compose rollout for $sha"
+  if release_development_security_enabled "$candidate_dir"; then
+    compose_for "$candidate_dir" up -d --no-build --wait development-security-database >/dev/null ||
+      die 'Development Security database failed to become healthy; restoring the previous release'
+    prepare_development_security_migration_baseline "$candidate_dir" ||
+      die 'Development Security migration baseline could not be prepared; restoring the previous release'
+    compose_for "$candidate_dir" run --rm --no-deps -T development-security-migrate >/dev/null ||
+      die 'Development Security migration failed; restoring the previous release'
+    record_development_security_migration_baseline "$candidate_dir" ||
+      die 'Development Security migration baseline could not be recorded; restoring the previous release'
+  fi
   if compose_for "$candidate_dir" up -d --no-build --wait >/dev/null; then
+    if [[ -n $previous ]]; then
+      reconcile_development_security_services "$candidate_dir" "$RELEASES_DIR/$previous"
+    fi
     log 'checking production AI providers before committing the release'
     compose_for "$candidate_dir" run --rm --no-deps -T api \
       sh /workspace/docker/api-entrypoint.sh node apps/api/dist/infrastructure/ai/production-ai-smoke.js >/dev/null ||
@@ -546,11 +794,16 @@ rollback() {
   [[ -n $previous ]] || die 'there is no previous release to restore'
   release_is_complete "$current" || die 'current release state is incomplete'
   release_is_complete "$previous" || die 'previous release state is incomplete'
+  if release_development_security_enabled "$RELEASES_DIR/$current" ||
+    release_development_security_enabled "$RELEASES_DIR/$previous"; then
+    check_development_security_secrets
+  fi
   verify_release_images "$current" || die 'current release images are unavailable'
   verify_release_images "$previous" || die 'previous release images are unavailable'
   compose_for "$RELEASES_DIR/$previous" config --quiet >/dev/null || die 'previous Compose configuration is invalid'
   compose_for "$RELEASES_DIR/$previous" up -d --no-build --wait >/dev/null ||
     die 'previous release failed to become healthy; state was not changed'
+  reconcile_development_security_services "$RELEASES_DIR/$previous" "$RELEASES_DIR/$current"
   write_state current "$previous"
   write_state previous "$current"
   log "restored release $previous; current and previous have been swapped"

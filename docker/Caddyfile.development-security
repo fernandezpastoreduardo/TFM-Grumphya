@@ -1,0 +1,46 @@
+{$DOMAIN} {
+	encode zstd gzip
+	tls {
+		protocols tls1.2 tls1.3
+	}
+	@developmentSecurityAPI path /api/desarrollo-seguro/v1/*
+	handle @developmentSecurityAPI {
+		reverse_proxy https://development-security-api:3001 {
+			transport http {
+				tls_trust_pool file /run/secrets/internal_tls_ca.crt
+				tls_server_name development-security-api
+			}
+		}
+	}
+	@api path /api/*
+	handle @api {
+		reverse_proxy https://api:3000 {
+			transport http {
+				tls_trust_pool file /run/secrets/internal_tls_ca.crt
+			}
+		}
+	}
+	handle {
+		reverse_proxy https://web:8443 {
+			transport http {
+				tls_trust_pool file /run/secrets/internal_tls_ca.crt
+			}
+		}
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Embedder-Policy "require-corp"
+		Cross-Origin-Resource-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)"
+		Content-Security-Policy "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"
+		Reporting-Endpoints "grumphya-csp=\"https://{$DOMAIN}/api/csp-reports\""
+		Content-Security-Policy-Report-Only "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-suebgenoyDvF0MseSMQjhvmvvc00cXYsKyXaeDanRCI='; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self'; report-to grumphya-csp; report-uri /api/csp-reports"
+	}
+}
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}
