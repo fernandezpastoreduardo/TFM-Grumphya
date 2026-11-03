@@ -13,16 +13,15 @@ import { PublicScanController } from "./public-scan/public-scan.controller.js";
 import { PublicScanService } from "./public-scan/public-scan.service.js";
 import { PublicScanRateLimitGuard } from "./public-scan/public-scan-rate-limit.js";
 import { PublicScanRateLimiter } from "./public-scan/public-scan-rate-limiter.js";
-import { resolveDevelopmentSecurityDatabaseUrl } from "./database-url.js";
+import { resolveDevelopmentSecurityDatabasePoolConfig } from "./database-pool-config.js";
 
 @Injectable()
 export class DevelopmentSecurityDatabase implements OnApplicationShutdown {
   readonly scanStore: PostgresScanStore;
 
   constructor() {
-    const connectionString = resolveDevelopmentSecurityDatabaseUrl(process.env);
     this.scanStore = new PostgresScanStore(
-      new Pool({ connectionString, max: 3 }),
+      new Pool(resolveDevelopmentSecurityDatabasePoolConfig(process.env)),
     );
   }
 
