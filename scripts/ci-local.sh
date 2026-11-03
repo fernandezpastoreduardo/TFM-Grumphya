@@ -18,7 +18,8 @@ PNPM_VERSION=$(node -p "require('$ROOT/package.json').packageManager.replace(/^p
 PLAYWRIGHT_VERSION=$(awk '
   /^  apps\/web:/ { in_web = 1; next }
   in_web && /^  [^ ]/ { exit }
-  in_web && /version: 1\.64\.0/ { print $2; exit }
+  in_web && /^      '\''@playwright\/test'\'':/ { in_playwright = 1; next }
+  in_playwright && /version:/ { print $2; exit }
 ' "$ROOT/pnpm-lock.yaml")
 if [[ -z "$PLAYWRIGHT_VERSION" ]]; then
   echo "Could not determine the locked Playwright version" >&2

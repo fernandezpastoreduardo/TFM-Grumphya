@@ -131,6 +131,9 @@ test("verifies the registration, activates the simulated purchase and deletes th
   await page
     .getByRole("switch", { name: "Activar modo oscuro" })
     .click({ force: true });
+  await expect(
+    page.getByRole("switch", { name: "Activar modo claro" }),
+  ).toHaveAttribute("aria-checked", "true");
   await expect
     .poll(() =>
       page

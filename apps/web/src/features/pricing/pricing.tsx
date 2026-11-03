@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import { useNativeDialog } from "../../shared/hooks/use-native-dialog";
+import { recordAnonymousPlanSelection } from "../../shared/utils/anonymous-analytics";
 import "./pricing.scss";
 
 export function Pricing() {
@@ -13,6 +14,7 @@ export function Pricing() {
   const [selectionError, setSelectionError] = useState("");
 
   async function selectPlan(plan: "ILUMINADO" | "FALTON") {
+    void recordAnonymousPlanSelection(plan);
     setSelectionError("");
     if (session.isAuthenticated === true) {
       window.location.assign("/perfil");

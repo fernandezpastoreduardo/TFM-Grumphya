@@ -16,6 +16,7 @@ import {
 import { CookieNotice } from "./features/cookie-notice/cookie-notice";
 import { isPrerenderedPublicPath } from "./shared/prerendered-public-routes";
 import { SectionPage } from "./views/section-page";
+import { recordAnonymousPageView } from "./shared/utils/anonymous-analytics";
 
 let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 
@@ -38,6 +39,8 @@ type AuthenticatedRole = "user" | "admin";
 
 export function App({ initialPath }: { initialPath?: string } = {}) {
   const path = initialPath ?? window.location.pathname;
+
+  useEffect(() => recordAnonymousPageView(path), [path]);
 
   useEffect(
     () =>

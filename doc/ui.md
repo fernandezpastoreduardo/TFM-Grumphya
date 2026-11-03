@@ -1,9 +1,9 @@
 # Dirección e implementación de la UI
 
-Este documento resume las decisiones visuales aprobadas que guían la Home y el
-resto de las secciones. La dirección completa está en
-[`agentic-guidelines/UI-aestethics.md`](../agentic-guidelines/UI-aestethics.md);
-la lámina maestra está en
+Este documento recoge para lectores humanos las decisiones visuales aprobadas
+que guían la Home y el resto de las secciones. La guía interna de
+[`agentic-guidelines/UI-aestethics.md`](../agentic-guidelines/UI-aestethics.md)
+detalla instrucciones de implementación para agentes; la lámina maestra está en
 [`ideas-and-designs/revision-vectorial/referencia-maestra.png`](../ideas-and-designs/revision-vectorial/referencia-maestra.png).
 
 ## Identidad y composición
@@ -184,7 +184,7 @@ la lámina maestra está en
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
-  privacidad versión 4. Las mascotas de hero flotan suavemente, los bloques
+  privacidad versión 5. Las mascotas de hero flotan suavemente, los bloques
   entran al desplazarse y los controles responden al hover; las animaciones se
   desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
@@ -237,7 +237,9 @@ la lámina maestra está en
 Al montar la aplicación se muestra el popup «Ni galletitas ni galletitos» con
 una ilustración de Grumphya pateando una galleta. El texto informa de las cookies
 propias y del almacenamiento local que se usan, y declara que no hay publicidad,
-analítica ni cookies de terceros. El botón «Entendido» solo confirma la lectura;
+analítica externa ni cookies de terceros. La app sí cuenta de forma agregada las
+vistas públicas y la selección de planes, según los límites de la política de
+privacidad versión 5. El botón «Entendido» solo confirma la lectura;
 no solicita consentimiento ni altera la configuración. La confirmación se
 recuerda en `localStorage` (`grumphya.privacy-notice.acknowledged.v1`), no en una
 cookie. Un enlace permite abrir la política de privacidad. Si el almacenamiento
@@ -366,10 +368,16 @@ tercera comprueba que el enlace principal al plan Faltón mantiene al menos 4,5:
 de contraste en ambos temas y en reposo y hover. Son verificaciones de layout y
 contraste, no una medición CLS de Lighthouse.
 `cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
-97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
-`cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de
-645.212 B a 460.094 B (185.118 B, aproximadamente un 28,7 %); no se ha medido
-un cambio de puntuación Lighthouse.
+97.170 B. El aviso selecciona ahora con `srcset` variantes WebP de 188 px
+(7.068 B) y 376 px (16.784 B), y conserva el original de 570 px para pantallas
+de mayor densidad. A 188 px, la variante pesa un 92,7 % menos que el original;
+a 376 px, un 82,7 % menos. Los archivos originales siguen disponibles. Esta
+reducción de bytes no confirma por sí sola una mejora de puntuación: hace falta
+una nueva medición Lighthouse tras desplegar el cambio. La conversión de
+`audience-rounded.png`, `home-grumpy-judge.png` y `cookie-kick.png` a WebP
+conserva transparencia y reduce el peso conjunto de 645.212 B a 460.094 B
+(185.118 B, aproximadamente un 28,7 %); no se ha medido un cambio de puntuación
+Lighthouse para esa conversión.
 Las versiones SVGOMG activas de la ilustración de Descárgate y las dos tarjetas
 de tono pesan 205.536 B en conjunto: `descargate-boxing-bag.svg`, 67.914 B;
 `idea-tone-soft-bandage-v2.svg`, 72.991 B; y `idea-tone-hard-boxing-v2.svg`,

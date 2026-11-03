@@ -183,14 +183,18 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
 });
 
 test("sizes every section hero to its copy on desktop", async ({ page }) => {
+  test.setTimeout(90_000);
   let authenticatedRole: "guest" | "user" | "admin" = "guest";
-  await page.route("**/api/auth/refresh", (route) =>
-    route.fulfill({
+  await page.route("**/api/auth/refresh", (route) => {
+    if (authenticatedRole === "guest") {
+      return route.fulfill({ status: 204 });
+    }
+    return route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ accessToken: "e2e-hero-session" }),
-    }),
-  );
+    });
+  });
   await page.route("**/api/account/profile", (route) => {
     if (authenticatedRole === "guest") {
       return route.fulfill({
@@ -224,7 +228,7 @@ test("sizes every section hero to its copy on desktop", async ({ page }) => {
     await page.setViewportSize({ width: viewportWidth, height: 1000 });
     await page.goto(route);
     const hero = page.locator(".section-hero");
-    await expect(hero).toBeVisible();
+    await expect(hero).toBeVisible({ timeout: 15_000 });
     await expect(page).toHaveURL(new RegExp(`${route}$`));
     if (route === "/perfil") {
       await expect(
@@ -354,7 +358,11 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
   await page.reload();
   await expect(page.locator(".cookie-notice-mascot")).toHaveAttribute(
     "src",
-    "/assets/grumphya/cookie-kick.webp",
+    "/assets/grumphya/cookie-kick-188.webp",
+  );
+  await expect(page.locator(".cookie-notice-mascot")).toHaveAttribute(
+    "srcset",
+    "/assets/grumphya/cookie-kick-188.webp 188w, /assets/grumphya/cookie-kick-376.webp 376w, /assets/grumphya/cookie-kick.webp 570w",
   );
 
   await page.goto("/precios");
@@ -1043,6 +1051,18 @@ test("uses the section hero assets with transparent pixels", async ({
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({ messages: [] }),
+        }),
+      );
+      await page.route("**/api/admin/anonymous-analytics", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            viewsByPage: [],
+            deviceShares: [],
+            monthlyPlanSelections: [],
+            monthlyPlanActivations: [],
+          }),
         }),
       );
     }

@@ -75,9 +75,12 @@ const INVALID_DECISION_MESSAGE = "Respuesta del evaluador no válida.";
 const MIN_MESSAGE_WORDS = 8;
 const MAX_MESSAGE_WORDS = 40;
 const MAX_MESSAGE_LENGTH = 280;
+const MIN_CLEAR_ASSESSMENT_WORDS = 25;
+const MAX_CLEAR_ASSESSMENT_WORDS = 90;
+const MAX_CLEAR_ASSESSMENT_LENGTH = 700;
 const MAX_REJECTION_MESSAGE_WORDS = 120;
 const MAX_REJECTION_MESSAGE_LENGTH = 900;
-const MAX_VISIBLE_MESSAGE_LENGTH = 360;
+const MAX_VISIBLE_MESSAGE_LENGTH = 900;
 const MAX_VISIBLE_REJECTION_MESSAGE_LENGTH = 1_000;
 const MIN_CONCEPTUAL_SCORE = 0;
 const MAX_CONCEPTUAL_SCORE = 79;
@@ -101,6 +104,10 @@ const HARD_COPY_MIN_LENGTH = 8;
 const HARD_COPY_MAX_LENGTH = 140;
 const SOFT_MESSAGE_PREFIX =
   "¡Qué ilusión poder acompañarte con todo el cariño! ";
+const SOFT_REVIEW_MESSAGE_PREFIX =
+  "Con cariño, esta idea todavía necesita trabajo: ";
+const HARD_REVIEW_MESSAGE_PREFIX =
+  "Este primer análisis no basta para darla por buena: ";
 const HARD_REJECTION_MESSAGE_PREFIX =
   "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
 const HARD_CLEAR_MESSAGE_PREFIX = "No hay motivo para celebrar todavía: ";
@@ -281,6 +288,31 @@ function isValidNeutralMessage(value: unknown): value is string {
   );
 }
 
+function isValidClearAssessment(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    value.trim() !== value ||
+    value.length > MAX_CLEAR_ASSESSMENT_LENGTH ||
+    value.length === 0 ||
+    DISALLOWED_RESULT_LABEL.test(value) ||
+    /[\r\n\t]/u.test(value) ||
+    /^[-*#•]\s/u.test(value) ||
+    /^\d+[.)]\s/u.test(value) ||
+    !value.endsWith(TERMINAL_SENTENCE_MARK)
+  ) {
+    return false;
+  }
+
+  const words = value.split(/\s+/u);
+  const sentenceCount = value.match(/[.!?…](?:\s|$)/gu)?.length ?? 0;
+  return (
+    words.length >= MIN_CLEAR_ASSESSMENT_WORDS &&
+    words.length <= MAX_CLEAR_ASSESSMENT_WORDS &&
+    sentenceCount >= 2 &&
+    sentenceCount <= 4
+  );
+}
+
 function isValidRejectionMessage(value: unknown): value is string {
   return isValidMessage(
     value,
@@ -294,9 +326,9 @@ function isValidDecisionMessage(
   value: unknown,
   status: EvaluationDecisionStatus,
 ): value is string {
-  return status === "RECHAZADA"
-    ? isValidRejectionMessage(value)
-    : isValidNeutralMessage(value);
+  if (status === "RECHAZADA") return isValidRejectionMessage(value);
+  if (status === "SIN_BLOQUEO_EVIDENTE") return isValidClearAssessment(value);
+  return isValidNeutralMessage(value);
 }
 
 function isValidHardCopyComponent(value: unknown): value is string {
@@ -386,6 +418,21 @@ export function renderMessage(decision: unknown, tone: unknown): string {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
   return removeInternalRubricAliases(hardMessage);
+}
+
+export function renderReviewMessage(message: unknown, tone: unknown): string {
+  if (!isValidClearAssessment(message))
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  if (tone !== "soft" && tone !== "hard") {
+    throw new Error(INVALID_TONE_MESSAGE);
+  }
+  const prefix =
+    tone === "soft" ? SOFT_REVIEW_MESSAGE_PREFIX : HARD_REVIEW_MESSAGE_PREFIX;
+  const renderedMessage = `${prefix}${message}`;
+  if (renderedMessage.length > MAX_VISIBLE_MESSAGE_LENGTH) {
+    throw new Error(INVALID_VISIBLE_MESSAGE);
+  }
+  return removeInternalRubricAliases(renderedMessage);
 }
 
 export function renderHeadline(

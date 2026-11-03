@@ -55,6 +55,7 @@ describe("AdminDashboardService", () => {
       getSnapshot: vi
         .fn()
         .mockRejectedValue(new Error(PRIVATE_DATABASE_DETAIL)),
+      getAnonymousAnalytics: vi.fn(),
       getApplicationError: vi.fn(),
       listContactMessages: vi.fn(),
       claimContactMessageReply: vi.fn(),
@@ -146,6 +147,7 @@ describe("AdminDashboardService", () => {
   it("hides message repository details when contact messages are unavailable", async () => {
     const repository = {
       getSnapshot: vi.fn(),
+      getAnonymousAnalytics: vi.fn(),
       getApplicationError: vi.fn(),
       listContactMessages: vi
         .fn()

@@ -120,6 +120,10 @@ const MIGRATIONS = [
     version: "036_redact_application_error_context",
     file: "036_redact_application_error_context.sql",
   },
+  {
+    version: "037_anonymous_analytics",
+    file: "037_anonymous_analytics.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

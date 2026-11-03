@@ -1,7 +1,7 @@
 import type { EvaluationPort, EvaluationPortInput } from "./evaluation-port";
 
 const FAKE_MESSAGE =
-  "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+  "La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.";
 
 function createFakeDecision() {
   return {

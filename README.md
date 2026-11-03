@@ -35,21 +35,38 @@ Integración de pagos reales para los planes.
 - Persistencia: PostgreSQL 17 con `pgvector` 0.8.7 para buscar similitud semántica.
 - La evaluación, la autorización, los límites y la activación de planes se validan en el backend.
 
-## Arranque del entorno técnico
+## Instalación y arranque local
 
-Consulta [`doc/README.md`](doc/README.md) para instalar requisitos, arrancar los servicios, ejecutar pruebas y preparar un despliegue de producción. En desarrollo, Docker Compose levanta PostgreSQL con `pgvector`.
+Requisitos: Node.js 26.13.0, pnpm 12.5.1 y Docker con Docker Compose. En macOS o Linux, si usas `nvm`, desde la raíz del repositorio instala y activa la versión fijada:
+
+```sh
+nvm install
+nvm use
+npm install --global pnpm@12.5.1
+```
+
+Después instala dependencias, prepara la configuración local y arranca la aplicación:
+
+```sh
+pnpm install
+pnpm db:setup
+touch .env.openai .env
+pnpm dev
+```
+
+`pnpm db:setup` crea `.env.docker` con credenciales aleatorias para PostgreSQL y secretos locales; los archivos `.env*` están excluidos de Git. Crea `.env.openai` y `.env` en la raíz antes de arrancar, aunque pueden estar vacíos si no vas a usar funciones de IA. Para habilitar la evaluación con OpenAI, añade `OPENAI_API_KEY` a `.env` y `EVALUATION_PROVIDER=openai` a `.env.openai`; no guardes claves reales en Git.
+
+`pnpm dev` levanta PostgreSQL con `pgvector` en Docker y ejecuta NestJS y Vite en el equipo. Abre <http://127.0.0.1:5173>; la API está en <http://127.0.0.1:3000/api/health>. Para parar la aplicación usa `Ctrl+C`; para detener también PostgreSQL sin borrar sus datos, ejecuta `pnpm db:down`.
+
+La guía de [`desarrollo local`](doc/development.md) incluye el stack completo en Docker, configuración de IA y aprovisionamiento del administrador. [`doc/README.md`](doc/README.md) reúne el resto de la documentación, pruebas y despliegue de producción.
 
 ## Documentación
 
-- [`AGENTS.md`](AGENTS.md): principios de arquitectura y prácticas del proyecto.
-- [`agentic-guidelines/sections.md`](agentic-guidelines/sections.md): secciones, flujos y alcance de entregas.
-- [`agentic-guidelines/features.md`](agentic-guidelines/features.md): casos de uso y rúbrica de evaluación v1.
-- [`agentic-guidelines/ai-evaluation.md`](agentic-guidelines/ai-evaluation.md): evaluación comparativa del modelo, seguridad y privacidad de telemetría.
-- [`doc/ci-cd.md`](doc/ci-cd.md): pipeline de integración, pruebas aisladas y análisis de dependencias e imagen.
-- [`agentic-guidelines/Dtos.md`](agentic-guidelines/Dtos.md): contratos de datos.
-- [`agentic-guidelines/persistence.md`](agentic-guidelines/persistence.md): modelo de persistencia.
-- [`agentic-guidelines/components.md`](agentic-guidelines/components.md): responsabilidades de componentes.
-- [`agentic-guidelines/copy-style.md`](agentic-guidelines/copy-style.md): voz y microcopy.
-- [`agentic-guidelines/UI-aestethics.md`](agentic-guidelines/UI-aestethics.md): dirección visual y accesibilidad.
-- [`doc/ui.md`](doc/ui.md): resumen de la UI aprobada y su implementación.
-- [`ideas-and-designs/`](ideas-and-designs/): referencias visuales para diseño y maquetación.
+Para instrucciones de desarrollo, pruebas, operación y producción dirigidas a
+personas, empieza por la [guía de contenidos de `/doc`](doc/README.md).
+
+Las especificaciones para agentes y criterios internos de implementación están
+en [`agentic-guidelines/`](agentic-guidelines/README.md); su guía de lectura
+indica qué documento consultar según la tarea. [`AGENTS.md`](AGENTS.md) recoge
+las reglas generales del repositorio. Las referencias visuales están en
+[`ideas-and-designs/`](ideas-and-designs/).

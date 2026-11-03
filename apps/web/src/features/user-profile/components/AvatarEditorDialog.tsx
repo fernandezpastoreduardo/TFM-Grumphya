@@ -291,7 +291,7 @@ export function AvatarEditorDialog({
               type="range"
               min={-getPanLimit(imageSize, zoom, "x")}
               max={getPanLimit(imageSize, zoom, "x")}
-              step="1"
+              step="any"
               value={offset.x}
               disabled={!file || uploading}
               onChange={(event) =>
@@ -307,7 +307,7 @@ export function AvatarEditorDialog({
               type="range"
               min={-getPanLimit(imageSize, zoom, "y")}
               max={getPanLimit(imageSize, zoom, "y")}
-              step="1"
+              step="any"
               value={offset.y}
               disabled={!file || uploading}
               onChange={(event) =>

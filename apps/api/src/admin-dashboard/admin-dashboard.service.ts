@@ -65,6 +65,18 @@ export class AdminDashboardService {
     }
   }
 
+  async getAnonymousAnalytics() {
+    try {
+      return await this.repository.getAnonymousAnalytics();
+    } catch {
+      this.logger.error("ADMIN_ANONYMOUS_ANALYTICS_UNAVAILABLE");
+      throw new ServiceUnavailableException({
+        code: "ADMIN_ANONYMOUS_ANALYTICS_UNAVAILABLE",
+        message: "No se han podido consultar las métricas anónimas ahora.",
+      });
+    }
+  }
+
   async getApplicationError(id: string) {
     if (!isPostgresBigintId(id)) {
       throw new BadRequestException({

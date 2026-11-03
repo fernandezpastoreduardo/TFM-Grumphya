@@ -11,6 +11,13 @@ const LOCATION_DESCRIPTOR = Object.getOwnPropertyDescriptor(window, "location");
 function getAdminRouteResponse(path: string): unknown {
   if (path.includes("/api/account/profile"))
     return { user: { role: "admin" }, plans: [] };
+  if (path.includes("anonymous-analytics"))
+    return {
+      viewsByPage: [],
+      deviceShares: [],
+      monthlyPlanSelections: [],
+      monthlyPlanActivations: [],
+    };
   if (path.includes("contact-messages")) return { messages: [] };
   return {
     revenue: { weeklyEur: 0, totalEur: 0 },
@@ -76,10 +83,8 @@ afterEach(() => {
 
 describe("App", () => {
   it("loads the idea input and project purpose for the home route", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise(() => undefined)),
-    );
+    const fetchMock = vi.fn(() => new Promise(() => undefined));
+    vi.stubGlobal("fetch", fetchMock);
     render(<App />);
     expect(
       await screen.findByRole("heading", {
@@ -92,6 +97,20 @@ describe("App", () => {
     expect(
       screen.getByRole("textbox", { name: /escribe o pega tu idea/i }),
     ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/anonymous-analytics",
+        expect.objectContaining({
+          credentials: "omit",
+          body: JSON.stringify({
+            event: "page_view",
+            page: "home",
+            plan: null,
+            device: "desktop",
+          }),
+        }),
+      ),
+    );
     vi.unstubAllGlobals();
   });
 

@@ -10,9 +10,9 @@ Los DTOs son contratos de API. No deben exponer entidades de base de datos direc
 
 ### EvaluationProcessResponse
 
-- `status: 'RECHAZADA' | 'SIN_BLOQUEO_EVIDENTE' | 'IDEA_INSUFICIENTE'`.
-- `score: number | null`; escala global 0–10. `RECHAZADA`: nota del aspecto de veto dividida entre 10. `SIN_BLOQUEO_EVIDENTE`: media aritmética de los criterios `PUNTUADO`, dividida entre 10 y redondeada a dos decimales; `null` si ninguno se puntuó. `IDEA_INSUFICIENTE`: `null`.
-- `message: string`; una frase visible. La UI presenta el score con dos decimales en `es-ES`.
+- `status: 'RECHAZADA' | 'REQUIERE_REVISION' | 'SIN_BLOQUEO_EVIDENTE' | 'IDEA_INSUFICIENTE'`. `REQUIERE_REVISION` es una proyección pública del servidor, no un estado que devuelva el modelo: aparece cuando no hay un veto individual y la media queda por debajo de 7/10.
+- `score: number | null`; escala global 0–10. `RECHAZADA`: nota del aspecto de veto dividida entre 10. `REQUIERE_REVISION` y `SIN_BLOQUEO_EVIDENTE`: media aritmética de los criterios `PUNTUADO`, dividida entre 10 y redondeada a dos decimales. `IDEA_INSUFICIENTE`: `null`.
+- `message: string`; explica el valor concreto, la limitación principal y qué conviene validar en resultados sin veto, sin enumerar la rúbrica; insuficiencia y rechazo mantienen sus reglas de copy específicas. La UI presenta el score con dos decimales en `es-ES`.
 - El `message` público no incluye IDs de criterio (`C01`–`C10`) ni `reason_code`. El backend sustituye aliases internos que aparezcan accidentalmente por una descripción legible en español.
 - `failedCriteria?: string[]`; solo en `RECHAZADA`, incluye una frase breve y alegórica por cada criterio con nota inferior a 15. Son textos públicos predefinidos por el servidor: no contienen IDs ni nombres internos de la rúbrica. La UI los presenta al final con un aspa roja; en pantallas estrechas va uno por línea y en escritorio puede usar dos columnas.
 - Si C10 es el primer veto (`stop_at: 'C10'`), `existingProductExample` puede incluir el nombre de un producto conocido con las mismas funciones esenciales; es opcional, no se busca en la web y no modifica el score ni el veredicto.

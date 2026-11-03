@@ -7,7 +7,7 @@ const EVALUATION_PATH = "/api/evaluation-process";
 const WEB_ORIGIN = `http://127.0.0.1:${process.env.PLAYWRIGHT_WEB_PORT ?? "5190"}`;
 const IDEMPOTENCY_KEY = "25e7b3b5-1d57-4c89-9b89-5e7b8374d912";
 const SOFT_MESSAGE =
-  "¡Qué ilusión poder acompañarte con todo el cariño! Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+  "Con cariño, esta idea todavía necesita trabajo: La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.";
 
 test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", async ({
   page,
@@ -24,9 +24,9 @@ test("evaluates successive ideas through the UI, HTTP endpoint, and test fake", 
   expect(await directResponse.json()).toEqual({
     status: "evaluated",
     result: {
-      status: "SIN_BLOQUEO_EVIDENTE",
+      status: "REQUIERE_REVISION",
       score: 6.77,
-      headline: "La idea pasa este primer repaso, con confeti prudente.",
+      headline: "La idea aún necesita más trabajo.",
       message: SOFT_MESSAGE,
     },
   });

@@ -195,19 +195,21 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
   const homeFooterNote = homeFooter.locator(".home-footer-note");
   const homeFooterSeal = homeFooter.locator(".accreditation-seal");
   await expect(homeFooterNote).toBeVisible();
-  await expect(homeFooterSeal).toBeVisible();
-  const homeFooterLayout = await Promise.all([
-    homeFooterNote.boundingBox(),
-    homeFooterSeal.boundingBox(),
-  ]);
-  expect(homeFooterLayout[0]).not.toBeNull();
-  expect(homeFooterLayout[1]).not.toBeNull();
+  await expect(homeFooterSeal).toContainText("Demostración académica");
+  const homeFooterLayout = await homeFooter.evaluate((footer) => {
+    const note = footer.querySelector(".home-footer-note");
+    const seal = footer.querySelector(".accreditation-seal");
+    if (!note || !seal) return null;
+    const noteBox = note.getBoundingClientRect();
+    const sealBox = seal.getBoundingClientRect();
+    return {
+      noteCenterY: noteBox.y + noteBox.height / 2,
+      sealCenterY: sealBox.y + sealBox.height / 2,
+    };
+  });
+  expect(homeFooterLayout).not.toBeNull();
   expect(
-    Math.abs(
-      homeFooterLayout[0]!.y +
-        homeFooterLayout[0]!.height / 2 -
-        (homeFooterLayout[1]!.y + homeFooterLayout[1]!.height / 2),
-    ),
+    Math.abs(homeFooterLayout!.noteCenterY - homeFooterLayout!.sealCenterY),
   ).toBeLessThan(7);
   await page.evaluate(() => {
     document.querySelector(".home-page")?.classList.add("theme-dark");

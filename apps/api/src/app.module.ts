@@ -54,6 +54,8 @@ import {
 import type { AiUsageRecorder } from "./infrastructure/ai/ai-usage";
 import { CspReportController } from "./security/csp-report.controller";
 import { VerifyAccreditationModule } from "./verify-accreditation/verify-accreditation.module";
+import { AnonymousAnalyticsController } from "./anonymous-analytics/anonymous-analytics.controller";
+import { AnonymousAnalyticsService } from "./anonymous-analytics/anonymous-analytics.service";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createRoastReplyProvider(
@@ -176,6 +178,7 @@ function createIdeaSubmissionService(
     GetIdeaListWorstUserController,
     GetRoastRankingController,
     GetBestListBestUsersController,
+    AnonymousAnalyticsController,
   ],
   providers: [
     {
@@ -183,6 +186,14 @@ function createIdeaSubmissionService(
       useFactory: () => new DataRetentionService(createPostgresPool()),
     },
     EvaluationProcessService,
+    {
+      provide: AnonymousAnalyticsService,
+      useFactory: () =>
+        new AnonymousAnalyticsService(
+          createPostgresPool(),
+          process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173",
+        ),
+    },
     {
       provide: EVALUATION_PORT,
       useFactory: (repository: AdminDashboardRepository) =>

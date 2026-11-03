@@ -113,7 +113,7 @@ moderación, almacenamiento y actualización de cuenta se devuelven como `503`
 genérico; carga multipart inválida devuelve `400` y exceso de tamaño `413`, sin
 filtrar detalles internos. La moderación automática no garantiza que una imagen
 sea apta ni detecta todo contenido; tampoco sustituye una revisión humana. La
-política de privacidad versión 4 en `/politica-de-privacidad`. La configuración
+política de privacidad versión 5 en `/politica-de-privacidad`. La configuración
 real de proveedores, copias y logs debe verificarse antes de producción. No subas contenido conocido o sospechoso de
 abuso sexual infantil: esta moderación no está diseñada para detectarlo.
 
@@ -269,7 +269,7 @@ rutas de origen de los secretos, no sus valores.
 
 No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.docker`, `.env.openai` y `.env`. El modelo y
-el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v9`
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v10`
 aplica una lectura adversarial proporcional y exige una puntuación en toda idea
 funcional. C07 también exige que la idea exprese un valor o motivo concreto para
 empezar y continuar usándola: una función que solo registra una acción sin
