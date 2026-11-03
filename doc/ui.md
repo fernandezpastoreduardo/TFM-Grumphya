@@ -184,7 +184,7 @@ la lámina maestra está en
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
-  privacidad versión 4. Las mascotas de hero flotan suavemente, los bloques
+  privacidad versión 5. Las mascotas de hero flotan suavemente, los bloques
   entran al desplazarse y los controles responden al hover; las animaciones se
   desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
@@ -237,7 +237,9 @@ la lámina maestra está en
 Al montar la aplicación se muestra el popup «Ni galletitas ni galletitos» con
 una ilustración de Grumphya pateando una galleta. El texto informa de las cookies
 propias y del almacenamiento local que se usan, y declara que no hay publicidad,
-analítica ni cookies de terceros. El botón «Entendido» solo confirma la lectura;
+analítica externa ni cookies de terceros. La app sí cuenta de forma agregada las
+vistas públicas y la selección de planes, según los límites de la política de
+privacidad versión 5. El botón «Entendido» solo confirma la lectura;
 no solicita consentimiento ni altera la configuración. La confirmación se
 recuerda en `localStorage` (`grumphya.privacy-notice.acknowledged.v1`), no en una
 cookie. Un enlace permite abrir la política de privacidad. Si el almacenamiento
