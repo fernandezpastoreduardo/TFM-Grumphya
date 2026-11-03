@@ -14,6 +14,8 @@ import {
 import { REPORT_ID_PATTERN } from "./public-scan.constants.js";
 
 const UNKNOWN_CLIENT_IP = "unknown";
+const CACHE_CONTROL_HEADER = "Cache-Control";
+const CACHE_CONTROL_NO_STORE = "no-store";
 const RETRY_AFTER_HEADER = "Retry-After";
 const RATE_LIMIT_CAPACITY_REACHED = "development_security_capacity_reached";
 const RATE_LIMITED = "rate_limited";
@@ -35,6 +37,7 @@ export class PublicScanRateLimitGuard implements CanActivate {
     const http = context.switchToHttp();
     const request = http.getRequest<RequestContext>();
     const response = http.getResponse<ResponseContext>();
+    response.setHeader?.(CACHE_CONTROL_HEADER, CACHE_CONTROL_NO_STORE);
     const decision = this.limiter.consume({
       clientIp: resolveClientIp(request),
       hostname: resolveRequestedHostname(request.params?.hostname),
