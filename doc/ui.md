@@ -368,10 +368,16 @@ tercera comprueba que el enlace principal al plan Faltón mantiene al menos 4,5:
 de contraste en ambos temas y en reposo y hover. Son verificaciones de layout y
 contraste, no una medición CLS de Lighthouse.
 `cookie-kick.webp`, usado por el aviso de privacidad, mide 570 × 380 px y pesa
-97.170 B. La conversión de `audience-rounded.png`, `home-grumpy-judge.png` y
-`cookie-kick.png` a WebP conserva transparencia y reduce el peso conjunto de
-645.212 B a 460.094 B (185.118 B, aproximadamente un 28,7 %); no se ha medido
-un cambio de puntuación Lighthouse.
+97.170 B. El aviso selecciona ahora con `srcset` variantes WebP de 188 px
+(7.068 B) y 376 px (16.784 B), y conserva el original de 570 px para pantallas
+de mayor densidad. A 188 px, la variante pesa un 92,7 % menos que el original;
+a 376 px, un 82,7 % menos. Los archivos originales siguen disponibles. Esta
+reducción de bytes no confirma por sí sola una mejora de puntuación: hace falta
+una nueva medición Lighthouse tras desplegar el cambio. La conversión de
+`audience-rounded.png`, `home-grumpy-judge.png` y `cookie-kick.png` a WebP
+conserva transparencia y reduce el peso conjunto de 645.212 B a 460.094 B
+(185.118 B, aproximadamente un 28,7 %); no se ha medido un cambio de puntuación
+Lighthouse para esa conversión.
 Las versiones SVGOMG activas de la ilustración de Descárgate y las dos tarjetas
 de tono pesan 205.536 B en conjunto: `descargate-boxing-bag.svg`, 67.914 B;
 `idea-tone-soft-bandage-v2.svg`, 72.991 B; y `idea-tone-hard-boxing-v2.svg`,
