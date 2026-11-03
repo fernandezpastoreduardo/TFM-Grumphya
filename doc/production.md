@@ -200,9 +200,10 @@ Antes de sustituir servicios, el helper comprueba la release actual, configuraci
 Tras arrancar, Actions consulta la web, una ruta SPA y `/api/health` por HTTPS y comprueba que la API anuncia el mismo SHA. Si la comprobación pública falla, el workflow pide al VPS volver a Compose de la release anterior y vuelve a probar el dominio. Si el propio SSH falla durante una transferencia no se cambia la release actual; si se corta una conexión después de activarla, la verificación del workflow fuerza el rollback. La anterior se conserva en el VPS para una recuperación manual.
 
 Antes de confirmar la release, el helper ejecuta además un smoke de proveedores
-de IA dentro de la API nueva: realiza una evaluación de idea y una respuesta de
-roast usando la configuración y credenciales reales del VPS. La evaluación se
-reintenta una sola vez, con una pausa de 1 segundo, únicamente si falla con el
+de IA dentro de la API nueva: evalúa una propuesta sintética deliberadamente
+incompleta y genera una respuesta de roast usando la configuración y credenciales
+reales del VPS. La evaluación se reintenta una sola vez, con una pausa de
+1 segundo, únicamente si falla con el
 diagnóstico `visible_message`; otros errores no se reintentan. Cada llamada a
 `evaluate` puede hacer también su propio reintento semántico, por lo que el
 smoke puede generar hasta cuatro completions de evaluación en total y una de

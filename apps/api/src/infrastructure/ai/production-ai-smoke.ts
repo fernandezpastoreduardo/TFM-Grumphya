@@ -6,8 +6,7 @@ import { runEvaluationSmokeWithRetry } from "./production-ai-smoke-retry";
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 const ROAST_SMOKE_MESSAGE = "Hoy he terminado mi tarea antes de la hora.";
 const IDEA_SMOKE_INPUT = {
-  ideaText:
-    "Una aplicación para organizar las tareas semanales de un equipo pequeño y marcar las que ya están terminadas.",
+  ideaText: "Quiero crear una app sin detalles.",
   tone: "soft" as const,
 };
 const SMOKE_FAILURES = {
