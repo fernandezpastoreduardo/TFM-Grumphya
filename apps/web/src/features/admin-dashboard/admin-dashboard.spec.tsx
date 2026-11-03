@@ -133,6 +133,12 @@ const contacts = {
     },
   ],
 };
+const anonymousAnalytics = {
+  viewsByPage: [],
+  deviceShares: [],
+  monthlyPlanSelections: [],
+  monthlyPlanActivations: [],
+};
 
 describe("AdminDashboard", () => {
   beforeEach(async () => {
@@ -142,7 +148,11 @@ describe("AdminDashboard", () => {
       async (input) =>
         new Response(
           JSON.stringify(
-            String(input).includes("contact-messages") ? contacts : dashboard,
+            String(input).includes("anonymous-analytics")
+              ? anonymousAnalytics
+              : String(input).includes("contact-messages")
+                ? contacts
+                : dashboard,
           ),
           {
             status: 200,
@@ -192,6 +202,51 @@ describe("AdminDashboard", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows grouped anonymous metrics without claiming a person-level conversion", async () => {
+    const { authenticatedFetch } =
+      await import("../../infrastructure/auth/session");
+    const metrics = {
+      viewsByPage: [{ page: "precios", count: 25 }],
+      deviceShares: [
+        { device: "desktop", percentage: 60 },
+        { device: "mobile", percentage: 40 },
+      ],
+      monthlyPlanSelections: [
+        { month: "2026-11", plan: "ILUMINADO", count: 12 },
+      ],
+      monthlyPlanActivations: [
+        { month: "2026-11", plan: "ILUMINADO", count: 10 },
+      ],
+    };
+    vi.mocked(authenticatedFetch).mockImplementation(async (input) => {
+      const path = String(input);
+      const body = path.includes("anonymous-analytics")
+        ? metrics
+        : path.includes("contact-messages")
+          ? contacts
+          : dashboard;
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    const user = userEvent.setup();
+    render(<AdminDashboard />);
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+    await user.click(screen.getByRole("tab", { name: "Analítica anónima" }));
+    expect(
+      screen.getByRole("heading", {
+        name: "Páginas públicas más vistas · últimos 30 días cerrados",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("Móvil · estrecha")).toBeVisible();
+    expect(screen.getByText("40 %")).toBeVisible();
+    expect(
+      screen.getByText(/no se enlaza una vista con una selección/i),
+    ).toBeVisible();
+    expect(screen.getByText("12")).toBeVisible();
+  });
+
   it("converts Jappy's weekly and accumulated AI costs to euros", async () => {
     render(<AdminDashboard />);
     await screen.findByRole("heading", { name: "Hola, Jappy." });
@@ -237,9 +292,11 @@ describe("AdminDashboard", () => {
       async (input) =>
         new Response(
           JSON.stringify(
-            String(input).includes("contact-messages")
-              ? contacts
-              : emptyMetrics,
+            String(input).includes("anonymous-analytics")
+              ? anonymousAnalytics
+              : String(input).includes("contact-messages")
+                ? contacts
+                : emptyMetrics,
           ),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
@@ -330,9 +387,11 @@ describe("AdminDashboard", () => {
       async (input) =>
         new Response(
           JSON.stringify(
-            String(input).includes("contact-messages")
-              ? contacts
-              : positiveBalance,
+            String(input).includes("anonymous-analytics")
+              ? anonymousAnalytics
+              : String(input).includes("contact-messages")
+                ? contacts
+                : positiveBalance,
           ),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
@@ -370,9 +429,11 @@ describe("AdminDashboard", () => {
       async (input) =>
         new Response(
           JSON.stringify(
-            String(input).includes("contact-messages")
-              ? contacts
-              : twoMonthBalance,
+            String(input).includes("anonymous-analytics")
+              ? anonymousAnalytics
+              : String(input).includes("contact-messages")
+                ? contacts
+                : twoMonthBalance,
           ),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
@@ -403,7 +464,11 @@ describe("AdminDashboard", () => {
       async (input) =>
         new Response(
           JSON.stringify(
-            String(input).includes("contact-messages") ? contacts : noSamples,
+            String(input).includes("anonymous-analytics")
+              ? anonymousAnalytics
+              : String(input).includes("contact-messages")
+                ? contacts
+                : noSamples,
           ),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
@@ -433,7 +498,11 @@ describe("AdminDashboard", () => {
       }
       return new Response(
         JSON.stringify(
-          String(input).includes("contact-messages") ? contacts : dashboard,
+          String(input).includes("anonymous-analytics")
+            ? anonymousAnalytics
+            : String(input).includes("contact-messages")
+              ? contacts
+              : dashboard,
         ),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
@@ -565,9 +634,11 @@ describe("AdminDashboard", () => {
       screen.getByRole("tab", { name: "Benchmark de IA" }),
     ).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{End}");
-    expect(screen.getByRole("tab", { name: SECURITY_TAB_LABEL })).toHaveFocus();
+    expect(
+      screen.getByRole("tab", { name: "Analítica anónima" }),
+    ).toHaveFocus();
     await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("tab", { name: "Telemetría de IA" })).toHaveFocus();
+    expect(screen.getByRole("tab", { name: SECURITY_TAB_LABEL })).toHaveFocus();
   });
 
   it("shows a generic failure when an admin endpoint rejects the request", async () => {
@@ -707,9 +778,11 @@ describe("AdminDashboard", () => {
       async (input) =>
         new Response(
           JSON.stringify(
-            String(input).includes("contact-messages")
-              ? contacts
-              : invalidDashboard,
+            String(input).includes("anonymous-analytics")
+              ? anonymousAnalytics
+              : String(input).includes("contact-messages")
+                ? contacts
+                : invalidDashboard,
           ),
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),

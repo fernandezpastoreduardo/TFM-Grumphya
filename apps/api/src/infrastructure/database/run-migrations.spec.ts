@@ -29,7 +29,7 @@ describe("controlled database migrations", () => {
       query.mock.calls.filter(([sql]) =>
         sql.startsWith("SELECT version FROM schema_migrations"),
       ),
-    ).toHaveLength(36);
+    ).toHaveLength(37);
     expect(query).toHaveBeenCalledWith("COMMIT");
     expect(query).not.toHaveBeenCalledWith("ROLLBACK");
     expect(client.release).toHaveBeenCalledOnce();
@@ -77,6 +77,33 @@ describe("controlled database migrations", () => {
     expect(query).toHaveBeenCalledWith(
       "INSERT INTO schema_migrations(version) VALUES($1)",
       ["036_redact_application_error_context"],
+    );
+  });
+
+  it("creates only dimension counters for anonymous analytics", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes(
+        "CREATE TABLE IF NOT EXISTS anonymous_analytics_daily",
+      ),
+    )?.[0];
+    expect(migrationSql).toContain("metric_date date NOT NULL");
+    expect(migrationSql).toContain("event_count bigint NOT NULL");
+    expect(migrationSql).not.toMatch(
+      /user_id|ip_address|session|cookie|event_id/i,
+    );
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["037_anonymous_analytics"],
     );
   });
 

@@ -49,6 +49,13 @@ describe("DataRetentionService", () => {
       )?.[0];
     expect(applicationErrorCleanup).toContain("interval '30 days'");
     expect(applicationErrorCleanup).toContain("LIMIT 500");
+    const anonymousAnalyticsCleanup = vi
+      .mocked(pool.query)
+      .mock.calls.find(([sql]) =>
+        String(sql).includes("DELETE FROM anonymous_analytics_daily"),
+      )?.[0];
+    expect(anonymousAnalyticsCleanup).toContain("interval '13 months'");
+    expect(anonymousAnalyticsCleanup).toContain("LIMIT 500");
 
     await service.onApplicationShutdown();
 

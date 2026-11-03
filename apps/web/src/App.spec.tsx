@@ -11,6 +11,13 @@ const LOCATION_DESCRIPTOR = Object.getOwnPropertyDescriptor(window, "location");
 function getAdminRouteResponse(path: string): unknown {
   if (path.includes("/api/account/profile"))
     return { user: { role: "admin" }, plans: [] };
+  if (path.includes("anonymous-analytics"))
+    return {
+      viewsByPage: [],
+      deviceShares: [],
+      monthlyPlanSelections: [],
+      monthlyPlanActivations: [],
+    };
   if (path.includes("contact-messages")) return { messages: [] };
   return {
     revenue: { weeklyEur: 0, totalEur: 0 },

@@ -22,7 +22,7 @@ export function PrivacyPolicy() {
           comparten y durante cuánto tiempo los conservamos.
         </p>
         <p className="privacy-policy-version">
-          Versión 4 · 26 de octubre de 2026
+          Versión 5 · 3 de noviembre de 2026
         </p>
       </header>
 
@@ -322,15 +322,29 @@ export function PrivacyPolicy() {
           pestañas.
         </p>
         <p>
-          Según el responsable, no se utilizan cookies de terceros ni analítica.
-          El código revisado usa cookies propias y almacenamiento local del
-          navegador. El botón «Entendido» registra únicamente que se ha cerrado
-          el aviso informativo; no solicita consentimiento para otros fines.{" "}
-          Estas tecnologías se utilizan para prestar funciones solicitadas,
-          mantener la sesión y recordar preferencias; el aviso informativo no
-          sustituye a un consentimiento cuando la normativa lo exige. La
-          presencia de una cookie en el código no determina por sí sola si está
-          exenta de consentimiento.
+          No se utilizan cookies de terceros ni servicios de analítica externos.
+          En las páginas públicas, Grumphya envía al servidor recuentos propios
+          de vistas por página y tamaño aproximado de pantalla, además de clics
+          para elegir plan. Para las vistas y los clics solo se guardan sumas
+          por día y categoría; la aplicación no consulta ni conserva IP, cuenta,
+          cookie, sesión, agente de navegador, dirección completa ni texto
+          enviado para esta finalidad. Una recarga cuenta otra vista, por lo que
+          estas cifras no identifican personas ni representan visitas únicas.
+          Las páginas con menos de diez vistas se agrupan y solo se muestran
+          como «Otras secciones» si juntas llegan a diez; el reparto de pantalla
+          solo aparece cuando ambas categorías llegan a diez y se redondea a
+          saltos de cinco puntos. Los agregados se eliminan tras trece meses.
+          Las activaciones simuladas se muestran como totales mensuales por
+          plan, sin enlazarlas con las vistas o los clics. El botón «Entendido»
+          registra únicamente que se ha cerrado el aviso informativo; no
+          solicita consentimiento para otros fines. Como en cualquier conexión
+          web, el alojamiento enruta metadatos técnicos de red; estamos
+          verificando sus registros y plazos efectivos para producción. Estas
+          tecnologías se utilizan para prestar funciones solicitadas, mantener
+          la sesión y recordar preferencias; el aviso informativo no sustituye a
+          un consentimiento cuando la normativa lo exige. La presencia de una
+          cookie en el código no determina por sí sola si está exenta de
+          consentimiento.
         </p>
       </section>
 
