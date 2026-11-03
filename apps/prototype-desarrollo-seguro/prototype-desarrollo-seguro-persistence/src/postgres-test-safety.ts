@@ -1,7 +1,7 @@
 export const POSTGRES_TEST_OPT_IN = "DS_TEST_POSTGRES_ISOLATED";
 export const POSTGRES_TEST_OPT_IN_VALUE = "1";
 
-const SAFE_DATABASE_PREFIX = "development_security_test";
+export const SAFE_POSTGRES_TEST_DATABASE_PREFIX = "development_security_test_";
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
 
 export function assertSafePostgresTestTarget(
@@ -37,7 +37,7 @@ export function assertSafePostgresTestTarget(
   }
 
   const databaseName = decodeURIComponent(parsedUrl.pathname.slice(1));
-  if (!databaseName.startsWith(SAFE_DATABASE_PREFIX)) {
+  if (!databaseName.startsWith(SAFE_POSTGRES_TEST_DATABASE_PREFIX)) {
     throw new Error("DS_TEST_DATABASE_URL_must_target_isolated_database");
   }
 

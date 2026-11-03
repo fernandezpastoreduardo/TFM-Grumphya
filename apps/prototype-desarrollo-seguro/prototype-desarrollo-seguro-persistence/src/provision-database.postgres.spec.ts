@@ -135,6 +135,7 @@ describePostgres.sequential(
         migratorPassword: MIGRATOR_PASSWORD,
         apiPassword: API_PASSWORD,
         workerPassword: WORKER_PASSWORD,
+        isolatedTestOptIn: POSTGRES_TEST_OPT_IN_VALUE_FROM_ENV,
       };
       await provisionDevelopmentSecurityDatabase(settings);
     });
@@ -345,6 +346,7 @@ describePostgres.sequential(
         migratorPassword: MIGRATOR_PASSWORD,
         apiPassword: API_PASSWORD,
         workerPassword: WORKER_PASSWORD,
+        isolatedTestOptIn: POSTGRES_TEST_OPT_IN_VALUE_FROM_ENV,
       });
       const result = await targetAdminPool?.query(
         "SELECT count(*)::integer AS migration_count FROM public.ds_schema_migrations",

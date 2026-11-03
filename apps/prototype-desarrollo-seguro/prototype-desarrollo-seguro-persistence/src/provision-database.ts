@@ -1,8 +1,12 @@
 import { Pool } from "pg";
 import { pathToFileURL } from "node:url";
 import { runDevelopmentSecurityMigrations } from "./run-migrations.js";
+import {
+  assertSafePostgresTestTarget,
+  SAFE_POSTGRES_TEST_DATABASE_PREFIX,
+} from "./postgres-test-safety.js";
 
-const DEFAULT_DATABASE_NAME = "development_seguro";
+const DEFAULT_DATABASE_NAME = `${SAFE_POSTGRES_TEST_DATABASE_PREFIX}local`;
 const DATABASE_NAME_PATTERN = /^[a-z][a-z0-9_]{0,62}$/u;
 const MANAGED_ROLE_COMMENT = "development_security: managed role v1";
 const REQUIRED_SETTINGS = [
@@ -11,6 +15,9 @@ const REQUIRED_SETTINGS = [
   "DS_API_PASSWORD",
   "DS_WORKER_PASSWORD",
 ] as const;
+const INVALID_SETTINGS = "DS_PROVISION_SETTINGS_INVALID";
+const UNSAFE_DATABASE_NAME =
+  "DS_PROVISION_DATABASE_NAME_must_target_isolated_test_database";
 
 export type ProvisioningSettings = {
   adminUrl: string;
@@ -18,6 +25,7 @@ export type ProvisioningSettings = {
   migratorPassword: string;
   apiPassword: string;
   workerPassword: string;
+  isolatedTestOptIn: string | undefined;
 };
 
 async function main(): Promise<void> {
@@ -27,10 +35,12 @@ async function main(): Promise<void> {
 }
 
 export async function provisionDevelopmentSecurityDatabase(
-  settings: ProvisioningSettings,
+  rawSettings: unknown,
 ): Promise<void> {
+  const settings = assertSafeProvisioningTarget(rawSettings);
   const adminPool = new Pool({ connectionString: settings.adminUrl, max: 1 });
   try {
+    await assertExpectedReadRoleMembers(adminPool);
     await ensureRole(adminPool, "ds_read", null);
     await ensureRole(adminPool, "ds_migrator", settings.migratorPassword);
     await ensureRole(adminPool, "ds_api", settings.apiPassword);
@@ -69,6 +79,58 @@ export async function provisionDevelopmentSecurityDatabase(
   }
 }
 
+export function assertSafeProvisioningTarget(
+  value: unknown,
+): ProvisioningSettings {
+  if (!isRecord(value)) throw new Error(INVALID_SETTINGS);
+  const {
+    adminUrl,
+    databaseName,
+    migratorPassword,
+    apiPassword,
+    workerPassword,
+  } = value;
+  if (
+    !isNonEmptyString(adminUrl) ||
+    !isNonEmptyString(databaseName) ||
+    !isNonEmptyString(migratorPassword) ||
+    !isNonEmptyString(apiPassword) ||
+    !isNonEmptyString(workerPassword) ||
+    (value.isolatedTestOptIn !== undefined &&
+      typeof value.isolatedTestOptIn !== "string")
+  ) {
+    throw new Error(INVALID_SETTINGS);
+  }
+  if (!DATABASE_NAME_PATTERN.test(databaseName)) {
+    throw new Error("development_security_database_name_invalid");
+  }
+  if (!databaseName.startsWith(SAFE_POSTGRES_TEST_DATABASE_PREFIX)) {
+    throw new Error(UNSAFE_DATABASE_NAME);
+  }
+  const parsedAdminUrl = assertSafePostgresTestTarget(
+    adminUrl,
+    value.isolatedTestOptIn,
+  );
+  const adminDatabaseName = decodeURIComponent(
+    parsedAdminUrl.pathname.slice(1),
+  );
+  if (
+    !DATABASE_NAME_PATTERN.test(adminDatabaseName) ||
+    !adminDatabaseName.startsWith(SAFE_POSTGRES_TEST_DATABASE_PREFIX) ||
+    parsedAdminUrl.pathname !== `/${adminDatabaseName}`
+  ) {
+    throw new Error("development_security_admin_database_name_invalid");
+  }
+  return {
+    adminUrl,
+    databaseName,
+    migratorPassword,
+    apiPassword,
+    workerPassword,
+    isolatedTestOptIn: value.isolatedTestOptIn,
+  };
+}
+
 function readSettings(environment: NodeJS.ProcessEnv): ProvisioningSettings {
   for (const name of REQUIRED_SETTINGS) {
     if (!environment[name])
@@ -76,17 +138,22 @@ function readSettings(environment: NodeJS.ProcessEnv): ProvisioningSettings {
   }
 
   const databaseName = environment.DS_DATABASE_NAME ?? DEFAULT_DATABASE_NAME;
-  if (!DATABASE_NAME_PATTERN.test(databaseName)) {
-    throw new Error("development_security_database_name_invalid");
-  }
-
-  return {
-    adminUrl: environment.DS_PROVISION_ADMIN_URL ?? "",
+  return assertSafeProvisioningTarget({
+    adminUrl: environment.DS_PROVISION_ADMIN_URL,
     databaseName,
-    migratorPassword: environment.DS_MIGRATOR_PASSWORD ?? "",
-    apiPassword: environment.DS_API_PASSWORD ?? "",
-    workerPassword: environment.DS_WORKER_PASSWORD ?? "",
-  };
+    migratorPassword: environment.DS_MIGRATOR_PASSWORD,
+    apiPassword: environment.DS_API_PASSWORD,
+    workerPassword: environment.DS_WORKER_PASSWORD,
+    isolatedTestOptIn: environment.DS_TEST_POSTGRES_ISOLATED,
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
 }
 
 async function ensureRole(
@@ -150,8 +217,11 @@ async function assertExpectedRoleMemberships(
   roleName: "ds_read" | "ds_migrator" | "ds_api" | "ds_worker",
 ): Promise<void> {
   const expected = roleName === "ds_api" ? ["ds_read"] : [];
-  const memberships = await pool.query<{ granted_role: string }>(
-    `SELECT granted.rolname AS granted_role
+  const memberships = await pool.query<{
+    granted_role: string;
+    admin_option: boolean;
+  }>(
+    `SELECT granted.rolname AS granted_role, membership.admin_option
      FROM pg_auth_members AS membership
      JOIN pg_roles AS granted ON granted.oid = membership.roleid
      JOIN pg_roles AS member ON member.oid = membership.member
@@ -163,7 +233,8 @@ async function assertExpectedRoleMemberships(
     memberships.rows.length > 0 &&
     (memberships.rows.length !== expected.length ||
       memberships.rows.some(
-        (row, index) => row.granted_role !== expected[index],
+        (row, index) =>
+          row.granted_role !== expected[index] || row.admin_option,
       ))
   ) {
     if (
@@ -174,6 +245,28 @@ async function assertExpectedRoleMemberships(
       await pool.query("REVOKE ds_read FROM ds_worker");
       return;
     }
+    throw new Error("development_security_role_membership_mismatch");
+  }
+}
+
+async function assertExpectedReadRoleMembers(pool: Pool): Promise<void> {
+  const memberships = await pool.query<{
+    member_role: string;
+    admin_option: boolean;
+  }>(
+    `SELECT member.rolname AS member_role, membership.admin_option
+     FROM pg_auth_members AS membership
+     JOIN pg_roles AS granted ON granted.oid = membership.roleid
+     JOIN pg_roles AS member ON member.oid = membership.member
+     WHERE granted.rolname = 'ds_read'
+     ORDER BY member.rolname`,
+  );
+  if (
+    memberships.rows.some(
+      ({ member_role, admin_option }) =>
+        member_role !== "ds_api" || admin_option,
+    )
+  ) {
     throw new Error("development_security_role_membership_mismatch");
   }
 }
