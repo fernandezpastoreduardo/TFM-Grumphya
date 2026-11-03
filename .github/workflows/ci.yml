@@ -219,6 +219,8 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Test production image contract
         run: node scripts/test-production-image.mjs grumphya-api:${{ github.sha }}
+      - name: Run Desarrollo Seguro production image smoke
+        run: bash scripts/test-development-security-production-smoke.sh development-security-production:${{ github.sha }}
       - name: Scan production images sequentially
         shell: bash
         env:
