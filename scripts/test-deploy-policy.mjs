@@ -366,6 +366,7 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
     ["WEB_IMAGE", "grumphya-web"],
     ["DATABASE_IMAGE", "grumphya-database"],
     ["PROXY_IMAGE", "grumphya-proxy"],
+    ["DEVELOPMENT_SECURITY_IMAGE", "development-security-production"],
   ]) {
     assert.ok(
       scanStep.includes(`${envName}: ${imageName}:${shaTag}`),
@@ -384,8 +385,8 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
   assert.doesNotMatch(scanStep, /cp -R|pids=\(\)|wait_for_scan_batch/);
   assert.match(
     scanStep,
-    /for image in "\$API_IMAGE" "\$WEB_IMAGE" "\$DATABASE_IMAGE" "\$PROXY_IMAGE"; do[\s\S]*?done/,
-    "all four production images must be included in the scan loop",
+    /for image in "\$API_IMAGE" "\$WEB_IMAGE" "\$DATABASE_IMAGE" "\$PROXY_IMAGE" "\$DEVELOPMENT_SECURITY_IMAGE"; do[\s\S]*?done/,
+    "all five production images must be included in the scan loop",
   );
   assert.doesNotMatch(
     scanStep,
@@ -404,7 +405,7 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
   );
   assert.match(
     scanStep,
-    /done\s+for image in "\$API_IMAGE"[\s\S]*?cat "\$scan_dir\/\$\{image%%:\*\}\.log"[\s\S]*?exit "\$scan_status"/,
+    /done\s+for image in "\$API_IMAGE"[\s\S]*?"\$DEVELOPMENT_SECURITY_IMAGE"[\s\S]*?cat "\$scan_dir\/\$\{image%%:\*\}\.log"[\s\S]*?exit "\$scan_status"/,
     "every image report must be printed and any failed scan must fail the step",
   );
 }
@@ -447,6 +448,11 @@ assert.match(
   /if \(\( build_status != 0 \)\); then[\s\S]*?kill "\$database_pid"[\s\S]*?exit "\$build_status"/,
   "a failed image build must stop the concurrent database download and fail CI",
 );
+assert.match(
+  trivyDatabaseBuildStep,
+  /docker buildx build[\s\S]*?--pull[\s\S]*?--load[\s\S]*?--target development-security-production[\s\S]*?--tag "\$DEVELOPMENT_SECURITY_IMAGE"[\s\S]*?--cache-from type=gha,scope=development-security-api[\s\S]*?--cache-to type=gha,scope=development-security-api[\s\S]*?--file Dockerfile \./,
+  "the read-only Desarrollo Seguro API must build as an independently cached production image",
+);
 assert.doesNotMatch(
   workflow,
   /--download-java-db-only/,
@@ -476,6 +482,7 @@ for (const imageName of [
   "grumphya-web",
   "grumphya-database",
   "grumphya-proxy",
+  "development-security-production",
 ]) {
   assert.ok(
     saveImagesStep.includes(`${imageName}:${shaTag}`),

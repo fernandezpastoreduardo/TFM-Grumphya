@@ -172,6 +172,7 @@ jobs:
           fi
           docker buildx build \
             --builder "$BUILDX_BUILDER" \
+            --pull \
             --load \
             --target development-security-production \
             --tag "$DEVELOPMENT_SECURITY_IMAGE" \
