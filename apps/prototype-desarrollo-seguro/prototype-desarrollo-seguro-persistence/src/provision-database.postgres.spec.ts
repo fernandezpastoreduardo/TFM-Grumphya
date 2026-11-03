@@ -282,7 +282,7 @@ describePostgres.sequential(
       const result = await targetAdminPool?.query(
         "SELECT count(*)::integer AS migration_count FROM public.ds_schema_migrations",
       );
-      expect(result?.rows[0].migration_count).toBe(5);
+      expect(result?.rows[0].migration_count).toBe(6);
     });
 
     it("lets the worker complete through the function but not insert reports directly", async () => {
@@ -459,6 +459,145 @@ describePostgres.sequential(
           [report.id],
         );
         expect(storedCheckCount.rows[0]?.count).toBe("24");
+      } finally {
+        await client.query("RESET ROLE");
+        client.release();
+      }
+    });
+
+    it("requires HTTPS evidence before controls-v3 can pass the header control", async () => {
+      const job = await createRunningJob(
+        "v3-https-headers",
+        false,
+        "controls-v3",
+        "grumphya.com",
+      );
+      const invalidJob = await createRunningJob(
+        "v3-http-headers",
+        false,
+        "controls-v3",
+        "http.grumphya.com",
+      );
+      const incompleteJob = await createRunningJob(
+        "v3-missing-scheme-headers",
+        false,
+        "controls-v3",
+        "missing-scheme.grumphya.com",
+      );
+      const client = await targetAdminPool!.connect();
+      try {
+        await client.query("SET ROLE ds_worker");
+        const checks = makeControlsV3Checks("pass", ["/"]);
+        const report = await callCompleteScan(client, job, "pass", checks, [
+          "/",
+        ]);
+        const headerCheck = await client.query<{
+          status: string;
+          evidence_json: Record<string, unknown>;
+        }>(
+          `SELECT status, evidence_json
+             FROM ds_check_results
+            WHERE run_id = $1 AND control_id = 'DS-HDR-01'`,
+          [report.id],
+        );
+        expect(headerCheck.rows[0]).toEqual({
+          status: "pass",
+          evidence_json: expect.objectContaining({ finalScheme: "https" }),
+        });
+
+        const insecureChecks = makeControlsV3Checks("pass", ["/"]).map(
+          (check) =>
+            check.controlId === "DS-HDR-01"
+              ? {
+                  ...check,
+                  evidence: { ...check.evidence, finalScheme: "http" },
+                }
+              : check,
+        );
+        await expect(
+          callCompleteScan(client, invalidJob, "pass", insecureChecks, ["/"]),
+        ).rejects.toThrow("scan_headers_require_https");
+
+        const missingSchemeChecks = makeControlsV3Checks("pass", ["/"]).map(
+          (check) => {
+            if (check.controlId !== "DS-HDR-01") return check;
+            const evidence = Object.fromEntries(
+              Object.entries(check.evidence).filter(
+                ([key]) => key !== "finalScheme",
+              ),
+            );
+            return { ...check, evidence };
+          },
+        );
+        await expect(
+          callCompleteScan(client, incompleteJob, "pass", missingSchemeChecks, [
+            "/",
+          ]),
+        ).rejects.toThrow("scan_headers_require_https");
+      } finally {
+        await client.query("RESET ROLE");
+        client.release();
+      }
+    });
+
+    it.each([
+      { scope: ["/"], expectedCount: 10 },
+      { scope: ["/", "/precios"], expectedCount: 17 },
+      { scope: COMPLETE_GRUMPHYA_SCOPE, expectedCount: 24 },
+    ])(
+      "enforces controls-v3 coverage of $expectedCount checks in PostgreSQL",
+      async ({ scope, expectedCount }) => {
+        const job = await createRunningJob(
+          `v3-coverage-${expectedCount}`,
+          false,
+          "controls-v3",
+          "grumphya.com",
+        );
+        const client = await targetAdminPool!.connect();
+        try {
+          await client.query("SET ROLE ds_worker");
+          const report = await callCompleteScan(
+            client,
+            job,
+            "inconclusive",
+            makeControlsV3Checks("unknown", scope),
+            scope,
+          );
+          const storedCheckCount = await client.query<{ count: string }>(
+            "SELECT count(*)::text AS count FROM ds_check_results WHERE run_id = $1",
+            [report.id],
+          );
+          expect(storedCheckCount.rows[0]?.count).toBe(String(expectedCount));
+        } finally {
+          await client.query("RESET ROLE");
+          client.release();
+        }
+      },
+    );
+
+    it("does not accept controls-v3 HTTPS evidence for controls-v2", async () => {
+      const job = await createRunningJob(
+        "v2-final-scheme-not-allowlisted",
+        false,
+        "controls-v2",
+      );
+      const checks = makeControlsV2Checks("pass", ["/"]).map((check) =>
+        check.controlId === "DS-HDR-01"
+          ? {
+              ...check,
+              evidence: {
+                ...check.evidence,
+                finalScheme: "https",
+              },
+            }
+          : check,
+      );
+      const client = await targetAdminPool!.connect();
+      try {
+        await client.query("SET ROLE ds_worker");
+        await expect(
+          callCompleteScan(client, job, "pass", checks, ["/"]),
+        ).rejects.toThrow("scan_evidence_not_allowlisted");
       } finally {
         await client.query("RESET ROLE");
         client.release();
@@ -733,6 +872,21 @@ describePostgres.sequential(
           ),
         ),
       ];
+    }
+
+    function makeControlsV3Checks(
+      status: "pass" | "unknown",
+      scope: readonly string[] = ["/"],
+    ): ScanCheck[] {
+      return makeControlsV2Checks(status, scope).map((check) => {
+        if (check.controlId !== "DS-HDR-01") return check;
+        return {
+          ...check,
+          limitation:
+            "Resultado limitado a las rutas públicas declaradas del perfil controls-v3.",
+          evidence: { ...check.evidence, finalScheme: "https" },
+        };
+      });
     }
 
     function passingEvidence(controlId: string): Record<string, unknown> {

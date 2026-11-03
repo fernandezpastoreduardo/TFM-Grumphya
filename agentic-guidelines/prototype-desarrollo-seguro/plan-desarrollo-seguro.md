@@ -1,6 +1,6 @@
 # Desarrollo Seguro: plan de producto y arquitectura
 
-**Fecha:** 2 de noviembre de 2026. **Estado:** la fase técnica 1 y el endurecimiento local de ingesta están completados y verificados: tras añadir `controls-v2` y migration 005, PostgreSQL aislado pasó 52/52, 0 omitidas. La etapa de executor/red sigue bloqueada por DNS/IP pinning, firewall/egress y medición de capacidad del VPS. Hay health API y processor con puerto executor, pero faltan probe/conector, executor de red y endpoints de consulta. No se ha adquirido desarrolloseguro.com, no se han ejecutado scans reales ni se ha desplegado la nueva aplicación. El estado por componente y las puertas abiertas están en [components.md](components.md) y [operations.md](operations.md).
+**Fecha:** 3 de noviembre de 2026. **Estado:** la fase técnica local, incluido el perfil aditivo `controls-v3`, está implementada y validada: migration 006 exige `finalScheme=https` antes de permitir `pass` para DS-HDR-01, preservando los criterios históricos de v1/v2. PostgreSQL aislado pasó 62/62, 0 omitidas. El executor/red sigue bloqueado por DNS/IP pinning, firewall/egress y medición de capacidad del VPS. Hay health API, processor con puerto executor y helpers locales, pero faltan probe/conector, executor de red y endpoints de consulta. No se han ejecutado scans reales ni se ha desplegado la nueva aplicación; la migración no se ha aplicado a producción. El estado por componente y las puertas abiertas están en [components.md](components.md) y [operations.md](operations.md).
 
 ## 1. Decisión de alcance
 

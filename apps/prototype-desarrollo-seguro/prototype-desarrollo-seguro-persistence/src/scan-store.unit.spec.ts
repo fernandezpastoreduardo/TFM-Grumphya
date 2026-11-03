@@ -122,7 +122,7 @@ describe("PostgresScanStore unit behavior", () => {
     const store = new PostgresScanStore(makePool({ query }));
 
     await expect(
-      store.completeScan({ ...VALID_REPORT, profileVersion: "controls-v3" }),
+      store.completeScan({ ...VALID_REPORT, profileVersion: "controls-v4" }),
     ).rejects.toThrow("scan_profile_not_allowlisted");
     expect(query).not.toHaveBeenCalled();
   });
@@ -159,6 +159,38 @@ describe("PostgresScanStore unit behavior", () => {
           verdict: "inconclusive",
           scope,
           checks: makeControlsV2Checks(scope),
+        }),
+      ).resolves.toBe("run-id");
+
+      const persistedChecks = JSON.parse(
+        query.mock.calls[0][1][7] as string,
+      ) as unknown[];
+      expect(persistedChecks).toHaveLength(expectedCount);
+    },
+  );
+
+  it.each([
+    { scope: ["/"], expectedCount: 10 },
+    { scope: ["/", "/precios"], expectedCount: 17 },
+    {
+      scope: ["/", "/precios", "/acreditaciones/DS-GRUMPHYA-2026-001"],
+      expectedCount: 24,
+    },
+  ])(
+    "submits exact controls-v3 coverage for $expectedCount checks",
+    async ({ scope, expectedCount }) => {
+      const query = vi.fn().mockResolvedValue({
+        rows: [{ ds_complete_scan: "run-id" }],
+      });
+      const store = new PostgresScanStore(makePool({ query }));
+
+      await expect(
+        store.completeScan({
+          ...VALID_REPORT,
+          profileVersion: "controls-v3",
+          verdict: "inconclusive",
+          scope,
+          checks: makeControlsV3Checks(scope),
         }),
       ).resolves.toBe("run-id");
 
@@ -385,4 +417,14 @@ function makeControlsV2Checks(scope: readonly string[]) {
       })),
     ),
   ];
+}
+
+function makeControlsV3Checks(scope: readonly string[]) {
+  return makeControlsV2Checks(scope).map((check) => {
+    if (check.controlId !== "DS-HDR-01") return check;
+    return {
+      ...check,
+      evidence: { finalScheme: "https" },
+    };
+  });
 }

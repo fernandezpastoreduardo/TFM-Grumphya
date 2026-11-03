@@ -78,10 +78,107 @@ describe("sanitizeScanObservations", () => {
     },
   );
 
-  it.each([405, 501])(
-    "treats unsupported HEAD status %s as unknown in controls-v2",
-    (statusCode) => {
-      const checks = makeControlsV2Checks(["/"]).map((check) => {
+  it("accepts controls-v3 complete route coverage with HTTPS header evidence", () => {
+    const result = sanitizeScanObservations(
+      MONITORED_HOSTNAME,
+      "controls-v3",
+      ALLOWED_PATHS,
+      makeControlsV3Checks(ALLOWED_PATHS),
+    );
+
+    expect(result.checks).toHaveLength(24);
+    expect(
+      result.checks
+        .filter((check) => check.controlId === "DS-HDR-01")
+        .every((check) => check.evidence.finalScheme === "https"),
+    ).toBe(true);
+  });
+
+  it("does not add controls-v3 HTTPS evidence to earlier profiles", () => {
+    const checks = makeControlsV2Checks(["/"]).map((check) => {
+      if (check.controlId !== "DS-HDR-01") return check;
+      return {
+        ...check,
+        status: "pass",
+        evidence: {
+          finalScheme: "https",
+          hsts: true,
+          nosniff: true,
+          frameProtection: true,
+          referrerPolicy: true,
+          csp: true,
+        },
+      };
+    });
+
+    const result = sanitizeScanObservations(
+      MONITORED_HOSTNAME,
+      NEXT_PROFILE_VERSION,
+      ["/"],
+      checks,
+    );
+    const headerCheck = result.checks.find(
+      (check) => check.controlId === "DS-HDR-01",
+    );
+
+    expect(headerCheck?.status).toBe("pass");
+    expect(headerCheck?.evidence).toEqual({
+      hsts: true,
+      nosniff: true,
+      frameProtection: true,
+      referrerPolicy: true,
+      csp: true,
+    });
+  });
+
+  it.each([
+    { finalScheme: "https", expectedStatus: "pass" },
+    { finalScheme: "http", expectedStatus: "unknown" },
+    { finalScheme: undefined, expectedStatus: "unknown" },
+  ])(
+    "only accepts a controls-v3 header pass for HTTPS responses ($finalScheme)",
+    ({ finalScheme, expectedStatus }) => {
+      const checks = makeControlsV3Checks(["/"]).map((check) => {
+        if (check.controlId !== "DS-HDR-01") return check;
+        return {
+          ...check,
+          status: "pass",
+          evidence: {
+            ...(finalScheme ? { finalScheme } : {}),
+            hsts: true,
+            nosniff: true,
+            frameProtection: true,
+            referrerPolicy: true,
+            csp: true,
+          },
+        };
+      });
+      const result = sanitizeScanObservations(
+        MONITORED_HOSTNAME,
+        "controls-v3",
+        ["/"],
+        checks,
+      );
+
+      expect(
+        result.checks.find((check) => check.controlId === "DS-HDR-01")?.status,
+      ).toBe(expectedStatus);
+    },
+  );
+
+  it.each([
+    { profileVersion: "controls-v2", statusCode: 405 },
+    { profileVersion: "controls-v2", statusCode: 501 },
+    { profileVersion: "controls-v3", statusCode: 405 },
+    { profileVersion: "controls-v3", statusCode: 501 },
+  ])(
+    "treats unsupported HEAD status $statusCode as unknown in $profileVersion",
+    ({ profileVersion, statusCode }) => {
+      const makeChecks =
+        profileVersion === "controls-v3"
+          ? makeControlsV3Checks
+          : makeControlsV2Checks;
+      const checks = makeChecks(["/"]).map((check) => {
         if (check.controlId !== "DS-HTTP-01" || check.method !== "HEAD") {
           return check;
         }
@@ -97,7 +194,7 @@ describe("sanitizeScanObservations", () => {
       });
       const result = sanitizeScanObservations(
         MONITORED_HOSTNAME,
-        NEXT_PROFILE_VERSION,
+        profileVersion,
         ["/"],
         checks,
       );
@@ -192,7 +289,7 @@ describe("sanitizeScanObservations", () => {
     expect(() =>
       sanitizeScanObservations(
         MONITORED_HOSTNAME,
-        "controls-v3",
+        "controls-v4",
         ALLOWED_PATHS,
         [SAFE_DNS_CHECK],
       ),
@@ -599,6 +696,13 @@ function makeControlsV2Checks(scope: readonly string[]) {
       ),
     ),
   ];
+}
+
+function makeControlsV3Checks(scope: readonly string[]) {
+  return makeControlsV2Checks(scope).map((check) => {
+    if (check.controlId !== "DS-HDR-01") return check;
+    return { ...check, evidence: { finalScheme: "https" } };
+  });
 }
 
 function makeUnknownCheck(

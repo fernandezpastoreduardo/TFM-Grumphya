@@ -2,7 +2,11 @@ import { normalizeHostname } from "./scan-policy.js";
 
 const PROFILE_VERSION_V1 = "controls-v1";
 const PROFILE_VERSION_V2 = "controls-v2";
-type ProfileVersion = typeof PROFILE_VERSION_V1 | typeof PROFILE_VERSION_V2;
+const PROFILE_VERSION_V3 = "controls-v3";
+type ProfileVersion =
+  | typeof PROFILE_VERSION_V1
+  | typeof PROFILE_VERSION_V2
+  | typeof PROFILE_VERSION_V3;
 const MAX_SCOPE_PATHS = 3;
 const MAX_CHECKS = 32;
 const MAX_EVIDENCE_COUNT = 100_000;
@@ -81,6 +85,7 @@ const CONTROLS: Readonly<Record<string, ControlContract>> = {
   "DS-HDR-01": {
     methodsByPath: pathsFor(READ_METHODS),
     evidence: {
+      finalScheme: ["http", "https"],
       hsts: "boolean",
       nosniff: "boolean",
       frameProtection: "boolean",
@@ -153,7 +158,10 @@ export function sanitizeScanObservations(
   if (controlPaths.size !== safeChecks.length) {
     throw new Error("scan_check_duplicate");
   }
-  if (profileVersion === PROFILE_VERSION_V2) {
+  if (
+    profileVersion === PROFILE_VERSION_V2 ||
+    profileVersion === PROFILE_VERSION_V3
+  ) {
     assertCompleteCoverage(safeScope, safeChecks);
   }
 
@@ -161,7 +169,11 @@ export function sanitizeScanObservations(
 }
 
 function isProfileVersion(value: unknown): value is ProfileVersion {
-  return value === PROFILE_VERSION_V1 || value === PROFILE_VERSION_V2;
+  return (
+    value === PROFILE_VERSION_V1 ||
+    value === PROFILE_VERSION_V2 ||
+    value === PROFILE_VERSION_V3
+  );
 }
 
 function assertCompleteCoverage(
@@ -247,7 +259,12 @@ function sanitizeCheck(
     throw new Error("scan_check_invalid");
   }
 
-  const evidence = sanitizeEvidence(contract, check.evidence);
+  const evidence = sanitizeEvidence(
+    contract,
+    controlId,
+    profileVersion,
+    check.evidence,
+  );
   if (
     controlId === "DS-DNS-01" &&
     ["private", "reserved"].includes(String(evidence.addressClass))
@@ -284,7 +301,8 @@ function deriveSafeStatus(
   evidence: Record<string, SafeEvidenceValue>,
 ): SanitizedScanCheck["status"] {
   if (
-    profileVersion === PROFILE_VERSION_V2 &&
+    (profileVersion === PROFILE_VERSION_V2 ||
+      profileVersion === PROFILE_VERSION_V3) &&
     controlId === "DS-HTTP-01" &&
     method === "HEAD" &&
     [405, 501].includes(Number(evidence.statusCode)) &&
@@ -293,12 +311,19 @@ function deriveSafeStatus(
   ) {
     return "unknown";
   }
+  if (
+    profileVersion === PROFILE_VERSION_V3 &&
+    controlId === "DS-HDR-01" &&
+    evidence.finalScheme !== "https"
+  ) {
+    return "unknown";
+  }
   if (submittedStatus === "not_applicable") return "unknown";
   if (submittedStatus !== "pass") {
     return submittedStatus as SanitizedScanCheck["status"];
   }
 
-  const requiredEvidence = REQUIRED_EVIDENCE[controlId];
+  const requiredEvidence = getRequiredEvidence(profileVersion, controlId);
   if (!requiredEvidence || !requiredEvidence.every((key) => key in evidence)) {
     return "unknown";
   }
@@ -330,6 +355,17 @@ const REQUIRED_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   "DS-PRIV-03": ["mixedContentCount", "insecureNavigationCount"],
   "DS-QUAL-01": ["documentStatusCode", "failedEssentialResourceCount"],
 };
+
+function getRequiredEvidence(
+  profileVersion: ProfileVersion,
+  controlId: string,
+): readonly string[] | undefined {
+  const controlEvidence = REQUIRED_EVIDENCE[controlId];
+  if (profileVersion === PROFILE_VERSION_V3 && controlId === "DS-HDR-01") {
+    return [...(controlEvidence ?? []), "finalScheme"];
+  }
+  return controlEvidence;
+}
 
 type EvidencePredicate = (
   evidence: Record<string, SafeEvidenceValue>,
@@ -395,12 +431,21 @@ const CONTROL_PASSES: Readonly<Record<string, EvidencePredicate>> = {
 
 function sanitizeEvidence(
   contract: ControlContract,
+  controlId: string,
+  profileVersion: ProfileVersion,
   evidence: unknown,
 ): Record<string, SafeEvidenceValue> {
   if (!isPlainRecord(evidence)) throw new Error("scan_evidence_invalid");
 
   const sanitized: Record<string, SafeEvidenceValue> = {};
   for (const [key, value] of Object.entries(evidence)) {
+    if (
+      key === "finalScheme" &&
+      controlId === "DS-HDR-01" &&
+      profileVersion !== PROFILE_VERSION_V3
+    ) {
+      continue;
+    }
     const rule = contract.evidence[key];
     if (!rule) continue;
     if (rule === "boolean" && typeof value === "boolean") {

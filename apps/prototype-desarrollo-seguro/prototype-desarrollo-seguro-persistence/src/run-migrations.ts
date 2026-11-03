@@ -14,6 +14,10 @@ const MIGRATIONS = [
     version: "005_controls_v2_route_coverage",
     file: "005_controls_v2_route_coverage.sql",
   },
+  {
+    version: "006_controls_v3_https_headers",
+    file: "006_controls_v3_https_headers.sql",
+  },
 ] as const;
 
 const MIGRATION_LOCK_ID = 728194032;
