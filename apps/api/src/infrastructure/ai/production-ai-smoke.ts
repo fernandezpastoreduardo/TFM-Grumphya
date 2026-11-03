@@ -1,6 +1,7 @@
 import { OpenAiRoastReplyPort } from "../../roast/openai-roast-reply.port";
 import { EvaluationProcessService } from "../../idea-evaluation/evaluation-process.service";
 import { createEvaluationProvider } from "../../idea-evaluation/evaluation-provider.factory";
+import { runEvaluationSmokeWithRetry } from "./production-ai-smoke-retry";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 const ROAST_SMOKE_MESSAGE = "Hoy he terminado mi tarea antes de la hora.";
@@ -24,7 +25,9 @@ async function verifyIdeaEvaluation(): Promise<boolean> {
   try {
     const provider = createEvaluationProvider();
     if (!provider) return false;
-    await new EvaluationProcessService(provider).evaluate(IDEA_SMOKE_INPUT);
+    await runEvaluationSmokeWithRetry(() =>
+      new EvaluationProcessService(provider).evaluate(IDEA_SMOKE_INPUT),
+    );
     return true;
   } catch {
     console.error(SMOKE_FAILURES.evaluation);

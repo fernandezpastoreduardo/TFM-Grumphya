@@ -199,6 +199,18 @@ Antes de sustituir servicios, el helper comprueba la release actual, configuraci
 
 Tras arrancar, Actions consulta la web, una ruta SPA y `/api/health` por HTTPS y comprueba que la API anuncia el mismo SHA. Si la comprobación pública falla, el workflow pide al VPS volver a Compose de la release anterior y vuelve a probar el dominio. Si el propio SSH falla durante una transferencia no se cambia la release actual; si se corta una conexión después de activarla, la verificación del workflow fuerza el rollback. La anterior se conserva en el VPS para una recuperación manual.
 
+Antes de confirmar la release, el helper ejecuta además un smoke de proveedores
+de IA dentro de la API nueva: realiza una evaluación de idea y una respuesta de
+roast usando la configuración y credenciales reales del VPS. La evaluación se
+reintenta una sola vez, con una pausa de 1 segundo, únicamente si falla con el
+diagnóstico `visible_message`; otros errores no se reintentan. Cada llamada a
+`evaluate` puede hacer también su propio reintento semántico, por lo que el
+smoke puede generar hasta cuatro completions de evaluación en total y una de
+roast. Si el smoke sigue fallando, el helper restaura la release anterior y no
+confirma la candidata. Estas llamadas pueden generar coste en el proveedor.
+Este smoke real del despliegue es distinto del smoke integrado local de Compose,
+que usa secretos ficticios y no llama a OpenAI ni envía correo.
+
 ### Migraciones y seguridad del rollback
 
 Una reversión de imágenes no revierte PostgreSQL. Para cada migración nueva, crea el archivo `apps/api/migrations/*.sql`, regístralo también en `apps/api/src/infrastructure/database/run-migrations.ts` y añade la declaración exacta `-- deployment-rollback-compatible: true`. Desde la migración numerada `029_` inclusive, el preflight estático de CI verifica que todas las migraciones numeradas empiecen con esa declaración; se ejecuta justo después del checkout y antes de configurar pnpm o instalar dependencias. `pnpm migrations:check` compara ambos inventarios y forma parte de `pnpm quality:check`; si el archivo SQL queda fuera del registro, las pruebas de PostgreSQL crearían esquemas sin el cambio de estructura requerido por el código. Usa el patrón expand/contract: primero añade elementos compatibles con las dos versiones; elimina o renombra datos/columnas solo en una release posterior cuando la versión antigua ya no sea objetivo de rollback. El helper bloquea migraciones eliminadas o editadas y rechaza operaciones SQL reconocidas como destructivas, además de exigir la declaración.
