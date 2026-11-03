@@ -1,3 +1,4 @@
+-- deployment-rollback-compatible: true
 CREATE TABLE IF NOT EXISTS anonymous_analytics_daily (
   metric_date date NOT NULL,
   event_name text NOT NULL CHECK (event_name IN ('page_view', 'plan_selection')),

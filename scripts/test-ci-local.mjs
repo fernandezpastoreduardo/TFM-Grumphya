@@ -21,16 +21,28 @@ const [
   nvmrcContent,
   workflow,
   runnerDockerfile,
+  lockfile,
 ] = await Promise.all([
   readFile(PACKAGE_PATH, "utf8"),
   readFile(NODE_VERSION_PATH, "utf8"),
   readFile(NVMRC_PATH, "utf8"),
   readFile(CI_WORKFLOW_PATH, "utf8"),
   readFile(CI_RUNNER_DOCKERFILE_PATH, "utf8"),
+  readFile("pnpm-lock.yaml", "utf8"),
 ]);
 const packageManifest = JSON.parse(packageContent);
 const nodeVersion = nodeVersionContent.trim();
 const pnpmVersion = packageManifest.packageManager.replace(/^pnpm@/, "");
+const webImporterStart = lockfile.indexOf("  apps/web:\n");
+const webImporterEnd = lockfile.indexOf("\n  apps/api:", webImporterStart);
+const webImporter = lockfile.slice(webImporterStart, webImporterEnd);
+const playwrightVersion = webImporter.match(
+  /^      '@playwright\/test':\n        specifier: [^\n]+\n        version: (\d+\.\d+\.\d+)/m,
+)?.[1];
+assert.ok(
+  playwrightVersion,
+  "lockfile must pin @playwright/test for the web app",
+);
 
 assert.equal(nvmrcContent.trim(), nodeVersion);
 assert.equal(packageManifest.engines.node, `^${nodeVersion}`);
@@ -43,6 +55,18 @@ assert.match(
 assert.match(workflow, /run: pnpm ci:verify quality/);
 assert.match(workflow, /run: pnpm ci:verify e2e/);
 assert.match(workflow, /run: pnpm ci:verify audit/);
+assert.match(
+  workflow,
+  new RegExp(
+    `image: mcr\\.microsoft\\.com/playwright:v${playwrightVersion}-noble`,
+  ),
+);
+assert.match(
+  runnerDockerfile,
+  new RegExp(
+    `ARG PLAYWRIGHT_VERSION=${playwrightVersion.replaceAll(".", "\\.")}`,
+  ),
+);
 assert.equal(packageManifest.scripts["ci:verify"], "bash scripts/ci-verify.sh");
 
 function runBashScript(scriptPath, arguments_, environment = process.env) {
@@ -176,7 +200,12 @@ try {
   );
   assert.match(recordedCommands, /--build-arg NODE_VERSION=26\.13\.0/);
   assert.match(recordedCommands, /--build-arg PNPM_VERSION=12\.5\.1/);
-  assert.match(recordedCommands, /--build-arg PLAYWRIGHT_VERSION=1\.64\.0/);
+  assert.match(
+    recordedCommands,
+    new RegExp(
+      `--build-arg PLAYWRIGHT_VERSION=${playwrightVersion.replaceAll(".", "\\.")}`,
+    ),
+  );
   assert.match(
     recordedCommands,
     /docker run --rm --platform linux\/amd64 --shm-size=1gb/,

@@ -8,6 +8,9 @@ const PRIVACY_LINK_NAME = "Leer la política de privacidad";
 const NOTICE_ACKNOWLEDGED_KEY = "grumphya.privacy-notice.acknowledged.v1";
 const ABSTRACT_COOKIE_NOTICE_COPY =
   "Usamos solo cookies propias técnicas, las que sirven para que todo funcione como te mereces. Aquí NO se analiza ni vende ningún dato de nadie.";
+const COOKIE_NOTICE_IMAGE_SRCSET =
+  "/assets/grumphya/cookie-kick-188.webp 188w, /assets/grumphya/cookie-kick-376.webp 376w, /assets/grumphya/cookie-kick.webp 570w";
+const COOKIE_NOTICE_IMAGE_FALLBACK = "/assets/grumphya/cookie-kick-188.webp";
 
 describe("CookieNotice", () => {
   beforeEach(() => {
@@ -31,11 +34,15 @@ describe("CookieNotice", () => {
     expect(screen.getByRole("link", { name: PRIVACY_LINK_NAME })).toHaveClass(
       "cookie-notice-details",
     );
-    expect(
-      screen.getByRole("img", {
-        name: "Grumphya le da una patada a una galleta",
-      }),
-    ).toBeInTheDocument();
+    const mascot = screen.getByRole("img", {
+      name: "Grumphya le da una patada a una galleta",
+    });
+    expect(mascot).toBeInTheDocument();
+    expect(mascot).toHaveAttribute("src", COOKIE_NOTICE_IMAGE_FALLBACK);
+    expect(mascot).toHaveAttribute("srcset", COOKIE_NOTICE_IMAGE_SRCSET);
+    expect(mascot).toHaveAttribute("sizes", "(max-width: 480px) 188px, 225px");
+    expect(mascot).toHaveAttribute("width", "285");
+    expect(mascot).toHaveAttribute("height", "190");
   });
 
   it("closes when the user acknowledges the notice", async () => {
