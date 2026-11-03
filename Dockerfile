@@ -148,6 +148,7 @@ FROM node-base AS development-security-production
 ENV NODE_ENV=production
 ENV DS_API_PORT=3001
 ENV DS_API_TLS_REQUIRED=true
+ENV DS_DATABASE_URL_FILE_REQUIRED=true
 
 COPY --from=development-security-production-dependencies --chown=node:node /workspace/node_modules /workspace/node_modules
 COPY --from=development-security-production-dependencies --chown=node:node /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/node_modules /workspace/apps/prototype-desarrollo-seguro/prototype-desarrollo-seguro-api/node_modules
