@@ -2,6 +2,11 @@
 
 Fecha de verificación: 2026-10-09, macOS Apple Silicon.
 
+Este documento conserva los resultados y comandos de aquella sesión; no es un
+informe de la última ejecución. La versión de Node.js anotada abajo pertenece a
+ese registro histórico. Para requisitos y versiones vigentes, consulta
+[Desarrollo local](development.md) y [Stack instalado](stack.md).
+
 ## Resultado de esta sesión
 
 - `node --version`: `v24.20.0`; `pnpm --version`: `12.5.1`.
