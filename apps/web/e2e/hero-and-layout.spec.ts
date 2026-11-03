@@ -301,7 +301,7 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
   await expect(curtainPreload).toHaveAttribute("fetchpriority", "high");
 
   const fredokaPreload = page.locator(
-    'link[rel="preload"][as="font"][href="/assets/fonts/Fredoka-Variable.woff2"]',
+    'link[rel="preload"][as="font"][href="/assets/fonts/Fredoka-Variable-latin.woff2"]',
   );
   await expect(fredokaPreload).toHaveCount(1);
   await expect(fredokaPreload).toHaveAttribute("fetchpriority", "high");
