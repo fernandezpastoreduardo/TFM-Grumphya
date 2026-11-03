@@ -13,9 +13,8 @@ import {
   type PublicScanSeverity,
   type PublicScanStatus,
 } from "@grumphya/prototype-desarrollo-seguro-persistence";
+import { REPORT_ID_PATTERN } from "./public-scan.constants.js";
 
-const REPORT_ID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const PUBLIC_STORAGE_ERROR = "development_security_unavailable";
 const PUBLIC_SCAN_READ_FAILED = "PUBLIC_SCAN_READ_FAILED";
 

@@ -11,6 +11,8 @@ import { PostgresScanStore } from "@grumphya/prototype-desarrollo-seguro-persist
 import { Pool } from "pg";
 import { PublicScanController } from "./public-scan/public-scan.controller.js";
 import { PublicScanService } from "./public-scan/public-scan.service.js";
+import { PublicScanRateLimitGuard } from "./public-scan/public-scan-rate-limit.js";
+import { PublicScanRateLimiter } from "./public-scan/public-scan-rate-limiter.js";
 
 @Injectable()
 export class DevelopmentSecurityDatabase implements OnApplicationShutdown {
@@ -63,6 +65,8 @@ export class DevelopmentSecurityHealthController {
   providers: [
     DevelopmentSecurityDatabase,
     DevelopmentSecurityHealthService,
+    PublicScanRateLimiter,
+    PublicScanRateLimitGuard,
     {
       provide: PublicScanService,
       inject: [DevelopmentSecurityDatabase],

@@ -1,13 +1,15 @@
-import { Controller, Get, Header, Param } from "@nestjs/common";
+import { Controller, Get, Header, Param, UseGuards } from "@nestjs/common";
 import {
   PublicScanService,
   type PublicDomainStatus,
   type PublicReport,
 } from "./public-scan.service.js";
+import { PublicScanRateLimitGuard } from "./public-scan-rate-limit.js";
 
 const CACHE_CONTROL_NO_STORE = "no-store";
 
 @Controller()
+@UseGuards(PublicScanRateLimitGuard)
 export class PublicScanController {
   constructor(private readonly scans: PublicScanService) {}
 
