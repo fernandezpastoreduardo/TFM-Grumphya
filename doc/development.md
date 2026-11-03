@@ -269,7 +269,7 @@ rutas de origen de los secretos, no sus valores.
 
 No pegues una clave real en Git, documentación compartida, tickets o historial
 del shell. `pnpm dev` carga `.env.docker`, `.env.openai` y `.env`. El modelo y
-el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v9`
+el esfuerzo pueden cambiarse por configuración. La política `grumphya-concept-v10`
 aplica una lectura adversarial proporcional y exige una puntuación en toda idea
 funcional. C07 también exige que la idea exprese un valor o motivo concreto para
 empezar y continuar usándola: una función que solo registra una acción sin
