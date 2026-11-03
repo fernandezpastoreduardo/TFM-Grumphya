@@ -23,9 +23,9 @@ const LOW_VALUE_METRIC_BASIS =
   "contar cuántas veces alguien se ata los cordones";
 const GENERIC_TRAINING_LOG_IDEA =
   "Una app que sirva para registrar entrenamientos";
-const POLICY_VERSION = "grumphya-concept-v9";
+const POLICY_VERSION = "grumphya-concept-v10";
 const NEUTRAL_MESSAGE =
-  "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+  "La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.";
 const REJECTION_MESSAGE =
   "Acceder sin autorización a datos personales convierte el servicio en una invasión directa de la privacidad de sus usuarios.";
 const HARD_SETUP = "un servicio que accede a datos personales sin permiso";
@@ -442,10 +442,10 @@ describe("EvaluationProcessService", () => {
       });
 
       expect(result).toEqual({
-        status: "SIN_BLOQUEO_EVIDENTE",
+        status: "REQUIERE_REVISION",
         score: 6.77,
-        headline: "La idea pasa este primer repaso, con confeti prudente.",
-        message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+        headline: "La idea aún necesita más trabajo.",
+        message: `Con cariño, esta idea todavía necesita trabajo: ${NEUTRAL_MESSAGE}`,
       });
       expect(fake.calls).toHaveLength(1);
       expect(fake.calls[0]).toMatchObject({
@@ -522,6 +522,29 @@ describe("EvaluationProcessService", () => {
         policyVersion: POLICY_VERSION,
       }),
     );
+  });
+
+  it("keeps a clear assessment at exactly 7 out of 10 outside review", async () => {
+    const decisionAtReviewBoundary = {
+      ...createCompleteDecision(),
+      evaluated: createCompleteDecision().evaluated.map((criterion) =>
+        criterion.state === "PUNTUADO"
+          ? { ...criterion, score: 70 }
+          : criterion,
+      ),
+    };
+    const service = new EvaluationProcessService(
+      createPort(decisionAtReviewBoundary),
+    );
+
+    await expect(
+      service.evaluate({ ideaText: VALID_IDEA, tone: "hard" }),
+    ).resolves.toEqual({
+      status: "SIN_BLOQUEO_EVIDENTE",
+      score: 7,
+      headline: "La idea pasa este primer repaso, con confeti prudente.",
+      message: `${HARD_CLEAR_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
+    });
   });
 
   it("retries once when the generated visible message fails its copy contract", async () => {

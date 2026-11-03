@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { ModelDecision } from "./evaluation-decision";
-import { renderHeadline, renderMessage } from "./evaluation-decision";
+import {
+  renderHeadline,
+  renderMessage,
+  renderReviewMessage,
+} from "./evaluation-decision";
 
 const NEUTRAL_MESSAGE =
-  "Con lo que cuentas no veo un fallo de bulto, aunque eso todavía no demuestra que alguien vaya a usarlo.";
+  "La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.";
 const SOFT_MESSAGE_PREFIX =
   "¡Qué ilusión poder acompañarte con todo el cariño! ";
 const HARD_CLEAR_MESSAGE_PREFIX = "No hay motivo para celebrar todavía: ";
 const HARD_REJECTION_MESSAGE_PREFIX =
   "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
+const REJECTION_MESSAGE =
+  "Pagar por declaraciones que nadie verifica convierte el engaño en el negocio más rentable de tu app.";
 const SOFT_MESSAGE_PREFIX_WORD_COUNT = 8;
 const DECISION: ModelDecision = {
   status: "SIN_BLOQUEO_EVIDENTE",
@@ -34,8 +40,7 @@ const DECISION: ModelDecision = {
   hardSetup: "un grillo usando un móvil o un ordenador",
   hardConsequence: "sin esa interacción, nadie llega a encontrarse",
 };
-const LONG_VALID_MESSAGE =
-  "Con lo que cuentas todavía no veo contradicción alguna en tu planteamiento, aunque eso no demuestra que haya gente dispuesta a usarlo en condiciones reales.";
+const LONG_VALID_MESSAGE = NEUTRAL_MESSAGE;
 
 describe("renderMessage", () => {
   it("uses a fresh model-generated headline for each evaluation outcome", () => {
@@ -74,12 +79,13 @@ describe("renderMessage", () => {
         {
           ...DECISION,
           status: "RECHAZADA",
+          message: REJECTION_MESSAGE,
           hardSetup: "un grillo usando un móvil o un ordenador",
           hardConsequence: "sin esa interacción, nadie llega a encontrarse",
         },
         "hard",
       ),
-    ).toBe(`${HARD_REJECTION_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`);
+    ).toBe(`${HARD_REJECTION_MESSAGE_PREFIX}${REJECTION_MESSAGE}`);
     expect(renderHeadline("RECHAZADA", "soft")).toBe(
       "¡Un abrazo y confeti para esta pega importante!",
     );
@@ -100,6 +106,15 @@ describe("renderMessage", () => {
     );
   });
 
+  it("uses a non-celebratory introduction when an evaluation needs review", () => {
+    expect(renderReviewMessage(NEUTRAL_MESSAGE, "soft")).toBe(
+      `Con cariño, esta idea todavía necesita trabajo: ${NEUTRAL_MESSAGE}`,
+    );
+    expect(renderReviewMessage(NEUTRAL_MESSAGE, "hard")).toBe(
+      `Este primer análisis no basta para darla por buena: ${NEUTRAL_MESSAGE}`,
+    );
+  });
+
   it("preserves the decision and its scoring data", () => {
     const beforeRendering = structuredClone(DECISION);
 
@@ -113,9 +128,9 @@ describe("renderMessage", () => {
     const rendered = renderMessage(decision, "soft");
 
     expect(rendered.split(/\s+/u)).toHaveLength(
-      25 + SOFT_MESSAGE_PREFIX_WORD_COUNT,
+      LONG_VALID_MESSAGE.split(/\s+/u).length + SOFT_MESSAGE_PREFIX_WORD_COUNT,
     );
-    expect(rendered.length).toBeLessThanOrEqual(360);
+    expect(rendered.length).toBeLessThanOrEqual(900);
     expect(rendered.endsWith(".")).toBe(true);
   });
 
@@ -129,7 +144,7 @@ describe("renderMessage", () => {
     const decision = {
       ...DECISION,
       message:
-        "El criterio C05 revela una dependencia de afirmaciones sin verificar y C10 muestra una diferencia concreta frente a otras aplicaciones.",
+        "La propuesta muestra utilidad concreta y el criterio C05 revela una dependencia de afirmaciones sin verificar. A la vez, C10 muestra una diferencia concreta frente a otras aplicaciones, aunque falta comprobar si ese rasgo importa al usuario.",
     };
 
     const rendered = renderMessage(decision, "soft");
@@ -178,7 +193,7 @@ describe("renderMessage", () => {
     const rendered = renderMessage(
       {
         ...DECISION,
-        message: `La propuesta falla en el criterio ${alias} y eso afecta directamente a sus usuarios.`,
+        message: `La propuesta presenta una debilidad concreta en ${alias}, que afecta a su funcionamiento. Conviene valorar la consecuencia para quien la usaría y comprobar si la idea ofrece una respuesta suficiente.`,
       },
       "soft",
     );

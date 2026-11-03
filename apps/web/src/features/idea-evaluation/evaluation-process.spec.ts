@@ -509,6 +509,31 @@ describe("evaluationProcess frontend adapter", () => {
     });
   });
 
+  it("accepts the review-required API status and preserves its user-facing fields", async () => {
+    const reviewResult = {
+      ...EVALUATION_RESULT,
+      status: "REQUIERE_REVISION" as const,
+      score: 6.99,
+      headline: "La idea aún necesita más trabajo.",
+      message:
+        "Con cariño, esta idea todavía necesita trabajo: La propuesta ayuda a organizar una tarea concreta. Aún falta definir cómo se comprobaría el resultado antes de confiar en él.",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: "evaluated", result: reviewResult }),
+      }),
+    );
+
+    await expect(
+      evaluationProcess(
+        { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+        IDEMPOTENCY_KEY,
+      ),
+    ).resolves.toEqual(reviewResult);
+  });
+
   it("accepts the longer public message after the server applies a tone", async () => {
     vi.stubGlobal(
       "fetch",

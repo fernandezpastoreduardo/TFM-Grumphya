@@ -10,7 +10,7 @@ const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
-const POLICY_VERSION = "grumphya-concept-v9";
+const POLICY_VERSION = "grumphya-concept-v10";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",
@@ -252,6 +252,7 @@ describe("OpenAiEvaluationPort", () => {
       "El mensaje constata que no hay propuesta evaluable",
     );
     expect(request).toContain("No inventes incentivos");
+    expect(request).toContain("una información ausente no demuestra solidez");
     expect(request).toContain(
       "Evita tecnicismos y las palabras bloqueo o bloqueante",
     );
@@ -262,14 +263,16 @@ describe("OpenAiEvaluationPort", () => {
       "Si status es RECHAZADA, usa de 8 a 120 palabras y máximo 900 caracteres",
     );
     expect(request).toContain(
-      "Para SIN_BLOQUEO_EVIDENTE e IDEA_INSUFICIENTE, usa de 8 a 40 palabras y máximo 280 caracteres",
+      "Usa de 25 a 90 palabras, máximo 700 caracteres y de dos a cuatro oraciones",
     );
     expect(request).toContain(
-      "el mensaje se completa con una introducción de tono en el servidor",
+      "termina con el aspecto más útil que convendría validar o definir",
     );
     expect(request).toContain("hardSetup");
     expect(request).toContain("hardConsequence");
-    expect(request).toContain("tono neutral");
+    expect(request).toContain(
+      "No enumeres criterios ni códigos, y no inventes hechos",
+    );
     expect(request).toContain(
       "No generalices una especie u objeto concreto a una categoría amplia",
     );

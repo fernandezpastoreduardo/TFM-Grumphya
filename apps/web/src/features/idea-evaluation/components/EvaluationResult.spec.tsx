@@ -69,6 +69,22 @@ describe("EvaluationResult", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("labels a low-scoring non-rejected evaluation as needing more work", () => {
+    render(
+      <EvaluationResult
+        result={{
+          ...SCORED_RESULT,
+          status: "REQUIERE_REVISION",
+          score: 2.99,
+          failedCriteria: undefined,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Necesita más trabajo")).toBeInTheDocument();
+    expect(screen.getByText("2,99/10")).toBeInTheDocument();
+  });
+
   it("shows a known similar product when the evaluator identifies one", () => {
     render(
       <EvaluationResult

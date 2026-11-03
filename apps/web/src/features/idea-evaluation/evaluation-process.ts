@@ -4,7 +4,10 @@ import {
 } from "../../infrastructure/auth/session";
 
 export type EvaluationStatus =
-  "RECHAZADA" | "SIN_BLOQUEO_EVIDENTE" | "IDEA_INSUFICIENTE";
+  | "RECHAZADA"
+  | "REQUIERE_REVISION"
+  | "SIN_BLOQUEO_EVIDENTE"
+  | "IDEA_INSUFICIENTE";
 
 export type EvaluationProcessResult = {
   status: EvaluationStatus;
@@ -61,7 +64,7 @@ const PLAN_QUOTA_EXHAUSTED_MESSAGES = {
 } as const;
 const MAX_PUBLIC_SCORE = 10;
 const MAX_PUBLIC_HEADLINE_LENGTH = 120;
-const MAX_PUBLIC_MESSAGE_LENGTH = 360;
+const MAX_PUBLIC_MESSAGE_LENGTH = 900;
 const MAX_PUBLIC_REJECTION_MESSAGE_LENGTH = 1_000;
 const MAX_PUBLIC_SAFE_TITLE_LENGTH = 160;
 const MIN_PUBLIC_SAFE_TITLE_LENGTH = 8;
@@ -142,6 +145,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isEvaluationStatus(value: unknown): value is EvaluationStatus {
   return (
     value === "RECHAZADA" ||
+    value === "REQUIERE_REVISION" ||
     value === "SIN_BLOQUEO_EVIDENTE" ||
     value === "IDEA_INSUFICIENTE"
   );
