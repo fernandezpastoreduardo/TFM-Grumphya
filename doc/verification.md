@@ -73,15 +73,13 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`.
 - Limitación: el soporte y el tratamiento del audio dependen del navegador y su proveedor de reconocimiento. No se ha añadido ni probado un proveedor local ni transcripción del lado servidor.
 
-## Verificación de scoring `evaluationProcess`
+## Verificación de la evaluación de ideas
 
 Validación añadida el 11 de octubre de 2026 con TDD:
 
-- RED: los tests de la rúbrica y del alert fallaron antes de añadir el caso de uso/API.
-- GREEN inicial: NestJS validaba la idea y devolvía el scoring simulado v1; el frontend realizaba el POST y mostraba un alert accesible sin repetir el texto. El endpoint ya no usa esa simulación: sin un `EvaluationPort` configurado responde 503.
-- Cobertura actual: API 23 tests del helper v1, 36 del validador de decisión, 5 del renderer, 11 del servicio, 3 del middleware y 1 de health; web 38 tests, incluidos 4 del adaptador y 7 de Home.
+- La API valida el texto y el tono antes de invocar el evaluador. Sin un `EvaluationPort` configurado, el endpoint responde 503.
+- Las pruebas de validación cubren entradas inválidas, límites de longitud, normalización del texto y la respuesta HTTP 400; las pruebas del servicio y del validador cubren la evaluación vigente.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
-- Limitación histórica de ese incremento: 50/100 era una simulación explícita de seis criterios desconocidos, no un dictamen. La simulación se retiró después; el estado de implementación actual se recoge en las actualizaciones siguientes.
 
 Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 
@@ -110,7 +108,7 @@ Actualización del renderer de tono, 12 de octubre de 2026:
 
 Actualización del caso de uso con puerto de evaluación, 12 de octubre de 2026:
 
-- RED: nueve pruebas del servicio fallaron con el caso de uso síncrono anterior: no invocaba un puerto, no generaba la respuesta pública ni manejaba fallos/timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tiene 12 casos.
+- RED: las pruebas del servicio exigían invocar un puerto, generar la respuesta pública y manejar fallos y timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tenía 12 casos en ese incremento.
 - Scores: rechazo usa la nota de veto / 10; sin bloqueo usa la media aritmética de criterios `PUNTUADO` / 10, redondeada a dos decimales; sin criterios puntuados e idea insuficiente devuelven `null`.
 - Errores: entrada inválida 400; proveedor no configurado/no disponible o respuesta inválida 503; timeout 504. La evaluación reintenta una vez ante errores de mensaje visible, campos de decisión inválidos o incoherencia semántica; otros errores no se reintentan. El esfuerzo de razonamiento predeterminado es `low` para reducir latencia, configurable con `OPENAI_REASONING_EFFORT`. `EVALUATION_TIMEOUT_MS` configura el timeout (120.000 ms por defecto y máximo); al vencer se aborta la señal si el adaptador la soporta. El front muestra un mensaje específico para este timeout sin reflejar el texto de la respuesta. La normalización semántica y la comparación de candidatas tienen un timeout de 30.000 ms cada una.
 - Revisión de seguridad: errores y logs usan códigos constantes; no se registran idea, respuesta cruda ni mensajes del proveedor. Una prueba instancia el contexto Nest de `AppModule` sin fake de producción y comprueba que el servicio devuelve 503, no scoring simulado; no prueba el arranque HTTP completo. No se detectó vulnerabilidad nueva en este cambio.
