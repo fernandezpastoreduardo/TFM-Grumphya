@@ -245,6 +245,12 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - La causa era un límite contradictorio: el prompt permitía hasta 900 caracteres para cualquier respuesta, aunque el validador permite hasta 900 solo para `RECHAZADA`; los otros estados admiten 280 para que el mensaje quepa tras la introducción de tono.
 - Se corrigió el prompt para aplicar por estado los mismos límites que el validador. No se almacenó el texto de la idea ni la respuesta completa.
 
+Corrección del diagnóstico `visible_message` en rechazos, 4 de noviembre de 2026:
+
+- Un rechazo válido en lo sustantivo podía devolver HTTP 503 si el modelo explicaba varios defectos en varias oraciones. El prompt exigía una sola oración y el validador rechazaba puntos interiores; ahora ambos admiten de una a cuatro oraciones, con los mismos topes de 8–120 palabras y 900 unidades UTF-16. Siguen prohibidos las preguntas, las listas, los saltos de línea y las etiquetas internas de la rúbrica.
+- `hardSetup` y `hardConsequence` no forman parte del mensaje que ve la persona. En `RECHAZADA`, cada uno se conserva solo si cumple su formato; `null` o una cadena con formato inválido queda en `null` y no invalida por sí solo la explicación. Los campos siguen siendo obligatorios en el objeto y los tipos ajenos a cadena/`null` se rechazan. En los demás estados se siguen exigiendo ambos campos a `null`.
+- El diagnóstico `visible_message` del panel identifica la categoría de fallo, pero no conserva la salida del modelo. Por ello, no atribuye por sí solo el incidente de producción a uno de estos dos casos concretos. Las pruebas del validador y del servicio cubren las nuevas reglas y el resultado público sin exponer texto de ideas ni respuesta cruda en logs.
+
 ## Páginas de error de la interfaz, 16 de octubre de 2026
 
 - Las rutas desconocidas muestran el 404; un error de renderizado React muestra el 500; el límite temporal `ANONYMOUS_PROFILE_RATE_LIMITED` muestra el 429 con su ventana `Retry-After`. Los errores recuperables de API en formularios siguen en contexto.
@@ -333,7 +339,7 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 
 ## Ajustes de evaluación, responsive y correo, 22 de octubre de 2026
 
-- El timeout por defecto de evaluación pasó de 60.000 a 120.000 ms; el máximo configurable sigue en 120.000 ms. La normalización semántica y la comparación de candidatas conservan 30.000 ms cada una. El proveedor de evaluación recibe la idea y la política, sin el tono; el renderer del servidor añade una introducción `soft` o un prefijo `hard`. En rechazos se validan `hardSetup` y `hardConsequence`, aunque el copy visible actual no los incorpora.
+- El timeout por defecto de evaluación pasó de 60.000 a 120.000 ms; el máximo configurable sigue en 120.000 ms. La normalización semántica y la comparación de candidatas conservan 30.000 ms cada una. El proveedor de evaluación recibe la idea y la política, sin el tono; el renderer del servidor añade una introducción `soft` o un prefijo `hard`. En rechazos se validan `hardSetup` y `hardConsequence`, aunque el copy visible actual no los incorpora; desde la corrección del 4 de noviembre, un fragmento auxiliar inválido se descarta sin invalidar la explicación.
 - Los E2E comprueban algunos aspectos del layout móvil a 390 × 844 px; la inspección visual manual en ese viewport sigue pendiente. Se recoloca la mascota de sección tras el contenido principal en móvil, se corrige la capa de diálogos y se acerca el error del avatar al botón que lo origina. Las plantillas HTML de correo usan ahora la paleta y el estilo visual de Grumphya.
 - Verificación comunicada: `pnpm lint` pasó. `pnpm test`: web, 224 pruebas en 38 archivos pasaron; API, 448 pasaron y 20 quedaron omitidas en 12 archivos. Otras 19 pruebas HTTP de API no pudieron abrir `127.0.0.1` y fallaron con `listen EPERM: operation not permitted`; esto limita la verificación HTTP en este entorno. Los specs focalizados añadidos del hook de diálogo y middleware pasaron (2 y 20 pruebas, respectivamente). No se comunicó resultado de `test:e2e` para esta actualización.
 
