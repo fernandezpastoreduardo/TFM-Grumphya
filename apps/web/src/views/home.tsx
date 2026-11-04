@@ -498,7 +498,7 @@ export function Home() {
               ×
             </button>
             <img
-              src="/assets/grumphya/mascot-neutral.svg"
+              src="/assets/grumphya/mascot-crossed-arms.webp"
               alt="Grumphya esperando un café"
             />
             <span className="eyebrow">El café se ha terminado</span>

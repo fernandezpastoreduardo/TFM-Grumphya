@@ -32,7 +32,7 @@ export type SectionPageMeta = {
 type SectionMascot = NonNullable<SectionPageMeta["mascot"]>;
 
 const MOBILE_MASCOT_ASSETS: Record<SectionMascot, string> = {
-  judge: "/assets/grumphya/mascot-neutral.svg",
+  judge: "/assets/grumphya/mascot-crossed-arms.webp",
   pointing: "/assets/grumphya/mascot-pointing.svg",
   plans: "/assets/grumphya/plans-coffee.svg",
   "good-practices": "/assets/grumphya/good-practices-checklist.svg",
@@ -41,9 +41,9 @@ const MOBILE_MASCOT_ASSETS: Record<SectionMascot, string> = {
   login: "/assets/grumphya/login-credentials.svg",
   "notable-humans": "/assets/grumphya/notable-humans-hero.svg",
   contact: "/assets/grumphya/contact-hero-phone.svg",
-  profile: "/assets/grumphya/mascot-neutral.svg",
+  profile: "/assets/grumphya/mascot-crossed-arms.webp",
   admin: "/assets/grumphya/admin-dashboard-audit.svg",
-  register: "/assets/grumphya/mascot-neutral.svg",
+  register: "/assets/grumphya/mascot-crossed-arms.webp",
 };
 
 const SECTION_LINKS = [
