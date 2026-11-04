@@ -11,7 +11,7 @@ una lista de trabajo pendiente.
 ### Primera entrega
 
 - Entrada de idea por teclado o pegado, y dictado en navegadores que admiten reconocimiento local; el usuario revisa la transcripción antes de enviarla.
-- Evaluación según la rúbrica v1 documentada en [`agentic-guidelines/features.md`](agentic-guidelines/features.md).
+- Evaluación según la rúbrica conceptual vigente documentada en [`agentic-guidelines/scoring-viability-software.md`](agentic-guidelines/scoring-viability-software.md).
 - Detección de ideas rechazadas repetidas con coincidencia semántica estrictamente superior a `0,90`; no se reutilizan evaluaciones anteriores.
 - Tres usos anónimos de evaluación de ideas y tres de roast por perfil de navegador, en contadores independientes. El servidor purga el perfil tras 400 días sin actividad; cerrar el navegador no reinicia el cupo y no se crea historial personal anónimo.
 - Alta y acceso de cuentas asociadas a un plan Iluminado o Faltón; la contratación se simula y no procesa dinero real.

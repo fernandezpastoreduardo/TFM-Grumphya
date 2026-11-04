@@ -73,15 +73,13 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`.
 - Limitación: el soporte y el tratamiento del audio dependen del navegador y su proveedor de reconocimiento. No se ha añadido ni probado un proveedor local ni transcripción del lado servidor.
 
-## Verificación de scoring `evaluationProcess`
+## Verificación de la evaluación de ideas
 
 Validación añadida el 11 de octubre de 2026 con TDD:
 
-- RED: los tests de la rúbrica y del alert fallaron antes de añadir el caso de uso/API.
-- GREEN inicial: NestJS validaba la idea y devolvía el scoring simulado v1; el frontend realizaba el POST y mostraba un alert accesible sin repetir el texto. El endpoint ya no usa esa simulación: sin un `EvaluationPort` configurado responde 503.
-- Cobertura actual: API 23 tests del helper v1, 36 del validador de decisión, 5 del renderer, 11 del servicio, 3 del middleware y 1 de health; web 38 tests, incluidos 4 del adaptador y 7 de Home.
+- La API valida el texto y el tono antes de invocar el evaluador. Sin un `EvaluationPort` configurado, el endpoint responde 503.
+- Las pruebas de validación cubren entradas inválidas, límites de longitud, normalización del texto y la respuesta HTTP 400; las pruebas del servicio y del validador cubren la evaluación vigente.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
-- Limitación histórica de ese incremento: 50/100 era una simulación explícita de seis criterios desconocidos, no un dictamen. La simulación se retiró después; el estado de implementación actual se recoge en las actualizaciones siguientes.
 
 Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 
@@ -110,7 +108,7 @@ Actualización del renderer de tono, 12 de octubre de 2026:
 
 Actualización del caso de uso con puerto de evaluación, 12 de octubre de 2026:
 
-- RED: nueve pruebas del servicio fallaron con el caso de uso síncrono anterior: no invocaba un puerto, no generaba la respuesta pública ni manejaba fallos/timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tiene 12 casos.
+- RED: las pruebas del servicio exigían invocar un puerto, generar la respuesta pública y manejar fallos y timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tenía 12 casos en ese incremento.
 - Scores: rechazo usa la nota de veto / 10; sin bloqueo usa la media aritmética de criterios `PUNTUADO` / 10, redondeada a dos decimales; sin criterios puntuados e idea insuficiente devuelven `null`.
 - Errores: entrada inválida 400; proveedor no configurado/no disponible o respuesta inválida 503; timeout 504. La evaluación reintenta una vez ante errores de mensaje visible, campos de decisión inválidos o incoherencia semántica; otros errores no se reintentan. El esfuerzo de razonamiento predeterminado es `low` para reducir latencia, configurable con `OPENAI_REASONING_EFFORT`. `EVALUATION_TIMEOUT_MS` configura el timeout (120.000 ms por defecto y máximo); al vencer se aborta la señal si el adaptador la soporta. El front muestra un mensaje específico para este timeout sin reflejar el texto de la respuesta. La normalización semántica y la comparación de candidatas tienen un timeout de 30.000 ms cada una.
 - Revisión de seguridad: errores y logs usan códigos constantes; no se registran idea, respuesta cruda ni mensajes del proveedor. Una prueba instancia el contexto Nest de `AppModule` sin fake de producción y comprueba que el servicio devuelve 503, no scoring simulado; no prueba el arranque HTTP completo. No se detectó vulnerabilidad nueva en este cambio.
@@ -247,6 +245,12 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - La causa era un límite contradictorio: el prompt permitía hasta 900 caracteres para cualquier respuesta, aunque el validador permite hasta 900 solo para `RECHAZADA`; los otros estados admiten 280 para que el mensaje quepa tras la introducción de tono.
 - Se corrigió el prompt para aplicar por estado los mismos límites que el validador. No se almacenó el texto de la idea ni la respuesta completa.
 
+Corrección del diagnóstico `visible_message` en rechazos, 4 de noviembre de 2026:
+
+- Un rechazo válido en lo sustantivo podía devolver HTTP 503 si el modelo explicaba varios defectos en varias oraciones. El prompt exigía una sola oración y el validador rechazaba puntos interiores; ahora ambos admiten de una a cuatro oraciones, con los mismos topes de 8–120 palabras y 900 unidades UTF-16. Siguen prohibidos las preguntas, las listas, los saltos de línea y las etiquetas internas de la rúbrica.
+- `hardSetup` y `hardConsequence` no forman parte del mensaje que ve la persona. En `RECHAZADA`, cada uno se conserva solo si cumple su formato; `null` o una cadena con formato inválido queda en `null` y no invalida por sí solo la explicación. Los campos siguen siendo obligatorios en el objeto y los tipos ajenos a cadena/`null` se rechazan. En los demás estados se siguen exigiendo ambos campos a `null`.
+- El diagnóstico `visible_message` del panel identifica la categoría de fallo, pero no conserva la salida del modelo. Por ello, no atribuye por sí solo el incidente de producción a uno de estos dos casos concretos. Las pruebas del validador y del servicio cubren las nuevas reglas y el resultado público sin exponer texto de ideas ni respuesta cruda en logs.
+
 ## Páginas de error de la interfaz, 16 de octubre de 2026
 
 - Las rutas desconocidas muestran el 404; un error de renderizado React muestra el 500; el límite temporal `ANONYMOUS_PROFILE_RATE_LIMITED` muestra el 429 con su ventana `Retry-After`. Los errores recuperables de API en formularios siguen en contexto.
@@ -335,7 +339,7 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 
 ## Ajustes de evaluación, responsive y correo, 22 de octubre de 2026
 
-- El timeout por defecto de evaluación pasó de 60.000 a 120.000 ms; el máximo configurable sigue en 120.000 ms. La normalización semántica y la comparación de candidatas conservan 30.000 ms cada una. El proveedor de evaluación recibe la idea y la política, sin el tono; el renderer del servidor añade una introducción `soft` o un prefijo `hard`. En rechazos se validan `hardSetup` y `hardConsequence`, aunque el copy visible actual no los incorpora.
+- El timeout por defecto de evaluación pasó de 60.000 a 120.000 ms; el máximo configurable sigue en 120.000 ms. La normalización semántica y la comparación de candidatas conservan 30.000 ms cada una. El proveedor de evaluación recibe la idea y la política, sin el tono; el renderer del servidor añade una introducción `soft` o un prefijo `hard`. En rechazos se validan `hardSetup` y `hardConsequence`, aunque el copy visible actual no los incorpora; desde la corrección del 4 de noviembre, un fragmento auxiliar inválido se descarta sin invalidar la explicación.
 - Los E2E comprueban algunos aspectos del layout móvil a 390 × 844 px; la inspección visual manual en ese viewport sigue pendiente. Se recoloca la mascota de sección tras el contenido principal en móvil, se corrige la capa de diálogos y se acerca el error del avatar al botón que lo origina. Las plantillas HTML de correo usan ahora la paleta y el estilo visual de Grumphya.
 - Verificación comunicada: `pnpm lint` pasó. `pnpm test`: web, 224 pruebas en 38 archivos pasaron; API, 448 pasaron y 20 quedaron omitidas en 12 archivos. Otras 19 pruebas HTTP de API no pudieron abrir `127.0.0.1` y fallaron con `listen EPERM: operation not permitted`; esto limita la verificación HTTP en este entorno. Los specs focalizados añadidos del hook de diálogo y middleware pasaron (2 y 20 pruebas, respectivamente). No se comunicó resultado de `test:e2e` para esta actualización.
 
@@ -443,12 +447,10 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - `AnonymousUsageController` amplía su suite de 14 a 21 pruebas. Se cubren el encabezado `Retry-After` ante límites temporales, el fallback de IP, proveedores ausentes, errores del flujo autenticado y validación adicional del mensaje e idempotency key. Llega a 100 % de sentencias, líneas y funciones, y 98,27 % de ramas.
 - Se añaden cinco pruebas a `read-cookie.ts`, utilitario compartido por evaluación, registro y uso anónimo: ausencia de cabecera, espacios, decodificación, valores con `=` y codificación inválida. Alcanza 100 % de sentencias, ramas, funciones y líneas.
 - La cobertura completa de API pasa con 810 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura es 91,06 % de sentencias, 85,15 % de ramas, 95,68 % de funciones y 92,61 % de líneas; la línea base se actualiza en [`quality-baseline.md`](quality-baseline.md).
-- El siguiente foco de cobertura es `InMemoryVerificationDelivery` (`verification-delivery.ts`), con 83,33 % de líneas; su adaptador conserva el token en memoria para los flujos de prueba.
 - La corrida completa necesitó permiso para enlazar `127.0.0.1`; las pruebas HTTP fallan con `listen EPERM` dentro del sandbox.
 
 ## Cobertura de entrega de verificación y registro, 27 de octubre de 2026
 
-- Se añade una prueba que confirma que `InMemoryVerificationDelivery` conserva el token más reciente para los flujos de prueba. El archivo `verification-delivery.ts` alcanza 100 % de sentencias, ramas, funciones y líneas.
 - `RegistrationService` amplía su suite de 18 a 23 pruebas. Se cubren planes e intents inválidos, payloads mal formados, origen web no válido con liberación del cooldown, errores de persistencia traducidos a respuesta genérica y rechazo de tokens inválidos antes de consultar el repositorio. La cobertura focal del servicio es 87,27 % de sentencias, 81,69 % de ramas, 97,14 % de funciones y 89,8 % de líneas.
 - La cobertura completa de API pasa con 816 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura global es 91,43 % de sentencias, 85,72 % de ramas, 95,82 % de funciones y 92,98 % de líneas; la tabla de [`quality-baseline.md`](quality-baseline.md) queda actualizada.
 - El siguiente foco recomendado es `IdeaSubmissionService` (86,14 % de líneas), que orquesta las reservas de uso, la evaluación y la persistencia del resultado.

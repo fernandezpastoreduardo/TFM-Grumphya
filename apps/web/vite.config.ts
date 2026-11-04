@@ -25,6 +25,13 @@ const DEVELOPMENT_SECURITY_FILES = new Map([
       contentType: "text/css; charset=utf-8",
     },
   ],
+  [
+    `${DEVELOPMENT_SECURITY_PREFIX}/prototype.js`,
+    {
+      file: new URL("../../prototype/prototype.js", import.meta.url),
+      contentType: "text/javascript; charset=utf-8",
+    },
+  ],
 ]);
 const DEV_SHARED_STYLES = [
   "/src/shared/styles/base.scss",

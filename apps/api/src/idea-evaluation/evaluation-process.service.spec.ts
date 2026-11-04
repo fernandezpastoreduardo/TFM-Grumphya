@@ -588,6 +588,26 @@ describe("EvaluationProcessService", () => {
     expect(port.evaluate).toHaveBeenCalledTimes(2);
   });
 
+  it("returns a valid multi-sentence rejection without retrying unused hard copy", async () => {
+    const message =
+      "La propuesta compromete datos sin autorización. Eso deja a las personas afectadas sin control sobre su información.";
+    const port = createPort({
+      ...createRejectedDecision(),
+      message,
+      hardSetup: "fragmento con punto final.",
+      hardConsequence: "corto",
+    });
+    const service = new EvaluationProcessService(port);
+
+    await expect(
+      service.evaluate({ ideaText: REJECTED_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({
+      status: "RECHAZADA",
+      message: `${HARD_REJECTION_MESSAGE_PREFIX}${message}`,
+    });
+    expect(port.evaluate).toHaveBeenCalledTimes(1);
+  });
+
   it("returns the semantic validation error after the single retry fails", async () => {
     const inconsistentDecision = {
       ...createCompleteDecision(),

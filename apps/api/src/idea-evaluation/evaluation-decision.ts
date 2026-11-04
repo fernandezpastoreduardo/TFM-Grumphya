@@ -80,6 +80,7 @@ const MAX_CLEAR_ASSESSMENT_WORDS = 90;
 const MAX_CLEAR_ASSESSMENT_LENGTH = 700;
 const MAX_REJECTION_MESSAGE_WORDS = 120;
 const MAX_REJECTION_MESSAGE_LENGTH = 900;
+const MAX_REJECTION_SENTENCES = 4;
 const MAX_VISIBLE_MESSAGE_LENGTH = 900;
 const MAX_VISIBLE_REJECTION_MESSAGE_LENGTH = 1_000;
 const MIN_CONCEPTUAL_SCORE = 0;
@@ -314,11 +315,28 @@ function isValidClearAssessment(value: unknown): value is string {
 }
 
 function isValidRejectionMessage(value: unknown): value is string {
-  return isValidMessage(
-    value,
-    MIN_MESSAGE_WORDS,
-    MAX_REJECTION_MESSAGE_WORDS,
-    MAX_REJECTION_MESSAGE_LENGTH,
+  if (
+    typeof value !== "string" ||
+    value.trim() !== value ||
+    value.length === 0 ||
+    value.length > MAX_REJECTION_MESSAGE_LENGTH ||
+    DISALLOWED_RESULT_LABEL.test(value) ||
+    /[\r\n\t]/u.test(value) ||
+    /^[-*#•]\s/u.test(value) ||
+    /^\d+[.)]\s/u.test(value) ||
+    !value.endsWith(TERMINAL_SENTENCE_MARK)
+  ) {
+    return false;
+  }
+
+  const words = value.split(/\s+/u);
+  const sentenceCount = value.match(/[.!?…](?:\s|$)/gu)?.length ?? 0;
+  return (
+    words.length >= MIN_MESSAGE_WORDS &&
+    words.length <= MAX_REJECTION_MESSAGE_WORDS &&
+    sentenceCount >= 1 &&
+    sentenceCount <= MAX_REJECTION_SENTENCES &&
+    !/[!?¿¡…]/u.test(value)
   );
 }
 
@@ -346,9 +364,6 @@ function isValidHardCopyComponent(value: unknown): value is string {
 }
 
 function renderHardRejectionMessage(decision: ModelDecision): string {
-  if (!decision.hardSetup || !decision.hardConsequence) {
-    throw new Error(INVALID_VISIBLE_MESSAGE);
-  }
   return `${HARD_REJECTION_MESSAGE_PREFIX}${decision.message}`;
 }
 
@@ -408,13 +423,6 @@ export function renderMessage(decision: unknown, tone: unknown): string {
       ? MAX_VISIBLE_REJECTION_MESSAGE_LENGTH
       : MAX_VISIBLE_MESSAGE_LENGTH;
   if (hardMessage.length > maxLength || !hardMessage.endsWith(".")) {
-    throw new Error(INVALID_VISIBLE_MESSAGE);
-  }
-  if (
-    parsedDecision.status === "RECHAZADA" &&
-    (!isValidHardCopyComponent(parsedDecision.hardSetup) ||
-      !isValidHardCopyComponent(parsedDecision.hardConsequence))
-  ) {
     throw new Error(INVALID_VISIBLE_MESSAGE);
   }
   return removeInternalRubricAliases(hardMessage);
@@ -626,14 +634,10 @@ export function validateModelDecision(
   ) {
     throw new InvalidModelDecisionError("decision_fields");
   }
-  if (input.status === "RECHAZADA") {
-    if (
-      !isValidHardCopyComponent(hardSetup) ||
-      !isValidHardCopyComponent(hardConsequence)
-    ) {
-      throw new InvalidModelDecisionError("visible_message");
-    }
-  } else if (hardSetup !== null || hardConsequence !== null) {
+  if (
+    input.status !== "RECHAZADA" &&
+    (hardSetup !== null || hardConsequence !== null)
+  ) {
     throw new InvalidModelDecisionError("decision_fields");
   }
 
@@ -651,8 +655,10 @@ export function validateModelDecision(
         ? input.existingProductExample
         : null,
     message: input.message,
-    hardSetup,
-    hardConsequence,
+    hardSetup: isValidHardCopyComponent(hardSetup) ? hardSetup : null,
+    hardConsequence: isValidHardCopyComponent(hardConsequence)
+      ? hardConsequence
+      : null,
   };
   if (
     decision.existingProductExample !== null &&

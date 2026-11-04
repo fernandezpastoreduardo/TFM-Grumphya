@@ -614,6 +614,81 @@ describe("validateModelDecision", () => {
     expect(result.message).toBe(MAX_REJECTION_MESSAGE);
   });
 
+  it("accepts a clear multi-sentence rejection for a photographed-color idea", () => {
+    const ideaText =
+      "Una aplicación para saber el nombre de un color haciéndole una foto";
+    const message =
+      "La foto puede dar una aproximación útil al nombre del color. La iluminación y la cámara alteran el tono capturado, así que no puede prometer identificar con fiabilidad el color real. Habría que explicar ese límite al mostrar el resultado.";
+    const decision = {
+      ...createRejectedDecision(),
+      evaluated: createRejectedDecision().evaluated.map((criterion) => {
+        if (criterion.id === "C04") return { ...criterion, score: 10 };
+        if (criterion.id === "C05") return { ...criterion, score: 50 };
+        return criterion;
+      }),
+      stop_at: "C04",
+      reason_code: "CONTRADICCION_NUCLEO",
+      basis: "saber el nombre de un color haciéndole una foto",
+      safeTitle: "Identificar colores mediante fotografías",
+      message,
+    };
+
+    expect(validateModelDecision(decision, ideaText).message).toBe(message);
+    expect(renderMessage(decision, "soft")).toContain(message);
+    expect(renderMessage(decision, "hard")).toContain(message);
+  });
+
+  it("accepts four rejection sentences and renders both tones", () => {
+    const message =
+      "La propuesta identifica un problema real. La solución depende de datos que no se verifican. Esa falta de comprobación compromete el resultado. El usuario recibiría una respuesta poco fiable.";
+    const decision = { ...createRejectedDecision(), message };
+
+    expect(validateModelDecision(decision, IDEA_TEXT).message).toBe(message);
+    expect(renderMessage(decision, "soft")).toContain(message);
+    expect(renderMessage(decision, "hard")).toContain(message);
+  });
+
+  it.each([
+    "Una pega. Otra pega. Una tercera. La cuarta. Y una quinta que rompe el límite.",
+    "La foto altera el color. ¿Podría ser fiable? La idea no lo explica.",
+    "¡Menuda idea! La foto cambia el tono del color capturado.",
+  ])("rejects a malformed rejection message: %s", (message) => {
+    expect(() =>
+      validateModelDecision(
+        { ...createRejectedDecision(), message },
+        IDEA_TEXT,
+      ),
+    ).toThrow(/respuesta del evaluador no válida/i);
+  });
+
+  it("drops invalid unused hard-copy fragments without losing the visible rejection", () => {
+    const decision = {
+      ...createRejectedDecision(),
+      hardSetup: "una frase con punto final.",
+      hardConsequence: "corto",
+    };
+
+    const validated = validateModelDecision(decision, IDEA_TEXT);
+
+    expect(validated.hardSetup).toBeNull();
+    expect(validated.hardConsequence).toBeNull();
+    expect(renderMessage(validated, "hard")).toContain(REJECTION_MESSAGE);
+  });
+
+  it("accepts a rejection without optional hard-copy fragments", () => {
+    const decision = {
+      ...createRejectedDecision(),
+      hardSetup: null,
+      hardConsequence: null,
+    };
+
+    expect(validateModelDecision(decision, IDEA_TEXT)).toMatchObject({
+      hardSetup: null,
+      hardConsequence: null,
+    });
+    expect(renderMessage(decision, "hard")).toContain(REJECTION_MESSAGE);
+  });
+
   it("drops unrecognized fields and does not mutate the provider result", () => {
     const decision = {
       ...createCompleteDecision(),

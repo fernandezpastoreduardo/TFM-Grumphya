@@ -262,6 +262,10 @@ describe("OpenAiEvaluationPort", () => {
     expect(request).toContain(
       "Si status es RECHAZADA, usa de 8 a 120 palabras y máximo 900 caracteres",
     );
+    expect(request).toContain("en una a cuatro oraciones");
+    expect(request).toContain(
+      "Separa los fallos en oraciones cuando así se entiendan mejor",
+    );
     expect(request).toContain(
       "Usa de 25 a 90 palabras, máximo 700 caracteres y de dos a cuatro oraciones",
     );
