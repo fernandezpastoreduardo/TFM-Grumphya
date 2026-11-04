@@ -201,7 +201,7 @@ La captura de texto pertenece a `idea-input`; la evaluación pertenece a `idea-e
 - Una idea repetida incrementa su contador sin duplicar innecesariamente la evaluación.
 - La respuesta diferencia datos, riesgos, supuestos y recomendaciones.
 - En una sesión anónima no se crea historial personal. En una cuenta registrada, solo se guardan las ideas aprobadas en el historial privado de perfil y los rechazos en el historial privado de Worst Ideas; las entradas insuficientes, los casos especiales y cada envío en general no forman un historial completo.
-- Tests de borde v1: score `39/40/69/70`, dos criterios desconocidos, similitud `0,90` frente a un valor mayor, doble clic/reintento idempotente y reinicio del contador en medianoche de `Europe/Madrid`.
+- Tests de borde de la rúbrica vigente: veto conceptual con puntuaciones `14/15`, proyección de revisión por debajo de `7/10`, similitud `0,90` frente a un valor mayor, doble clic/reintento idempotente y reinicio del contador en medianoche de `Europe/Madrid`.
 
 ## submitContactMessage
 

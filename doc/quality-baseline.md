@@ -61,8 +61,7 @@ línea válidos), y que un roast con idempotency key pueda reintentarse si falla
 la escritura del ranking después de consumir el uso. El utilitario compartido
 `read-cookie.ts` alcanza 100 % en las cuatro métricas con pruebas de nombres
 exactos, decodificación, valores con `=` y codificación inválida.
-`InMemoryVerificationDelivery` y `DevelopmentVerificationDelivery` alcanzan
-100 % en las cuatro métricas. `RegistrationService` queda en 87,27 % de
+`RegistrationService` queda en 87,27 % de
 sentencias, 81,69 % de ramas, 97,14 % de funciones y 89,8 % de líneas tras
 añadir casos de validación, errores de persistencia, origen inválido y tokens
 inválidos.

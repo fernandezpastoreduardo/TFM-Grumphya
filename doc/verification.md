@@ -73,15 +73,13 @@ Validación añadida el 11 de octubre de 2026 con TDD:
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint` y `pnpm build`.
 - Limitación: el soporte y el tratamiento del audio dependen del navegador y su proveedor de reconocimiento. No se ha añadido ni probado un proveedor local ni transcripción del lado servidor.
 
-## Verificación de scoring `evaluationProcess`
+## Verificación de la evaluación de ideas
 
 Validación añadida el 11 de octubre de 2026 con TDD:
 
-- RED: los tests de la rúbrica y del alert fallaron antes de añadir el caso de uso/API.
-- GREEN inicial: NestJS validaba la idea y devolvía el scoring simulado v1; el frontend realizaba el POST y mostraba un alert accesible sin repetir el texto. El endpoint ya no usa esa simulación: sin un `EvaluationPort` configurado responde 503.
-- Cobertura actual: API 23 tests del helper v1, 36 del validador de decisión, 5 del renderer, 11 del servicio, 3 del middleware y 1 de health; web 38 tests, incluidos 4 del adaptador y 7 de Home.
+- La API valida el texto y el tono antes de invocar el evaluador. Sin un `EvaluationPort` configurado, el endpoint responde 503.
+- Las pruebas de validación cubren entradas inválidas, límites de longitud, normalización del texto y la respuesta HTTP 400; las pruebas del servicio y del validador cubren la evaluación vigente.
 - Comprobaciones: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm format:check` y `pnpm test:e2e`.
-- Limitación histórica de ese incremento: 50/100 era una simulación explícita de seis criterios desconocidos, no un dictamen. La simulación se retiró después; el estado de implementación actual se recoge en las actualizaciones siguientes.
 
 Actualización del incremento de entrada y contrato, 12 de octubre de 2026:
 
@@ -110,7 +108,7 @@ Actualización del renderer de tono, 12 de octubre de 2026:
 
 Actualización del caso de uso con puerto de evaluación, 12 de octubre de 2026:
 
-- RED: nueve pruebas del servicio fallaron con el caso de uso síncrono anterior: no invocaba un puerto, no generaba la respuesta pública ni manejaba fallos/timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tiene 12 casos.
+- RED: las pruebas del servicio exigían invocar un puerto, generar la respuesta pública y manejar fallos y timeout. GREEN: el servicio valida entrada, realiza una sola llamada con idea, política `grumphya-concept-v3` y `AbortSignal` (sin tono), valida la decisión, renderiza el modo y proyecta solo `status`, `score` y `message`. El spec del servicio tenía 12 casos en ese incremento.
 - Scores: rechazo usa la nota de veto / 10; sin bloqueo usa la media aritmética de criterios `PUNTUADO` / 10, redondeada a dos decimales; sin criterios puntuados e idea insuficiente devuelven `null`.
 - Errores: entrada inválida 400; proveedor no configurado/no disponible o respuesta inválida 503; timeout 504. La evaluación reintenta una vez ante errores de mensaje visible, campos de decisión inválidos o incoherencia semántica; otros errores no se reintentan. El esfuerzo de razonamiento predeterminado es `low` para reducir latencia, configurable con `OPENAI_REASONING_EFFORT`. `EVALUATION_TIMEOUT_MS` configura el timeout (120.000 ms por defecto y máximo); al vencer se aborta la señal si el adaptador la soporta. El front muestra un mensaje específico para este timeout sin reflejar el texto de la respuesta. La normalización semántica y la comparación de candidatas tienen un timeout de 30.000 ms cada una.
 - Revisión de seguridad: errores y logs usan códigos constantes; no se registran idea, respuesta cruda ni mensajes del proveedor. Una prueba instancia el contexto Nest de `AppModule` sin fake de producción y comprueba que el servicio devuelve 503, no scoring simulado; no prueba el arranque HTTP completo. No se detectó vulnerabilidad nueva en este cambio.
@@ -443,12 +441,10 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - `AnonymousUsageController` amplía su suite de 14 a 21 pruebas. Se cubren el encabezado `Retry-After` ante límites temporales, el fallback de IP, proveedores ausentes, errores del flujo autenticado y validación adicional del mensaje e idempotency key. Llega a 100 % de sentencias, líneas y funciones, y 98,27 % de ramas.
 - Se añaden cinco pruebas a `read-cookie.ts`, utilitario compartido por evaluación, registro y uso anónimo: ausencia de cabecera, espacios, decodificación, valores con `=` y codificación inválida. Alcanza 100 % de sentencias, ramas, funciones y líneas.
 - La cobertura completa de API pasa con 810 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura es 91,06 % de sentencias, 85,15 % de ramas, 95,68 % de funciones y 92,61 % de líneas; la línea base se actualiza en [`quality-baseline.md`](quality-baseline.md).
-- El siguiente foco de cobertura es `InMemoryVerificationDelivery` (`verification-delivery.ts`), con 83,33 % de líneas; su adaptador conserva el token en memoria para los flujos de prueba.
 - La corrida completa necesitó permiso para enlazar `127.0.0.1`; las pruebas HTTP fallan con `listen EPERM` dentro del sandbox.
 
 ## Cobertura de entrega de verificación y registro, 27 de octubre de 2026
 
-- Se añade una prueba que confirma que `InMemoryVerificationDelivery` conserva el token más reciente para los flujos de prueba. El archivo `verification-delivery.ts` alcanza 100 % de sentencias, ramas, funciones y líneas.
 - `RegistrationService` amplía su suite de 18 a 23 pruebas. Se cubren planes e intents inválidos, payloads mal formados, origen web no válido con liberación del cooldown, errores de persistencia traducidos a respuesta genérica y rechazo de tokens inválidos antes de consultar el repositorio. La cobertura focal del servicio es 87,27 % de sentencias, 81,69 % de ramas, 97,14 % de funciones y 89,8 % de líneas.
 - La cobertura completa de API pasa con 816 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura global es 91,43 % de sentencias, 85,72 % de ramas, 95,82 % de funciones y 92,98 % de líneas; la tabla de [`quality-baseline.md`](quality-baseline.md) queda actualizada.
 - El siguiente foco recomendado es `IdeaSubmissionService` (86,14 % de líneas), que orquesta las reservas de uso, la evaluación y la persistencia del resultado.
