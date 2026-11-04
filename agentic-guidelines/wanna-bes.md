@@ -2,11 +2,11 @@
 
 Este archivo conserva mejoras futuras y verificaciones operativas sin cerrar. Que una tarea aparezca aquí no significa que esté aprobada ni planificada.
 
-## Medir latencia y calidad de las evaluaciones
+## Prioridad alta: medir y reducir la latencia de las evaluaciones
 
 **Estado:** mitigación aplicada; falta medir con tráfico real.
 
-Se redujo el esfuerzo de razonamiento predeterminado y se añadió un reintento ante campos de decisión inconsistentes. Medir en producción el tiempo de respuesta, la tasa de error y la calidad percibida antes de modificar más el modelo o la rúbrica.
+Las respuestas han ganado interés y detalle, pero tardan demasiado. Se redujo el esfuerzo de razonamiento predeterminado y se añadió un reintento ante campos de decisión inconsistentes. Medir en producción el tiempo de respuesta, la tasa de error y la calidad percibida; después, acelerar el recorrido de envío sin perder funcionalidad, seguridad ni calidad de respuesta.
 
 ## Completar la revisión responsive
 
@@ -30,7 +30,7 @@ Valorar un segundo factor para el inicio de sesión, con recuperación segura y 
 
 ### Confirmar qué versión está publicada
 
-La última publicación exitosa registrada en [la incidencia del VPS](../doc/incident-vps-access-and-deployment-2026-10.md) fue el 28 de octubre de 2026, para `a9fb172`. `main` avanzó después y la publicación se inicia manualmente desde GitHub Actions, con confirmación y autorización. Confirmar el SHA que está sirviendo producción y decidir si se publica una versión posterior. Tras cualquier publicación, comprobar HTTPS, persistencia y los recorridos principales. La corrección del enlace de recuperación (`8c68af4`) ya estaba incluida en `a9fb172`; probarla en producción con una nueva solicitud de restablecimiento, sin compartir el enlace ni el token.
+La [incidencia del VPS](../doc/incident-vps-access-and-deployment-2026-10.md) registra una publicación del 28 de octubre de 2026 para `a9fb172`; es una referencia histórica, no una confirmación de la versión actual. La publicación se inicia manualmente desde GitHub Actions, con confirmación y autorización. Confirmar el SHA que está sirviendo producción y decidir si se publica una versión posterior. Tras cualquier publicación, comprobar HTTPS, persistencia y los recorridos principales. La corrección del enlace de recuperación (`8c68af4`) ya estaba incluida en `a9fb172`; probarla en producción con una nueva solicitud de restablecimiento, sin compartir el enlace ni el token.
 
 ### Confirmar purgas, copias y recuperación
 
