@@ -453,7 +453,56 @@ assert.doesNotMatch(
   "production scans must not download the unnecessary Java index database",
 );
 
+const aiSmokeStart = workflow.indexOf(
+  "- name: Verify OpenAI idea evaluation and roast before release",
+);
 const saveImagesStart = workflow.indexOf("- name: Save scanned release images");
+const aiSmokeEnd = workflow.indexOf("      - name:", aiSmokeStart + 1);
+assert.ok(aiSmokeStart >= 0, "OpenAI production smoke step must exist");
+const aiSmokeStep = workflow.slice(
+  aiSmokeStart,
+  aiSmokeEnd === -1 ? undefined : aiSmokeEnd,
+);
+const aiSmokeCondition = aiSmokeStep.match(
+  /if:\s*>-\s*([\s\S]*?)\n\s*env:/,
+)?.[1];
+assert.equal(
+  aiSmokeCondition?.replace(/\s+/g, " ").trim(),
+  [
+    "github.event_name == 'workflow_dispatch'",
+    "github.actor == 'fernandezpastoreduardo'",
+    "github.triggering_actor == 'fernandezpastoreduardo'",
+    "github.ref == 'refs/heads/main'",
+    "inputs.approve_production_deploy == true",
+    "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
+  ].join(" && "),
+  "OpenAI smoke must run only on the approved main release dispatch",
+);
+assert.match(
+  aiSmokeStep,
+  /OPENAI_API_KEY: \$\{\{ secrets\.OPENAI_API_KEY \}\}/,
+  "OpenAI key must be scoped to the live smoke step",
+);
+assert.equal(
+  [...workflow.matchAll(/secrets\.OPENAI_API_KEY/g)].length,
+  1,
+  "no workflow or job scope may expose the OpenAI key outside its smoke step",
+);
+assert.match(
+  aiSmokeStep,
+  /API_IMAGE: grumphya-api:\$\{\{ github\.sha \}\}/,
+  "OpenAI smoke must target the API image built for this candidate SHA",
+);
+assert.match(
+  aiSmokeStep,
+  /:\s+"\$\{OPENAI_API_KEY:\?[^\n]+\}"[\s\S]*?timeout 300s docker run --rm --entrypoint node[\s\S]*?--env OPENAI_API_KEY[\s\S]*?"\$API_IMAGE"[\s\S]*?apps\/api\/dist\/infrastructure\/ai\/production-ai-smoke\.js/,
+  "missing credentials or a failed candidate smoke must fail the CI step",
+);
+assert.ok(
+  aiSmokeStart > imageScanStart && aiSmokeStart < saveImagesStart,
+  "OpenAI smoke must pass after image scanning and before release packaging",
+);
+
 const assembleBundleStart = workflow.indexOf(
   "- name: Assemble production release bundle",
 );

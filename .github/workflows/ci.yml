@@ -216,6 +216,28 @@ jobs:
             cat "$scan_dir/${image%%:*}.log"
           done
           exit "$scan_status"
+      - name: Verify OpenAI idea evaluation and roast before release
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.actor == 'fernandezpastoreduardo' &&
+          github.triggering_actor == 'fernandezpastoreduardo' &&
+          github.ref == 'refs/heads/main' &&
+          inputs.approve_production_deploy == true &&
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          API_IMAGE: grumphya-api:${{ github.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          : "${OPENAI_API_KEY:?Create the OPENAI_API_KEY Actions secret for the release smoke test}"
+          timeout 300s docker run --rm --entrypoint node \
+            --env OPENAI_API_KEY \
+            --env EVALUATION_PROVIDER=openai \
+            --env OPENAI_MODEL=gpt-5.4-mini \
+            --env OPENAI_REASONING_EFFORT=low \
+            "$API_IMAGE" \
+            apps/api/dist/infrastructure/ai/production-ai-smoke.js
       - name: Smoke test the scanned production images with isolated Compose resources
         run: bash scripts/test-production-compose.sh "${{ github.sha }}"
       - name: Save scanned release images

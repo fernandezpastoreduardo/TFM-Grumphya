@@ -253,6 +253,7 @@ refactor: extract evaluation rules to businessRules constants
 - **Unit Tests**: evaluation rules, limits, sanitization and similarity decisions
 - **Integration Tests**: idea input, evaluation result and authentication interactions
 - **E2E Tests**: submit idea, receive evaluation and view history
+- **Production release gate**: before a manually approved production release, run a smoke test against the candidate API image that verifies both a real idea evaluation and a real roast response. Use fixed synthetic inputs and bounded retries; fail the release if either operation fails. Pass the OpenAI Actions secret only to this gated step, never to pull request jobs or the deployed container.
 - **Coverage Goals**: 100% functions, 80%+ lines
 
 ### Key Files to Track Progress

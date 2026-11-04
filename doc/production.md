@@ -168,14 +168,15 @@ Haz primero la instalación y una puesta en marcha manual siguiendo las seccione
 
 5. En **Settings → Secrets and variables → Actions**, crea estos secretos:
 
-   | Secreto                      | Contenido                                                   |
-   | ---------------------------- | ----------------------------------------------------------- |
-   | `PRODUCTION_SSH_HOST`        | Host o IP pública del VPS                                   |
-   | `PRODUCTION_SSH_USER`        | Usuario SSH dedicado (`grumphya-deploy`)                    |
-   | `PRODUCTION_SSH_PRIVATE_KEY` | Clave privada Ed25519 exclusiva de Actions                  |
-   | `PRODUCTION_SSH_KNOWN_HOSTS` | Línea `known_hosts` cuya huella contrastaste fuera de banda |
+   | Secreto                      | Contenido                                                    |
+   | ---------------------------- | ------------------------------------------------------------ |
+   | `PRODUCTION_SSH_HOST`        | Host o IP pública del VPS                                    |
+   | `PRODUCTION_SSH_USER`        | Usuario SSH dedicado (`grumphya-deploy`)                     |
+   | `PRODUCTION_SSH_PRIVATE_KEY` | Clave privada Ed25519 exclusiva de Actions                   |
+   | `PRODUCTION_SSH_KNOWN_HOSTS` | Línea `known_hosts` cuya huella contrastaste fuera de banda  |
+   | `OPENAI_API_KEY`             | Clave de OpenAI para el smoke sintético previo al despliegue |
 
-   No guardes aquí credenciales de PostgreSQL, OpenAI ni SMTP. Esos secretos permanecen exclusivamente en `.secrets/` del VPS.
+   `OPENAI_API_KEY` es la única excepción: Actions la usa solo en el smoke sintético condicionado a una ejecución manual autorizada desde `main` que confirme el despliegue. No se pasa a los jobs de pull request ni al contenedor desplegado. La clave de runtime de OpenAI, junto con las credenciales de PostgreSQL y SMTP, permanece exclusivamente en `.secrets/` del VPS.
 
 6. Crea estas variables de Actions:
 
@@ -211,6 +212,18 @@ roast. Si el smoke sigue fallando, el helper restaura la release anterior y no
 confirma la candidata. Estas llamadas pueden generar coste en el proveedor.
 Este smoke real del despliegue es distinto del smoke integrado local de Compose,
 que usa secretos ficticios y no llama a OpenAI ni envía correo.
+
+El job `supply-chain` de CI ejecuta también ese smoke con la imagen API
+candidata, después del escaneo Trivy y antes de guardar y empaquetar las
+imágenes para el despliegue. Solo lo hace para una ejecución autorizada desde
+`main` que haya confirmado el despliegue; requiere el secreto `OPENAI_API_KEY`
+de Actions y usa `gpt-5.4-mini` con razonamiento bajo para la evaluación. El
+roast usa también `gpt-5.4-mini`. Las solicitudes no se almacenan (`store: false`)
+y emplean entradas sintéticas fijas. Puede consumir hasta cuatro completions de
+evaluación y una de roast por los reintentos descritos arriba. Si falta la clave
+o falla cualquiera de las operaciones, CI no continúa con el release. El smoke
+del VPS se conserva para verificar además las credenciales reales que usa el
+servicio desplegado.
 
 ### Migraciones y seguridad del rollback
 
