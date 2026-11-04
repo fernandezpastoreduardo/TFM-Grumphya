@@ -367,6 +367,10 @@ aria-label={`Ver evaluación de ${ideaTitle}`}
 
 ### Validation Checklist (Run Before Finalizing)
 
+#### Pruebas que abren puertos locales
+
+Antes de ejecutar una suite, comprueba en sus tests y configuración si levanta un servidor HTTP en `127.0.0.1` u otra interfaz local. Las suites HTTP de la API necesitan permiso para abrir sockets: ejecútalas desde el principio con acceso local (`require_escalated`), en vez de lanzarlas primero en el entorno aislado y repetirlas después de `listen EPERM`. Las pruebas que no abren listeners pueden ejecutarse en el entorno aislado. Si aparece `listen EPERM`, trátalo como una limitación del entorno y vuelve a ejecutar con acceso local antes de valorar el resultado como fallo del código.
+
 ```bash
 # 1. Tests deben pasar 100%
 pnpm test
