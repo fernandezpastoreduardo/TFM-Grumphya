@@ -63,9 +63,11 @@ describe("WorstIdeasUser", () => {
         /cuando tengas cuenta, aquí podrás revisar tus ideas rechazadas/i,
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /ver planes para crear una cuenta/i }),
-    ).toHaveAttribute("href", "/precios");
+    const plansLink = screen.getByRole("link", {
+      name: /ver planes para crear una cuenta/i,
+    });
+    expect(plansLink).toHaveAttribute("href", "/precios");
+    expect(plansLink).toHaveClass("worst-ideas-history-cta");
   });
 
   it("shows the signed-in empty state when the user has no rejected ideas", async () => {

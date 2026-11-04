@@ -3,7 +3,8 @@
     "path": "/",
     "manifestEntry": "src/views/home.tsx",
     "developmentStyles": ["/src/views/home.scss"],
-    "requiredCopy": ["Antes de construirla,"]
+    "requiredCopy": ["Antes de construirla,"],
+    "preloadImages": [{ "href": "/assets/grumphya/stage-curtain-v2.webp" }]
   },
   {
     "path": "/lo-peor-de-lo-peor",

@@ -61,12 +61,15 @@ try {
           /^\/assets\/[a-zA-Z0-9/_-]+\.(svg|webp|png)$/,
           `Invalid image preload URL for ${route.path}`,
         );
-        assert.match(
-          media,
-          /^\(max-width: \d+px\)$/,
-          `Invalid image preload media query for ${route.path}`,
-        );
-        return `<link rel="preload" as="image" href="${href}" fetchpriority="high" media="${media}" />`;
+        if (media !== undefined) {
+          assert.match(
+            media,
+            /^\(max-width: \d+px\)$/,
+            `Invalid image preload media query for ${route.path}`,
+          );
+        }
+        const mediaAttribute = media ? ` media="${media}"` : "";
+        return `<link rel="preload" as="image" href="${href}" fetchpriority="high"${mediaAttribute} />`;
       })
       .join("");
     const html = indexHtml

@@ -117,7 +117,7 @@ function UserHistoryContent({
           Cuando tengas cuenta, aquí podrás revisar tus ideas rechazadas. Solo
           tú verás tu historial.
         </p>
-        <a className="button-secondary" href="/precios">
+        <a className="button-secondary worst-ideas-history-cta" href="/precios">
           Ver planes para crear una cuenta <span aria-hidden="true">↗</span>
         </a>
       </>
