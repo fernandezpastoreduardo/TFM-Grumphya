@@ -56,6 +56,12 @@ En esa misma sesión se observó `nproc=2`, aproximadamente 3,8 GiB de RAM total
 
 IONOS documenta que la política externa del VPS en Cloud Panel gobierna principalmente tráfico entrante y que SMTP saliente por el puerto 25 está bloqueado por defecto. No existe un comando SSH universal para consultar esas reglas, y la CLI `ionosctl` documentada para IONOS Cloud no corresponde al producto IONOS VPS usado aquí. Esta política del proveedor no proporciona el filtro de salida específico que requiere el probe. Referencias: [política de firewall para VPS](https://www.ionos.com/help/server-cloud-infrastructure/firewall-vps/editing-a-firewall-policy-vps-migrated-cloud-servers-and-vps/) y [configuración predeterminada del VPS](https://www.ionos.com/help/index.php?id=5334).
 
+### Transporte HTTPS local con pinning (4 de noviembre de 2026)
+
+El worker incorpora `src/pinned-https-transport.ts`, que hace peticiones GET/HEAD HTTPS mediante un socket real, integra `createPinnedLookup` por conexión y redirección, fija Host/SNI/443, mantiene verificación de certificado, limita redirecciones al mismo hostname y a paths exactos del scope, y aplica deadline de 10 s, cancelación y máximo de 64 KiB de cuerpo descartado. Una fixture TLS local comprobó SNI/Host, IP del socket, certificado aceptado/rechazado, redirects seguros y denegación de destinos/paths inseguros, abort y límite de bytes. Una prueba adicional pasa la observación de la fixture por `ScanJobProcessor` y verifica su persistencia bajo el lease en un store simulado. La suite del worker pasó 95/95; typecheck y lint pasaron. Todo el tráfico de prueba se limita a un listener de loopback controlado con CA de test; no hubo conexiones a dominios públicos, PostgreSQL ni al VPS.
+
+Esto valida el transporte de aplicación, no el aislamiento del executor real. El cliente no está conectado a `ScanExecutor`, jobs o proceso worker arrancable y no produce evidencia de controles. No hay un conector con política por hostname ni una red DS en el VPS. El audit SSH de solo lectura encontró `DOCKER-USER` vacía para IPv4 e IPv6, no encontró servicios/red DS, y mostró que IPv4 `FORWARD DROP` coexiste con reglas de aceptación de Docker mientras IPv6 `FORWARD` tiene política `ACCEPT` y está habilitado. No se comprobaron rutas con paquetes ni se mutó el firewall. No es seguro activar scans o añadir reglas generales al VPS compartido.
+
 ### Diseño de aislamiento de salida pendiente de implementar
 
 El servicio de Desarrollo Seguro no debe compartir la red `egress` de Grumphya. La topología propuesta separa:
