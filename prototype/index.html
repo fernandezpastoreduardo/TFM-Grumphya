@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; form-action 'none'"
+      content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'"
     />
     <meta
       name="description"
@@ -39,8 +39,11 @@
         </div>
         <nav aria-label="Secciones de Desarrollo Seguro">
           <a href="#enfoque">Enfoque</a>
+          <a href="#buscador">Buscador</a>
           <a href="#practicas">Prácticas</a>
           <a href="#caso">Caso Grumphya</a>
+          <a href="#como-funciona">Cómo funciona</a>
+          <a href="#contacto">Contacto</a>
           <a class="nav-cta" href="#sello"
             >Consultar sello <span aria-hidden="true">↘</span></a
           >
@@ -122,6 +125,222 @@
           </p>
           <span class="asterisk" aria-hidden="true">✳</span>
         </div>
+      </section>
+
+      <section
+        class="domain-check section-shell"
+        id="buscador"
+        aria-labelledby="domain-check-title"
+      >
+        <div class="section-heading">
+          <p class="eyebrow">Una ficha de ejemplo, no un escáner</p>
+          <h2 id="domain-check-title">¿Qué sabemos de este proyecto?</h2>
+          <p>
+            Introduce un dominio para ver cómo sería el informe por categorías.
+            El buscador no visita dominios ni consulta servicios externos.
+          </p>
+        </div>
+        <div
+          class="domain-form"
+          id="domain-search"
+          role="search"
+          aria-label="Buscador demostrativo de dominios"
+        >
+          <label for="domain-input">Dominio</label>
+          <div class="domain-form-row">
+            <input
+              id="domain-input"
+              name="domain"
+              type="text"
+              autocomplete="url"
+              inputmode="url"
+              placeholder="grumphya.com"
+              required
+              aria-describedby="domain-help"
+            />
+            <button
+              class="button button-primary"
+              id="domain-submit"
+              type="button"
+            >
+              Ver ficha <span aria-hidden="true">↗</span>
+            </button>
+          </div>
+          <p id="domain-help" class="form-help">
+            Solo se compara el texto que escribas con
+            <strong>grumphya.com</strong>. No hacemos una petición a ese
+            dominio.
+          </p>
+        </div>
+
+        <div
+          class="report"
+          id="grumphya-report"
+          hidden
+          role="region"
+          aria-live="polite"
+          aria-labelledby="grumphya-report-title"
+        >
+          <div class="report-heading">
+            <div>
+              <p class="card-kicker">REVISIÓN INTERNA DEL PROYECTO</p>
+              <h3 id="grumphya-report-title">
+                Grumphya · <span class="searched-domain">grumphya.com</span>
+              </h3>
+            </div>
+            <span class="status-pill">Evidencia documental</span>
+          </div>
+          <p class="report-disclaimer">
+            Resumen académico de información interna disponible en este
+            repositorio. No es un análisis técnico en directo, una auditoría
+            independiente ni una certificación.
+          </p>
+          <div class="report-grid">
+            <article class="report-card">
+              <span class="report-category">01 · PRIVACIDAD</span>
+              <h4>Medidas documentadas</h4>
+              <p>
+                No se usan cookies de terceros ni analítica externa. La medición
+                de páginas es propia y agregada, sin eventos individuales
+                enlazados.
+              </p>
+              <p class="report-limit">
+                <strong>Límite:</strong> revisión jurídica y comprobación
+                integral del despliegue pendientes. Para funciones solicitadas,
+                la API usa proveedores como OpenAI y correo IONOS.
+              </p>
+            </article>
+            <article class="report-card">
+              <span class="report-category">02 · SEGURIDAD</span>
+              <h4>Controles en el código</h4>
+              <p>
+                Sesiones con cookies protegidas, contraseñas con hash, permisos
+                y cuotas comprobados en servidor, límites de solicitudes y
+                pruebas automatizadas.
+              </p>
+              <p class="report-limit">
+                <strong>Límite:</strong> no hay pentest ni auditoría
+                independiente. Parte de la política CSP sigue en modo de
+                observación.
+              </p>
+            </article>
+            <article class="report-card">
+              <span class="report-category">03 · RENDIMIENTO</span>
+              <h4>Optimizaciones aplicadas</h4>
+              <p>
+                Rutas públicas prerenderizadas, carga diferida de secciones y
+                recursos visuales ajustados para móvil.
+              </p>
+              <p class="report-limit">
+                <strong>Límite:</strong> no se publican puntuaciones de Core Web
+                Vitals; faltan mediciones representativas de LCP, CLS e INP.
+              </p>
+            </article>
+            <article class="report-card">
+              <span class="report-category">04 · ACCESIBILIDAD</span>
+              <h4>Revisión en desarrollo</h4>
+              <p>
+                Se usan controles HTML semánticos, estados accesibles y
+                comprobaciones automatizadas de recorridos principales.
+              </p>
+              <p class="report-limit">
+                <strong>Límite:</strong> no se ha completado una auditoría WCAG
+                AA de todas las pantallas y combinaciones.
+              </p>
+            </article>
+            <article class="report-card">
+              <span class="report-category">05 · CALIDAD Y MANTENIMIENTO</span>
+              <h4>Proceso verificable</h4>
+              <p>
+                Arquitectura modular, pruebas automatizadas, lint, verificación
+                de tipos y comprobaciones en CI.
+              </p>
+              <p class="report-limit">
+                <strong>Límite:</strong> estas prácticas reducen riesgos
+                conocidos, pero no prueban ausencia de defectos.
+              </p>
+            </article>
+          </div>
+          <p class="report-source">
+            Base: código, documentación y comprobaciones del TFM disponibles en
+            el repositorio; la vigencia de cada dato depende de su última
+            revisión.
+          </p>
+        </div>
+
+        <div
+          class="report report-simulated"
+          id="simulated-report"
+          hidden
+          role="region"
+          aria-live="polite"
+          aria-labelledby="simulated-report-title"
+        >
+          <div class="report-heading">
+            <div>
+              <p class="card-kicker">EJEMPLO FICTICIO</p>
+              <h3 id="simulated-report-title">
+                Ficha simulada ·
+                <span class="searched-domain">dominio introducido</span>
+              </h3>
+            </div>
+            <span class="status-pill status-low">Valores bajos simulados</span>
+          </div>
+          <p class="report-disclaimer">
+            <strong>Este dominio no se ha visitado ni analizado.</strong> Los
+            valores siguientes son inventados para enseñar el formato del
+            prototipo; no describen el sitio introducido.
+          </p>
+          <div class="report-grid">
+            <article class="report-card simulated-card">
+              <span class="report-category">01 · PRIVACIDAD</span>
+              <h4>18 / 100 · Insuficiente</h4>
+              <p>
+                Ejemplo ficticio: información de privacidad poco clara y
+                seguimiento sin explicar.
+              </p>
+            </article>
+            <article class="report-card simulated-card">
+              <span class="report-category">02 · SEGURIDAD</span>
+              <h4>12 / 100 · Insuficiente</h4>
+              <p>
+                Ejemplo ficticio: controles de acceso y protección de datos por
+                demostrar.
+              </p>
+            </article>
+            <article class="report-card simulated-card">
+              <span class="report-category">03 · RENDIMIENTO</span>
+              <h4>24 / 100 · Insuficiente</h4>
+              <p>
+                Ejemplo ficticio: tiempos de carga y estabilidad por mejorar.
+              </p>
+            </article>
+            <article class="report-card simulated-card">
+              <span class="report-category">04 · ACCESIBILIDAD</span>
+              <h4>20 / 100 · Insuficiente</h4>
+              <p>
+                Ejemplo ficticio: navegación y alternativas accesibles por
+                revisar.
+              </p>
+            </article>
+            <article class="report-card simulated-card">
+              <span class="report-category">05 · CALIDAD Y MANTENIMIENTO</span>
+              <h4>16 / 100 · Insuficiente</h4>
+              <p>
+                Ejemplo ficticio: pruebas y mantenimiento preventivo por
+                acreditar.
+              </p>
+            </article>
+          </div>
+          <p class="report-source">
+            La puntuación no es una evaluación del dominio y no debe usarse para
+            tomar decisiones sobre su seguridad o calidad.
+          </p>
+        </div>
+        <p class="prototype-stamp">
+          Demostración académica: la búsqueda no transmite el dominio ni guarda
+          lo que escribas.
+        </p>
       </section>
 
       <section
@@ -265,6 +484,147 @@
       </section>
 
       <section
+        class="how-it-works"
+        id="como-funciona"
+        aria-labelledby="how-it-works-title"
+      >
+        <div class="section-shell how-grid">
+          <div>
+            <p class="eyebrow">Una propuesta de acompañamiento técnico</p>
+            <h2 id="how-it-works-title">¿Cómo funciona?</h2>
+            <p>
+              En la propuesta, cada revisión empieza por conocer la aplicación,
+              su contexto y qué se quiere proteger. Después se revisan
+              evidencias acordadas, se explican los hallazgos por categorías y
+              se dejan por escrito los límites y los siguientes pasos.
+            </p>
+            <ol class="process-list">
+              <li>
+                <strong>Conversación inicial:</strong> alcance, riesgos y
+                objetivos.
+              </li>
+              <li>
+                <strong>Revisión técnica:</strong> evidencias acordadas, pruebas
+                y contexto.
+              </li>
+              <li>
+                <strong>Informe claro:</strong> resultados, límites y acciones
+                recomendadas.
+              </li>
+              <li>
+                <strong>Seguimiento:</strong> comprobar cambios antes de
+                cualquier distintivo.
+              </li>
+            </ol>
+          </div>
+          <aside class="technical-contact-card">
+            <span class="practice-index">ATENCIÓN TÉCNICA</span>
+            <h3>Hablas con profesionales técnicos, no con comerciales.</h3>
+            <p>
+              La propuesta es que las consultas las atiendan perfiles técnicos
+              para entender el caso y ofrecer una respuesta útil, sin presión de
+              venta.
+            </p>
+            <p class="report-limit">
+              Es una descripción del servicio conceptual de este TFM; no hay un
+              equipo real de atención contratado.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="ethics section-shell" aria-labelledby="ethics-title">
+        <div class="ethics-panel">
+          <p class="eyebrow eyebrow-light">
+            Responsabilidad que sale del código
+          </p>
+          <h2 id="ethics-title">La seguridad también es respeto.</h2>
+          <p>
+            Construir software seguro y respetuoso con la privacidad es una
+            responsabilidad ética hacia las personas que lo usan y confían sus
+            datos.
+          </p>
+          <p class="ethics-commitment">
+            <strong>Compromiso propuesto:</strong> se destinará a una ONG
+            elegida por el cliente el
+            <strong>2% del beneficio neto</strong> derivado de implantar el
+            sello y de los trabajos asociados en su aplicación o web. La entidad
+            elegida no podrá estar vinculada fiscalmente al cliente ni a su
+            grupo de empresas.
+          </p>
+          <p class="ethics-note">
+            Este prototipo académico no presta el servicio, genera beneficios ni
+            realiza donaciones. La propuesta requeriría condiciones públicas,
+            cálculo verificable y acreditación de cada aportación.
+          </p>
+        </div>
+      </section>
+
+      <section
+        class="prototype-contact section-shell"
+        id="contacto"
+        aria-labelledby="prototype-contact-title"
+      >
+        <div class="section-heading">
+          <p class="eyebrow">Contacto · formulario de demostración</p>
+          <h2 id="prototype-contact-title">Cuéntanos qué necesitas revisar.</h2>
+          <p>
+            En un servicio real, este sería el primer paso para que un perfil
+            técnico entienda el contexto.
+          </p>
+        </div>
+        <div
+          class="prototype-contact-form"
+          id="prototype-contact-form"
+          aria-labelledby="prototype-contact-title"
+        >
+          <div class="contact-fields">
+            <label
+              >Nombre<input name="name" autocomplete="name" required
+            /></label>
+            <label
+              >Correo electrónico<input
+                name="email"
+                type="email"
+                autocomplete="email"
+                required
+            /></label>
+            <label class="field-wide"
+              >Aplicación o dominio<input name="site" autocomplete="url"
+            /></label>
+            <label class="field-wide"
+              >¿En qué podemos orientarte?<textarea
+                name="message"
+                rows="4"
+                required
+              ></textarea>
+            </label>
+          </div>
+          <button
+            class="button button-primary"
+            id="contact-submit"
+            type="button"
+          >
+            Probar el formulario <span aria-hidden="true">↗</span>
+          </button>
+          <p class="form-help">
+            Prototipo: no se envía ni se guarda ningún dato. No escribas
+            información personal real.
+          </p>
+          <p
+            class="form-result"
+            id="contact-result"
+            role="status"
+            aria-live="polite"
+            tabindex="-1"
+            hidden
+          >
+            Simulación completada. No se ha enviado ni almacenado tu mensaje.
+          </p>
+        </div>
+      </section>
+
+      <section
         class="seal-section section-shell"
         id="sello"
         aria-labelledby="seal-title"
@@ -366,5 +726,6 @@
         © TFM · Prototipo conceptual · Contenido de demostración
       </div>
     </footer>
+    <script src="/desarrollo-seguro/prototype.js" defer></script>
   </body>
 </html>

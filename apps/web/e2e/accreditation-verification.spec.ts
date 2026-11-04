@@ -147,7 +147,7 @@ test("keeps verification text readable on dark backgrounds in dark mode", async 
   await expect(assuranceCard).toHaveCSS("color", "rgb(243, 255, 243)");
 });
 
-test("secure-development prototype uses no third parties or cookies", async ({
+test("secure-development prototype uses local-only interactions without cookies", async ({
   page,
   context,
   baseURL,
@@ -167,11 +167,54 @@ test("secure-development prototype uses no third parties or cookies", async ({
 
   expect(externalRequests).toEqual([]);
   expect(await context.cookies()).toEqual([]);
-  await expect(page.locator("script")).toHaveCount(0);
+  await expect(
+    page.locator('script[src="/desarrollo-seguro/prototype.js"]'),
+  ).toHaveCount(1);
   await expect(page.locator("form")).toHaveCount(0);
   await expect(
     page.locator('meta[http-equiv="Content-Security-Policy"]'),
-  ).toHaveAttribute("content", /script-src 'none'/);
+  ).toHaveAttribute("content", /script-src 'self'/);
+  const domainInput = page.getByRole("textbox", {
+    name: "Dominio",
+    exact: true,
+  });
+  await domainInput.fill("grumphya.com");
+  await domainInput.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: /grumphya · grumphya.com/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/faltan mediciones representativas de LCP/i),
+  ).toBeVisible();
+
+  await domainInput.fill("ejemplo.es");
+  await page.getByRole("button", { name: /ver ficha/i }).click();
+  await expect(
+    page.getByRole("heading", { name: /ficha simulada · ejemplo.es/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/no se ha visitado ni analizado/i)).toBeVisible();
+
+  await expect(
+    page.getByRole("heading", { name: /¿cómo funciona\?/i }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /profesionales técnicos, no con comerciales/i,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText(/2% del beneficio neto/i)).toBeVisible();
+
+  await page.getByLabel("Nombre").fill("Persona de prueba");
+  await page.getByLabel("Correo electrónico").fill("demo@example.es");
+  await page
+    .getByLabel("¿En qué podemos orientarte?")
+    .fill("Consulta de demostración");
+  await page.getByRole("button", { name: /probar el formulario/i }).click();
+  await expect(page.getByRole("status")).toContainText(
+    /no se ha enviado ni almacenado/i,
+  );
+  expect(await context.cookies()).toEqual([]);
+  expect(externalRequests).toEqual([]);
 });
 
 test("returns 404 for unknown secure-development prototype subpaths", async ({

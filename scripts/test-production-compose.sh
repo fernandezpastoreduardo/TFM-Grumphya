@@ -321,7 +321,25 @@ assert.match(responseHeaders, /^cache-control:\s*no-cache\s*$/im);
 assert.match(responseHeaders, /^content-security-policy:\s*base-uri 'self'/im);
 assert.match(prototypeHtml, /<title>Desarrollo Seguro · Prácticas que se pueden explicar<\/title>/);
 assert.match(prototypeHtml, /id="sello"/);
-assert.doesNotMatch(prototypeHtml, /<script\b/i);
+assert.match(prototypeHtml, /<script src="\/desarrollo-seguro\/prototype\.js" defer><\/script>/);
+assert.match(prototypeHtml, /id="buscador"/);
+assert.match(prototypeHtml, /id="como-funciona"/);
+assert.match(prototypeHtml, /id="contacto"/);
+NODE
+
+curl --insecure --fail --silent --show-error \
+  "https://localhost:$HTTPS_PORT/desarrollo-seguro/prototype.js" \
+  --dump-header "$TEMP_ROOT/development-security-script.headers" \
+  -o "$TEMP_ROOT/development-security-prototype.js"
+node - "$TEMP_ROOT/development-security-script.headers" "$TEMP_ROOT/development-security-prototype.js" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const responseHeaders = readFileSync(process.argv[2], "utf8");
+const prototypeScript = readFileSync(process.argv[3], "utf8");
+assert.match(responseHeaders, /^cache-control:\s*no-cache\s*$/im);
+assert.match(prototypeScript, /new URL\(normalizedValue\)/);
+assert.match(prototypeScript, /addEventListener\("click"/);
+assert.doesNotMatch(prototypeScript, /fetch\(|XMLHttpRequest|document\.cookie|localStorage/);
 NODE
 
 curl --insecure --fail --silent --show-error \
