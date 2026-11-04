@@ -441,12 +441,10 @@ Incidente de respuesta de evaluación demasiado larga, 23 de octubre de 2026:
 - `AnonymousUsageController` amplía su suite de 14 a 21 pruebas. Se cubren el encabezado `Retry-After` ante límites temporales, el fallback de IP, proveedores ausentes, errores del flujo autenticado y validación adicional del mensaje e idempotency key. Llega a 100 % de sentencias, líneas y funciones, y 98,27 % de ramas.
 - Se añaden cinco pruebas a `read-cookie.ts`, utilitario compartido por evaluación, registro y uso anónimo: ausencia de cabecera, espacios, decodificación, valores con `=` y codificación inválida. Alcanza 100 % de sentencias, ramas, funciones y líneas.
 - La cobertura completa de API pasa con 810 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura es 91,06 % de sentencias, 85,15 % de ramas, 95,68 % de funciones y 92,61 % de líneas; la línea base se actualiza en [`quality-baseline.md`](quality-baseline.md).
-- El siguiente foco de cobertura es `InMemoryVerificationDelivery` (`verification-delivery.ts`), con 83,33 % de líneas; su adaptador conserva el token en memoria para los flujos de prueba.
 - La corrida completa necesitó permiso para enlazar `127.0.0.1`; las pruebas HTTP fallan con `listen EPERM` dentro del sandbox.
 
 ## Cobertura de entrega de verificación y registro, 27 de octubre de 2026
 
-- Se añade una prueba que confirma que `InMemoryVerificationDelivery` conserva el token más reciente para los flujos de prueba. El archivo `verification-delivery.ts` alcanza 100 % de sentencias, ramas, funciones y líneas.
 - `RegistrationService` amplía su suite de 18 a 23 pruebas. Se cubren planes e intents inválidos, payloads mal formados, origen web no válido con liberación del cooldown, errores de persistencia traducidos a respuesta genérica y rechazo de tokens inválidos antes de consultar el repositorio. La cobertura focal del servicio es 87,27 % de sentencias, 81,69 % de ramas, 97,14 % de funciones y 89,8 % de líneas.
 - La cobertura completa de API pasa con 816 pruebas y 21 omitidas por requisitos de bases PostgreSQL aisladas. La cobertura global es 91,43 % de sentencias, 85,72 % de ramas, 95,82 % de funciones y 92,98 % de líneas; la tabla de [`quality-baseline.md`](quality-baseline.md) queda actualizada.
 - El siguiente foco recomendado es `IdeaSubmissionService` (86,14 % de líneas), que orquesta las reservas de uso, la evaluación y la persistencia del resultado.
