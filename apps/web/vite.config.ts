@@ -83,13 +83,14 @@ const publicRoutePrerenderPlugin: Plugin = {
           .map(({ href, media }) => {
             if (
               !/^\/assets\/[a-zA-Z0-9/_-]+\.(svg|webp|png)$/.test(href) ||
-              !/^\(max-width: \d+px\)$/.test(media)
+              (media !== undefined && !/^\(max-width: \d+px\)$/.test(media))
             ) {
               throw new Error(
                 `Invalid image preload configuration for ${route.path}`,
               );
             }
-            return `<link rel="preload" as="image" href="${href}" fetchpriority="high" media="${media}" />`;
+            const mediaAttribute = media ? ` media="${media}"` : "";
+            return `<link rel="preload" as="image" href="${href}" fetchpriority="high"${mediaAttribute} />`;
           })
           .join("");
         const html = (
