@@ -56,7 +56,7 @@ export function UsageLimitDialog({
       >
         ×
       </button>
-      <img src="/assets/grumphya/mascot-neutral.svg" alt="" />
+      <img src="/assets/grumphya/mascot-crossed-arms.webp" alt="" />
       <span className="eyebrow">Por hoy ya está bien</span>
       <h2 id={`${copy.id}-title`}>Se acabaron los intentos</h2>
       <p id={`${copy.id}-copy`}>{copy.copy}</p>

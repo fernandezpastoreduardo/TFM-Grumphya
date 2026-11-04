@@ -301,6 +301,10 @@ describe("Home", () => {
     const quotaDialog = await screen.findByRole("dialog", {
       name: /ya conoces el método/i,
     });
+    expect(quotaDialog.querySelector("img")).toHaveAttribute(
+      "src",
+      "/assets/grumphya/mascot-crossed-arms.webp",
+    );
     expect(quotaDialog).toHaveTextContent(/funciono a base de café/i);
     expect(quotaDialog).toHaveTextContent(/tres evaluaciones de por vida/i);
     expect(quotaDialog.textContent).not.toMatch(/por hoy/i);
@@ -602,6 +606,10 @@ describe("Home", () => {
     const quotaDialog = await screen.findByRole("dialog", {
       name: /se acabaron los intentos/i,
     });
+    expect(quotaDialog.querySelector("img")).toHaveAttribute(
+      "src",
+      "/assets/grumphya/mascot-crossed-arms.webp",
+    );
     expect(quotaDialog).toHaveTextContent(
       /11 evaluaciones de hoy en iluminado/i,
     );

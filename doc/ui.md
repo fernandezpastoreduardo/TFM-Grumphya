@@ -180,6 +180,12 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
   Grumphya examinando gráficas mediante una lupa. El hero de alta y su panel de
   plan usan
   `create-account-hero.svg` y `create-account-plan.svg` respectivamente.
+  La pose de brazos cruzados se sirve como `mascot-crossed-arms.webp` en el
+  escenario móvil de Home, el marco común de héroes, el lateral de cuenta y los
+  avisos de cuota y pago. El archivo conserva transparencia, mide 700 × 856 px
+  y pesa 49.630 B. Frente al SVG neutral anterior de 748 × 1024 px y 120.540 B,
+  reduce el archivo en 70.910 B (58,8 %); el SVG se conserva en assets, aunque ya
+  no tiene referencias activas en la aplicación.
   La mascota del hero de Home se encuadra con `contain`, posición inferior y
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen

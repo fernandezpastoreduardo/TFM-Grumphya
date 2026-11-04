@@ -49,4 +49,26 @@ describe("SectionPageFrame mobile mascot", () => {
     expect(image).toHaveAttribute("decoding", "async");
     expect(image).toHaveAttribute("alt", "");
   });
+
+  it.each(["judge", "profile", "register"] as const)(
+    "uses the optimized crossed-arms mascot for %s sections",
+    (mascot) => {
+      const { container } = render(
+        <SectionPageFrame
+          page={{
+            title: "Evaluación",
+            intro: "Revisa tu idea.",
+            theme: "mint",
+            mascot,
+          }}
+        >
+          <p>Contenido de la sección</p>
+        </SectionPageFrame>,
+      );
+
+      expect(
+        container.querySelector(".section-mobile-mascot img"),
+      ).toHaveAttribute("src", "/assets/grumphya/mascot-crossed-arms.webp");
+    },
+  );
 });

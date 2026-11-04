@@ -323,6 +323,7 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
 
   const webpAssets = [
     "/assets/grumphya/home-grumpy-judge.webp",
+    "/assets/grumphya/mascot-crossed-arms.webp",
     "/assets/grumphya/audience-rounded.webp",
     "/assets/grumphya/stage-curtain-v2.webp",
     "/assets/grumphya/cookie-kick.webp",
@@ -334,6 +335,14 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
     expect(response.headers()["content-type"]).toContain("image/webp");
     expect(await assetHasTransparentPixels(page, assetPath)).toBe(true);
   }
+
+  const crossedArmsDimensions = await page.evaluate(async () => {
+    const image = new Image();
+    image.src = "/assets/grumphya/mascot-crossed-arms.webp";
+    await image.decode();
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  });
+  expect(crossedArmsDimensions).toEqual({ width: 700, height: 856 });
 
   const homeAudienceBackground = await page.evaluate(
     () =>
