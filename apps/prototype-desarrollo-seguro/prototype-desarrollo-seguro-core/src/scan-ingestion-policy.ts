@@ -38,6 +38,11 @@ export type SanitizedScanObservations = {
   checks: readonly SanitizedScanCheck[];
 };
 
+export function getCanonicalScanPaths(hostname: unknown): readonly string[] {
+  const safeHostname = normalizeHostname(hostname);
+  return safeHostname === "grumphya.com" ? ALLOWED_SCOPE_PATHS : ["/"];
+}
+
 type ControlContract = {
   methodsByPath: Readonly<Record<string, readonly string[]>>;
   evidence: Readonly<
@@ -136,8 +141,7 @@ export function sanitizeScanObservations(
     throw new Error("scan_profile_not_allowlisted");
   }
 
-  const allowedPaths =
-    safeHostname === "grumphya.com" ? ALLOWED_SCOPE_PATHS : ["/"];
+  const allowedPaths = getCanonicalScanPaths(safeHostname);
   const safeScope = sanitizeScope(scope, allowedPaths);
   if (
     !Array.isArray(checks) ||
