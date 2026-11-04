@@ -322,8 +322,12 @@ el resultado actual. La instrucción permite que el tono afecte solo al copy:
 `soft` debe sonar exageradamente amable y luminoso; `hard`, gruñón y mordaz,
 sin insultos ni palabrotas. El servidor compone `message` según el tono y
 valida el titular antes de mostrarlo; si no es seguro, usa un fallback local.
-En rechazos, el modelo también debe devolver `hardSetup` y `hardConsequence`, que se validan pero no
-se muestran actualmente. La explicación conserva los hechos y consecuencias.
+En rechazos, se pide al modelo `hardSetup` y `hardConsequence`, pero son copy
+auxiliar que no se muestra actualmente. El servidor conserva cada fragmento
+solo si pasa su validación; `null` o una cadena con formato inválido se
+descarta sin invalidar la explicación. Los campos siguen siendo obligatorios
+en el objeto de respuesta y otros tipos se rechazan. La explicación conserva
+los hechos y consecuencias.
 El tono duro critica la idea y su mecanismo, nunca a la persona, y ambos tonos
 son aptos para todos los públicos. Estado, criterios, puntuaciones, motivo y
 título seguro no dependen del tono. La explicación usa español sencillo,
@@ -355,7 +359,8 @@ validar o definir. No enumera la rúbrica ni inventa hechos ausentes. En
 `IDEA_INSUFICIENTE`, 8–40 palabras y ≤280 unidades UTF-16. En `RECHAZADA`,
 8–120 palabras y ≤900 unidades UTF-16 para explicar todos los suspensos. Todos
 los mensajes van en un solo párrafo, sin Markdown, listas ni saltos de línea;
-el rechazo y la insuficiencia usan una frase. Se renderiza como texto plano. `headline`
+el rechazo admite de una a cuatro frases y la insuficiencia usa una frase. Se
+renderiza como texto plano. `headline`
 debe ser breve, estar en español, respetar el tono y no contener «bloqueo» ni
 información identificativa. Se comprueban longitud, formato y fragmentos
 copiados de la idea; un titular inválido cae al fallback, sin invalidar una
@@ -532,7 +537,7 @@ nuevo, breve y acorde con estado y tono. El titular solo afecta a la
 presentación; no cambia la evaluación. La media de los demás estados se calcula
 en servidor.
 
-message: explicación clara, neutral y factual. En SIN_BLOQUEO_EVIDENTE: 25-90 palabras, máximo 700 unidades UTF-16 y de dos a cuatro oraciones; explica el valor concreto, la limitación principal y qué conviene validar, sin enumerar criterios ni inventar datos ausentes. En IDEA_INSUFICIENTE: 8-40 palabras y máximo 280 unidades UTF-16. En RECHAZADA: 8-120 palabras, máximo 900 unidades UTF-16; explica todos los criterios con score <15 y el perjuicio de cada uno. Sin llamarlo «bloqueo» ni usar jerga de informe.
+message: explicación clara, neutral y factual. En SIN_BLOQUEO_EVIDENTE: 25-90 palabras, máximo 700 unidades UTF-16 y de dos a cuatro oraciones; explica el valor concreto, la limitación principal y qué conviene validar, sin enumerar criterios ni inventar datos ausentes. En IDEA_INSUFICIENTE: 8-40 palabras y máximo 280 unidades UTF-16. En RECHAZADA: 8-120 palabras, máximo 900 unidades UTF-16 y de una a cuatro oraciones; explica todos los criterios con score <15 y el perjuicio de cada uno. Sin llamarlo «bloqueo» ni usar jerga de informe.
 No incluyas en message IDs internos C01–C10 ni reason codes; explica el defecto
 con palabras comunes. Estos identificadores pueden aparecer en campos
 estructurados internos, pero nunca en la explicación visible.
@@ -545,10 +550,11 @@ Sin preguntas, listas ni saltos de línea; la pulla va dirigida al mecanismo,
 nunca a la persona. El titular lo genera el modelo según estado y tono; el
 servidor valida su formato y privacidad y recurre a un titular local si no
 supera las comprobaciones.
-Termina en un punto y no uses otros puntos, interrogaciones, exclamaciones
-ni puntos suspensivos; evita abreviaturas con puntos.
+Termina en un punto. Puedes usar puntos interiores para separar hasta cuatro
+oraciones en RECHAZADA; no uses interrogaciones, exclamaciones ni puntos
+suspensivos y evita abreviaturas con puntos.
 No ataques a la persona, no uses amenazas ni presentes el resultado como
-garantía de viabilidad. Explica la carencia y su perjuicio en la misma frase.
+garantía de viabilidad. Explica la carencia y su perjuicio de forma clara.
 ```
 
 El catálogo de códigos puede ser reducido:
@@ -607,7 +613,7 @@ Las fuentes de la versión 1.0 fundamentaban una evaluación amplia. No es neces
 
 El cuarto aspecto queda incorporado en la sección 12: contratos, responsabilidades, inspección del repositorio, incrementos TDD y criterios verificables de terminación.
 
-**Regla final:** no fabricar fallos para mantener el personaje. Si hay rechazo, explicar en una frase el defecto y sus consecuencias; sin veto, detallar en dos a cuatro frases el valor, la limitación principal y qué conviene validar.
+**Regla final:** no fabricar fallos para mantener el personaje. Si hay rechazo, explicar en una a cuatro frases los defectos y sus consecuencias; sin veto, detallar en dos a cuatro frases el valor, la limitación principal y qué conviene validar.
 
 ## 12. Especificación de implementación para Luna en esfuerzo medio con TDD
 
@@ -695,8 +701,8 @@ interface ModelDecision {
   safeTitle: string | null;
   existingProductExample: string | null; // Nombre conocido solo si C10 es el primer veto; no afecta al veredicto.
   message: string; // Mensaje base validado.
-  hardSetup: string | null; // Copy auxiliar requerido en rechazos.
-  hardConsequence: string | null; // Consecuencia auxiliar validada en rechazos.
+  hardSetup: string | null; // Copy auxiliar opcional y validado en rechazos.
+  hardConsequence: string | null; // Consecuencia auxiliar opcional y validada en rechazos.
 }
 
 interface EvaluationResponse {

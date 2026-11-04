@@ -1493,3 +1493,323 @@ body:has(#theme-switch:checked) .intro-band p strong {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Academic service prototype: local-only domain examples and contact form. */
+.domain-check {
+  padding-block: 112px 96px;
+}
+
+.domain-check .section-heading,
+.prototype-contact .section-heading {
+  max-width: 780px;
+}
+
+.domain-form,
+.prototype-contact-form {
+  max-width: 790px;
+  margin-top: 32px;
+  border: 1px solid var(--line);
+  padding: clamp(22px, 4vw, 38px);
+  background: var(--paper);
+}
+
+.domain-form > label,
+.contact-fields label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.domain-form-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.domain-form input,
+.contact-fields input,
+.contact-fields textarea {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #8793a2;
+  border-radius: 2px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: var(--canvas);
+  font: inherit;
+}
+
+.contact-fields textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+
+.domain-form input:focus-visible,
+.contact-fields input:focus-visible,
+.contact-fields textarea:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.form-help,
+.prototype-stamp,
+.report-source,
+.report-limit,
+.ethics-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.65;
+}
+
+.report {
+  margin-top: 28px;
+  border-top: 4px solid var(--accent);
+  padding: clamp(22px, 4vw, 38px);
+  background: var(--paper);
+  scroll-margin-top: 110px;
+}
+
+.report[hidden],
+.form-result[hidden] {
+  display: none;
+}
+
+.report-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.report-heading h3 {
+  margin: 8px 0;
+  font-family: var(--serif);
+  font-size: clamp(1.55rem, 3vw, 2.4rem);
+  font-weight: 600;
+}
+
+.report-disclaimer {
+  max-width: 880px;
+  margin: 16px 0 26px;
+  border-left: 3px solid var(--accent);
+  padding: 12px 16px;
+  color: var(--ink-soft);
+  background: var(--canvas);
+  line-height: 1.7;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.report-card {
+  border: 1px solid var(--line);
+  padding: 20px;
+  background: var(--paper);
+}
+
+.report-card h4 {
+  margin: 10px 0 8px;
+  font-size: 1.05rem;
+}
+
+.report-card p {
+  margin: 8px 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.report-category,
+.practice-index {
+  color: var(--accent-strong);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.report-limit {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.report-simulated {
+  border-top-color: #bd4838;
+}
+
+.status-low {
+  border-color: #bd4838;
+  color: #8f2e22;
+  background: #fae4df;
+}
+
+.simulated-card h4 {
+  color: #9b3023;
+}
+
+.prototype-stamp {
+  max-width: 790px;
+  margin-top: 14px;
+}
+
+.how-it-works {
+  padding-block: 100px;
+  color: #f8f5ee;
+  background: var(--navy);
+}
+
+.how-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  align-items: start;
+  gap: 52px;
+}
+
+.how-grid h2,
+.ethics-panel h2 {
+  margin: 8px 0 18px;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+.how-grid > div > p:not(.eyebrow),
+.how-grid li,
+.technical-contact-card p,
+.ethics-panel > p {
+  color: #d5dce5;
+  line-height: 1.75;
+}
+
+.process-list {
+  display: grid;
+  gap: 14px;
+  padding-left: 22px;
+}
+
+.process-list strong {
+  color: #fffefa;
+}
+
+.technical-contact-card {
+  border: 1px solid #516176;
+  padding: 28px;
+  background: #102744;
+}
+
+.technical-contact-card h3 {
+  margin: 14px 0;
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  line-height: 1.25;
+}
+
+.technical-contact-card .report-limit {
+  border-color: #516176;
+  color: #c4ceda;
+}
+
+.ethics {
+  padding-block: 86px;
+}
+
+.ethics-panel {
+  max-width: 950px;
+  margin-inline: auto;
+  padding: clamp(28px, 5vw, 58px);
+  color: #fffefa;
+  background: #15394b;
+}
+
+.ethics-commitment {
+  margin-top: 26px;
+  border-left: 3px solid var(--accent);
+  padding: 12px 18px;
+  color: #fffefa !important;
+  background: #ffffff0c;
+}
+
+.ethics-note {
+  margin-bottom: 0;
+  color: #c4d5dc;
+}
+
+.prototype-contact {
+  padding-block: 74px 104px;
+}
+
+.contact-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.contact-fields .field-wide {
+  grid-column: 1 / -1;
+}
+
+.prototype-contact-form > button {
+  margin-top: 22px;
+}
+
+.form-result {
+  border-left: 3px solid #2a826f;
+  padding: 12px 16px;
+  color: var(--ink);
+  background: #dcefe9;
+  line-height: 1.6;
+}
+
+body:has(#theme-switch:checked) .report-card,
+body:has(#theme-switch:checked) .domain-form,
+body:has(#theme-switch:checked) .prototype-contact-form {
+  background: #111f33;
+}
+
+body:has(#theme-switch:checked) .status-low {
+  color: #ffe0d9;
+  background: #612d2a;
+}
+
+body:has(#theme-switch:checked) .simulated-card h4 {
+  color: #ffb3a4;
+}
+
+body:has(#theme-switch:checked) .form-result {
+  color: #102923;
+}
+
+@media (max-width: 760px) {
+  .domain-check {
+    padding-block: 72px;
+  }
+
+  .domain-form-row,
+  .report-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .domain-form-row .button {
+    width: 100%;
+  }
+
+  .report-grid,
+  .how-grid,
+  .contact-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .how-grid {
+    gap: 28px;
+  }
+
+  .contact-fields .field-wide {
+    grid-column: auto;
+  }
+}

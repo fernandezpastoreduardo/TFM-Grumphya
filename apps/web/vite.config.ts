@@ -25,6 +25,13 @@ const DEVELOPMENT_SECURITY_FILES = new Map([
       contentType: "text/css; charset=utf-8",
     },
   ],
+  [
+    `${DEVELOPMENT_SECURITY_PREFIX}/prototype.js`,
+    {
+      file: new URL("../../prototype/prototype.js", import.meta.url),
+      contentType: "text/javascript; charset=utf-8",
+    },
+  ],
 ]);
 const DEV_SHARED_STYLES = [
   "/src/shared/styles/base.scss",
@@ -76,13 +83,14 @@ const publicRoutePrerenderPlugin: Plugin = {
           .map(({ href, media }) => {
             if (
               !/^\/assets\/[a-zA-Z0-9/_-]+\.(svg|webp|png)$/.test(href) ||
-              !/^\(max-width: \d+px\)$/.test(media)
+              (media !== undefined && !/^\(max-width: \d+px\)$/.test(media))
             ) {
               throw new Error(
                 `Invalid image preload configuration for ${route.path}`,
               );
             }
-            return `<link rel="preload" as="image" href="${href}" fetchpriority="high" media="${media}" />`;
+            const mediaAttribute = media ? ` media="${media}"` : "";
+            return `<link rel="preload" as="image" href="${href}" fetchpriority="high"${mediaAttribute} />`;
           })
           .join("");
         const html = (

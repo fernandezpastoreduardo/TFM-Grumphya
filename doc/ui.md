@@ -331,14 +331,21 @@ competía con los recursos iniciales. Las mascotas de sección en móvil se
 representan ahora como imágenes diferidas; las versiones de escritorio
 conservan sus fondos CSS.
 Los ajustes publicados el 30 de octubre
-para responder a los informes anteriores también precargan el telón compartido
-`stage-curtain-v2.webp` desde `apps/web/index.html` con prioridad alta, fijan
-los colores del CTA del historial vacío de Peores ideas y oscurecen el color
-del número de puesto en Humanos notables. Los informes posteriores no permiten
-atribuir cambios de puntuación a cada ajuste por separado. Para
-completar la revisión, medir Home, Humanos notables, Contacto, Descárgate, alta
-y `/panel-control` con Lighthouse en escritorio y móvil, ambos temas y caché
-fría y caliente; revisar waterfall, bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
+para responder a los informes anteriores precargaban el telón y el público
+desde `apps/web/index.html` en todas las rutas. El informe móvil de Peores ideas
+del 4 de noviembre registró rendimiento 0,96, FCP 1,3 s y LCP 2,7 s; descargó
+ambas imágenes decorativas con prioridad alta. Ahora el HTML base deja de
+precargarlas globalmente y Home precarga solo el telón desde la configuración
+de su ruta. Las otras páginas descubren ambos fondos al cargar sus estilos, sin
+reservarles prioridad alta frente al contenido inicial. El mismo informe
+detectó contraste 1,67:1 en el enlace a planes del estado anónimo del
+historial; el enlace ahora fija texto oscuro y fondo claro en ambos temas. La
+prueba de componente verifica que ese CTA use la regla específica. Hace falta
+medir de nuevo la versión desplegada para comprobar el efecto real en LCP y
+contraste de Lighthouse. Para completar la revisión, medir Home, Humanos
+notables, Contacto, Descárgate, alta y `/panel-control` con Lighthouse en
+escritorio y móvil, ambos temas y caché fría y caliente; revisar waterfall,
+bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
 de Buenas prácticas, Humanos notables, Contacto y Mi cuenta se ajustaron a
 Los assets SVG sustituyen las ilustraciones PNG de la app, excepto el telón y el
 público, que se conservan como WebP. Las versiones activas son SVGOMG en
@@ -384,18 +391,13 @@ de tono pesan 205.536 B en conjunto: `descargate-boxing-bag.svg`, 67.914 B;
 `idea-tone-soft-bandage-v2.svg`, 72.991 B; y `idea-tone-hard-boxing-v2.svg`,
 64.631 B. Las tres conservan transparencia.
 
-La última revisión de carga móvil añade desde el HTML una precarga con prioridad
-alta para `audience-rounded.webp`, el recurso decorativo compartido que se usa
-en las secciones públicas. Las ilustraciones de contenido que aparecen más
+Las ilustraciones de contenido que aparecen más
 abajo o dentro de un diálogo llevan `loading="lazy"` y `decoding="async"`;
 esta decisión no debe extenderse a una ilustración que sea el LCP inicial de
 una ruta. Las filas del ranking de Peores ideas mantienen el puesto mediante
 la numeración nativa de `<ol>`; el número visual no se anuncia por duplicado en
 un `<span>`. El estado vacío del historial tiene un fondo oscuro explícito en
-tema oscuro para conservar el contraste de su texto claro. No hay una medición
-Lighthouse posterior comparable que permita atribuir una mejora de puntuación
-a estos cambios; la precarga solo confirma el descubrimiento del recurso desde
-el HTML inicial.
+tema oscuro para conservar el contraste de su texto claro.
 
 Las precargas de Nunito Sans y Fredoka ahora sirven subconjuntos WOFF2 con los
 caracteres latinos y símbolos empleados por la interfaz española. Los originales
