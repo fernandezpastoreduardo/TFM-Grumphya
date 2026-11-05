@@ -12,9 +12,11 @@ import {
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const OPENAI_MODEL = "gpt-5.4-mini";
-const DEFAULT_TIMEOUT_MS = 10_000;
-const MAX_OUTPUT_TOKENS = 100;
+const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_OUTPUT_TOKENS = 300;
 const MAX_REPLY_LENGTH = 200;
+const RETRY_DELAY_MS = 250;
+const MIN_RETRY_TIME_MS = 1_000;
 const OPENAI_REQUEST_ERROR = "OpenAI roast request failed.";
 const OPENAI_RESPONSE_ERROR = "OpenAI roast response is invalid.";
 const OUTPUT_SCHEMA_NAME = "grumphya_roast_reply";
@@ -29,6 +31,46 @@ const REPLY_SCHEMA = {
   required: ["reply"],
   properties: { reply: { type: "string" } },
 } as const;
+
+type RoastFailureCode =
+  | "OPENAI_ROAST_TIMEOUT"
+  | "OPENAI_ROAST_TRANSPORT"
+  | "OPENAI_ROAST_HTTP_429"
+  | "OPENAI_ROAST_HTTP_5XX"
+  | "OPENAI_ROAST_HTTP_OTHER"
+  | "OPENAI_ROAST_INCOMPLETE"
+  | "OPENAI_ROAST_INVALID_RESPONSE";
+
+class OpenAiRoastFailure extends Error {
+  constructor(
+    readonly code: RoastFailureCode,
+    message: string,
+    readonly retryable = false,
+  ) {
+    super(message);
+    this.name = "OpenAiRoastFailure";
+  }
+}
+
+function invalidResponse(): OpenAiRoastFailure {
+  return new OpenAiRoastFailure(
+    "OPENAI_ROAST_INVALID_RESPONSE",
+    OPENAI_RESPONSE_ERROR,
+  );
+}
+
+function requestFailure(
+  code: RoastFailureCode,
+  retryable = false,
+): OpenAiRoastFailure {
+  return new OpenAiRoastFailure(code, OPENAI_REQUEST_ERROR, retryable);
+}
+
+function httpFailure(status: number): OpenAiRoastFailure {
+  if (status === 429) return requestFailure("OPENAI_ROAST_HTTP_429");
+  if (status >= 500) return requestFailure("OPENAI_ROAST_HTTP_5XX", true);
+  return requestFailure("OPENAI_ROAST_HTTP_OTHER");
+}
 
 export type OpenAiRoastReplyPortOptions = {
   apiKey: string;
@@ -54,13 +96,24 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
     const startedAt = performance.now();
     let outcome: "success" | "error" = "error";
     let usage: AiTokenUsage = {};
+    let failureCode: RoastFailureCode | undefined;
     try {
       const result = await this.performReply(message, userId);
       outcome = "success";
       usage = result.usage;
       return result.reply;
+    } catch (error) {
+      if (error instanceof OpenAiRoastFailure) failureCode = error.code;
+      throw error;
     } finally {
-      recordAiOperation(OPERATION_NAME, this.model, startedAt, outcome, usage);
+      recordAiOperation(
+        OPERATION_NAME,
+        this.model,
+        startedAt,
+        outcome,
+        usage,
+        failureCode,
+      );
     }
   }
 
@@ -68,8 +121,35 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
     message: string,
     userId?: string,
   ): Promise<{ reply: string; usage: AiTokenUsage }> {
+    const deadline = performance.now() + this.timeoutMs;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await this.requestReply(message, userId, deadline);
+      } catch (error) {
+        if (
+          !(error instanceof OpenAiRoastFailure) ||
+          !error.retryable ||
+          attempt > 0 ||
+          deadline - performance.now() < MIN_RETRY_TIME_MS
+        ) {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+    throw requestFailure("OPENAI_ROAST_TRANSPORT");
+  }
+
+  private async requestReply(
+    message: string,
+    userId: string | undefined,
+    deadline: number,
+  ): Promise<{ reply: string; usage: AiTokenUsage }> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      Math.max(0, deadline - performance.now()),
+    );
     try {
       let response: Response;
       try {
@@ -82,6 +162,7 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
           body: JSON.stringify({
             model: this.model,
             store: false,
+            reasoning: { effort: "none" },
             max_output_tokens: MAX_OUTPUT_TOKENS,
             input: [
               {
@@ -108,15 +189,24 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
           signal: controller.signal,
         });
       } catch {
-        throw new Error(OPENAI_REQUEST_ERROR);
+        throw requestFailure(
+          controller.signal.aborted
+            ? "OPENAI_ROAST_TIMEOUT"
+            : "OPENAI_ROAST_TRANSPORT",
+          !controller.signal.aborted,
+        );
       }
-      if (!response.ok) throw new Error(OPENAI_REQUEST_ERROR);
+      if (!response.ok) {
+        throw httpFailure(response.status);
+      }
 
       let body: unknown;
       try {
         body = await response.json();
       } catch {
-        throw new Error(OPENAI_RESPONSE_ERROR);
+        if (controller.signal.aborted)
+          throw requestFailure("OPENAI_ROAST_TIMEOUT");
+        throw invalidResponse();
       }
       const tokenUsage = readTokenUsage(body);
       if (tokenUsage) {
@@ -127,17 +217,29 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
           ...tokenUsage,
         });
       }
+      if (!isRecord(body) || body.status !== "completed") {
+        const maxTokensReached =
+          isRecord(body) &&
+          body.status === "incomplete" &&
+          isRecord(body.incomplete_details) &&
+          body.incomplete_details.reason === "max_output_tokens";
+        throw new OpenAiRoastFailure(
+          "OPENAI_ROAST_INCOMPLETE",
+          OPENAI_RESPONSE_ERROR,
+          maxTokensReached,
+        );
+      }
       const outputText = findOutputText(body);
-      if (!outputText) throw new Error(OPENAI_RESPONSE_ERROR);
+      if (!outputText) throw invalidResponse();
 
       let output: unknown;
       try {
         output = JSON.parse(outputText) as unknown;
       } catch {
-        throw new Error(OPENAI_RESPONSE_ERROR);
+        throw invalidResponse();
       }
       if (!isRecord(output) || typeof output.reply !== "string")
-        throw new Error(OPENAI_RESPONSE_ERROR);
+        throw invalidResponse();
 
       const cleanReply = output.reply.trim();
       if (
@@ -145,7 +247,7 @@ export class OpenAiRoastReplyPort implements RoastReplyPort {
         cleanReply.length > MAX_REPLY_LENGTH ||
         containsExplicitAbuse(cleanReply)
       ) {
-        throw new Error(OPENAI_RESPONSE_ERROR);
+        throw invalidResponse();
       }
       return { reply: cleanReply, usage: readAiTokenUsage(body) };
     } finally {

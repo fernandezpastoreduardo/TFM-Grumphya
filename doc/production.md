@@ -207,9 +207,10 @@ reales del VPS. La evaluación se reintenta una sola vez, con una pausa de
 1 segundo, únicamente si falla con el
 diagnóstico `visible_message`; otros errores no se reintentan. Cada llamada a
 `evaluate` puede hacer también su propio reintento semántico, por lo que el
-smoke puede generar hasta cuatro completions de evaluación en total y una de
-roast. Si el smoke sigue fallando, el helper restaura la release anterior y no
-confirma la candidata. Estas llamadas pueden generar coste en el proveedor.
+smoke puede generar hasta cuatro completions de evaluación en total y dos
+solicitudes de roast en su presupuesto de 30 segundos. Si el smoke sigue
+fallando, el helper restaura la release anterior y no confirma la candidata.
+Estas llamadas pueden generar coste en el proveedor.
 Este smoke real del despliegue es distinto del smoke integrado local de Compose,
 que usa secretos ficticios y no llama a OpenAI ni envía correo.
 
@@ -218,9 +219,10 @@ candidata, después del escaneo Trivy y antes de guardar y empaquetar las
 imágenes para el despliegue. Solo lo hace para una ejecución autorizada desde
 `main` que haya confirmado el despliegue; requiere el secreto `OPENAI_API_KEY`
 de Actions y usa `gpt-5.4-mini` con razonamiento bajo para la evaluación. El
-roast usa también `gpt-5.4-mini`. Las solicitudes no se almacenan (`store: false`)
-y emplean entradas sintéticas fijas. Puede consumir hasta cuatro completions de
-evaluación y una de roast por los reintentos descritos arriba. Si falta la clave
+roast usa también `gpt-5.4-mini` con razonamiento desactivado. Las solicitudes no
+se almacenan (`store: false`) y emplean entradas sintéticas fijas. Puede
+consumir hasta cuatro completions de evaluación y dos solicitudes de roast por
+los reintentos descritos arriba. Si falta la clave
 o falla cualquiera de las operaciones, CI no continúa con el release. El smoke
 del VPS se conserva para verificar además las credenciales reales que usa el
 servicio desplegado.

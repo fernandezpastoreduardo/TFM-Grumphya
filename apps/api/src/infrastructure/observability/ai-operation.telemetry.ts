@@ -70,6 +70,7 @@ export function recordAiOperation(
   startedAt: number,
   outcome: AiOperationOutcome,
   usage: AiTokenUsage = {},
+  failureCode?: string,
 ): void {
   const inputPrice = readPrice(operation, "INPUT");
   const outputPrice = readPrice(operation, "OUTPUT");
@@ -87,6 +88,7 @@ export function recordAiOperation(
     traceId: randomUUID(),
     model,
     outcome,
+    ...(failureCode ? { failureCode } : {}),
     durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
     inputTokens: usage.inputTokens ?? null,
     outputTokens: usage.outputTokens ?? null,
