@@ -9,7 +9,11 @@ import "./register-with-plan.scss";
 type Plan = "ILUMINADO" | "FALTON";
 type PlanResponse = { plan: Plan };
 type RegistrationField =
-  "email" | "username" | "password" | "privacyPolicyAcknowledged";
+  | "email"
+  | "username"
+  | "password"
+  | "passwordConfirmation"
+  | "privacyPolicyAcknowledged";
 
 const EMAIL_ERROR = "Venga ya, ese correo no es de verdad, escribe bien anda.";
 const USERNAME_ERROR =
@@ -17,6 +21,8 @@ const USERNAME_ERROR =
 const PASSWORD_ERROR = "La contraseña necesita al menos 12 caracteres.";
 const STRONG_PASSWORD_ERROR =
   "Usa al menos 12 caracteres e incluye mayúscula, minúscula, número y carácter especial.";
+const PASSWORD_CONFIRMATION_ERROR =
+  "Las contraseñas no coinciden. Revísalas y vuelve a intentarlo.";
 const PRIVACY_ERROR =
   "Debes confirmar que has leído la política de privacidad.";
 const GENERIC_ERROR =
@@ -30,6 +36,10 @@ const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
 const PASSWORD_LOWERCASE_PATTERN = /\p{Ll}/u;
 const PASSWORD_NUMBER_PATTERN = /\p{N}/u;
 const PASSWORD_SPECIAL_PATTERN = /[^\p{L}\p{N}\s]/u;
+const PASSWORD_VISIBILITY_LABEL = {
+  SHOW: "Mostrar contraseña",
+  HIDE: "Ocultar contraseña",
+} as const;
 const PLAN_NAMES: Record<Plan, string> = {
   ILUMINADO: "Iluminado",
   FALTON: "Faltón",
@@ -73,6 +83,9 @@ export function RegisterWithPlan() {
   const submissionLocked = useRef(false);
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<RegistrationField | null>(null);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [passwordConfirmationVisible, setPasswordConfirmationVisible] =
+    useState(false);
 
   useEffect(() => {
     let active = true;
@@ -104,6 +117,9 @@ export function RegisterWithPlan() {
     const email = String(formData.get("email") ?? "").trim();
     const username = String(formData.get("username") ?? "").trim();
     const password = String(formData.get("password") ?? "");
+    const passwordConfirmation = String(
+      formData.get("passwordConfirmation") ?? "",
+    );
     const privacyPolicyAcknowledged =
       formData.get("privacyPolicyAcknowledged") === "on";
 
@@ -120,6 +136,11 @@ export function RegisterWithPlan() {
     if (!isStrongPassword(password)) {
       setError(password.length < 12 ? PASSWORD_ERROR : STRONG_PASSWORD_ERROR);
       setErrorField("password");
+      return;
+    }
+    if (password !== passwordConfirmation) {
+      setError(PASSWORD_CONFIRMATION_ERROR);
+      setErrorField("passwordConfirmation");
       return;
     }
     if (!privacyPolicyAcknowledged) {
@@ -297,25 +318,79 @@ export function RegisterWithPlan() {
             </div>
             <div className="registration-field">
               <label htmlFor="registration-password">Contraseña</label>
-              <input
-                id="registration-password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={12}
-                maxLength={128}
-                aria-describedby={
-                  errorField === "password"
-                    ? "registration-error registration-password-help"
-                    : "registration-password-help"
-                }
-                aria-invalid={errorField === "password"}
-              />
+              <div className="registration-password-field">
+                <input
+                  className="registration-password-input"
+                  id="registration-password"
+                  name="password"
+                  type={passwordVisible ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                  aria-describedby={
+                    errorField === "password"
+                      ? "registration-error registration-password-help"
+                      : "registration-password-help"
+                  }
+                  aria-invalid={errorField === "password"}
+                />
+                <button
+                  className="registration-password-toggle"
+                  type="button"
+                  aria-controls="registration-password"
+                  aria-label={
+                    passwordVisible
+                      ? PASSWORD_VISIBILITY_LABEL.HIDE
+                      : PASSWORD_VISIBILITY_LABEL.SHOW
+                  }
+                  onClick={() => setPasswordVisible((visible) => !visible)}
+                >
+                  {passwordVisible ? "Ocultar" : "Mostrar"}
+                </button>
+              </div>
               <p id="registration-password-help">
                 Mínimo 12 caracteres, con mayúscula, minúscula, número y
                 carácter especial.
               </p>
+            </div>
+            <div className="registration-field">
+              <label htmlFor="registration-password-confirmation">
+                Repite la contraseña
+              </label>
+              <div className="registration-password-field">
+                <input
+                  className="registration-password-input"
+                  id="registration-password-confirmation"
+                  name="passwordConfirmation"
+                  type={passwordConfirmationVisible ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                  aria-describedby={
+                    errorField === "passwordConfirmation"
+                      ? "registration-error"
+                      : undefined
+                  }
+                  aria-invalid={errorField === "passwordConfirmation"}
+                />
+                <button
+                  className="registration-password-toggle"
+                  type="button"
+                  aria-controls="registration-password-confirmation"
+                  aria-label={
+                    passwordConfirmationVisible
+                      ? PASSWORD_VISIBILITY_LABEL.HIDE
+                      : PASSWORD_VISIBILITY_LABEL.SHOW
+                  }
+                  onClick={() =>
+                    setPasswordConfirmationVisible((visible) => !visible)
+                  }
+                >
+                  {passwordConfirmationVisible ? "Ocultar" : "Mostrar"}
+                </button>
+              </div>
             </div>
             <label
               className="registration-privacy"

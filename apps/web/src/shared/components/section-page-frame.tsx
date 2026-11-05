@@ -115,7 +115,9 @@ function SectionHeader({
           <a
             href={item.path}
             key={item.path}
-            aria-current={item.path === currentPath ? "page" : undefined}
+            aria-current={
+              isCurrentSectionPath(item.path, currentPath) ? "page" : undefined
+            }
           >
             {item.label}
           </a>
@@ -171,6 +173,13 @@ function SectionHeader({
         </button>
       </div>
     </header>
+  );
+}
+
+function isCurrentSectionPath(itemPath: string, currentPath: string): boolean {
+  return (
+    itemPath === currentPath ||
+    (itemPath === "/precios" && currentPath === "/crear-cuenta/planes")
   );
 }
 

@@ -67,6 +67,41 @@
   background: #fff;
 }
 
+.registration-password-field {
+  display: flex;
+  min-width: 0;
+  gap: 8px;
+}
+
+.registration-password-field .registration-password-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.registration-password-toggle {
+  flex: 0 0 auto;
+  min-width: 76px;
+  min-height: 48px;
+  border: 1px solid #216b70;
+  border-radius: 13px;
+  padding: 8px 12px;
+  color: #183234;
+  background: #e4f4ee;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.registration-password-input:focus-visible,
+.registration-password-toggle:focus-visible {
+  outline: 3px solid #216b70;
+  outline-offset: 2px;
+}
+
+.registration-password-toggle:hover {
+  background: #cde9dc;
+}
+
 .registration-password-help {
   margin: 0;
   color: #405c5b;

@@ -42,6 +42,15 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
   barra conserva el nombre accesible estático «Progreso de la evaluación» y no
   anuncia un valor dinámico, para evitar repetir el copy en lectores de
   pantalla. Con la preferencia de movimiento reducido, la barra queda estática.
+- El acceso «Crear cuenta» lleva a `/crear-cuenta/planes`, una ruta de selección
+  que conserva la navegación de Planes activa y reutiliza las tarjetas de
+  `/precios`. Al elegir un plan, el flujo de alta crea la intención temporal en
+  el servidor y continúa a `/crear-cuenta` sin incluir el plan en la URL.
+- En el formulario de alta, «Contraseña» y «Repite la contraseña» empiezan
+  ocultos. Cada campo tiene su propio botón «Mostrar»/«Ocultar», con nombre
+  accesible que anuncia la acción y señala el campo que controla. Antes de
+  enviar, la interfaz valida que ambos valores coincidan; el campo repetido es
+  una comprobación local y no forma parte de la solicitud de registro.
 - En el envío inicial, la API puede devolver una respuesta especial fija para
   una señal léxica contextual de Grumphya (nombre más vocabulario explícito de
   equivalencia, no basta mencionar una app, o evaluar/analizar/revisar + ideas

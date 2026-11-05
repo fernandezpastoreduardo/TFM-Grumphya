@@ -704,7 +704,7 @@ describe("Home", () => {
     );
     expect(screen.getByRole("link", { name: /crear cuenta/i })).toHaveAttribute(
       "href",
-      "/precios",
+      "/crear-cuenta/planes",
     );
   });
 

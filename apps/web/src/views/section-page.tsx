@@ -53,6 +53,13 @@ const PAGE_META: Record<string, SectionPageMeta> = {
     theme: "blue",
     mascot: "plans",
   },
+  "/crear-cuenta/planes": {
+    title: "Para crear tu cuenta, primero elige un plan",
+    intro:
+      "Selecciona Iluminado o Faltón para continuar con el alta. La contratación de esta versión es simulada: aquí no se mueve dinero.",
+    theme: "blue",
+    mascot: "plans",
+  },
   "/contacto": {
     title: "¿Necesitas decirlo en voz alta?",
     intro:
@@ -144,6 +151,10 @@ const SECTION_CONTENT_LOADERS: Record<
       default: module.GoodPractices,
     })),
   "/precios": () =>
+    import("../features/pricing/pricing").then((module) => ({
+      default: module.Pricing,
+    })),
+  "/crear-cuenta/planes": () =>
     import("../features/pricing/pricing").then((module) => ({
       default: module.Pricing,
     })),

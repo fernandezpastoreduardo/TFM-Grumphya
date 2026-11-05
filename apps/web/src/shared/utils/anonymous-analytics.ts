@@ -12,6 +12,7 @@ type PlanCode = "ILUMINADO" | "FALTON";
 const PUBLIC_PAGE_CODES: Readonly<Record<string, PublicAnalyticsPage>> = {
   "/": "home",
   "/precios": "precios",
+  "/crear-cuenta/planes": "precios",
   "/buenas-practicas": "buenas-practicas",
   "/humanos-notables": "humanos-notables",
   "/lo-peor-de-lo-peor": "lo-peor-de-lo-peor",

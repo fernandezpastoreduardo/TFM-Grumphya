@@ -507,6 +507,24 @@ describe("security middleware", () => {
     expect(queryResponse.response.status).toHaveBeenCalledWith(400);
   });
 
+  it("rate limits account creation submissions and returns a retry interval", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const request = createRequest("/api/registrations", "POST");
+    for (let index = 0; index < 8; index += 1)
+      middleware(request, createResponse().response, next);
+
+    const limited = createResponse();
+    middleware(request, limited.response, next);
+
+    expect(limited.response.status).toHaveBeenCalledWith(429);
+    expect(limited.response.setHeader).toHaveBeenCalledWith(
+      "Retry-After",
+      expect.any(String),
+    );
+    expect(next).toHaveBeenCalledTimes(8);
+  });
+
   it("keeps logout available after the refresh limit is reached", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;
