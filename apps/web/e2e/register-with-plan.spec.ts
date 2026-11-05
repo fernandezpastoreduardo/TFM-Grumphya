@@ -5,6 +5,26 @@ const USERNAME = "PersonaE2EIdentificadorLong123";
 const PASSWORD = "Una contraseña segura para e2e 2026!";
 const REGISTER_BUTTON_NAME = /crear cuenta y verificar correo/i;
 
+test("opens the registration plans from navigation and reaches the form", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Crear cuenta" }).click();
+  await expect(page).toHaveURL(/\/crear-cuenta\/planes$/);
+  await expect(
+    page.getByRole("heading", {
+      name: "Para crear tu cuenta, primero elige un plan",
+    }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: /elegir iluminado/i }).click();
+  await expect(page).toHaveURL(/\/crear-cuenta$/);
+  await expect(
+    page.getByRole("heading", { name: /una cuenta\. un plan/i }),
+  ).toBeVisible();
+  await expect(page.getByText(/plan seleccionado: iluminado/i)).toBeVisible();
+});
+
 test("verifies the registration, activates the simulated purchase and deletes the account from the profile", async ({
   page,
 }) => {
