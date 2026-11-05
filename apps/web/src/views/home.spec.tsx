@@ -1095,9 +1095,9 @@ describe("Home", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent(
       /la espera no mejora el resultado/i,
     );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /buscando dónde puede romperse/i,
-    );
+    expect(
+      screen.getByRole("heading", { name: /buscando dónde puede romperse/i }),
+    ).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([url]) => url === "/api/evaluation-process"),
     ).toHaveLength(1);

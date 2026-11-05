@@ -30,6 +30,18 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
   texto de la idea; al cerrar el diálogo del resultado, la persona puede
   escribir o editar otra idea directamente. Tras recibir un resultado, la
   acción para volver a él dice «Volver a ver la evaluación».
+- Mientras el servidor evalúa, Home abre el diálogo de evaluación y muestra
+  «Buscando dónde puede romperse…», el texto auxiliar «Evaluando tu idea. La
+  espera no mejora el resultado.» y un loader indeterminado, sin porcentaje ni
+  estimación de tiempo. El copy rotativo cambia cada 2,8 segundos entre
+  «Descartando graciosillos…», «Consultando si a alguien más se le ha ocurrido
+  tu idea…» y «Evaluando tu idea con el DEBIDO respeto…»; el último permanece
+  hasta que llegue la respuesta. Son mensajes de espera con humor, no etapas
+  observables del trabajo real del evaluador. El diálogo comunica la carga con
+  `aria-busy`; la frase rotativa es el único `role="status"` y live region. La
+  barra conserva el nombre accesible estático «Progreso de la evaluación» y no
+  anuncia un valor dinámico, para evitar repetir el copy en lectores de
+  pantalla. Con la preferencia de movimiento reducido, la barra queda estática.
 - En el envío inicial, la API puede devolver una respuesta especial fija para
   una señal léxica contextual de Grumphya (nombre más vocabulario explícito de
   equivalencia, no basta mencionar una app, o evaluar/analizar/revisar + ideas
