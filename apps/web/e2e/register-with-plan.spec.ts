@@ -20,6 +20,7 @@ test("verifies the registration, activates the simulated purchase and deletes th
   await page.getByLabel("Correo electrónico").fill(EMAIL);
   await page.getByLabel("Nombre de usuario").fill(USERNAME);
   await page.getByLabel("Contraseña", { exact: true }).fill(PASSWORD);
+  await page.getByLabel("Repite la contraseña").fill(PASSWORD);
   await page.getByRole("button", { name: REGISTER_BUTTON_NAME }).click();
   await expect(page.getByRole("alert")).toContainText(
     /debes confirmar que has leído/i,
