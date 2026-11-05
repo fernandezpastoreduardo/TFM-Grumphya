@@ -160,6 +160,35 @@ describe("OpenAiRoastReplyPort", () => {
     expect(requestBody.input[0]?.content[0]?.text).toContain(
       "No expliques el chiste ni copies frases ni cites literalmente el mensaje",
     );
+    expect(requestBody.input[0]?.content[0]?.text).toContain(
+      "No añadas coletillas ni apelativos al final",
+    );
+    expect(requestBody.input[0]?.content[0]?.text).not.toContain("Bro");
+  });
+
+  it("removes a trailing Bro from the provider reply", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      Response.json({
+        status: "completed",
+        output: [
+          {
+            content: [
+              {
+                type: "output_text",
+                text: JSON.stringify({
+                  reply: "Los gatos ya tienen más plan que tú, Bro.",
+                }),
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const port = new OpenAiRoastReplyPort({ apiKey: "test-secret" });
+
+    await expect(port.reply("mensaje")).resolves.toBe(
+      "Los gatos ya tienen más plan que tú.",
+    );
   });
 
   it.each([
