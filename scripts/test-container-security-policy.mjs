@@ -491,6 +491,18 @@ assert.doesNotMatch(
   "the root route must not use alias, which can append index.html twice",
 );
 
+const spaFallbackLocation = readLocationBlock(nginxSpa, "location / {");
+assert.match(
+  spaFallbackLocation,
+  /try_files \$uri \$uri\.html \/app\.html;/,
+  "SPA routes must resolve files or the app shell without directory redirects",
+);
+assert.doesNotMatch(
+  spaFallbackLocation,
+  /\$uri\//,
+  "SPA routes must not redirect to internal Nginx directory URLs",
+);
+
 const newConventionMigrations = migrationFiles
   .filter((file) => /^\d{3}_.+\.sql$/.test(file))
   .filter((file) => Number.parseInt(file.slice(0, 3), 10) >= 29);

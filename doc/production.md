@@ -112,6 +112,8 @@ curl --fail https://<tu-dominio>/una-ruta-interna-de-la-spa
 
 La respuesta de salud confirma PostgreSQL y pgvector. Comprueba también en el navegador que la página y `/api/*` usan HTTPS y que el HTML recibe `Permissions-Policy: camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)`. La disponibilidad del dictado depende además del navegador del usuario.
 
+Las rutas `/crear-cuenta` y `/crear-cuenta/planes` deben responder `200` sin redirección. La segunda usa un HTML prerenderizado dentro de la carpeta `crear-cuenta`; Nginx no debe interpretar la primera como una URL de directorio ni exponer su nombre interno `web:8443` en un encabezado `Location`. El smoke de Compose comprueba ambas rutas a través de Caddy.
+
 ## Despliegue manual desde GitHub (opcional)
 
 Los pull requests ejecutan las pruebas, construcción y escaneos, pero nunca reciben credenciales SSH ni despliegan. Un push a `main` no inicia el workflow. Para publicar, la cuenta `fernandezpastoreduardo` debe abrir Actions, seleccionar el workflow `CI`, elegir la rama `main` y marcar `approve_production_deploy` antes de pulsar “Run workflow”. El workflow también verifica que quien reejecuta el run sea esa misma cuenta. La publicación requiere que pasen las comprobaciones y que `PRODUCTION_DEPLOY_ENABLED` valga exactamente `true`.

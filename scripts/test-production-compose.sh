@@ -293,6 +293,35 @@ assert.match(permissionsPolicy, /microphone=\(self\)/);
 assert.match(permissionsPolicy, /on-device-speech-recognition=\(self\)/);
 NODE
 
+for registration_path in /crear-cuenta /crear-cuenta/planes; do
+  registration_name=${registration_path//\//-}
+  registration_status=$(curl --insecure --silent --show-error \
+    --dump-header "$TEMP_ROOT/${registration_name}.headers" \
+    --output "$TEMP_ROOT/${registration_name}.html" \
+    --write-out '%{http_code}' \
+    "https://localhost:$HTTPS_PORT$registration_path")
+  if [[ $registration_status != 200 ]]; then
+    printf 'Registration route %s must return 200 without redirecting (got %s).\n' \
+      "$registration_path" "$registration_status" >&2
+    exit 1
+  fi
+done
+node - "$TEMP_ROOT/-crear-cuenta.headers" "$TEMP_ROOT/-crear-cuenta.html" \
+  "$TEMP_ROOT/-crear-cuenta-planes.headers" "$TEMP_ROOT/-crear-cuenta-planes.html" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+for (const path of [process.argv[2], process.argv[4]]) {
+  const headers = readFileSync(path, "utf8");
+  assert.match(headers, /^content-type:\s*text\/html(?:\s*;[^\r\n]*)?\s*$/im);
+  assert.doesNotMatch(headers, /^location:/im, "registration routes must stay on the public origin");
+}
+assert.match(readFileSync(process.argv[3], "utf8"), /<div id="root"><\/div>/);
+assert.match(
+  readFileSync(process.argv[5], "utf8"),
+  /Para crear tu cuenta, primero elige un plan/,
+);
+NODE
+
 prototype_redirect_status=$(curl --insecure --silent --show-error \
   --dump-header "$TEMP_ROOT/development-security-redirect.headers" \
   --output /dev/null --write-out '%{http_code}' \
