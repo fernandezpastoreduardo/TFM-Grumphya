@@ -8,6 +8,17 @@ import {
 } from "../infrastructure/auth/session";
 import { Home } from "./home";
 
+const emailVerification = vi.hoisted(() => ({
+  check: vi.fn(async () => false),
+}));
+
+vi.mock("../shared/hooks/use-pending-email-verification", () => ({
+  usePendingEmailVerification: () => ({
+    isPending: false,
+    check: emailVerification.check,
+  }),
+}));
+
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const SHORT_INSULT_IDEA_TEXT = "idiota";
 const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
@@ -50,9 +61,39 @@ describe("Home", () => {
   beforeEach(() => {
     localStorage.clear();
     clearAccessToken();
+    emailVerification.check.mockReset().mockResolvedValue(false);
   });
 
   afterEach(() => vi.unstubAllGlobals());
+
+  it("does not send an idea while email verification is pending", async () => {
+    const user = userEvent.setup();
+    emailVerification.check.mockResolvedValue(true);
+    const fetchMock = vi.fn(
+      (url: unknown) =>
+        respondToUsageInitialization(url) ?? Promise.resolve(Response.json({})),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Por seguridad tienes que confirmar tu correo",
+    });
+    expect(dialog).toHaveTextContent(
+      "Te hemos enviado un email con un enlace para que puedas confirmarlo.",
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/evaluation-process",
+      expect.anything(),
+    );
+  });
 
   it("links to the secure-development prototype from the home footer", async () => {
     vi.stubGlobal(

@@ -5,6 +5,7 @@ import {
 } from "../../../infrastructure/auth/session";
 import type { AccountAttempts } from "../../../infrastructure/auth/use-session-status";
 import { SkeletonBlock } from "../../../shared/components/loading-skeleton";
+import { usePendingEmailVerification } from "../../../shared/hooks/use-pending-email-verification";
 
 const ROAST_ENDPOINT = "/api/roast";
 const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo.";
@@ -12,6 +13,7 @@ const MESSAGE_MAX_LENGTH = 400;
 const QUOTA_EXHAUSTED_STATUS = 429;
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
 const ROAST_REPLY_UNAVAILABLE_CODE = "ROAST_REPLY_UNAVAILABLE";
+const EMAIL_VERIFICATION_REQUIRED_CODE = "EMAIL_VERIFICATION_REQUIRED";
 const ROAST_QUOTA_SCOPE = "roasts";
 
 type RoastInputProps = {
@@ -23,6 +25,7 @@ type RoastInputProps = {
   onAccountUsageRefresh?: () => Promise<AccountAttempts | null>;
   onDailyQuotaExhausted?: () => void;
   onReplyUnavailable: () => void;
+  onEmailVerificationRequired?: () => void;
 };
 
 export function RoastInput({
@@ -34,7 +37,9 @@ export function RoastInput({
   onAccountUsageRefresh,
   onDailyQuotaExhausted,
   onReplyUnavailable,
+  onEmailVerificationRequired,
 }: RoastInputProps) {
+  const emailVerification = usePendingEmailVerification();
   const [message, setMessage] = useState("");
   const [displayRemaining, setDisplayRemaining] = useState<number | null>(
     remainingAttempts,
@@ -58,6 +63,10 @@ export function RoastInput({
     setIsSending(true);
     setError("");
     try {
+      if (await emailVerification.check()) {
+        onEmailVerificationRequired?.();
+        return;
+      }
       const accessToken = await getAccessToken();
       const init: RequestInit = {
         method: "POST",
@@ -88,6 +97,11 @@ export function RoastInput({
         }
         if (failure.code === ROAST_REPLY_UNAVAILABLE_CODE) {
           onReplyUnavailable();
+          setError("");
+          return;
+        }
+        if (failure.code === EMAIL_VERIFICATION_REQUIRED_CODE) {
+          onEmailVerificationRequired?.();
           setError("");
           return;
         }

@@ -17,6 +17,8 @@ import { useNavigationOverflow } from "../shared/hooks/use-navigation-overflow";
 import { useSessionStatus } from "../infrastructure/auth/use-session-status";
 import { AccountActions } from "../shared/components/account-actions";
 import { UsageLimitDialog } from "../shared/components/usage-limit-dialog";
+import { EmailVerificationRequiredDialog } from "../shared/components/email-verification-required-dialog";
+import { usePendingEmailVerification } from "../shared/hooks/use-pending-email-verification";
 import { AccreditationSeal } from "../shared/components/accreditation-seal";
 import {
   evaluationProcess,
@@ -115,6 +117,8 @@ export function Home() {
   } = useMobileMenu();
   const [isQuotaDialogOpen, setIsQuotaDialogOpen] = useState(false);
   const [isDailyQuotaDialogOpen, setIsDailyQuotaDialogOpen] = useState(false);
+  const [isEmailVerificationDialogOpen, setIsEmailVerificationDialogOpen] =
+    useState(false);
   const quotaDialogRef = useRef<HTMLDialogElement>(null);
   const isEvaluationSubmittingRef = useRef(false);
   const retryableSubmissionRef = useRef<{
@@ -123,6 +127,7 @@ export function Home() {
   } | null>(null);
   const anonymousUsage = useAnonymousUsage();
   const session = useSessionStatus();
+  const emailVerification = usePendingEmailVerification();
   const isAdmin = session.accountAttempts?.isAdmin === true;
   const ideaQuotaKind =
     session.isAuthenticated === true &&
@@ -146,6 +151,11 @@ export function Home() {
   async function handleEvaluation(request: HomeEvaluationRequest) {
     if (isEvaluationSubmittingRef.current) return;
     isEvaluationSubmittingRef.current = true;
+    if (await emailVerification.check()) {
+      isEvaluationSubmittingRef.current = false;
+      setIsEmailVerificationDialogOpen(true);
+      return;
+    }
     setEvaluationResult(null);
     setSimilarIdeaMatch(null);
     setSpecialIdeaCase(null);
@@ -175,6 +185,12 @@ export function Home() {
   async function handleContinueEvaluation() {
     if (!pendingEvaluation || isEvaluationSubmittingRef.current) return;
     isEvaluationSubmittingRef.current = true;
+    if (await emailVerification.check()) {
+      isEvaluationSubmittingRef.current = false;
+      setIsEvaluationDialogOpen(false);
+      setIsEmailVerificationDialogOpen(true);
+      return;
+    }
     setEvaluationError("");
     setIsEvaluating(true);
     setIsEvaluationDialogOpen(true);
@@ -200,6 +216,11 @@ export function Home() {
 
   function handleEvaluationError(error: unknown) {
     if (error instanceof EvaluationProcessError) {
+      if (error.code === "EMAIL_VERIFICATION_REQUIRED") {
+        setIsEvaluationDialogOpen(false);
+        setIsEmailVerificationDialogOpen(true);
+        return;
+      }
       if (error.code === "ANONYMOUS_QUOTA_EXHAUSTED") {
         setIsEvaluationDialogOpen(false);
         setIsQuotaDialogOpen(true);
@@ -480,6 +501,11 @@ export function Home() {
             />
           ) : null}
         </EvaluationDialog>
+
+        <EmailVerificationRequiredDialog
+          open={isEmailVerificationDialogOpen}
+          onClose={() => setIsEmailVerificationDialogOpen(false)}
+        />
 
         {isQuotaDialogOpen ? (
           <dialog

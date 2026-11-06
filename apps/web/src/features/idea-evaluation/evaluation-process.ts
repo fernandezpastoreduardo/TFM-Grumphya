@@ -52,6 +52,7 @@ const INVALID_EVALUATION_RETRY_MESSAGE =
 const ANONYMOUS_QUOTA_EXHAUSTED_CODE = "ANONYMOUS_QUOTA_EXHAUSTED";
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
 const ACTIVE_PLAN_REQUIRED_CODE = "ACTIVE_PLAN_REQUIRED";
+const EMAIL_VERIFICATION_REQUIRED_CODE = "EMAIL_VERIFICATION_REQUIRED";
 const QUOTA_EXHAUSTED_MESSAGES = {
   ideas:
     "Has agotado tus tres evaluaciones gratuitas. Consulta los planes para continuar.",
@@ -390,6 +391,12 @@ export async function evaluationProcess(
       throw new EvaluationProcessError(
         ACTIVE_PLAN_REQUIRED_CODE,
         "Necesitas un plan Iluminado activo para evaluar ideas.",
+      );
+    }
+    if (errorCode === EMAIL_VERIFICATION_REQUIRED_CODE) {
+      throw new EvaluationProcessError(
+        EMAIL_VERIFICATION_REQUIRED_CODE,
+        "Confirma tu correo para continuar.",
       );
     }
     throw new Error(EVALUATION_UNAVAILABLE_MESSAGE);

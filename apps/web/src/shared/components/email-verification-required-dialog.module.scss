@@ -1,0 +1,89 @@
+.dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  display: none;
+  justify-items: center;
+  gap: 14px;
+  width: min(480px, calc(100vw - 28px));
+  max-width: none;
+  max-height: 88dvh;
+  margin: 0;
+  overflow: auto;
+  padding: clamp(24px, 5vw, 38px);
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-ink);
+  border-radius: 24px 24px 24px 8px;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  box-shadow: 8px 8px 0 var(--color-ink);
+  text-align: center;
+
+  &::backdrop {
+    background: rgb(20 47 51 / 46%);
+    backdrop-filter: blur(2px);
+  }
+
+  h2 {
+    margin: 0;
+    font:
+      600 clamp(1.45rem, 5vw, 2rem) / 1.1 "Fredoka",
+      sans-serif;
+  }
+
+  p {
+    max-width: 42ch;
+    margin: 0;
+    line-height: 1.55;
+  }
+}
+
+.dialog[open] {
+  display: grid;
+}
+
+.mascot {
+  width: min(190px, 48vw);
+  max-height: 180px;
+  object-fit: contain;
+}
+
+.close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 2px solid var(--color-ink);
+  border-radius: 50%;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.action {
+  min-height: 46px;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  padding: 9px 18px;
+  color: #fffefa;
+  background: var(--color-teal-dark);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.close:hover,
+.close:focus-visible,
+.action:hover,
+.action:focus-visible {
+  outline: 3px solid #f2c64a;
+  outline-offset: 2px;
+}
+
+:global(.theme-dark) .dialog {
+  color: #f5f5eb;
+  background: #1b2b2b;
+}

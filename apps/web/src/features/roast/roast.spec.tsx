@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   getRoastRanking: vi.fn(
     async () => [] as Array<{ username: string; roastMessagesSent: number }>,
   ),
+  checkEmailVerification: vi.fn(async () => false),
 }));
 
 vi.mock("../../infrastructure/auth/use-session-status", () => ({
@@ -53,6 +54,12 @@ vi.mock("../../infrastructure/auth/session", () => ({
 vi.mock("./services/get-roast-ranking", () => ({
   getRoastRanking: mocks.getRoastRanking,
 }));
+vi.mock("../../shared/hooks/use-pending-email-verification", () => ({
+  usePendingEmailVerification: () => ({
+    isPending: false,
+    check: mocks.checkEmailVerification,
+  }),
+}));
 
 describe("Roast", () => {
   afterEach(() => {
@@ -61,6 +68,7 @@ describe("Roast", () => {
 
   beforeEach(() => {
     mocks.getRoastRanking.mockResolvedValue([]);
+    mocks.checkEmailVerification.mockReset().mockResolvedValue(false);
     mocks.session.isAuthenticated = false;
     mocks.session.accountAttempts = null;
     mocks.session.refresh.mockResolvedValue(null);
@@ -351,6 +359,27 @@ describe("Roast", () => {
       screen.queryByRole("dialog", { name: "Se nos ha derramado el café" }),
     ).not.toBeInTheDocument();
     expect(input).toHaveValue(SUBMITTED_ROAST);
+  });
+
+  it("opens the email verification modal without sending a pending user's roast", async () => {
+    mocks.checkEmailVerification.mockResolvedValue(true);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<Roast />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: ROAST_INPUT_LABEL }),
+      SUBMITTED_ROAST,
+    );
+    await user.click(screen.getByRole("button", { name: SUBMIT_ROAST_LABEL }));
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "Por seguridad tienes que confirmar tu correo",
+      }),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("loads and displays the roast ranking", async () => {

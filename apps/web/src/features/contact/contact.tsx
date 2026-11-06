@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import { useNativeDialog } from "../../shared/hooks/use-native-dialog";
+import { usePendingEmailVerification } from "../../shared/hooks/use-pending-email-verification";
+import { EmailVerificationRequiredDialog } from "../../shared/components/email-verification-required-dialog";
 import {
   LoadingSkeleton,
   SkeletonBlock,
@@ -58,10 +60,16 @@ export function Contact() {
 
 function AnonymousContactDemo() {
   const [dismissed, setDismissed] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const emailVerification = usePendingEmailVerification();
   const dialogRef = useNativeDialog(dismissed);
 
-  function dismissForm() {
-    setDismissed(true);
+  async function dismissForm() {
+    if (await emailVerification.check()) {
+      setShowVerificationDialog(true);
+    } else {
+      setDismissed(true);
+    }
   }
   return (
     <div className="contact-layout contact-anonymous-layout">
@@ -72,10 +80,10 @@ function AnonymousContactDemo() {
         <span className="eyebrow">Formulario de contacto</span>
         <h2 id="contact-form-title">Escribe lo que nadie te ha pedido</h2>
         <form
-          onFocusCapture={dismissForm}
+          onFocusCapture={() => void dismissForm()}
           onSubmit={(event) => {
             event.preventDefault();
-            dismissForm();
+            void dismissForm();
           }}
         >
           <label>
@@ -137,6 +145,10 @@ function AnonymousContactDemo() {
           </p>
         </dialog>
       ) : null}
+      <EmailVerificationRequiredDialog
+        open={showVerificationDialog}
+        onClose={() => setShowVerificationDialog(false)}
+      />
       <p className="prototype-stamp">
         Vista de demostración; no se envía ningún mensaje.
       </p>

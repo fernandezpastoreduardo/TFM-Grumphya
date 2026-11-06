@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   onSubmitted: vi.fn(),
   onUsageRefresh: vi.fn(async () => undefined),
   onReplyUnavailable: vi.fn(),
+  checkEmailVerification: vi.fn(async () => false),
 }));
 
 vi.mock("../../../infrastructure/auth/session", () => ({
@@ -17,10 +18,18 @@ vi.mock("../../../infrastructure/auth/session", () => ({
   getAccessToken: mocks.getAccessToken,
 }));
 
+vi.mock("../../../shared/hooks/use-pending-email-verification", () => ({
+  usePendingEmailVerification: () => ({
+    isPending: false,
+    check: mocks.checkEmailVerification,
+  }),
+}));
+
 describe("RoastInput", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getAccessToken.mockResolvedValue(null);
+    mocks.checkEmailVerification.mockResolvedValue(false);
     vi.stubGlobal("fetch", mocks.fetch);
     mocks.fetch.mockResolvedValue(
       new Response(JSON.stringify({ reply: "Buen intento." }), {
@@ -34,6 +43,36 @@ describe("RoastInput", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
+  });
+
+  it("does not send a roast while email verification is pending", async () => {
+    mocks.checkEmailVerification.mockResolvedValue(true);
+    const onEmailVerificationRequired = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <RoastInput
+        remainingAttempts={2}
+        quotaLimit={3}
+        quotaDescription="envíos gratuitos restantes"
+        onSubmitted={mocks.onSubmitted}
+        onUsageRefresh={mocks.onUsageRefresh}
+        onReplyUnavailable={mocks.onReplyUnavailable}
+        onEmailVerificationRequired={onEmailVerificationRequired}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: /tu insulto/i }),
+      "Hola",
+    );
+    await user.click(screen.getByRole("button", { name: "Enviar insulto" }));
+
+    await waitFor(() =>
+      expect(onEmailVerificationRequired).toHaveBeenCalledOnce(),
+    );
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.authenticatedFetch).not.toHaveBeenCalled();
+    expect(mocks.onSubmitted).not.toHaveBeenCalled();
   });
 
   it("submits a trimmed message with cookie credentials and idempotency, then renders quota feedback", async () => {

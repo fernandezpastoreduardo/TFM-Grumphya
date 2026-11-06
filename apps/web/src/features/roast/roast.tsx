@@ -14,6 +14,7 @@ import {
 } from "./components/RoastRanking";
 import { getRoastRanking } from "./services/get-roast-ranking";
 import { UsageLimitDialog } from "../../shared/components/usage-limit-dialog";
+import { EmailVerificationRequiredDialog } from "../../shared/components/email-verification-required-dialog";
 import "../../shared/components/shared-components.scss";
 import "./roast.scss";
 
@@ -49,6 +50,8 @@ export function Roast() {
   const [rankingRevision, setRankingRevision] = useState(0);
   const [isDailyQuotaDialogOpen, setIsDailyQuotaDialogOpen] = useState(false);
   const [isReplyFailureDialogOpen, setIsReplyFailureDialogOpen] =
+    useState(false);
+  const [isEmailVerificationDialogOpen, setIsEmailVerificationDialogOpen] =
     useState(false);
   const isAuthenticated = session.isAuthenticated === true;
   const hasActiveRoastPlan =
@@ -223,6 +226,9 @@ export function Roast() {
           }
           onDailyQuotaExhausted={() => setIsDailyQuotaDialogOpen(true)}
           onReplyUnavailable={() => setIsReplyFailureDialogOpen(true)}
+          onEmailVerificationRequired={() =>
+            setIsEmailVerificationDialogOpen(true)
+          }
         />
         <p className="prototype-stamp">
           {showDemoExchanges
@@ -264,6 +270,10 @@ export function Roast() {
       <RoastFailureDialog
         open={isReplyFailureDialogOpen}
         onClose={() => setIsReplyFailureDialogOpen(false)}
+      />
+      <EmailVerificationRequiredDialog
+        open={isEmailVerificationDialogOpen}
+        onClose={() => setIsEmailVerificationDialogOpen(false)}
       />
     </div>
   );
