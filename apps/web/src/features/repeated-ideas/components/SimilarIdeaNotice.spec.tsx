@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { SimilarIdeaNotice } from "./SimilarIdeaNotice";
 
@@ -46,11 +47,35 @@ describe("SimilarIdeaNotice", () => {
     );
 
     expect(
-      screen.getByText(/ya se llevó un golpe y ha vuelto/i),
+      screen.getByText(
+        "Esta idea ya se llevó un golpe y ha vuelto a por más. Parece que no es muy original... esfuérzate un poco más.",
+      ),
     ).toBeInTheDocument();
   });
 
-  it("shows the plural count and disables continuation while submitting", () => {
+  it("lets the user continue the evaluation with the keyboard", async () => {
+    const user = userEvent.setup();
+    const onContinue = vi.fn();
+    render(
+      <SimilarIdeaNotice
+        match={SIMILAR_IDEA_MATCH}
+        tone="hard"
+        isSubmitting={false}
+        onContinue={onContinue}
+      />,
+    );
+
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: "Evaluar igualmente" }),
+    ).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(onContinue).toHaveBeenCalledOnce();
+  });
+
+  it("shows the plural count and disables continuation while submitting", async () => {
+    const user = userEvent.setup();
     const onContinue = vi.fn();
     render(
       <SimilarIdeaNotice
@@ -66,7 +91,7 @@ describe("SimilarIdeaNotice", () => {
       name: /preparando evaluación/i,
     });
     expect(button).toBeDisabled();
-    fireEvent.click(button);
+    await user.click(button);
     expect(onContinue).not.toHaveBeenCalled();
   });
 });

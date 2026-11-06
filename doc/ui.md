@@ -30,6 +30,12 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
   texto de la idea; al cerrar el diálogo del resultado, la persona puede
   escribir o editar otra idea directamente. Tras recibir un resultado, la
   acción para volver a él dice «Volver a ver la evaluación».
+- Si la búsqueda encuentra una idea rechazada similar, Home muestra
+  `SimilarIdeaNotice` con el titular, el título público seguro y el número de
+  recepciones. El aviso cambia según el tono: el suave señala que reformular
+  la idea quizá no resuelva el problema de fondo; el intenso reprocha la falta
+  de originalidad y anima a esforzarse más. «Evaluar igualmente» inicia una
+  evaluación nueva; el aviso por sí solo no consume un intento.
 - En el envío inicial, la API puede devolver una respuesta especial fija para
   una señal léxica contextual de Grumphya (nombre más vocabulario explícito de
   equivalencia, no basta mencionar una app, o evaluar/analizar/revisar + ideas
@@ -509,4 +515,6 @@ en [`error-pages.md`](error-pages.md).
 
 - Composición Home, copy del hero y menú: `apps/web/src/views/home.tsx`.
 - Marco común, hero y menú de secciones: `apps/web/src/shared/components/section-page-frame.tsx`.
-- Tipografía, capas, responsive y controles: `apps/web/src/style.css`.
+- Tipografía y estilos base: `apps/web/src/shared/styles/base.scss`.
+- Composición y adaptación de Home: `apps/web/src/views/home.scss`.
+- Marco y navegación de secciones: `apps/web/src/shared/components/section-page-frame.scss`.

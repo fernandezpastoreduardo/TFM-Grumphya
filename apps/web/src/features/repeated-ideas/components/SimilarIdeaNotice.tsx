@@ -15,7 +15,7 @@ const CONTINUE_LABEL = {
 
 const TONE_MESSAGE = {
   soft: "Esta idea ya se rechazó antes. Puede que cambiar la forma de contarla no cambie el problema de fondo.",
-  hard: "Esta idea ya se llevó un golpe y ha vuelto. La pregunta sigue siendo la misma: ¿quién la usaría?",
+  hard: "Esta idea ya se llevó un golpe y ha vuelto a por más. Parece que no es muy original... esfuérzate un poco más.",
 } as const;
 
 export function SimilarIdeaNotice({

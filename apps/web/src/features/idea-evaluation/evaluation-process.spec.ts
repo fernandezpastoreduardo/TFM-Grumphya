@@ -626,4 +626,54 @@ describe("evaluationProcess frontend adapter", () => {
       ).rejects.toMatchObject({ code: "EVALUATION_OUTCOME_UNKNOWN" });
     },
   );
+
+  it.each([0, -1, 1.5, "2", Number.MAX_SAFE_INTEGER + 1])(
+    "rejects a repeated-idea response with an invalid submission count: %s",
+    async (submissionCount) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            status: "similar_idea_match",
+            headline: SIMILAR_HEADLINE,
+            safeTitle: "Una red social para mascotas",
+            submissionCount,
+          }),
+        }),
+      );
+
+      await expect(
+        evaluationProcess(
+          { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+          IDEMPOTENCY_KEY,
+        ),
+      ).rejects.toMatchObject({ code: "EVALUATION_OUTCOME_UNKNOWN" });
+    },
+  );
+
+  it.each(["   ", "Breve", "x".repeat(161)])(
+    "rejects a repeated-idea response with an invalid safe title: %s",
+    async (safeTitle) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            status: "similar_idea_match",
+            headline: SIMILAR_HEADLINE,
+            safeTitle,
+            submissionCount: 2,
+          }),
+        }),
+      );
+
+      await expect(
+        evaluationProcess(
+          { ideaText: IDEA_TEXT, tone: IDEA_TONE },
+          IDEMPOTENCY_KEY,
+        ),
+      ).rejects.toMatchObject({ code: "EVALUATION_OUTCOME_UNKNOWN" });
+    },
+  );
 });
