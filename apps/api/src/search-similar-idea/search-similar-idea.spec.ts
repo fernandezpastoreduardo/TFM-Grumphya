@@ -237,6 +237,25 @@ describe("SearchSimilarIdea", () => {
     expect(equivalencePort.classifyIdeas).not.toHaveBeenCalled();
   });
 
+  it.each([
+    "Contacto maria@example.com",
+    "Consulta www.example.com",
+    "Llama al 612345678",
+    "Título privado\ncon salto",
+  ])(
+    "does not publish a stored title with unsafe content even when marked public: %s",
+    async (semanticTitle) => {
+      const { useCase, equivalencePort } = createUseCase([
+        { ...SAFE_REJECTED_IDEA, semanticTitle },
+      ]);
+
+      await expect(useCase.execute({ ideaText: VALID_IDEA })).resolves.toEqual({
+        kind: "no-match",
+      });
+      expect(equivalencePort.classifyIdeas).not.toHaveBeenCalled();
+    },
+  );
+
   it("fails closed when the semantic comparator returns malformed data", async () => {
     const { useCase, equivalencePort } = createUseCase([
       { ...SAFE_REJECTED_IDEA, similarity: 0.4 },

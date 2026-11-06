@@ -1,4 +1,11 @@
 import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
+import {
+  isSafePublicTitle,
+  PUBLIC_CONTROL_PATTERN as CONTROL_PATTERN,
+  PUBLIC_EMAIL_PATTERN as EMAIL_PATTERN,
+  PUBLIC_PHONE_PATTERN as PHONE_PATTERN,
+  PUBLIC_URL_PATTERN as URL_PATTERN,
+} from "../infrastructure/validation/public-safe-title";
 
 export const EVALUATION_CRITERION_IDS = [
   "C01",
@@ -88,16 +95,9 @@ const MAX_CONCEPTUAL_SCORE = 79;
 const REJECTION_THRESHOLD = 15;
 const TERMINAL_SENTENCE_MARK = ".";
 const DISALLOWED_RESULT_LABEL = /\bbloque(?:o|os|ante|antes)\b/iu;
-const MIN_SAFE_TITLE_LENGTH = 8;
-const MAX_SAFE_TITLE_LENGTH = 72;
-const SAFE_TITLE_WORD_PATTERN = /^[\p{L}\p{N}]+(?:[ '\u2019-][\p{L}\p{N}]+)*$/u;
 const SAFE_PRODUCT_EXAMPLE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
 const MIN_PRODUCT_EXAMPLE_LENGTH = 2;
 const MAX_PRODUCT_EXAMPLE_LENGTH = 80;
-const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
-const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
-const PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
-const CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
 const MIN_LITERAL_FRAGMENT_LENGTH = 18;
 const INVALID_TONE_MESSAGE = "Tono de evaluación no válido.";
 const INVALID_VISIBLE_MESSAGE = "Mensaje visible no válido.";
@@ -508,18 +508,7 @@ function getRejectedDecisionError(
 }
 
 function isSafeTitle(value: unknown, ideaText: string): value is string {
-  if (
-    typeof value !== "string" ||
-    value.trim() !== value ||
-    value.length < MIN_SAFE_TITLE_LENGTH ||
-    value.length > MAX_SAFE_TITLE_LENGTH ||
-    !SAFE_TITLE_WORD_PATTERN.test(value) ||
-    EMAIL_PATTERN.test(value) ||
-    URL_PATTERN.test(value) ||
-    PHONE_PATTERN.test(value) ||
-    CONTROL_PATTERN.test(value)
-  )
-    return false;
+  if (!isSafePublicTitle(value)) return false;
 
   const normalizedTitle = value.toLocaleLowerCase("es-ES");
   const normalizedIdea = ideaText.toLocaleLowerCase("es-ES");

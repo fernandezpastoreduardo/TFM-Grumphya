@@ -1,4 +1,5 @@
 import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
+import { isSafePublicTitle } from "../infrastructure/validation/public-safe-title";
 import { REPEATED_IDEA_HEADLINE_FALLBACK } from "../infrastructure/copy/public-headlines";
 
 export const MAX_SEARCH_CANDIDATES = 20;
@@ -120,8 +121,7 @@ function isRejectedIdeaCandidate(
     isRecord(value) &&
     typeof value.ideaId === "string" &&
     value.ideaId.length > 0 &&
-    typeof value.semanticTitle === "string" &&
-    value.semanticTitle.trim().length > 0 &&
+    isSafePublicTitle(value.semanticTitle) &&
     typeof value.similarity === "number" &&
     Number.isFinite(value.similarity) &&
     Number.isSafeInteger(value.submissionCount) &&
