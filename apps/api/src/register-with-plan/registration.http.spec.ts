@@ -114,6 +114,11 @@ describe("registration HTTP flow", () => {
     expect(registrationResponse.headers.get("set-cookie") ?? "").not.toContain(
       "grumphya_refresh=",
     );
+    expect(
+      registrationResponse.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("grumphya_pending_registration=")),
+    ).toBe(true);
     const registrationBody = await registrationResponse.json();
     expect(registrationBody).toEqual({ status: "verification_pending" });
     expect(repository.sessions).toHaveLength(0);
@@ -123,7 +128,10 @@ describe("registration HTTP flow", () => {
       token: verificationToken,
     });
     expect(verificationResponse.status).toBe(201);
-    const confirmationCookie = cookieFrom(verificationResponse);
+    const confirmationCookie = cookieFrom(
+      verificationResponse,
+      "grumphya_verified_registration",
+    );
     expect(confirmationCookie).toContain("grumphya_verified_registration=");
     expect(repository.sessions).toHaveLength(0);
     const confirmationResponse = await post(
@@ -131,6 +139,11 @@ describe("registration HTTP flow", () => {
       {},
       confirmationCookie,
     );
+    expect(
+      confirmationResponse.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("grumphya_pending_registration=;")),
+    ).toBe(true);
     expect(confirmationResponse.headers.get("set-cookie")).toContain(
       "grumphya_refresh=",
     );
@@ -371,7 +384,10 @@ describe("registration HTTP flow", () => {
     const verificationResponse = await post("/registrations/verify", {
       token: verificationToken,
     });
-    const confirmationCookie = cookieFrom(verificationResponse);
+    const confirmationCookie = cookieFrom(
+      verificationResponse,
+      "grumphya_verified_registration",
+    );
     const confirmationResponse = await post(
       "/registrations/confirm",
       {},
@@ -399,8 +415,11 @@ describe("registration HTTP flow", () => {
   }
 });
 
-function cookieFrom(response: Response): string {
-  const cookie = response.headers.get("set-cookie")?.split(";")[0];
+function cookieFrom(response: Response, name?: string): string {
+  const cookie = response.headers
+    .getSetCookie()
+    .find((item) => !name || item.startsWith(`${name}=`))
+    ?.split(";")[0];
   if (!cookie) throw new Error("Expected an authentication cookie.");
   return cookie;
 }

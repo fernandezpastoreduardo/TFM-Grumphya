@@ -38,6 +38,9 @@ describe("PostgresAccessTokenSessionLookup", () => {
     );
     expect(query.mock.calls[0]?.[0]).toContain("session.expires_at > now()");
     expect(query.mock.calls[0]?.[0]).toContain("user_account.status='active'");
+    expect(query.mock.calls[0]?.[0]).toContain(
+      "user_account.email_verified_at IS NOT NULL",
+    );
     expect(query.mock.calls[0]?.[0]).toContain("session.user_id=$2");
   });
 

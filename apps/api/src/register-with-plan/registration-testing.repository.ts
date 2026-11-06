@@ -225,6 +225,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     const user = this.users.find(
       (item) =>
         item.status === "active" &&
+        item.emailVerified &&
         (item.email.toLowerCase() === normalized ||
           item.username.toLowerCase() === normalized),
     );

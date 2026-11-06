@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import type { Request } from "express";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
+import { PendingEmailVerificationGuard } from "../infrastructure/auth/pending-email-verification";
 import {
   CONTACT_MESSAGE_REPOSITORY,
   CONTACT_MESSAGE_MAILER,
@@ -23,7 +24,7 @@ import { SubmitContactMessage } from "./submit-contact-message.service";
 type AuthenticatedRequest = Request & { user?: { userId?: unknown } };
 
 @Controller("contact-messages")
-@UseGuards(AccessTokenGuard)
+@UseGuards(PendingEmailVerificationGuard, AccessTokenGuard)
 export class SubmitContactMessageController {
   private readonly feature: SubmitContactMessage;
 

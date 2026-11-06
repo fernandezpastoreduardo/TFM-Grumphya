@@ -219,6 +219,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       `SELECT id AS "userId",username,password_hash AS "passwordHash"
        FROM users
        WHERE (email_normalized=$1 OR username_normalized=$1) AND status='active'
+         AND email_verified_at IS NOT NULL
        LIMIT 1`,
       [normalized],
     );
@@ -288,7 +289,8 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
          ORDER BY starts_at DESC LIMIT 1
        ) active_plan ON true
        WHERE session.refresh_token_hash=$1 AND session.revoked_at IS NULL
-         AND session.expires_at > now() AND user_account.status='active'`,
+         AND session.expires_at > now() AND user_account.status='active'
+         AND user_account.email_verified_at IS NOT NULL`,
       [refreshTokenHash],
     );
     const session = result.rows[0];
@@ -434,6 +436,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
          ) active_plan ON true
          WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL
            AND s.expires_at > now() AND u.status='active'
+           AND u.email_verified_at IS NOT NULL
          FOR UPDATE OF s`,
         [refreshTokenHash],
       );

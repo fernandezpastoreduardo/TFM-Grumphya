@@ -6,6 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { issueAccessToken } from "../infrastructure/auth/access-token";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 import {
+  PendingEmailVerificationGuard,
+  PendingEmailVerificationService,
+} from "../infrastructure/auth/pending-email-verification";
+import {
   ACCESS_TOKEN_SESSION_LOOKUP,
   hashAccessToken,
 } from "../infrastructure/auth/access-token-session.lookup";
@@ -38,6 +42,11 @@ Module({
   controllers: [SubmitContactMessageController],
   providers: [
     AccessTokenGuard,
+    PendingEmailVerificationGuard,
+    {
+      provide: PendingEmailVerificationService,
+      useValue: { isPending: async () => false },
+    },
     { provide: CONTACT_MESSAGE_REPOSITORY, useValue: repository },
     { provide: CONTACT_MESSAGE_MAILER, useValue: mailer },
     {
@@ -167,6 +176,28 @@ describe("submit contact message HTTP flow", () => {
       "Consulta",
       "Necesito ayuda con mi cuenta.",
     );
+  });
+
+  it("rejects a contact message before storing it while email verification is pending", async () => {
+    const pending = app.get(PendingEmailVerificationService);
+    const pendingSpy = vi.spyOn(pending, "isPending").mockResolvedValue(true);
+    try {
+      const response = await post(
+        {
+          Origin: WEB_ORIGIN,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        { subject: "Consulta", message: "Necesito ayuda con mi cuenta." },
+      );
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({
+        code: "EMAIL_VERIFICATION_REQUIRED",
+      });
+      expect(repository.createForUser).not.toHaveBeenCalled();
+    } finally {
+      pendingSpy.mockRestore();
+    }
   });
 
   it("rejects cross-origin submissions before storing a message", async () => {

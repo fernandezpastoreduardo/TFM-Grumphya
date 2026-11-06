@@ -12,6 +12,7 @@ import {
   type AccountProfile,
   type UserGoodIdeas,
   type RegistrationPendingResult,
+  type RegistrationCreatedResult,
   type PendingRegistration,
 } from "./registration.models";
 import type { RegistrationRepository } from "./registration.repository";
@@ -134,7 +135,7 @@ export class RegistrationService {
   async register(
     token: string | undefined,
     value: unknown,
-  ): Promise<RegistrationPendingResult> {
+  ): Promise<RegistrationCreatedResult> {
     const intentPlan = await this.currentIntent(token);
     if (!token || !intentPlan)
       throw new RegistrationError(
@@ -161,7 +162,10 @@ export class RegistrationService {
         pendingRegistration.email,
         verificationToken,
       );
-      return { status: "verification_pending" };
+      return {
+        status: "verification_pending",
+        pendingRegistrationId: pendingRegistration.id,
+      };
     } catch (error) {
       if (error instanceof RegistrationError) throw error;
       if (isUniqueViolation(error)) return { status: "verification_pending" };
@@ -173,7 +177,10 @@ export class RegistrationService {
         this.logger.error("Registration verification delivery failed", {
           errorCode: "MAIL_DELIVERY_FAILED",
         });
-        return { status: "verification_pending" };
+        return {
+          status: "verification_pending",
+          pendingRegistrationId: pendingRegistration?.id,
+        };
       }
       throw new RegistrationError(
         503,

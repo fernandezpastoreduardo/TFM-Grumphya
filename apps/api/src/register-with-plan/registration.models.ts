@@ -91,6 +91,9 @@ export type PendingRegistration = {
 export type RegistrationPendingResult = {
   status: "verification_pending";
 };
+export type RegistrationCreatedResult = RegistrationPendingResult & {
+  pendingRegistrationId?: string;
+};
 
 export class RegistrationError extends HttpException {
   constructor(

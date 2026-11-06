@@ -14,6 +14,10 @@ import type { PlanUsageService } from "../register-with-plan/plan-usage.service"
 import { PlanUsageService as PlanUsageServiceToken } from "../register-with-plan/plan-usage.service";
 import { AnonymousUsageService as AnonymousUsageServiceToken } from "./anonymous-usage.service";
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import {
+  PendingEmailVerificationGuard,
+  PendingEmailVerificationService,
+} from "../infrastructure/auth/pending-email-verification";
 import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
 import { issueAccessToken } from "../infrastructure/auth/access-token";
 import {
@@ -53,6 +57,11 @@ async function startAuthenticatedRoastHttpApplication(
         useValue: { reply: vi.fn().mockResolvedValue(REPLY) },
       },
       OptionalAccessTokenGuard,
+      PendingEmailVerificationGuard,
+      {
+        provide: PendingEmailVerificationService,
+        useValue: { isPending: async () => false },
+      },
       {
         provide: ACCESS_TOKEN_SESSION_LOOKUP,
         useValue: { isActive: async () => true },
@@ -100,6 +109,47 @@ function createController(
 }
 
 describe("AnonymousUsageController roast endpoint", () => {
+  it("rejects a roast before reserving usage while email verification is pending", async () => {
+    const usage = {
+      initialize: vi.fn(),
+      reserve: vi.fn(),
+      commit: vi.fn(),
+      release: vi.fn(),
+    } as unknown as AnonymousUsageService & {
+      reserve: ReturnType<typeof vi.fn>;
+    };
+    const planUsage = {
+      reserveIfPlanActive: vi.fn(),
+    } as unknown as PlanUsageService;
+    const application = await startAuthenticatedRoastHttpApplication(
+      usage,
+      planUsage,
+    );
+    const pending = application.get(PendingEmailVerificationService);
+    const pendingSpy = vi.spyOn(pending, "isPending").mockResolvedValue(true);
+    try {
+      const response = await fetch(
+        new URL("/api/roast", await application.getUrl()),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": IDEMPOTENCY_KEY,
+          },
+          body: JSON.stringify({ message: ROAST_MESSAGE }),
+        },
+      );
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({
+        code: "EMAIL_VERIFICATION_REQUIRED",
+      });
+      expect(usage.reserve).not.toHaveBeenCalled();
+    } finally {
+      pendingSpy.mockRestore();
+      await application.close();
+    }
+  });
+
   it("initializes a persistent browser profile from its cookie and records the request IP", async () => {
     const { controller, usage } = createController();
     const request = {

@@ -42,7 +42,10 @@ describe("register with plan", () => {
     const intent = await service.createIntent("FALTON");
     const pending = await service.register(intent.token, validRegistration);
     const user = repository.users[0];
-    expect(pending).toEqual({ status: "verification_pending" });
+    expect(pending).toEqual({
+      status: "verification_pending",
+      pendingRegistrationId: repository.registrations[0]?.id,
+    });
     expect(repository.sessions).toHaveLength(0);
     expect(repository.subscriptions).toHaveLength(0);
     expect(repository.registrations[0]?.verificationHash).toBe(
@@ -110,7 +113,7 @@ describe("register with plan", () => {
 
     await expect(
       service.register(intent.token, validRegistration),
-    ).resolves.toEqual({ status: "verification_pending" });
+    ).resolves.toMatchObject({ status: "verification_pending" });
     expect(repository.sessions).toHaveLength(0);
     expect(repository.subscriptions).toHaveLength(0);
     expect(repository.registrations[0]!.lastSentAt).toBeLessThan(
@@ -532,7 +535,7 @@ describe("register with plan", () => {
 
     await expect(
       service.register(intent.token, validRegistration),
-    ).resolves.toEqual({ status: "verification_pending" });
+    ).resolves.toMatchObject({ status: "verification_pending" });
 
     expect(send).not.toHaveBeenCalled();
     expect(releaseCooldown).toHaveBeenCalledWith(
