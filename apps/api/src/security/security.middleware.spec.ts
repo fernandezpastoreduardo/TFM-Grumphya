@@ -5,6 +5,8 @@ import { LoginAbuseProtection } from "./login-abuse-protection.service";
 
 const EVALUATION_PATH = "/api/evaluation-process";
 const LOGIN_PATH = "/api/auth/login";
+const PASSWORD_RESET_REQUEST_PATH = "/api/auth/password-reset/request";
+const REFRESH_PATH = "/api/auth/refresh";
 const REQUEST_IP = "192.0.2.10";
 const LOGIN_RATE_PER_SECOND = 10;
 
@@ -121,6 +123,50 @@ describe("security middleware", () => {
     expect(response.status).toHaveBeenCalledWith(429);
     expect(headers.has("Retry-After")).toBe(true);
     expect(next).toHaveBeenCalledTimes(5);
+  });
+
+  it("limits password reset emails to five requests per minute and returns a retry hint", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const request = createRequest(PASSWORD_RESET_REQUEST_PATH);
+
+    for (let index = 0; index < 5; index += 1) {
+      middleware(request, createResponse().response, next);
+    }
+    const { response, headers } = createResponse();
+    middleware(request, response, next);
+
+    expect(response.status).toHaveBeenCalledWith(429);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 429 }),
+    );
+    expect(headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(5);
+  });
+
+  it("keeps session refresh available after password reset requests use their own limit", () => {
+    const middleware = createSecurityMiddleware({
+      sessionRefreshRequestLimit: 1,
+    });
+    const next = vi.fn() as NextFunction;
+    const resetRequest = createRequest(PASSWORD_RESET_REQUEST_PATH);
+    for (let index = 0; index < 5; index += 1) {
+      middleware(resetRequest, createResponse().response, next);
+    }
+
+    const refreshRequest = {
+      ...createRequest(REFRESH_PATH),
+      headers: { cookie: "grumphya_refresh=session-token" },
+    } as unknown as Request;
+    const firstRefresh = createResponse();
+    middleware(refreshRequest, firstRefresh.response, next);
+    const secondRefresh = createResponse();
+    middleware(refreshRequest, secondRefresh.response, next);
+
+    expect(firstRefresh.response.status).not.toHaveBeenCalledWith(429);
+    expect(secondRefresh.response.status).toHaveBeenCalledWith(429);
+    expect(secondRefresh.headers.has("Retry-After")).toBe(true);
+    expect(next).toHaveBeenCalledTimes(6);
   });
 
   it("does not let rate-limited requests from one IP activate the global challenge threshold", () => {

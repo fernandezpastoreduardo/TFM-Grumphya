@@ -11,6 +11,7 @@ const REGISTRATION_INTENT_REQUEST_LIMIT = 20;
 const REGISTRATION_VERIFY_REQUEST_LIMIT = 10;
 const REFRESH_COOKIE = "grumphya_refresh";
 const LOGIN_REQUEST_LIMIT = 5;
+const PASSWORD_RESET_REQUEST_LIMIT = 5;
 const SESSION_LOGOUT_REQUEST_LIMIT = 10;
 const ACCOUNT_DELETE_REQUEST_LIMIT = 5;
 const AVATAR_UPLOAD_REQUEST_LIMIT = 3;
@@ -25,6 +26,17 @@ const CLEANUP_INTERVAL_REQUESTS = 64;
 const RATE_LIMIT_MESSAGE = "Demasiadas solicitudes. Inténtalo más tarde.";
 
 type RateLimitBucket = { count: number; resetAt: number };
+type RegistrationScope =
+  | "contact-message"
+  | "account-delete"
+  | "account-avatar-upload"
+  | "session-login"
+  | "password-reset-request"
+  | "session-logout"
+  | "session-refresh"
+  | "registration-verification"
+  | "registration-intent"
+  | "registration-create";
 type SecurityMiddlewareOptions = {
   apiRequestLimit?: number;
   sessionRefreshRequestLimit?: number;
@@ -179,54 +191,19 @@ export function createSecurityMiddleware(
         return;
       }
     }
-    const isLogoutPost =
-      request.method === "POST" && request.path === "/api/auth/logout";
     const isAuthPost =
       request.method === "POST" && request.path.startsWith("/api/auth/");
     const isAccountPost =
       request.method === "POST" && request.path.startsWith("/api/account/");
-    const isAvatarUpload = isAvatarUploadRequest(request);
     const isAccountDelete =
       request.method === "DELETE" && request.path === "/api/account";
     const isContactMessagePost =
       request.method === "POST" && request.path === "/api/contact-messages";
-    const registrationScope = isContactMessagePost
-      ? "contact-message"
-      : isAccountDelete
-        ? "account-delete"
-        : isAvatarUpload
-          ? "account-avatar-upload"
-          : isLoginPost
-            ? "session-login"
-            : isLogoutPost
-              ? "session-logout"
-              : isAuthPost
-                ? "session-refresh"
-                : request.path.includes("verify") ||
-                    request.path.includes("confirm")
-                  ? "registration-verification"
-                  : request.path.includes("intents")
-                    ? "registration-intent"
-                    : "registration-create";
-    const registrationLimit =
-      registrationScope === "session-login"
-        ? LOGIN_REQUEST_LIMIT
-        : registrationScope === "session-logout"
-          ? SESSION_LOGOUT_REQUEST_LIMIT
-          : registrationScope === "account-delete"
-            ? ACCOUNT_DELETE_REQUEST_LIMIT
-            : registrationScope === "account-avatar-upload"
-              ? AVATAR_UPLOAD_REQUEST_LIMIT
-              : registrationScope === "contact-message"
-                ? CONTACT_MESSAGE_REQUEST_LIMIT
-                : registrationScope === "registration-intent"
-                  ? REGISTRATION_INTENT_REQUEST_LIMIT
-                  : registrationScope === "session-refresh"
-                    ? sessionRefreshRequestLimit
-                    : registrationScope === "registration-verification" ||
-                        isRefreshPost
-                      ? REGISTRATION_VERIFY_REQUEST_LIMIT
-                      : REGISTRATION_REQUEST_LIMIT;
+    const registrationScope = getRegistrationScope(request);
+    const registrationLimit = getRegistrationLimit(
+      registrationScope,
+      sessionRefreshRequestLimit,
+    );
     const limits: [string, number][] = [["api", apiRequestLimit]];
     if (isCspReport) {
       limits.push(["csp-report", CSP_REPORT_REQUEST_LIMIT]);
@@ -312,4 +289,52 @@ function isAvatarUploadRequest(
   request: Parameters<RequestHandler>[0],
 ): boolean {
   return request.method === "POST" && request.path === "/api/account/avatar";
+}
+
+function getRegistrationScope(
+  request: Parameters<RequestHandler>[0],
+): RegistrationScope {
+  const path = request.path;
+  if (request.method === "POST" && path === "/api/contact-messages")
+    return "contact-message";
+  if (request.method === "DELETE" && path === "/api/account")
+    return "account-delete";
+  if (isAvatarUploadRequest(request)) return "account-avatar-upload";
+  if (path === "/api/auth/login") return "session-login";
+  if (path === "/api/auth/password-reset/request")
+    return "password-reset-request";
+  if (path === "/api/auth/logout") return "session-logout";
+  if (path.startsWith("/api/auth/")) return "session-refresh";
+  if (path.includes("verify") || path.includes("confirm"))
+    return "registration-verification";
+  if (path.includes("intents")) return "registration-intent";
+  return "registration-create";
+}
+
+function getRegistrationLimit(
+  scope: RegistrationScope,
+  sessionRefreshRequestLimit: number,
+): number {
+  switch (scope) {
+    case "contact-message":
+      return CONTACT_MESSAGE_REQUEST_LIMIT;
+    case "account-delete":
+      return ACCOUNT_DELETE_REQUEST_LIMIT;
+    case "account-avatar-upload":
+      return AVATAR_UPLOAD_REQUEST_LIMIT;
+    case "session-login":
+      return LOGIN_REQUEST_LIMIT;
+    case "password-reset-request":
+      return PASSWORD_RESET_REQUEST_LIMIT;
+    case "session-logout":
+      return SESSION_LOGOUT_REQUEST_LIMIT;
+    case "session-refresh":
+      return sessionRefreshRequestLimit;
+    case "registration-verification":
+      return REGISTRATION_VERIFY_REQUEST_LIMIT;
+    case "registration-intent":
+      return REGISTRATION_INTENT_REQUEST_LIMIT;
+    case "registration-create":
+      return REGISTRATION_REQUEST_LIMIT;
+  }
 }
