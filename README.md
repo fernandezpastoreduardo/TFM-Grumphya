@@ -12,7 +12,7 @@ una lista de trabajo pendiente.
 
 - Entrada de idea por teclado o pegado, y dictado en navegadores que admiten reconocimiento local; el usuario revisa la transcripción antes de enviarla.
 - Evaluación según la rúbrica conceptual vigente documentada en [`agentic-guidelines/scoring-viability-software.md`](agentic-guidelines/scoring-viability-software.md).
-- Detección de ideas rechazadas repetidas con coincidencia semántica estrictamente superior a `0,90`; no se reutilizan evaluaciones anteriores.
+- Detección de ideas rechazadas repetidas sin reutilizar evaluaciones anteriores. La implementación actual recupera hasta 20 candidatas por cercanía y delega la decisión de equivalencia a un comparador semántico. La regla `> 0,90` de `AGENTS.md` aún no está reconciliada con este comportamiento; consulta el [estado de similitud](doc/security-and-similarity-roadmap.md).
 - Tres usos anónimos de evaluación de ideas y tres de roast por perfil de navegador, en contadores independientes. El servidor purga el perfil tras 400 días sin actividad; cerrar el navegador no reinicia el cupo y no se crea historial personal anónimo.
 - Alta y acceso de cuentas asociadas a un plan Iluminado o Faltón; la contratación se simula y no procesa dinero real.
 - Cada plan dura un mes natural. Iluminado concede 11 evaluaciones de ideas al día; Faltón concede 11 envíos de roast al día. Los límites se reinician a las 00:00 de `Europe/Madrid`.

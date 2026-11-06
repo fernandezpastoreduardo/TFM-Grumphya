@@ -39,7 +39,8 @@ el bundle, sin sustituir la validación de migraciones del despliegue.
 
 ## Diagnóstico del smoke
 
-Si el smoke de Compose falla, su salida incluye `docker compose ps`, el estado
-de salud de `web` y sus últimos 100 registros. Mantiene secretos ficticios y
-limita el diagnóstico al contenedor web: no vuelca variables de entorno ni
-registros de API o PostgreSQL.
+En los runs del 29 de octubre, el smoke de Compose registró `docker compose ps`,
+el estado de salud de `web` y sus últimos 100 registros. La salida de diagnóstico
+vigente incluye también el estado de salud de base de datos y API y los últimos
+100 registros de API, migración y proxy; véase [CI/CD](ci-cd.md). El smoke usa
+secretos ficticios y no vuelca variables de entorno.
