@@ -15,12 +15,48 @@ La UI muestra el mismo diálogo accesible para los tres casos, con el asset `eva
 La cookie de alta pendiente identifica **ese intento de registro en ese navegador**, no a una persona en todos sus dispositivos. Borrarla o cambiar de navegador puede hacer que una solicitud sin sesión se trate como visitante anónimo; la IP no se usa como identidad vitalicia. Esta limitación impide prometer un bloqueo universal por persona sin autenticación adicional. El bloqueo de correo pendiente es independiente de la cuota gratuita del perfil anónimo (`grumphya_anon`), de la expiración del enlace y de los permisos de los planes.
 
 Para cuentas, login, renovación de refresh y validación de access token exigen
-simultáneamente `status='active'` y `email_verified_at IS NOT NULL`. El formulario
-de contacto sigue exigiendo una sesión válida. Antes de desplegar esta regla
-sobre datos históricos, hay que auditar las cuentas marcadas `active` cuyo
-`email_verified_at` sea `NULL` y regularizarlas según evidencia de verificación;
-de otro modo perderán acceso y no podrán renovar una sesión existente. No se
-debe rellenar la marca de verificación de forma indiscriminada.
+`status='active'`. El formulario de contacto sigue exigiendo una sesión válida.
+Algunas cuentas históricas activas pueden tener `email_verified_at` a `NULL`:
+conservan acceso y sus planes vigentes sin atribuirles una verificación que no
+consta. Las altas nuevas empiezan en `pending_email_verification` y solo pasan
+a `active` después de verificar el correo y confirmar la contratación simulada.
+
+Antes del despliegue, ejecutar esta auditoría de solo lectura en la base de
+datos de destino para conocer el volumen de cuentas históricas afectadas y
+cuántas tienen un plan vigente:
+
+```sql
+SELECT count(*) AS active_without_verification_date,
+       count(*) FILTER (WHERE EXISTS (
+         SELECT 1 FROM subscriptions s
+         WHERE s.user_id = u.id AND s.status = 'active'
+           AND s.starts_at <= now() AND s.expires_at > now()
+       )) AS active_with_current_plan
+FROM users u
+WHERE u.status = 'active' AND u.email_verified_at IS NULL;
+```
+
+Para revisar la procedencia de esas cuentas sin incluir correos ni contraseñas
+en el informe, obtener sus identificadores y los planes vigentes:
+
+```sql
+SELECT u.id, u.created_at,
+       array_agg(s.plan_code ORDER BY s.plan_code)
+         FILTER (WHERE s.id IS NOT NULL) AS current_plans
+FROM users u
+LEFT JOIN subscriptions s ON s.user_id = u.id AND s.status = 'active'
+  AND s.starts_at <= now() AND s.expires_at > now()
+WHERE u.status = 'active' AND u.email_verified_at IS NULL
+GROUP BY u.id, u.created_at
+ORDER BY u.created_at;
+```
+
+La ausencia de fecha no demuestra que el correo se verificara. Hay que
+contrastar la procedencia de las filas con la evidencia disponible y revisar
+el riesgo de usar ese correo para contacto. La auditoría no cambia los
+registros ni suspende el acceso: el estado `active` mantiene la identificación
+y los permisos se siguen comprobando con la suscripción vigente. No se debe
+rellenar la fecha de verificación sin evidencia.
 
 El UUID en la cookie es un identificador seudónimo asociado a una cuenta pendiente, no un token de verificación ni de sesión. No debe escribirse en logs, métricas públicas ni mensajes de error. La política de privacidad visible debe describir esta cookie propia y su duración. En desarrollo sin SMTP, la vista previa local del correo permite probar el flujo, pero no demuestra entrega real.
 
@@ -28,5 +64,6 @@ El UUID en la cookie es un identificador seudónimo asociado a una cuenta pendie
 
 - API: comprobar bloqueo `403` para las tres rutas, también con solicitudes directas; comprobar ausencia de reserva, generación y persistencia cuando se bloquea.
 - Alta: comprobar que el enlace abierto por sí solo no verifica, que el botón sí cambia el estado y que las cookies se emiten y limpian en los momentos previstos.
+- Compatibilidad: comprobar login, renovación, access token y plan vigente de una cuenta `active` con `email_verified_at` a `NULL`; las cuentas pendientes siguen sin poder iniciar sesión.
 - Web: comprobar el diálogo, sus textos y asset, así como la conservación de la entrada escrita y el manejo del `403` tras la comprobación previa.
 - Navegadores: confirmar el recorrido completo con un alta aislada y correo de prueba; un visitante sin alta pendiente debe poder usar sus cuotas gratuitas.

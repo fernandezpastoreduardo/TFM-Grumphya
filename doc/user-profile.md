@@ -4,8 +4,10 @@ La ruta `/perfil` muestra el hero de Grumphya con el asset transparente
 `profile-account-shield.png` (`527.469 B`).
 
 `GET /api/account/profile` exige un access JWT válido. `AccessTokenGuard`
-valida el bearer, la sesión vigente y el correo verificado de la cuenta; después
-establece `request.user.userId`. El endpoint no acepta el
+valida el bearer y una sesión vigente de una cuenta `active`; después
+establece `request.user.userId`. Una cuenta histórica activa sin fecha en
+`email_verified_at` conserva acceso, sin atribuirle una verificación que no
+consta. El endpoint no acepta el
 identificador del usuario desde el cuerpo ni la query. La respuesta contiene
 el alias, correo, estado de verificación, fecha de alta, contador de roasts,
 URL pública opcional del avatar y ambos planes.
