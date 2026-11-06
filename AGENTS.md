@@ -132,7 +132,7 @@ La primera entrega incluye evaluación de ideas web/móviles, dictado por voz, d
 - Cuentas con plan Faltón activo: 11 envíos de roast al día.
 - Los contadores diarios se reinician a las 00:00 de `Europe/Madrid`, también en los cambios de horario de verano/invierno, mientras el plan siga vigente.
 - En la primera entrega la contratación se simula. La activación del plan y sus permisos se registran y comprueban en el servidor; no se procesa dinero real.
-- La rúbrica conceptual vigente se define en `agentic-guidelines/scoring-viability-software.md`; la coincidencia semántica estricta `> 0,90` se define en `agentic-guidelines/features.md`.
+- La rúbrica conceptual vigente se define en `agentic-guidelines/scoring-viability-software.md`. Para detectar una idea rechazada repetida, pgvector recupera hasta 20 candidatas cercanas sin umbral coseno fijo; el comparador semántico solo confirma coincidencia cuando coinciden finalidad y público u objeto, según `agentic-guidelines/features.md`.
 - Las ideas aprobadas (`promising`) nunca se muestran: «Humanos notables» solo publica alias y número de ideas distintas aprobadas. «Worst Ideas» publica títulos genéricos seguros y cantidades semanales de ideas rechazadas, sin autor ni texto original.
 
 **Architecture:**

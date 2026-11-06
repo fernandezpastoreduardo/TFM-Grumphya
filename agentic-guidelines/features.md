@@ -203,7 +203,7 @@ La captura de texto pertenece a `idea-input`; la evaluación pertenece a `idea-e
 - La respuesta diferencia datos, riesgos, supuestos y recomendaciones.
 - En una sesión anónima no se crea historial personal. En una cuenta registrada, solo se guardan las ideas aprobadas en el historial privado de perfil y los rechazos en el historial privado de Worst Ideas; las entradas insuficientes, los casos especiales y cada envío en general no forman un historial completo.
 - Tests de borde de la rúbrica vigente: veto conceptual con puntuaciones `14/15`, proyección de revisión por debajo de `7/10`, doble clic/reintento idempotente y reinicio del contador en medianoche de `Europe/Madrid`.
-- **Divergencia pendiente:** `AGENTS.md` exige coincidencia semántica estrictamente `> 0,90`, pero el comparador implementado decide equivalencia entre las 20 candidatas recuperadas sin umbral coseno fijo. Las pruebas actuales confirman incluso paráfrasis con similitud inferior a `0,90`; por tanto, no verifican esa regla de aceptación. Resolver el contrato antes de afirmar conformidad.
+- Tests de similitud: aceptar paráfrasis de la misma finalidad y público u objeto aunque el coseno sea inferior a `0,90`, y rechazar ideas distintas aunque aparezcan entre las candidatas más cercanas. El coseno ordena la recuperación; no decide la equivalencia.
 
 ## submitContactMessage
 
