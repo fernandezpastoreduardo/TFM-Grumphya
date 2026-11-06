@@ -477,8 +477,8 @@ export function UserProfile() {
         </div>
         {!profile.user.emailVerified ? (
           <p className="profile-verification-notice" role="status">
-            <strong>Correo sin verificar.</strong> Añadiremos la verificación
-            antes de abrir el registro al público.
+            <strong>Correo sin verificar.</strong> Tu cuenta y tus planes
+            activos siguen disponibles.
           </p>
         ) : null}
       </section>

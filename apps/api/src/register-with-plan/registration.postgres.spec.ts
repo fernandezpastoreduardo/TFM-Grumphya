@@ -5,6 +5,11 @@ import { PostgresRegistrationRepository } from "./postgres-registration.reposito
 import { RegistrationService } from "./registration.service";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import { PostgresAdminDashboardRepository } from "../admin-dashboard/postgres-admin-dashboard.repository";
+import {
+  hashAccessToken,
+  PostgresAccessTokenSessionLookup,
+} from "../infrastructure/auth/access-token-session.lookup";
+import { PostgresPlanUsageRepository } from "./postgres-plan-usage.repository";
 
 const DATABASE_URL = process.env.REGISTRATION_TEST_DATABASE_URL;
 const TEST_WEB_ORIGIN = "http://127.0.0.1:5173";
@@ -79,7 +84,7 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       password: "Una contraseña suficientemente segura 48!",
       privacyPolicyAcknowledged: true,
     });
-    expect(pending).toEqual({ status: "verification_pending" });
+    expect(pending).toMatchObject({ status: "verification_pending" });
     expect(verificationToken).toMatch(/^[a-f0-9]{64}$/u);
 
     const result = await adminPool.query<{
@@ -117,6 +122,36 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
       zero_usage_rows: "0",
       sessions: "0",
     });
+    await expect(
+      service.login({
+        identifier: "persona@example.es",
+        password: "Una contraseña suficientemente segura 48!",
+        rememberMe: false,
+      }),
+    ).rejects.toMatchObject({ code: "LOGIN_UNAVAILABLE" });
+    const pendingUserId = (
+      await testPool.query<{ id: string }>(
+        "SELECT id FROM users WHERE email_normalized=$1",
+        ["persona@example.es"],
+      )
+    ).rows[0]?.id;
+    if (!pendingUserId) throw new Error("Pending user was not found.");
+    const pendingAccessHash = hashAccessToken("pending-test-access-token");
+    await testPool.query(
+      `INSERT INTO auth_sessions(user_id,access_token_hash,refresh_token_hash,expires_at)
+       VALUES($1,$2,$3,now()+interval '1 hour')`,
+      [pendingUserId, pendingAccessHash, "pending-test-refresh-hash"],
+    );
+    await expect(
+      new PostgresAccessTokenSessionLookup(testPool).isActive(
+        pendingAccessHash,
+        pendingUserId,
+      ),
+    ).resolves.toBe(false);
+    await testPool.query("DELETE FROM auth_sessions WHERE user_id=$1", [
+      pendingUserId,
+    ]);
+
     const verified = await service.verify(verificationToken);
     const confirmed = await service.confirm(verified.confirmationToken);
     expect(confirmed.result.account.user.emailVerified).toBe(true);
@@ -139,6 +174,48 @@ describe.skipIf(!DATABASE_URL)("Postgres registration persistence", () => {
     );
     expect(activePlanDuration.rows[0]!.days).toBeGreaterThanOrEqual(28);
     expect(activePlanDuration.rows[0]!.days).toBeLessThanOrEqual(31);
+
+    await testPool.query(
+      "UPDATE users SET email_verified_at=NULL WHERE email_normalized=$1",
+      ["persona@example.es"],
+    );
+    const historicalSession = await service.login({
+      identifier: "persona@example.es",
+      password: "Una contraseña suficientemente segura 48!",
+      rememberMe: false,
+    });
+    expect(historicalSession.result.account.user.emailVerified).toBe(false);
+    expect(
+      historicalSession.result.account.plans.find(
+        (plan) => plan.plan === "FALTON",
+      ),
+    ).toMatchObject({ status: "active" });
+    const historicalUserId = (
+      await testPool.query<{ id: string }>(
+        "SELECT id FROM users WHERE email_normalized=$1",
+        ["persona@example.es"],
+      )
+    ).rows[0]?.id;
+    if (!historicalUserId) throw new Error("Historical user was not found.");
+    const accessLookup = new PostgresAccessTokenSessionLookup(testPool);
+    await expect(
+      accessLookup.isActive(
+        hashAccessToken(historicalSession.result.accessToken),
+        historicalUserId,
+      ),
+    ).resolves.toBe(true);
+    const renewedSession = await service.refresh(
+      historicalSession.refreshToken,
+    );
+    expect(renewedSession.result.account.user.emailVerified).toBe(false);
+    await expect(
+      new PostgresPlanUsageRepository(testPool).reserve(
+        historicalUserId,
+        "roasts",
+        hashAccessToken("historical-account-idempotency"),
+        hashAccessToken("historical-account-request"),
+      ),
+    ).resolves.toMatchObject({ state: "reserved" });
 
     await adminPool.query(
       `INSERT INTO "${schemaName}".registration_intents(token_hash,plan_code,expires_at)

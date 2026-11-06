@@ -256,6 +256,8 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
       rememberMe: false,
       expiresAt,
     });
+    expect(query.mock.calls[0]?.[0]).toContain("user_account.status='active'");
+    expect(query.mock.calls[0]?.[0]).not.toContain("email_verified_at");
     await expect(
       repository.getSessionIdentity("missing-refresh-hash"),
     ).resolves.toBe(null);
@@ -279,6 +281,8 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
       expect.stringContaining("email_normalized=$1 OR username_normalized=$1"),
       ["persona@example.es"],
     );
+    expect(query.mock.calls[0]?.[0]).toContain("status='active'");
+    expect(query.mock.calls[0]?.[0]).not.toContain("email_verified_at");
     await expect(
       repository.findLoginIdentity("missing@example.es"),
     ).resolves.toBe(null);
@@ -508,6 +512,8 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
       rememberMe: true,
       expiresAt,
     });
+    expect(clientQuery.mock.calls[1]?.[0]).toContain("u.status='active'");
+    expect(clientQuery.mock.calls[1]?.[0]).not.toContain("email_verified_at");
 
     expect(clientQuery).toHaveBeenNthCalledWith(
       3,
@@ -637,111 +643,6 @@ describe("PostgresRegistrationRepository retention cleanup", () => {
       [USER_ID, NEXT_ACCESS_HASH, NEXT_REFRESH_HASH, expiresAt],
     );
     expect(clientQuery).toHaveBeenLastCalledWith("COMMIT");
-    expect(release).toHaveBeenCalledOnce();
-  });
-
-  it("creates a directly verified account with its simulated plan and session", async () => {
-    const { repository, clientQuery, release } = createTransactionRepository([
-      { rows: [], rowCount: 0 },
-      { rows: [{ plan_code: "FALTON" }], rowCount: 1 },
-      { rows: [{ id: USER_ID }], rowCount: 1 },
-      { rows: [{ id: "subscription-id" }], rowCount: 1 },
-      { rows: [], rowCount: 1 },
-      { rows: [], rowCount: 1 },
-      { rows: [], rowCount: 0 },
-      { rows: [], rowCount: 1 },
-      { rows: PROFILE_ROWS, rowCount: PROFILE_ROWS.length },
-      { rows: [], rowCount: 0 },
-    ]);
-    const input = {
-      email: "persona@example.es",
-      username: "Persona",
-      password: "unused-password-placeholder",
-      privacyPolicyAcknowledged: true,
-    } as const;
-
-    const registration = await repository.activateWithRegistration(
-      USER_ID,
-      "intent-token-hash",
-      input,
-      "password-hash",
-      NEXT_ACCESS_HASH,
-      NEXT_REFRESH_HASH,
-      PROFILE_PLAN_END,
-    );
-
-    expect(registration.userId).toBe(USER_ID);
-    expect(registration.plan).toBe("FALTON");
-    expect(registration.account.user.avatarUrl).toBe("/api/avatars/avatar-key");
-    expect(clientQuery).toHaveBeenCalledWith(
-      expect.stringContaining("privacy_policy_version"),
-      [
-        USER_ID,
-        input.email,
-        input.email,
-        input.username,
-        "persona",
-        "password-hash",
-        "v5",
-      ],
-    );
-    expect(clientQuery).toHaveBeenLastCalledWith("COMMIT");
-    expect(release).toHaveBeenCalledOnce();
-  });
-
-  it("rolls back direct registration when its intent has expired or been consumed", async () => {
-    const { repository, clientQuery, release } = createTransactionRepository([
-      { rows: [], rowCount: 0 },
-      { rows: [], rowCount: 0 },
-      { rows: [], rowCount: 0 },
-    ]);
-
-    await expect(
-      repository.activateWithRegistration(
-        USER_ID,
-        "expired-intent-hash",
-        {
-          email: "persona@example.es",
-          username: "Persona",
-          password: "unused-password-placeholder",
-          privacyPolicyAcknowledged: true,
-        },
-        "password-hash",
-        NEXT_ACCESS_HASH,
-        NEXT_REFRESH_HASH,
-        PROFILE_PLAN_END,
-      ),
-    ).rejects.toThrow("Registration intent unavailable.");
-
-    expect(clientQuery).toHaveBeenLastCalledWith("ROLLBACK");
-    expect(release).toHaveBeenCalledOnce();
-  });
-
-  it("rolls back direct registration when the inserted account does not match", async () => {
-    const { repository, clientQuery, release } = createTransactionRepository([
-      { rows: [], rowCount: 0 },
-      { rows: [{ plan_code: "FALTON" }], rowCount: 1 },
-      { rows: [{ id: "unexpected-user-id" }], rowCount: 1 },
-      { rows: [], rowCount: 0 },
-    ]);
-
-    await expect(
-      repository.activateWithRegistration(
-        USER_ID,
-        "intent-token-hash",
-        {
-          email: "persona@example.es",
-          username: "Persona",
-          password: "unused-password-placeholder",
-          privacyPolicyAcknowledged: true,
-        },
-        "password-hash",
-        NEXT_ACCESS_HASH,
-        NEXT_REFRESH_HASH,
-        PROFILE_PLAN_END,
-      ),
-    ).rejects.toThrow("User could not be created.");
-    expect(clientQuery).toHaveBeenLastCalledWith("ROLLBACK");
     expect(release).toHaveBeenCalledOnce();
   });
 

@@ -1,10 +1,8 @@
-import { randomUUID } from "node:crypto";
 import { type Pool, type PoolClient } from "pg";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
 import type {
   AccountProfile,
   AccountPlanStatus,
-  DirectRegistration,
   ConfirmedRegistration,
   PlanCode,
   LoginIdentity,
@@ -143,75 +141,6 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     );
   }
 
-  async activateWithRegistration(
-    userId: string,
-    tokenHash: string,
-    input: RegistrationInput,
-    passwordHash: string,
-    accessTokenHash: string,
-    refreshTokenHash: string,
-    sessionExpiresAt: Date,
-  ): Promise<DirectRegistration> {
-    await this.ensureSchema();
-    return this.transaction(async (client) => {
-      const intent = await client.query<{ plan_code: PlanCode }>(
-        `DELETE FROM registration_intents WHERE token_hash=$1 AND expires_at > now()
-         RETURNING plan_code`,
-        [tokenHash],
-      );
-      const plan = intent.rows[0]?.plan_code;
-      if (!plan) throw new Error("Registration intent unavailable.");
-
-      const user = await client.query<{ id: string }>(
-        `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
-          privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status)
-         VALUES($1,$2,$3,$4,$5,$6,$7,now(),NULL,'active') RETURNING id`,
-        [
-          userId,
-          input.email,
-          input.email,
-          input.username,
-          input.username.toLowerCase(),
-          passwordHash,
-          PRIVACY_POLICY_VERSION,
-        ],
-      );
-      const createdUserId = user.rows[0]?.id;
-      if (!createdUserId || createdUserId !== userId)
-        throw new Error("User could not be created.");
-
-      const activationKey = randomUUID();
-      const subscription = await client.query<{ id: string }>(
-        `INSERT INTO subscriptions(user_id,plan_code,status,starts_at,expires_at,activation_source,idempotency_key)
-         SELECT $1,p.code,'active',now(),now()+make_interval(months => p.validity_months),'simulated',$2
-         FROM plans p WHERE p.code=$3 RETURNING id`,
-        [userId, activationKey, plan],
-      );
-      const subscriptionId = subscription.rows[0]?.id;
-      if (!subscriptionId) throw new Error("Selected plan unavailable.");
-      await client.query(
-        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at,amount_eur)
-         SELECT $1,$2,$3,'confirmed',now(),monthly_price_eur FROM plans WHERE code=$4`,
-        [userId, subscriptionId, activationKey, plan],
-      );
-      await client.query(
-        `INSERT INTO account_daily_plan_usage(user_id,plan_code,usage_date,ideas_used,roasts_used)
-         SELECT $1,p.code,(now() AT TIME ZONE 'Europe/Madrid')::date,0,0 FROM plans p
-         ON CONFLICT (user_id,plan_code,usage_date) DO NOTHING`,
-        [userId],
-      );
-      await this.cleanupStaleAuthSessions(client);
-      await client.query(
-        `INSERT INTO auth_sessions(user_id,access_token_hash,refresh_token_hash,expires_at,remember_me)
-         VALUES($1,$2,$3,$4,false)`,
-        [userId, accessTokenHash, refreshTokenHash, sessionExpiresAt],
-      );
-      const account = await this.readProfile(client, refreshTokenHash);
-      if (!account) throw new Error("New account could not be loaded.");
-      return { userId, plan, account };
-    });
-  }
-
   async findLoginIdentity(identifier: string): Promise<LoginIdentity | null> {
     await this.ensureSchema();
     const normalized = identifier.trim().toLowerCase();
@@ -219,7 +148,6 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
       `SELECT id AS "userId",username,password_hash AS "passwordHash"
        FROM users
        WHERE (email_normalized=$1 OR username_normalized=$1) AND status='active'
-         AND email_verified_at IS NOT NULL
        LIMIT 1`,
       [normalized],
     );
@@ -289,8 +217,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
          ORDER BY starts_at DESC LIMIT 1
        ) active_plan ON true
        WHERE session.refresh_token_hash=$1 AND session.revoked_at IS NULL
-         AND session.expires_at > now() AND user_account.status='active'
-         AND user_account.email_verified_at IS NOT NULL`,
+         AND session.expires_at > now() AND user_account.status='active'`,
       [refreshTokenHash],
     );
     const session = result.rows[0];
@@ -436,7 +363,6 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
          ) active_plan ON true
          WHERE s.refresh_token_hash=$1 AND s.revoked_at IS NULL
            AND s.expires_at > now() AND u.status='active'
-           AND u.email_verified_at IS NOT NULL
          FOR UPDATE OF s`,
         [refreshTokenHash],
       );

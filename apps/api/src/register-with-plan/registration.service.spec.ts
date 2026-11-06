@@ -438,6 +438,56 @@ describe("register with plan", () => {
     expect(repository.sessions.at(-1)?.rememberMe).toBe(true);
   });
 
+  it("keeps historical active accounts without a verification date signed in with their plan", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const intent = await service.createIntent("ILUMINADO");
+    await registerAndConfirm(service, intent.token, validRegistration);
+    const user = repository.users[0];
+    if (!user) throw new Error("Test account was not created.");
+    user.emailVerified = false;
+
+    const session = await service.login({
+      identifier: validRegistration.email,
+      password: validRegistration.password,
+      rememberMe: false,
+    });
+    expect(session.result.account).toMatchObject({
+      user: { emailVerified: false },
+      plans: expect.arrayContaining([
+        expect.objectContaining({ plan: "ILUMINADO", status: "active" }),
+      ]),
+    });
+    expect(await service.accountProfile(session.refreshToken)).toMatchObject({
+      plans: expect.arrayContaining([
+        expect.objectContaining({ plan: "ILUMINADO", status: "active" }),
+      ]),
+    });
+    const refreshed = await service.refresh(session.refreshToken);
+    expect(refreshed.result.account).toMatchObject({
+      user: { emailVerified: false },
+      plans: expect.arrayContaining([
+        expect.objectContaining({ plan: "ILUMINADO", status: "active" }),
+      ]),
+    });
+  });
+
+  it("continues to reject login while a new account is pending email verification", async () => {
+    const repository = new InMemoryRegistrationRepository();
+    const service = makeService(repository);
+    const intent = await service.createIntent("ILUMINADO");
+    await service.register(intent.token, validRegistration);
+
+    await expect(
+      service.login({
+        identifier: validRegistration.email,
+        password: validRegistration.password,
+        rememberMe: false,
+      }),
+    ).rejects.toMatchObject({ code: "LOGIN_UNAVAILABLE" });
+    expect(repository.sessions).toHaveLength(0);
+  });
+
   it("upgrades a legacy scrypt hash with an expected-hash conditional update", async () => {
     const repository = new InMemoryRegistrationRepository();
     const service = makeService(repository);

@@ -67,11 +67,6 @@ export type AccountProfile = {
   };
   plans: AccountPlanStatus[];
 };
-export type DirectRegistration = {
-  userId: string;
-  plan: PlanCode;
-  account: AccountProfile;
-};
 export type LoginIdentity = {
   userId: string;
   username: string;

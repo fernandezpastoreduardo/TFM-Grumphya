@@ -25,8 +25,7 @@ export class PostgresAccessTokenSessionLookup implements AccessTokenSessionLooku
        JOIN users user_account ON user_account.id=session.user_id
        WHERE session.access_token_hash=$1 AND session.user_id=$2
          AND session.revoked_at IS NULL AND session.expires_at > now()
-         AND user_account.status='active'
-         AND user_account.email_verified_at IS NOT NULL`,
+         AND user_account.status='active'`,
       [accessTokenHash, userId],
     );
     return result.rowCount === 1;

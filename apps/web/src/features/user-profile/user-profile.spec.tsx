@@ -101,6 +101,9 @@ describe("UserProfile", () => {
     expect(screen.getByText("persona@example.es")).toBeInTheDocument();
     expect(screen.getByText(/correo sin verificar/i)).toBeInTheDocument();
     expect(
+      screen.getByText(/tu cuenta y tus planes activos siguen disponibles/i),
+    ).toBeInTheDocument();
+    expect(
       screen.getByText(/11 de 11 evaluaciones disponibles hoy/i),
     ).toBeInTheDocument();
     expect(
