@@ -8,7 +8,7 @@ La media de una evaluación sin vetos determina si el resultado puede presentars
 
 Los cuatro casos especiales de Home no forman parte de ese benchmark LLM: una lista determinista del servidor los clasifica antes de llamar a similitud o al evaluador. Las pruebas de `special-idea-cases.spec.ts` cubren los límites léxicos; las pruebas de `idea-submission.service.spec.ts` comprueban que la respuesta se reserva, se cachea y no invoca búsqueda ni evaluación. La frase corta «Un/Una X pero con IA» es un patrón acotado, no una regla para rechazar cualquier propuesta que use IA.
 
-Ejecuta la comparación desde la raíz con `pnpm --filter @grumphya/api benchmark:evaluator`. Requiere `OPENAI_API_KEY`; no consume cuotas de cuentas, porque el runner llama directamente al adaptador del proveedor. El modelo predeterminado es el mismo configurado por defecto para la API. Para comparar modelos y prompts:
+Ejecuta la comparación desde la raíz con `pnpm --filter @grumphya/api benchmark:evaluator`. Requiere `OPENAI_API_KEY`; no consume cuotas de cuentas, porque el runner llama directamente al adaptador del proveedor. El modelo predeterminado es el mismo configurado por defecto para la API. Para comparar modelos y prompts, crea antes el directorio `agentic-guidelines/prompts` y guarda allí un fichero de texto no vacío con la variante que quieras probar. El nombre `modelo-a` y el fichero de este ejemplo son marcadores que debes sustituir:
 
 ```sh
 pnpm --filter @grumphya/api run benchmark:evaluator -- \
