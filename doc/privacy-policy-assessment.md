@@ -29,6 +29,16 @@ El texto visible se mantiene en [`privacy-policy.tsx`](../apps/web/src/features/
 
 La revisión técnica del 6 de noviembre añade una cookie propia para reconocer en ese navegador un alta con correo pendiente. Su valor es el UUID de `pending_registrations`, asociado a la cuenta pendiente; dura hasta 400 días en el navegador y se borra al confirmar la contratación o iniciar sesión. No sustituye al enlace de correo ni autoriza una sesión. La sección de cookies de la política visible debe mantenerse alineada con esta finalidad y duración; la presencia de la cookie no acredita identidad en otro navegador. Véase [Bloqueo de envíos](email-verification-gate.md).
 
+En la matriz, «no se conserva el texto de idea como historial» significa que no
+se guarda una copia íntegra de la entrada original en una columna de historial.
+El título privado de una idea aprobada se deriva de la entrada y puede
+reproducirla por completo si es breve; por tanto, puede contener datos
+personales y no es anónimo. El historial privado de rechazos y el ranking
+público usan títulos generados y filtrados (`safeTitle`), que reducen el riesgo
+sin garantizar anonimización. El perfil presenta los títulos privados solo a
+su titular; los rankings de cuentas publican alias y recuentos, no esos títulos.
+Véase [Ideas aprobadas privadas](approved-ideas.md).
+
 ## C. Validaciones pendientes antes de producción
 
 1. El responsable es Eduardo Fernández Pastor, persona física, domicilio Avenida de América 46, 4.º A, 50007 Zaragoza, España; no hay DPD designado. Canal de privacidad: contacto@grumphya.com.

@@ -104,6 +104,26 @@ describe("WorstIdeasUser", () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    { label: "HTML count", count: '<img src=x onerror="alert(1)">' },
+    { label: "fraction", count: 1.5 },
+    { label: "unsafe integer", count: Number.MAX_SAFE_INTEGER + 1 },
+  ])("rejects an invalid $label in the private history", async ({ count }) => {
+    authenticatedFetchMock.mockResolvedValue(
+      jsonResponse([{ safeTitle: "Una idea registrada", count }]),
+    );
+    render(<WorstIdeasUser />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /no se ha podido cargar tu historial/i,
+    );
+    expect(screen.queryByText("Una idea registrada")).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: "Tus ideas rechazadas" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a recoverable error for a failed request and retries successfully", async () => {
     authenticatedFetchMock
       .mockResolvedValueOnce(jsonResponse({}, 503))
