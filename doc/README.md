@@ -8,6 +8,7 @@
 
 - [Límites de uso anónimo](anonymous-usage.md): cuotas, reintentos y retención de datos.
 - [Alta, perfil, contratación simulada y avatar](user-profile.md): selección de plan, verificación del correo y funciones de la cuenta.
+- [Bloqueo de envíos hasta verificar el correo](email-verification-gate.md): contrato de API, diálogo y límites de identidad por navegador.
 - [Recuperación de contraseña](password-reset.md): solicitar y completar el restablecimiento.
 - [Ideas aprobadas privadas](approved-ideas.md): qué se guarda en el perfil y quién puede verlo.
 - [Baja física de cuenta](user-delete.md): datos que elimina la baja y límites de esa eliminación.

@@ -4,6 +4,14 @@
 
 Cada perfil de navegador dispone de **3 evaluaciones de ideas y 3 envíos de roast** en contadores independientes, administrados por la API y PostgreSQL. El perfil y sus contadores se eliminan tras 400 días sin actividad; por tanto, la cuota no es estrictamente vitalicia y puede volver a empezar si se crea otro perfil tras ese periodo. El cupo se aplica a visitantes sin cuenta y también a cuentas autenticadas cuando no tienen activo el plan correspondiente. Por ejemplo, una cuenta con Iluminado usa la cuota de Iluminado para ideas y conserva los intentos gratuitos de roast hasta contratar Faltón. Usar un plan no relacionado no consume ni elimina los intentos gratuitos del otro ámbito. Cerrar la pestaña o el navegador no reinicia el cupo.
 
+Una excepción de elegibilidad precede a la cuota: si este navegador conserva
+un alta cuyo correo sigue pendiente, la API rechaza ideas y roasts con `403
+EMAIL_VERIFICATION_REQUIRED` antes de reservar un intento. Tras pulsar
+«Confirmar correo» desde el enlace de verificación, el bloqueo desaparece.
+Quien no ha iniciado un alta sigue usando la cuota gratuita. La cookie del
+alta pendiente y sus límites se describen en
+[Bloqueo de envíos](email-verification-gate.md).
+
 La identidad se transporta mediante una cookie opaca, aleatoria y persistente (`HttpOnly`, `SameSite=Strict`, `Secure` en producción y `Path=/api`). La API guarda el hash del token, nunca el valor de la cookie, y purga los perfiles que llevan 400 días sin actividad. La cookie se renueva al consultar el uso anónimo y dura como máximo 400 días desde su emisión. El navegador puede eliminar la cookie o el usuario puede cambiar de dispositivo, con lo que se crea otro perfil: este mecanismo no ofrece identificación permanente de personas.
 
 El perfil anónimo no genera historial. Las tablas de uso anónimo e idempotencia no conservan el texto original de la idea o el insulto como payload fuente. Los errores 5xx tampoco guardan contexto ni texto de idea; la migración `036_redact_application_error_context.sql` pone a `NULL` los contextos históricos de `application_error_events`. La columna permanece en el esquema, y las copias de seguridad históricas no se modifican. La caché idempotente conserva el cuerpo final de respuesta, que puede contener salida generada derivada de la petición. El TTL lógico de esa respuesta es de 24 horas: pasado ese plazo deja de estar disponible para reintentos. `DataRetentionService` elimina las filas vencidas por lotes al arrancar la API y cada hora; el borrado físico puede ocurrir hasta una hora después del TTL.
