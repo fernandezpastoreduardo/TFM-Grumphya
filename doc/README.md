@@ -30,6 +30,7 @@
 - [Producción en un VPS](production.md): preparación y despliegue manual.
 - [Credenciales y secretos](credentials.md): configuración disponible y manejo seguro de secretos.
 - [CI/CD y seguridad de la imagen](ci-cd.md): flujos automatizados y controles de publicación.
+- [SonarQube Community Build privado](sonarqube.md): operación, Quality Gate y acceso desde CI.
 - [Prototipo de Desarrollo Seguro](desarrollo-seguro.md): alcance y límites del sitio demostrativo.
 
 ### Revisar privacidad y seguridad

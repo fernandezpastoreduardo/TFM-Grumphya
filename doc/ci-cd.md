@@ -44,3 +44,7 @@ bash scripts/test-production-compose.sh "$SHA"
 ```
 
 `DOMAIN=ci.invalid` solo se pasa al comando de build; no lo exportes antes del smoke, que genera certificados efímeros para `localhost`. Trivy `v0.76.0` puede escanear las imágenes con `--scanners vuln --severity HIGH,CRITICAL --ignore-unfixed`; requiere descargar su base actual. Estas comprobaciones no ejecutan Actions ni despliegues. Los checks de PR, secretos y variables de GitHub, el backend de caché `gha` y el destino remoto de producción solo se pueden validar desde GitHub.
+
+## Análisis SonarQube
+
+El job `sonar-analysis` añade un análisis de [SonarQube Community Build privado](sonarqube.md) únicamente a la release aprobada desde `main`. Ejecuta cobertura de API y web, abre un túnel SSH temporal a la instancia privada, analiza ambos árboles TypeScript y espera el resultado del Quality Gate. Una tarea ausente, fallida, incompleta o no disponible impide que `supply-chain` avance. La guía describe la instalación Compose independiente, el gate que debe configurarse en el servidor, los secretos de Actions y los límites de las comprobaciones. El workflow no usa runner self-hosted ni expone el dashboard públicamente.
