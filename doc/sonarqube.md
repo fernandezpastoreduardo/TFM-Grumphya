@@ -1,25 +1,25 @@
 # SonarQube Community Build privado
 
-SonarQube es una herramienta de análisis interna para el código de Grumphya. Se ejecuta fuera de los servicios de producción, con PostgreSQL propio, y no forma parte del runtime público. El proyecto no usa SonarQube Cloud. El servidor no envía análisis a un servicio externo: el escáner del workflow transmite el análisis por un túnel SSH a la instancia privada.
+SonarQube es una herramienta de análisis interna para el código de Grumphya. Se ejecuta fuera de los servicios de producción, con PostgreSQL propio, y no forma parte del runtime público. El proyecto no usa SonarQube Cloud. El escáner corre localmente en un contenedor Docker y envía el análisis a SonarQube por una red Docker interna; no hay túnel SSH ni conexión del análisis con Actions.
 
 ## Requisitos y configuración inicial
 
-- Docker Engine y Docker Compose v2 en un servidor Linux administrado por el equipo.
-- Una cuenta SSH sin privilegios de administrador y un acceso de red restringido al servidor. SonarQube tiene una IP estática en una red privada Docker interna; no publica puertos en el host.
+- Docker Desktop/Engine y Docker Compose v2 en la estación administrada que ejecutará el análisis.
+- Node.js y pnpm según las versiones fijadas en `.node-version` y `package.json`.
 - Memoria y límites de kernel compatibles con Elasticsearch incluido en SonarQube; antes del primer arranque, verifica `vm.max_map_count` según la [documentación oficial de SonarSource](https://docs.sonarsource.com/sonarqube-server/latest/server-installation/pre-installation/linux/).
 
-Desde el directorio del proyecto en el servidor, prepara un secreto aleatorio para la base de datos y arranca los servicios:
+Desde el directorio del proyecto en la estación administrada que alojará SonarQube, prepara un secreto aleatorio para la base de datos y arranca los servicios:
 
 ```sh
 cp .env.sonarqube.example .env.sonarqube
 # Sustituye el valor de ejemplo por un secreto largo y aleatorio.
 chmod 600 .env.sonarqube
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml config
+docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml config --quiet
 docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml up -d
 docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml ps
 ```
 
-En el primer inicio, SonarQube usa las credenciales predeterminadas `admin/admin`. Inicia sesión únicamente por el túnel privado, cambia esa contraseña inmediatamente y guarda la nueva en un gestor seguro antes de habilitar acceso a otras personas o crear tokens.
+En el primer inicio, SonarQube usa las credenciales predeterminadas `admin/admin`. Abre el dashboard con el puente temporal descrito más abajo, cambia esa contraseña inmediatamente y guarda la nueva en un gestor seguro antes de habilitar acceso a otras personas o crear tokens. Crea un token de análisis de proyecto para `grumphya` y guárdalo en `.env.sonarqube.token` con el formato `SONAR_TOKEN=valor`, permisos de análisis únicamente y permisos de archivo `600`. Ese fichero está excluido de Git; no pegues el token en comandos, argumentos ni documentación.
 
 La base de datos `sonarqube` es independiente de PostgreSQL de producción. Los volúmenes Compose conservan datos, extensiones y registros. No borres volúmenes al detener el servicio. Para detenerlo sin eliminar datos:
 
@@ -29,7 +29,7 @@ docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml stop
 
 Para volver a iniciarlo usa `up -d`. No ejecutes `down -v` salvo que se haya aprobado expresamente eliminar permanentemente el historial y la configuración del servidor.
 
-La red Compose `172.30.250.0/24` está marcada `internal`; en este host se confirmó libre y no se solapa con redes locales conocidas. No se publica ningún puerto en el host ni el puerto de PostgreSQL. SonarQube tiene la IP estática `172.30.250.10` dentro de esa red para que el host Linux pueda alcanzar el servicio a través del túnel SSH. Antes de usarla en otro host, vuelve a comprobar que la subred no se solape con redes Docker, VPN ni redes de la organización. Configura el túnel y `PermitOpen` exactamente con `172.30.250.10:9000`. `internal: true` bloquea el egress de runtime de los contenedores conectados a esa red; esto describe la configuración del repositorio y no demuestra por sí solo el comportamiento de una instancia desplegada, su host Docker, DNS o firewall. `SONAR_TELEMETRY_ENABLE=false` y `SONAR_UPDATECENTER_ACTIVATE=false` desactivan telemetría y Update Center. No instales plugins desde una fuente externa ni habilites conexiones de salida del servidor sin revisar y documentar su necesidad. Las actualizaciones de imágenes deben descargarse y aplicarse de forma controlada por el operador.
+La red Compose `172.30.250.0/24` está marcada `internal`; en este host se confirmó libre y no se solapa con redes locales conocidas. No se publica ningún puerto en el host. El escáner y SonarQube comparten esa red, pero PostgreSQL usa otra red interna donde solo se conectan la base y SonarQube. La contraseña de la base no queda accesible al escáner. SonarQube tiene la IP estática `172.30.250.10` en la red del escáner. Antes de usarla en otro host, vuelve a comprobar que la subred no se solape con redes Docker, VPN ni redes de la organización. `internal: true` bloquea el egress de runtime de los contenedores conectados a esas redes; esto describe la configuración del repositorio y no demuestra por sí solo el comportamiento de una instancia desplegada, su host Docker, DNS o firewall. `SONAR_TELEMETRY_ENABLE=false` y `SONAR_UPDATECENTER_ACTIVATE=false` desactivan telemetría y Update Center. No instales plugins desde una fuente externa ni habilites conexiones de salida del servidor sin revisar y documentar su necesidad. Las actualizaciones de imágenes deben descargarse y aplicarse de forma controlada por el operador.
 
 ## Proyecto, Quality Gate y dashboard
 
@@ -44,17 +44,20 @@ En la interfaz local, crea el proyecto con la clave `grumphya` y genera un token
 | Cobertura nueva             | >= 80%    |
 | Duplicación nueva           | <= 3%     |
 
-Usa la definición de código nuevo del servidor basada en la rama de referencia `main`. El umbral de cobertura se evalúa cuando SonarQube recibe los informes LCOV; CI exige que ambos informes existan y no acepta un análisis sin terminar. No se configura un umbral histórico global, para que deuda anterior no se confunda con una regresión nueva. La rúbrica deberá revisarse al cambiar la línea base del proyecto.
+Usa la definición de código nuevo del servidor basada en la rama de referencia `main`. El umbral de cobertura se evalúa cuando SonarQube recibe los informes LCOV; `pnpm sonar:verify` genera y comprueba ambos antes de escanear, y no acepta un análisis incompleto ni un Quality Gate fallido. No se configura un umbral histórico global, para que deuda anterior no se confunda con una regresión nueva. La rúbrica deberá revisarse al cambiar la línea base del proyecto.
 
-El fichero [sonar-project.properties](../sonar-project.properties) incluye `apps/api/src` y `apps/web/src`, excluye los tests de las fuentes y señala `apps/api/coverage/lcov.info` y `apps/web/coverage/lcov.info`. El workflow genera ambas coberturas antes del análisis. Un resultado `ERROR`, `WARN`, ausente o que no termine dentro del tiempo configurado bloquea la publicación.
+El fichero [sonar-project.properties](../sonar-project.properties) incluye `apps/api/src` y `apps/web/src`, excluye los tests de las fuentes y señala `apps/api/coverage/lcov.info` y `apps/web/coverage/lcov.info`. Un resultado fallido, ausente o que no termine dentro del tiempo configurado bloquea el comando y el `git push` normal a `main`.
 
-La creación del proyecto, la asignación del Quality Gate y la coincidencia de métricas con esta tabla son configuración del servidor: el repositorio no puede imponerlas mediante Compose. Antes de habilitar despliegues, comprueba en el dashboard que el gate esté asignado y que una evaluación con infracción resulte fallida. Consulta el proyecto desde el servidor o mediante un túnel local:
+La creación del proyecto, la asignación del Quality Gate y la coincidencia de métricas con esta tabla son configuración del servidor: el repositorio no puede imponerlas mediante Compose. Comprueba en el dashboard que el gate esté asignado y que una evaluación con infracción resulte fallida. Para abrir el dashboard localmente, crea un puente temporal de escucha en loopback:
 
 ```sh
-ssh -N -L 127.0.0.1:9000:172.30.250.10:9000 usuario-sonar@servidor-sonar
+docker run --rm --name sonar-local-view \
+  --network grumphya-sonarqube_sonar-private \
+  -p 127.0.0.1:9000:9000 alpine/socat \
+  TCP-LISTEN:9000,fork,reuseaddr TCP:sonarqube:9000
 ```
 
-Abre `http://127.0.0.1:9000` en el navegador de la máquina que mantiene el túnel. No publiques el puerto 9000 en el host ni configures un proxy público.
+Abre `http://127.0.0.1:9000` y detén el puente con `Ctrl+C` al terminar. El puente no escucha en interfaces públicas.
 
 ## Evidencia de verificación local
 
@@ -87,54 +90,22 @@ fi
 
 La solicitud debe producir `blocked`. No uses esta prueba como sustituto de revisar reglas de firewall o tráfico del host.
 
-El proyecto privado `grumphya` tiene asignado `Grumphya Release Gate` y el periodo de código nuevo está configurado como `REFERENCE_BRANCH` con `main`. El análisis inicial del 7 de noviembre de 2026 encontró 4 bugs y 17 violaciones nuevas. Tras corregirlos, el análisis del mismo día con SonarScanner `8.0.1.6346` y LCOV recién generados para API y web obtuvo **Quality Gate PASSED**: bugs nuevos 0, violaciones nuevas 0, vulnerabilidades nuevas 0, duplicación nueva 0% y cobertura nueva 96,4%. La API de Sonar confirmó cero bugs o code smells abiertos en código nuevo. La consola del scanner avisó que dos rutas de los informes LCOV no se pudieron resolver; el análisis sí importó ambos informes.
+El proyecto privado `grumphya` tiene asignado `Grumphya Release Gate` y el periodo de código nuevo está configurado como `REFERENCE_BRANCH` con `main`. El análisis local del 7 de noviembre de 2026 confirmó **Quality Gate PASSED**, 0 líneas duplicadas (0,0%), 0% de duplicación nueva y 100% de cobertura nueva. No encontró bugs, violaciones ni vulnerabilidades nuevos. Las pruebas de cobertura generaron informes LCOV para API y web. El escáner mantiene un aviso de dos rutas LCOV no resueltas (incluye `src/style-modules.d.ts`); importó los informes y el gate pasó, pero conviene revisar el aviso si cambia la cobertura.
 
-La revalidación se ejecutó desde este worktree con `sonar.scm.disabled=true` porque el contenedor Docker no veía el common-dir de Git. El scanner se conectó a `172.30.250.10` dentro de la red Docker `internal`, sin publicar puertos ni enviar el análisis a SonarQube Cloud; telemetría, Update Center y egress HTTPS seguían desactivados/bloqueados según la comprobación previa. Esto verifica el análisis local y el gate guardado en la instancia, pero no ejecuta el workflow remoto. El CI conserva SCM normal y no desactiva SCM. No se realizó despliegue de producción; siguen pendientes la verificación real del túnel SSH desde GitHub Actions, la configuración de secretos y la protección de rama de GitHub.
+## Análisis local bajo demanda y antes de publicar `main`
 
-Tras eliminar las duplicaciones existentes, el análisis local del 7 de noviembre de 2026 confirmó **Quality Gate PASSED**, 0 líneas duplicadas (0,0%), 0% de duplicación nueva y 100% de cobertura nueva. No encontró bugs, violaciones ni vulnerabilidades nuevos. Se generaron los informes LCOV para ambas aplicaciones; el escáner mantuvo el aviso conocido de dos rutas LCOV no resueltas.
-
-## Workflow de release y secretos
-
-El job `sonar-analysis` corre en un runner GitHub-hosted (`ubuntu-24.04`) para un `workflow_dispatch` autorizado desde `main`. Puede ejecutarse como parte de una release aprobada o en modo `run_sonar_verification`, que exige `approve_production_deploy=false` y omite explícitamente `supply-chain` (construcción, escaneo y despliegue). No se usa un runner self-hosted: el código de pull requests no se ejecuta en un host que tenga acceso persistente al servidor. El acceso se realiza mediante un túnel SSH temporal creado dentro de ese job, después de las comprobaciones y cobertura, con verificación estricta de host y reenvío local limitado al servicio SonarQube.
-
-Configura en GitHub:
-
-- Secretos `SONAR_SSH_HOST`, `SONAR_SSH_USER`, `SONAR_SSH_PRIVATE_KEY` y `SONAR_SSH_KNOWN_HOSTS` (entrada `known_hosts` verificada fuera de banda).
-- Variable opcional `SONAR_SSH_PORT` (por defecto 22).
-- Secreto `SONAR_TOKEN`, limitado al proyecto `grumphya` y con permiso de análisis.
-- Variable `PRODUCTION_DEPLOY_ENABLED=true` solo cuando se habilite el flujo de release.
-
-Estado remoto comprobado el 7 de noviembre de 2026: el repositorio sigue siendo privado, no tiene configurados los secretos ni la variable de SonarQube indicados arriba y `main` no está protegida. La API de GitHub devolvió `403` al consultar branch protection y rulesets, indicando que esta función requiere GitHub Pro o que el repositorio sea público. No hagas público el repositorio para resolverlo. Hasta habilitar protección compatible con repositorios privados y configurar los secretos SSH/`SONAR_TOKEN`, no se puede validar el túnel desde Actions ni declarar obligatorio el gate remoto de `main`.
-
-Usa una cuenta SSH dedicada sin sudo ni acceso interactivo. En `sshd_config` y/o las opciones de `authorized_keys`, deshabilita shell/PTY, agent forwarding y X11 forwarding; permite solo TCP forwarding local y limita `PermitOpen`/la clave a `172.30.250.10:9000`. Comprueba que la clave no permita otros destinos ni reenvío remoto. Restringe el acceso SSH en el firewall/bastión a los orígenes administrados que correspondan. Nunca abras SonarQube a Internet. Los rangos de salida de runners GitHub-hosted pueden cambiar; si no es viable aplicar una política SSH de origen suficientemente acotada, usa un bastión o conectividad privada administrada. No montes un runner self-hosted compartido con producción para resolver el acceso: tendría que aislarse, actualizarse, limpiarse por ejecución y aceptar únicamente código confiable, sin privilegios del host disponibles para jobs.
-
-Fija la host key en `SONAR_SSH_KNOWN_HOSTS` después de verificarla por un canal independiente; no uses `StrictHostKeyChecking=no`. Rota y revoca la clave privada al terminar su necesidad, ante cambio de responsable o sospecha de exposición. El workflow la crea con permisos `0600` en almacenamiento temporal, elimina los archivos tras abrir el túnel y limita el secreto al job de análisis. El token Sonar y las credenciales SSH solo se exponen al job manual autorizado en `main`; no están disponibles en jobs de pull request.
-
-El job recibe solo los secretos Sonar y crea la llave temporal con permisos restrictivos; los jobs de PR, tests y auditoría no reciben estas credenciales. El escáner oficial fijado por SHA se comunica con el extremo local `127.0.0.1:9000`, que el túnel reenvía a `172.30.250.10:9000`; no hay puerto publicado en el host. La validación posterior comprueba que el informe, el servidor, la tarea de cómputo y el análisis correspondan al proyecto esperado, y requiere `Quality Gate OK`. Fallo SSH, autenticación, servidor, análisis, cobertura ausente, timeout o Quality Gate bloquea `supply-chain` y cada paso de despliegue. La rama main requiere además protección de rama que exija el workflow/estado de CI pertinente; la condición del job no sustituye la configuración de protección en GitHub.
-
-## Análisis bajo demanda y evidencias
-
-Para ejecutar la verificación automatizada bajo demanda sin desplegar, inicia `CI` con `workflow_dispatch` en `main`, deja `approve_production_deploy` desactivado y activa `run_sonar_verification`. El job de análisis espera las pruebas y cobertura, y la condición de `supply-chain` impide construir imágenes o desplegar en ese modo. Para inspeccionar un cambio desde una estación administrada con Docker y acceso autorizado a la red privada, también puede ejecutarse localmente:
+Arranca SonarQube y ejecuta:
 
 ```sh
-set -e
-trap 'unset SONAR_TOKEN' EXIT
-pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts
-pnpm --filter @grumphya/api test:coverage
-pnpm --filter @grumphya/web test:coverage
-IFS= read -r -s -p 'Token SonarQube: ' SONAR_TOKEN
-printf '\n'
-export SONAR_TOKEN
-SONAR_HOST_URL=http://127.0.0.1:9000 \
-  pnpm exec sonar-scanner -Dsonar.qualitygate.wait=true
+pnpm sonar:verify
 ```
 
-El escáner local debe instalarse desde una fuente aprobada y su versión debe coincidir con el scanner del workflow. Protege el token como secreto y no lo incluyas en argumentos persistidos, shell history, logs o archivos versionados. La verificación exacta del gate de una tarea CI la realiza `node scripts/verify-sonarqube-gate.mjs` dentro del workflow, donde existe `.scannerwork/report-task.txt`.
+El comando inicia un PostgreSQL temporal de pruebas, genera LCOV para ambas aplicaciones y ejecuta el SonarScanner oficial `sonarsource/sonar-scanner-cli:12.1.0.3233_8.0.1` conectado únicamente a la red Docker interna de SonarQube. El token se lee desde `.env.sonarqube.token` y se pasa al contenedor como variable de entorno; no se imprime ni se incluye en argumentos. El escáner solo monta el código de las aplicaciones en lectura y el fichero de configuración. No usa SonarQube Cloud ni envía el análisis a servicios externos. Un Quality Gate fallido, scanner o servidor no disponible, timeout o LCOV ausente devuelve error.
 
-Para conservar evidencia, registra el SHA analizado, fecha, URL/ID de análisis del dashboard y estado del Quality Gate en el registro interno de releases. El análisis transmite los ficheros fuente del proyecto, metadatos SCM y los informes LCOV de cobertura al servidor privado de SonarQube. No copies al proyecto SonarQube texto de ideas introducidas por usuarios, datos de usuarios ni secretos; comprueba también que no queden incluidos en el repositorio o los artefactos de análisis. Esos datos técnicos se guardan en la infraestructura propia de SonarQube; aplica controles de acceso, backup y retención del servidor.
+El hook Husky [.husky/pre-push](../.husky/pre-push) ejecuta `pnpm sonar:verify` y E2E cuando el destino del push es `refs/heads/main`; el fallo de cualquiera detiene el `git push` normal. También comprueba que el SHA enviado a `main` sea `HEAD` y que el árbol de trabajo esté limpio para que el commit publicado coincida con el analizado. `pnpm install --frozen-lockfile` configura Husky en cada checkout. Los pushes a otras ramas conservan el chequeo del registro de migraciones.
 
-## Comprobaciones y límites de verificación
+Este control es del cliente Git. Se puede omitir con `git push --no-verify`, y no intercepta cambios hechos desde la interfaz/API de GitHub u otro checkout sin el hook. GitHub no ejecuta hooks personalizados en su servidor; por tanto, sin un estado de CI requerido, reglas de rama disponibles en el plan o un servidor Git administrado por el equipo con hook `pre-receive`, no existe forma de garantizar el gate remoto. En la comprobación de este repositorio privado del 7 de noviembre de 2026, GitHub rechazó la consulta de protección de rama y rulesets con `403` por limitación del plan. El hook local hace fallar los pushes normales a `main`, pero no ofrece enforcement contra bypasses; la política remota sigue pendiente.
 
-`node scripts/test-sonarqube-gate.mjs` ejercita el verificador con respuestas sintéticas e incluye fallos, timeouts, servidor no disponible y gate no aprobado. `scripts/test-deploy-policy.mjs` verifica estáticamente que la release aprobada exige el éxito de SonarQube. Estas pruebas demuestran el comportamiento de bloqueo del código, pero no sustituyen un análisis real ni una comprobación de la política guardada en GitHub.
+Para conservar evidencia, registra SHA, fecha y estado del Quality Gate en el registro interno de releases. El análisis transmite el código fuente y los informes LCOV únicamente a la instancia privada SonarQube. No incluyas texto de ideas de usuarios, datos personales ni secretos en los artefactos de análisis. Aplica controles de acceso, backup y retención al servidor.
 
-La configuración del servidor, la restricción efectiva de SSH, la no exposición desde el firewall, la conectividad del runner, las reglas de branch protection y el tráfico observado deben verificarse en el entorno administrado antes de considerar la integración operativa. `internal: true` y las opciones de telemetría son evidencia de configuración en archivos, no una captura de tráfico ni prueba del host desplegado. No se ha realizado una publicación de producción como parte de esta integración.
+Las pruebas `node scripts/test-sonarqube-config.mjs` y `node scripts/test-pre-push-hook.mjs` verifican la configuración privada y que un fallo de SonarQube bloquee el push a `main`. Estas pruebas de política no sustituyen la ejecución del análisis real.
