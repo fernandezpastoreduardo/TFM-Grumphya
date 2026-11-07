@@ -205,6 +205,33 @@ describe("Home", () => {
     ).toHaveAttribute("href", "/panel-control");
   });
 
+  it("opens the mobile navigation and returns focus after Escape", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
+    render(<Home />);
+
+    const menuButton = screen.getByRole("button", {
+      name: "Abrir menú de secciones",
+    });
+    await user.click(menuButton);
+    const menu = screen.getByRole("dialog", { name: "Menú de navegación" });
+    expect(menu).toBeVisible();
+    expect(within(menu).getByRole("link", { name: "Planes" })).toHaveAttribute(
+      "href",
+      "/precios",
+    );
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Menú de navegación" }),
+    ).toBeNull();
+    expect(menuButton).toHaveFocus();
+  });
+
   it("shows the 429 page when the API temporarily blocks browser profile creation", async () => {
     vi.stubGlobal(
       "fetch",
