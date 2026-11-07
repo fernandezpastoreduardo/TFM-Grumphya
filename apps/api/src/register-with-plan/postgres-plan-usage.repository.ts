@@ -1,5 +1,6 @@
 import { Pool, type PoolClient } from "pg";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import type {
   PlanUsageRepository,
@@ -41,7 +42,7 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
     requestHash: string,
   ): Promise<PlanUsageReservation> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       await client.query(
         `WITH expired AS (
            SELECT user_id,plan_code,idempotency_hash
@@ -158,7 +159,7 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
     response: unknown,
   ): Promise<void> {
     await this.ensureSchema();
-    await this.transaction(async (client) => {
+    await withTransaction(this.pool, async (client) => {
       const active = await client.query<{
         role: string;
         username_normalized: string;
@@ -216,7 +217,7 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
     idempotencyHash: string,
   ): Promise<void> {
     await this.ensureSchema();
-    await this.transaction((client) =>
+    await withTransaction(this.pool, (client) =>
       this.recordRoastMessageEvent(client, userId, idempotencyHash),
     );
   }
@@ -241,21 +242,6 @@ export class PostgresPlanUsageRepository implements PlanUsageRepository {
   private async ensureSchema(): Promise<void> {
     this.ready ??= runMigrations(this.pool);
     await this.ready;
-  }
-
-  private async transaction<T>(operation: (client: PoolClient) => Promise<T>) {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 
   private async recordRoastMessageEvent(

@@ -1,7 +1,6 @@
 import { HttpException, Injectable, Logger } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
-import { domainToASCII } from "node:url";
-import { isEmailAddress } from "../infrastructure/validation/email-address";
+import { normalizeEmailAddress } from "../infrastructure/validation/normalize-email-address";
 import { isStrongPassword } from "../infrastructure/auth/password-policy";
 import { hashPassword } from "../infrastructure/auth/password-hasher";
 import type { MailService } from "../infrastructure/mail/mail.service";
@@ -17,19 +16,6 @@ const PASSWORD_RESET_SUCCESS_MESSAGE =
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
-}
-
-function normalizeEmail(email: string): string | null {
-  const trimmed = email.trim();
-  if (trimmed.length > 254 || !isEmailAddress(trimmed)) return null;
-  const separator = trimmed.lastIndexOf("@");
-  const localPart = trimmed.slice(0, separator);
-  const domain = domainToASCII(trimmed.slice(separator + 1));
-  if (!domain || localPart.length > 64 || domain.length > 253) return null;
-  const normalized = `${localPart}@${domain}`.toLowerCase();
-  return normalized.length <= 254 && isEmailAddress(normalized)
-    ? normalized
-    : null;
 }
 
 function getWebOrigin(): string | null {
@@ -165,7 +151,9 @@ export class PasswordResetError extends HttpException {
 function readRequestEmail(value: unknown): string | null {
   if (!isRecord(value) || Object.keys(value).some((key) => key !== "email"))
     return null;
-  return typeof value.email === "string" ? normalizeEmail(value.email) : null;
+  return typeof value.email === "string"
+    ? normalizeEmailAddress(value.email)
+    : null;
 }
 
 function readCompletionRequest(

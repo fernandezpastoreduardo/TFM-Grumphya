@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { type Pool, type PoolClient } from "pg";
+import { type Pool } from "pg";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
 import type {
   PasswordResetRepository,
@@ -56,7 +57,7 @@ export class PostgresPasswordResetRepository implements PasswordResetRepository 
     tokenHash: string,
     passwordHash: string,
   ): Promise<boolean> {
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const token = await client.query<{ user_id: string }>(
         `SELECT reset.user_id
          FROM password_reset_tokens reset
@@ -90,20 +91,5 @@ export class PostgresPasswordResetRepository implements PasswordResetRepository 
       "UPDATE password_reset_tokens SET token_hash=NULL, expires_at=now() WHERE user_id=$1 AND token_hash=$2",
       [userId, tokenHash],
     );
-  }
-
-  private async transaction<T>(operation: (client: PoolClient) => Promise<T>) {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 }

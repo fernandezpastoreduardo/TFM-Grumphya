@@ -10,6 +10,7 @@ import {
 } from "../infrastructure/ai/ai-usage";
 import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
 import { REPEATED_IDEA_HEADLINE_FALLBACK } from "../infrastructure/copy/public-headlines";
+import { readOpenAiOutputText } from "../infrastructure/ai/read-openai-output-text";
 
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const SEMANTIC_JUDGE_MODEL = "gpt-5.4-mini";
@@ -28,30 +29,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function readOutputText(value: unknown): string | null {
-  if (!isRecord(value) || !Array.isArray(value.output)) return null;
-  for (const outputItem of value.output as unknown[]) {
-    if (!isRecord(outputItem) || !Array.isArray(outputItem.content)) continue;
-    for (const contentItem of outputItem.content as unknown[]) {
-      if (
-        isRecord(contentItem) &&
-        contentItem.type === "output_text" &&
-        typeof contentItem.text === "string"
-      ) {
-        return contentItem.text;
-      }
-    }
-  }
-  return null;
-}
-
 function parseEquivalenceResponse(
   value: unknown,
   expectedCount: number,
   ideaText: string,
   tone: "soft" | "hard",
 ): { decisions: boolean[]; headline: string | null } {
-  const outputText = readOutputText(value);
+  const outputText = readOpenAiOutputText(value);
   if (!outputText) throw new Error(RESPONSE_ERROR);
   let parsed: unknown;
   try {

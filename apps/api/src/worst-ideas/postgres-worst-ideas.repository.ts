@@ -1,5 +1,6 @@
 import { Pool, type PoolClient } from "pg";
 import { runMigrations } from "../infrastructure/database/run-migrations";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import { MAX_WORST_IDEA_LIST_ITEMS } from "./worst-ideas.models";
 import type {
   IdeaListItemWorstAll,
@@ -159,7 +160,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
       idempotencyHash,
       requestHash,
     );
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const reserved = await this.reserveIdempotency(
         client,
         idempotencyHash,
@@ -250,7 +251,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     await this.ensureSchema();
     if (!idempotencyHash.trim())
       throw new Error("Rejected idea idempotency hash is invalid.");
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query(
         `UPDATE rejected_idea_idempotency AS requests
          SET continue_started_at = now()
@@ -276,7 +277,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     await this.ensureSchema();
     if (!idempotencyHash.trim())
       throw new Error("Rejected idea idempotency hash is invalid.");
-    await this.transaction((client) =>
+    await withTransaction(this.pool, (client) =>
       client.query(
         `UPDATE rejected_idea_idempotency
          SET continue_started_at = NULL
@@ -300,7 +301,7 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     await this.ensureSchema();
     if (!ideaId || !idempotencyHash)
       throw new Error("Rejected idea update input is invalid.");
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const reserved = await this.reserveIdempotency(
         client,
         idempotencyHash,
@@ -468,23 +469,6 @@ export class PostgresWorstIdeasRepository implements WorstIdeasRepository {
     );
     if (result.rowCount !== 1)
       throw new Error("Rejected idea all-time aggregate is unavailable.");
-  }
-
-  private async transaction<T>(
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 
   private async ensureSchema(): Promise<void> {
