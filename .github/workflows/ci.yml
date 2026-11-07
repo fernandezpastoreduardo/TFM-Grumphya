@@ -204,7 +204,7 @@ jobs:
             -o UserKnownHostsFile="$RUNNER_TEMP/sonar-ssh/known_hosts" \
             -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 \
             -o ExitOnForwardFailure=yes \
-            -L 127.0.0.1:9000:127.0.0.1:9000 \
+            -L 127.0.0.1:9000:172.30.250.10:9000 \
             "$SONAR_SSH_USER@$SONAR_SSH_HOST"
           rm -f "$RUNNER_TEMP/sonar-ssh/id_ed25519" "$RUNNER_TEMP/sonar-ssh/known_hosts"
           status=$(curl --fail --silent --show-error --max-time 10 "$SONAR_HOST_URL/api/system/status")

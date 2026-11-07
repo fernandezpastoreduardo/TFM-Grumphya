@@ -72,8 +72,13 @@ assert.match(
 );
 assert.match(sonarCompose, /SONAR_TELEMETRY_ENABLE:\s*"false"/);
 assert.match(sonarCompose, /SONAR_UPDATECENTER_ACTIVATE:\s*"false"/);
-assert.match(sonarCompose, /- "127\.0\.0\.1:9000:9000"/);
-assert.match(sonarCompose, /networks:\s*\[sonar-private\]/);
+assert.match(sonarCompose, /ipv4_address:\s*172\.30\.250\.10/);
+assert.match(sonarCompose, /subnet:\s*172\.30\.250\.0\/24/);
+assert.doesNotMatch(
+  sonarCompose,
+  /^\s+ports:/m,
+  "SonarQube must not publish a host port from its internal-only network",
+);
 assert.match(sonarCompose, /sonar-private:\n\s+internal:\s+true/);
 const sonarDatabaseSection = sonarCompose.match(
   /^  database:\n([\s\S]*?)(?=^  sonarqube:)/m,
@@ -83,11 +88,6 @@ assert.doesNotMatch(
   sonarDatabaseSection,
   /^\s+ports:/m,
   "SonarQube PostgreSQL must not publish a host port",
-);
-assert.doesNotMatch(
-  sonarCompose,
-  /ports:\s*\n\s+-\s+"?9000:9000/,
-  "SonarQube must not bind port 9000 to public host interfaces",
 );
 const secretFilePaths = productionCompose.matchAll(
   /^\s+file: \$\{GRUMPHYA_SECRETS_DIR:-\.\/\.secrets\}\//gm,

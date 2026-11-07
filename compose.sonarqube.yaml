@@ -29,18 +29,21 @@ services:
       SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in .env.sonarqube}
       SONAR_TELEMETRY_ENABLE: "false"
       SONAR_UPDATECENTER_ACTIVATE: "false"
-    ports:
-      - "127.0.0.1:9000:9000"
     volumes:
       - sonar-data:/opt/sonarqube/data
       - sonar-extensions:/opt/sonarqube/extensions
       - sonar-logs:/opt/sonarqube/logs
-    networks: [sonar-private]
+    networks:
+      sonar-private:
+        ipv4_address: 172.30.250.10
     stop_grace_period: 60s
 
 networks:
   sonar-private:
     internal: true
+    ipam:
+      config:
+        - subnet: 172.30.250.0/24
 
 volumes:
   sonar-postgres:
