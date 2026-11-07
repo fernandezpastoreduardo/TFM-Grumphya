@@ -9,6 +9,11 @@ on:
         type: boolean
         required: true
         default: false
+      run_sonar_verification:
+        description: Ejecuta SonarQube en main sin aprobar despliegue; excluye construcción y despliegue
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -120,8 +125,11 @@ jobs:
       github.actor == 'fernandezpastoreduardo' &&
       github.triggering_actor == 'fernandezpastoreduardo' &&
       github.ref == 'refs/heads/main' &&
+      ((inputs.run_sonar_verification == true &&
+      inputs.approve_production_deploy != true) ||
+      (inputs.run_sonar_verification != true &&
       inputs.approve_production_deploy == true &&
-      vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true'))
     needs: quality-and-e2e
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -231,6 +239,7 @@ jobs:
       always() &&
       (github.event_name != 'workflow_dispatch' ||
       (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')) &&
+      inputs.run_sonar_verification != true &&
       needs.quality-and-e2e.result == 'success' &&
       needs.e2e.result == 'success' &&
       needs.dependency-audit.result == 'success' &&

@@ -31,15 +31,47 @@ describe("ApplicationErrorFilter", () => {
   it("does not persist expected client errors that an unauthenticated caller can trigger", async () => {
     const { filter, host, repository } = createFilter();
 
-    await filter.catch(new HttpException("Forbidden", 403), host);
+    filter.catch(new HttpException("Forbidden", 403), host);
 
     expect(repository.recordApplicationError).not.toHaveBeenCalled();
+  });
+
+  it("sends the server response without waiting for error persistence", async () => {
+    let finishPersistence: (() => void) | undefined;
+    const { adapter, filter, host, repository } = createFilter();
+    vi.mocked(repository.recordApplicationError).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishPersistence = resolve;
+      }),
+    );
+
+    filter.catch(new HttpException("Unavailable", 503), host);
+
+    expect(adapter.reply).toHaveBeenCalledOnce();
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledOnce(),
+    );
+    finishPersistence?.();
+  });
+
+  it("keeps the server response when error persistence fails", async () => {
+    const { adapter, filter, host, repository } = createFilter();
+    vi.mocked(repository.recordApplicationError).mockRejectedValueOnce(
+      new Error("database unavailable"),
+    );
+
+    filter.catch(new HttpException("Unavailable", 503), host);
+
+    expect(adapter.reply).toHaveBeenCalledOnce();
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledOnce(),
+    );
   });
 
   it("persists sanitized server error codes without exception messages", async () => {
     const { filter, host, repository } = createFilter();
 
-    await filter.catch(
+    filter.catch(
       new HttpException(
         { code: "ADMIN_DASHBOARD_UNAVAILABLE", message: "private detail" },
         503,
@@ -47,10 +79,12 @@ describe("ApplicationErrorFilter", () => {
       host,
     );
 
-    expect(repository.recordApplicationError).toHaveBeenCalledWith(
-      "ADMIN_DASHBOARD_UNAVAILABLE",
-      503,
-      undefined,
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledWith(
+        "ADMIN_DASHBOARD_UNAVAILABLE",
+        503,
+        undefined,
+      ),
     );
   });
 
@@ -70,12 +104,14 @@ describe("ApplicationErrorFilter", () => {
       },
     );
 
-    await filter.catch(exception, host);
+    filter.catch(exception, host);
 
-    expect(repository.recordApplicationError).toHaveBeenCalledWith(
-      "INVALID_EVALUATION_RESPONSE",
-      503,
-      "decision_semantics",
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledWith(
+        "INVALID_EVALUATION_RESPONSE",
+        503,
+        "decision_semantics",
+      ),
     );
   });
 
@@ -86,12 +122,14 @@ describe("ApplicationErrorFilter", () => {
       503,
     );
 
-    await filter.catch(exception, host);
+    filter.catch(exception, host);
 
-    expect(repository.recordApplicationError).toHaveBeenCalledWith(
-      "ADMIN_DASHBOARD_UNAVAILABLE",
-      503,
-      undefined,
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledWith(
+        "ADMIN_DASHBOARD_UNAVAILABLE",
+        503,
+        undefined,
+      ),
     );
   });
 
@@ -109,15 +147,17 @@ describe("ApplicationErrorFilter", () => {
         index === 0 ? request : ERROR_RESPONSE,
     } as unknown as ArgumentsHost;
 
-    await filter.catch(
+    filter.catch(
       new HttpException({ code: "EVALUATOR_UNAVAILABLE" }, 503),
       host,
     );
 
-    expect(repository.recordApplicationError).toHaveBeenCalledWith(
-      "EVALUATOR_UNAVAILABLE",
-      503,
-      undefined,
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledWith(
+        "EVALUATOR_UNAVAILABLE",
+        503,
+        undefined,
+      ),
     );
   });
 
@@ -133,12 +173,14 @@ describe("ApplicationErrorFilter", () => {
         index === 0 ? request : ERROR_RESPONSE,
     } as unknown as ArgumentsHost;
 
-    await filter.catch(new HttpException({ code: "HTTP_503" }, 503), host);
+    filter.catch(new HttpException({ code: "HTTP_503" }, 503), host);
 
-    expect(repository.recordApplicationError).toHaveBeenCalledWith(
-      "HTTP_503",
-      503,
-      undefined,
+    await vi.waitFor(() =>
+      expect(repository.recordApplicationError).toHaveBeenCalledWith(
+        "HTTP_503",
+        503,
+        undefined,
+      ),
     );
   });
 });

@@ -87,13 +87,13 @@ fi
 
 La solicitud debe producir `blocked`. No uses esta prueba como sustituto de revisar reglas de firewall o tráfico del host.
 
-El proyecto privado `grumphya` tenía asignado `Grumphya Release Gate` y el periodo de código nuevo estaba configurado como `REFERENCE_BRANCH` con `main`. El scanner `8.0.1.6346` leyó los informes LCOV de API y web. El análisis quedó **BLOQUEADO** por 4 bugs nuevos y 17 violaciones nuevas. La cobertura nueva fue 90%, la duplicación 0.45615% y las vulnerabilidades nuevas 0; cobertura, duplicación y vulnerabilidades cumplieron sus condiciones, pero los findings impiden la release. Hay que corregirlos y obtener un nuevo Quality Gate aprobado antes de desplegar.
+El proyecto privado `grumphya` tiene asignado `Grumphya Release Gate` y el periodo de código nuevo está configurado como `REFERENCE_BRANCH` con `main`. El análisis inicial del 7 de noviembre de 2026 encontró 4 bugs y 17 violaciones nuevas. Tras corregirlos, el análisis del mismo día con SonarScanner `8.0.1.6346` y LCOV recién generados para API y web obtuvo **Quality Gate PASSED**: bugs nuevos 0, violaciones nuevas 0, vulnerabilidades nuevas 0, duplicación nueva 0% y cobertura nueva 96,4%. La API de Sonar confirmó cero bugs o code smells abiertos en código nuevo. La consola del scanner avisó que dos rutas de los informes LCOV no se pudieron resolver; el análisis sí importó ambos informes.
 
-El análisis local se ejecutó con `sonar.scm.disabled=true` porque el contenedor Docker no veía el common-dir de Git usado por este worktree. Esto solo fue una adaptación de la verificación local; el workflow de CI conserva integración SCM normal y no desactiva SCM. No se realizó despliegue de producción. Tampoco se comprobaron el acceso SSH real del runner, los secretos/configuración remota de Actions ni la protección de rama en GitHub.
+La revalidación se ejecutó desde este worktree con `sonar.scm.disabled=true` porque el contenedor Docker no veía el common-dir de Git. El scanner se conectó a `172.30.250.10` dentro de la red Docker `internal`, sin publicar puertos ni enviar el análisis a SonarQube Cloud; telemetría, Update Center y egress HTTPS seguían desactivados/bloqueados según la comprobación previa. Esto verifica el análisis local y el gate guardado en la instancia, pero no ejecuta el workflow remoto. El CI conserva SCM normal y no desactiva SCM. No se realizó despliegue de producción; siguen pendientes la verificación real del túnel SSH desde GitHub Actions, la configuración de secretos y la protección de rama de GitHub.
 
 ## Workflow de release y secretos
 
-El job `sonar-analysis` corre en un runner GitHub-hosted (`ubuntu-24.04`) únicamente para un `workflow_dispatch` autorizado desde `main`, cuando se confirma `approve_production_deploy` y `PRODUCTION_DEPLOY_ENABLED=true`. No se usa un runner self-hosted: el código de pull requests no se ejecuta en un host que tenga acceso persistente al servidor. El acceso se realiza mediante un túnel SSH temporal creado dentro de ese job, después de las comprobaciones y cobertura, con verificación estricta de host y reenvío local limitado al servicio SonarQube.
+El job `sonar-analysis` corre en un runner GitHub-hosted (`ubuntu-24.04`) para un `workflow_dispatch` autorizado desde `main`. Puede ejecutarse como parte de una release aprobada o en modo `run_sonar_verification`, que exige `approve_production_deploy=false` y omite explícitamente `supply-chain` (construcción, escaneo y despliegue). No se usa un runner self-hosted: el código de pull requests no se ejecuta en un host que tenga acceso persistente al servidor. El acceso se realiza mediante un túnel SSH temporal creado dentro de ese job, después de las comprobaciones y cobertura, con verificación estricta de host y reenvío local limitado al servicio SonarQube.
 
 Configura en GitHub:
 
@@ -110,7 +110,7 @@ El job recibe solo los secretos Sonar y crea la llave temporal con permisos rest
 
 ## Análisis bajo demanda y evidencias
 
-El flujo actual analiza automáticamente durante el despacho de release autorizado. Para inspeccionar un cambio antes de una release, puede ejecutarse localmente en una estación administrada con Docker y acceso autorizado a la red privada:
+Para ejecutar la verificación automatizada bajo demanda sin desplegar, inicia `CI` con `workflow_dispatch` en `main`, deja `approve_production_deploy` desactivado y activa `run_sonar_verification`. El job de análisis espera las pruebas y cobertura, y la condición de `supply-chain` impide construir imágenes o desplegar en ese modo. Para inspeccionar un cambio desde una estación administrada con Docker y acceso autorizado a la red privada, también puede ejecutarse localmente:
 
 ```sh
 set -e

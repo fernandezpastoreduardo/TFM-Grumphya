@@ -1077,7 +1077,7 @@ function AnalyticsPlanMonths({
       ...selections.map((entry) => entry.month),
       ...activations.map((entry) => entry.month),
     ]),
-  ].sort();
+  ].sort((left, right) => left.localeCompare(right, "es-ES"));
   if (!months.length)
     return <p>Aún no hay grupos mensuales con diez eventos.</p>;
   return (

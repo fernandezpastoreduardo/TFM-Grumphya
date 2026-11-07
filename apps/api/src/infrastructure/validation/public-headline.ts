@@ -2,7 +2,6 @@ const MIN_PUBLIC_HEADLINE_LENGTH = 4;
 const MAX_PUBLIC_HEADLINE_LENGTH = 120;
 const MAX_PUBLIC_HEADLINE_WORDS = 16;
 const MIN_LITERAL_FRAGMENT_LENGTH = 18;
-const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
 const CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
@@ -23,7 +22,7 @@ export function isSafeGeneratedHeadline(
     value.length > MAX_PUBLIC_HEADLINE_LENGTH ||
     value.split(/\s+/u).length > MAX_PUBLIC_HEADLINE_WORDS ||
     !PUBLIC_HEADLINE_CHARACTERS.test(value) ||
-    EMAIL_PATTERN.test(value) ||
+    containsEmailAddress(value) ||
     URL_PATTERN.test(value) ||
     PHONE_PATTERN.test(value) ||
     CONTROL_PATTERN.test(value) ||
@@ -57,3 +56,4 @@ export function isSafeGeneratedHeadline(
   }
   return true;
 }
+import { containsEmailAddress } from "./email-address";

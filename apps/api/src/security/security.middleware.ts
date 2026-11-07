@@ -164,13 +164,16 @@ function readLimit(request: SecurityRequest): ScopedLimit | undefined {
   if (method === "GET" && path === "/api/roast-ranking") {
     return ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT];
   }
-  if (
-    method === "GET" &&
-    (path.replace(/\/+$/, "") || "/") === "/api/best-users"
-  ) {
+  if (method === "GET" && stripTrailingSlashes(path) === "/api/best-users") {
     return ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT];
   }
   return undefined;
+}
+
+function stripTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (end > 0 && path[end - 1] === "/") end -= 1;
+  return path.slice(0, end) || "/";
 }
 
 function registrationLimit(path: string): ScopedLimit {

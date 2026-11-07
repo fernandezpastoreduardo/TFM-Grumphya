@@ -27,21 +27,23 @@ export class ApplicationErrorFilter extends BaseExceptionFilter {
     super(adapterHost.httpAdapter);
   }
 
-  override async catch(exception: unknown, host: ArgumentsHost): Promise<void> {
+  override catch(exception: unknown, host: ArgumentsHost): void {
     const statusCode =
       exception instanceof HttpException ? exception.getStatus() : 500;
     if (statusCode >= FIRST_PERSISTED_ERROR_STATUS) {
       const errorCode = readErrorCode(exception, statusCode);
       const diagnosticCode = readDiagnosticCode(exception);
-      try {
-        await this.repository.recordApplicationError(
-          errorCode,
-          statusCode,
-          diagnosticCode,
-        );
-      } catch {
-        this.logger.error("APPLICATION_ERROR_PERSISTENCE_FAILED");
-      }
+      void Promise.resolve()
+        .then(() =>
+          this.repository.recordApplicationError(
+            errorCode,
+            statusCode,
+            diagnosticCode,
+          ),
+        )
+        .catch(() => {
+          this.logger.error("APPLICATION_ERROR_PERSISTENCE_FAILED");
+        });
     }
     super.catch(exception, host);
   }

@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { domainToASCII } from "node:url";
+import { isEmailAddress } from "../infrastructure/validation/email-address";
 import { Logger } from "@nestjs/common";
 import {
   RegistrationError,
@@ -43,7 +44,6 @@ const GENERIC_LOGIN_ERROR = {
   message:
     "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.",
 } as const;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN =
   /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
 export function hashToken(token: string): string {
@@ -643,13 +643,13 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
 
 function normalizeEmail(value: string): string | null {
   const trimmed = value.trim();
-  if (trimmed.length > 254 || !EMAIL_PATTERN.test(trimmed)) return null;
+  if (trimmed.length > 254 || !isEmailAddress(trimmed)) return null;
   const separator = trimmed.lastIndexOf("@");
   const localPart = trimmed.slice(0, separator);
   const domain = domainToASCII(trimmed.slice(separator + 1));
   if (!domain || localPart.length > 64 || domain.length > 253) return null;
   const normalized = `${localPart}@${domain}`.toLowerCase();
-  return normalized.length <= 254 && EMAIL_PATTERN.test(normalized)
+  return normalized.length <= 254 && isEmailAddress(normalized)
     ? normalized
     : null;
 }

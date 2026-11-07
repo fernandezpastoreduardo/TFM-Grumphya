@@ -2,6 +2,7 @@ import {
   authenticatedFetch,
   getAccessToken,
 } from "../../infrastructure/auth/session";
+import { containsEmailAddress } from "../../shared/utils/email-address";
 
 export type EvaluationStatus =
   | "RECHAZADA"
@@ -101,7 +102,6 @@ const PUBLIC_FAILED_CRITERION_COPY_SET = new Set<string>(
 );
 const SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN =
   /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
-const PUBLIC_EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const PUBLIC_URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PUBLIC_PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
 const PUBLIC_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
@@ -119,7 +119,7 @@ export function getPublicExistingProductExample(
     value.toLowerCase() === "null" ||
     value.toLowerCase() === "undefined" ||
     !SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN.test(value) ||
-    PUBLIC_EMAIL_PATTERN.test(value) ||
+    containsEmailAddress(value) ||
     PUBLIC_URL_PATTERN.test(value) ||
     PUBLIC_PHONE_PATTERN.test(value) ||
     PUBLIC_CONTROL_PATTERN.test(value)
@@ -321,7 +321,8 @@ function isValidSimilarHeadline(value: unknown): value is string {
     value.length <= MAX_PUBLIC_HEADLINE_LENGTH &&
     !/[\p{Cc}\p{Cf}]/u.test(value) &&
     !/\bC(?:0[1-9]|10)\b/iu.test(value) &&
-    !/(?:https?:\/\/|www\.)|\b[^\s@]+@[^\s@]+\.[^\s@]+\b/iu.test(value)
+    !/(?:https?:\/\/|www\.)/iu.test(value) &&
+    !containsEmailAddress(value)
   );
 }
 

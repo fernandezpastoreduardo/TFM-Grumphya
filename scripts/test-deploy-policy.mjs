@@ -121,8 +121,7 @@ const expectedSonarJobCondition = [
   "github.actor == 'fernandezpastoreduardo'",
   "github.triggering_actor == 'fernandezpastoreduardo'",
   "github.ref == 'refs/heads/main'",
-  "inputs.approve_production_deploy == true",
-  "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
+  "((inputs.run_sonar_verification == true && inputs.approve_production_deploy != true) || (inputs.run_sonar_verification != true && inputs.approve_production_deploy == true && vars.PRODUCTION_DEPLOY_ENABLED == 'true'))",
 ].join(" && ");
 const sonarJobCondition = sonarJob.match(
   /^    if:\s*>-\s*\n((?:      .*\n)+)/m,
@@ -130,7 +129,12 @@ const sonarJobCondition = sonarJob.match(
 assert.equal(
   sonarJobCondition?.replace(/\s+/g, " ").trim(),
   expectedSonarJobCondition,
-  "only an approved main release should run private SonarQube analysis",
+  "only an authorized main release or explicit Sonar-only run should analyze",
+);
+assert.match(
+  workflow,
+  /run_sonar_verification:[\s\S]*?type:\s*boolean[\s\S]*?default:\s*false/,
+  "Sonar-only execution must require an explicit manual input",
 );
 assert.match(sonarJob, /^    needs: quality-and-e2e$/m);
 assert.match(
@@ -213,6 +217,7 @@ const supplyChainCondition = releaseJob.match(
 const expectedSupplyChainCondition = [
   "always()",
   `(${expectedManualActorGate})`,
+  "inputs.run_sonar_verification != true",
   "needs.quality-and-e2e.result == 'success'",
   "needs.e2e.result == 'success'",
   "needs.dependency-audit.result == 'success'",
@@ -222,6 +227,11 @@ assert.equal(
   supplyChainCondition?.replace(/\s+/g, " ").trim(),
   expectedSupplyChainCondition,
   "an approved main release must not bypass a failed, unavailable, or skipped SonarQube job",
+);
+assert.match(
+  supplyChainCondition ?? "",
+  /inputs\.run_sonar_verification != true/,
+  "Sonar-only verification must skip production image building and deployment",
 );
 
 assert.match(

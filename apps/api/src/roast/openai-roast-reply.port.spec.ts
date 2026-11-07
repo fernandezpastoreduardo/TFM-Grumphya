@@ -27,7 +27,30 @@ function validReplyResponse(): Response {
   });
 }
 
+function replyResponse(reply: string): Response {
+  return Response.json({
+    status: "completed",
+    output: [
+      {
+        content: [{ type: "output_text", text: JSON.stringify({ reply }) }],
+      },
+    ],
+  });
+}
+
 describe("OpenAiRoastReplyPort", () => {
+  it.each([
+    ["Remate, bro!", "Remate!"],
+    ["Remate   bro…", "Remate…"],
+    ["Es un brown", "Es un brown"],
+    ["No hay coletilla", "No hay coletilla"],
+  ])("removes only a terminal bro from %j", async (reply, expected) => {
+    globalThis.fetch = vi.fn().mockResolvedValue(replyResponse(reply));
+    const port = new OpenAiRoastReplyPort({ apiKey: "test-secret" });
+
+    await expect(port.reply(ROAST_MESSAGE)).resolves.toBe(expected);
+  });
+
   it("records cached input tokens from the provider usage response", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({

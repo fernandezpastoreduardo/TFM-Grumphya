@@ -18,8 +18,6 @@ const INSULT_PATTERN =
   /\b(?:gilipollas|idiota|imbecil|estupido|estupida|subnormal|capullo|capulla|cabron|cabrona|hijoputa|hijo de puta|puta|puto|mierda|inutil|memo|tonto|tonta|payaso|payasa|mam[oó]n)\b/u;
 const REPORTED_INSULT_CONTEXT_PATTERN =
   /\b(?:me|te|le|nos|les)\s+(?:(?:han|habian)\s+)?(?:llam\w*|dij\w*|dich\w*|insult\w*)\b|\b(?:la palabra|el insulto|la cita|la frase)\b/u;
-const AI_CLONE_PATTERN =
-  /^\s*un(?:a)?\s+[\p{L}\p{N}][\p{L}\p{N}\s.'’&-]{0,38}\s+pero\s+con\s+ia\s*[.!?…]*\s*$/iu;
 const GRUMPHYA_NAME_PATTERN = /\bgrumphya\b/u;
 const IDEA_EVALUATION_PATTERN =
   /\b(?:evaluar|evalua|analizar|analiza|revisar|revisa)\b/u;
@@ -68,7 +66,7 @@ export function detectSpecialIdeaCase(
 
   if (isGrumphyaEquivalent(normalizedText))
     return SPECIAL_CASE_COPY.grumphya_equivalent;
-  if (AI_CLONE_PATTERN.test(normalizedText))
+  if (isGenericAiClone(normalizedText))
     return SPECIAL_CASE_COPY.generic_ai_clone;
   if (isStandaloneInsult(normalizedText)) return SPECIAL_CASE_COPY.insult;
   if (isTooBriefToBeAnIdea(normalizedText)) return SPECIAL_CASE_COPY.too_brief;
@@ -126,6 +124,25 @@ function normalizeIdeaText(ideaText: string): string {
     .toLowerCase()
     .replace(/\s+/gu, " ")
     .trim();
+}
+
+function isGenericAiClone(normalizedText: string): boolean {
+  let text = normalizedText;
+  while (text.length > 0 && ".!?…".includes(text.at(-1) ?? "")) {
+    text = text.slice(0, -1).trimEnd();
+  }
+  const prefix = text.startsWith("una ")
+    ? "una "
+    : text.startsWith("un ")
+      ? "un "
+      : null;
+  if (!prefix || !text.endsWith(" pero con ia")) return false;
+  const ideaName = text.slice(prefix.length, -" pero con ia".length);
+  if (ideaName.length < 1 || ideaName.length > 39) return false;
+  for (const character of ideaName) {
+    if (!/[\p{L}\p{N}\s.'’&-]/u.test(character)) return false;
+  }
+  return /^[\p{L}\p{N}]/u.test(ideaName);
 }
 
 function isGrumphyaEquivalent(normalizedText: string): boolean {

@@ -39,6 +39,21 @@ describe("detectSpecialIdeaCase", () => {
     expect(detectSpecialIdeaCase(EXPANDED_GENERIC_AI_IDEA)).toBeNull();
   });
 
+  it.each([
+    "Una bicicleta pero con IA!!!",
+    "Un coche pero con IA…",
+    `Un ${"x".repeat(39)} pero con IA`,
+  ])("recognizes short AI-clone phrasing %j", (ideaText) => {
+    expect(detectSpecialIdeaCase(ideaText)?.caseId).toBe("generic_ai_clone");
+  });
+
+  it("does not treat an overlong or punctuated name as a generic clone", () => {
+    expect(
+      detectSpecialIdeaCase(`Un ${"x".repeat(40)} pero con IA`),
+    ).toBeNull();
+    expect(detectSpecialIdeaCase("Un Uber? pero con IA")).toBeNull();
+  });
+
   it("does not classify a normal product idea as special", () => {
     expect(detectSpecialIdeaCase(NORMAL_IDEA)).toBeNull();
   });

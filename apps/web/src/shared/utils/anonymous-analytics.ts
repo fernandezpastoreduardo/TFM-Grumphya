@@ -29,7 +29,7 @@ export function recordAnonymousPageView(path: string): void {
 }
 
 export function recordAnonymousPlanSelection(plan: PlanCode): void {
-  sendAnonymousEvent({ event: "plan_selection", page: "precios", plan });
+  void sendAnonymousEvent({ event: "plan_selection", page: "precios", plan });
 }
 
 function sendAnonymousEvent(event: {

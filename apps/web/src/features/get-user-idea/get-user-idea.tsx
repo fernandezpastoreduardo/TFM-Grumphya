@@ -184,6 +184,7 @@ export function GetUserIdea({
               <label className="idea-tone-option" key={option.tone}>
                 <input
                   type="radio"
+                  aria-label={`${option.label}. ${option.description}`}
                   name="tone"
                   value={option.tone}
                   checked={tone === option.tone}
