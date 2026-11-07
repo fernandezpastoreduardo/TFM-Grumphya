@@ -21,6 +21,7 @@
 - [Dirección e implementación de la UI](ui.md): decisiones visuales vigentes y referencias de diseño.
 - [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md): benchmark y métricas operativas.
 - [Línea base de calidad y cobertura](quality-baseline.md): mediciones de calidad registradas.
+- [Complejidad ciclomática](cyclomatic-complexity-plan.md): línea base actual, focos de riesgo y plan de refactorización.
 - [Verificación de infraestructura](verification.md): comprobaciones de una sesión fechada; es un registro histórico, no el resultado más reciente garantizado.
 
 ### Administrar y operar
