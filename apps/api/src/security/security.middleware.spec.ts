@@ -377,6 +377,35 @@ describe("security middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["POST", "/api/registration-intents"],
+    ["POST", "/api/account/avatar"],
+    ["DELETE", "/api/account"],
+    ["POST", "/api/auth/login"],
+    ["POST", "/api/anonymous-usage"],
+    ["POST", EVALUATION_PATH],
+    ["POST", "/api/roast"],
+    ["POST", "/api/contact-messages"],
+  ])(
+    "rejects %s %s from a foreign origin before checking content type",
+    (method, path) => {
+      const middleware = createSecurityMiddleware();
+      const request = {
+        ...createRequest(path, method),
+        get: () => "https://attacker.example",
+        is: vi.fn(() => false),
+      } as unknown as Request;
+      const { response } = createResponse();
+      const next = vi.fn() as NextFunction;
+
+      middleware(request, response, next);
+
+      expect(response.status).toHaveBeenCalledWith(403);
+      expect(request.is).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    },
+  );
+
   it("protects anonymous profile issuance and roast submissions with origin and JSON checks", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;
