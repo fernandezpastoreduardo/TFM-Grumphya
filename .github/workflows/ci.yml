@@ -9,11 +9,6 @@ on:
         type: boolean
         required: true
         default: false
-      run_sonar_verification:
-        description: Ejecuta SonarQube en main sin aprobar despliegue; excluye construcción y despliegue
-        type: boolean
-        required: true
-        default: false
 
 permissions:
   contents: read
@@ -118,138 +113,12 @@ jobs:
       - name: Audit dependencies
         run: pnpm ci:verify audit
 
-  sonar-analysis:
-    name: Private SonarQube analysis and release gate
-    if: >-
-      github.event_name == 'workflow_dispatch' &&
-      github.actor == 'fernandezpastoreduardo' &&
-      github.triggering_actor == 'fernandezpastoreduardo' &&
-      github.ref == 'refs/heads/main' &&
-      ((inputs.run_sonar_verification == true &&
-      inputs.approve_production_deploy != true) ||
-      (inputs.run_sonar_verification != true &&
-      inputs.approve_production_deploy == true &&
-      vars.PRODUCTION_DEPLOY_ENABLED == 'true'))
-    needs: quality-and-e2e
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    services:
-      postgres:
-        image: pgvector/pgvector:0.8.7-pg17
-        env:
-          POSTGRES_DB: grumphya_test
-          POSTGRES_USER: grumphya_test
-          POSTGRES_PASSWORD: grumphya_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U grumphya_test -d grumphya_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 20
-    env:
-      TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      ANONYMOUS_USAGE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      REGISTRATION_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      WORST_IDEAS_USER_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      WORST_IDEAS_RANKING_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      USER_DELETE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      CONTACT_MESSAGE_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      BEST_USERS_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      ADMIN_DASHBOARD_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      APPROVED_IDEAS_TEST_DATABASE_URL: postgresql://grumphya_test:grumphya_test@127.0.0.1:5432/grumphya_test
-      ACCESS_TOKEN_SECRET: ci-only-secret-with-more-than-32-bytes
-      SONAR_HOST_URL: http://127.0.0.1:9000
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          version: 12.5.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .node-version
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Prepare isolated test database and collect coverage
-        shell: bash
-        run: |
-          set -euo pipefail
-          pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts
-          export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage"
-          pnpm --filter @grumphya/api test:coverage
-          pnpm --filter @grumphya/web test:coverage
-          test -s apps/api/coverage/lcov.info
-          test -s apps/web/coverage/lcov.info
-      - name: Open restricted tunnel to private SonarQube
-        env:
-          SONAR_SSH_HOST: ${{ secrets.SONAR_SSH_HOST }}
-          SONAR_SSH_USER: ${{ secrets.SONAR_SSH_USER }}
-          SONAR_SSH_PORT: ${{ vars.SONAR_SSH_PORT }}
-          SONAR_SSH_PRIVATE_KEY: ${{ secrets.SONAR_SSH_PRIVATE_KEY }}
-          SONAR_SSH_KNOWN_HOSTS: ${{ secrets.SONAR_SSH_KNOWN_HOSTS }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          : "${SONAR_SSH_HOST:?Create secret SONAR_SSH_HOST}"
-          : "${SONAR_SSH_USER:?Create secret SONAR_SSH_USER}"
-          : "${SONAR_SSH_PRIVATE_KEY:?Create secret SONAR_SSH_PRIVATE_KEY}"
-          : "${SONAR_SSH_KNOWN_HOSTS:?Create secret SONAR_SSH_KNOWN_HOSTS}"
-          [[ "$SONAR_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
-          [[ "$SONAR_SSH_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]
-          ssh_port=${SONAR_SSH_PORT:-22}
-          [[ "$ssh_port" =~ ^[0-9]{1,5}$ ]]
-          (( 10#$ssh_port > 0 && 10#$ssh_port <= 65535 ))
-          install -d -m 700 "$RUNNER_TEMP/sonar-ssh"
-          trap 'rm -rf "$RUNNER_TEMP/sonar-ssh"' EXIT
-          printf '%s\n' "$SONAR_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/sonar-ssh/id_ed25519"
-          printf '%s\n' "$SONAR_SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/sonar-ssh/known_hosts"
-          chmod 600 "$RUNNER_TEMP/sonar-ssh/id_ed25519" "$RUNNER_TEMP/sonar-ssh/known_hosts"
-          ssh -fNT -i "$RUNNER_TEMP/sonar-ssh/id_ed25519" -p "$ssh_port" \
-            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
-            -o UserKnownHostsFile="$RUNNER_TEMP/sonar-ssh/known_hosts" \
-            -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 \
-            -o ExitOnForwardFailure=yes \
-            -L 127.0.0.1:9000:172.30.250.10:9000 \
-            "$SONAR_SSH_USER@$SONAR_SSH_HOST"
-          rm -f "$RUNNER_TEMP/sonar-ssh/id_ed25519" "$RUNNER_TEMP/sonar-ssh/known_hosts"
-          status=$(curl --fail --silent --show-error --max-time 10 "$SONAR_HOST_URL/api/system/status")
-          node -e 'const status = JSON.parse(process.argv[1]); if (status.status !== "UP") process.exit(1)' "$status"
-      - name: Analyze TypeScript with the official SonarScanner
-        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
-        with:
-          scannerVersion: 8.0.1.6346
-          args: >-
-            -Dsonar.scm.revision=${{ github.sha }}
-            -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=300
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: http://127.0.0.1:9000
-      - name: Verify the current analysis Quality Gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: node scripts/verify-sonarqube-gate.mjs
-
   supply-chain:
     name: Build, scan and deploy production release
     if: >-
-      always() &&
-      (github.event_name != 'workflow_dispatch' ||
-      (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')) &&
-      inputs.run_sonar_verification != true &&
-      needs.quality-and-e2e.result == 'success' &&
-      needs.e2e.result == 'success' &&
-      needs.dependency-audit.result == 'success' &&
-      (needs.sonar-analysis.result == 'success' ||
-      (needs.sonar-analysis.result == 'skipped' &&
-      (github.event_name != 'workflow_dispatch' ||
-      inputs.approve_production_deploy != true ||
-      github.ref != 'refs/heads/main' ||
-      vars.PRODUCTION_DEPLOY_ENABLED != 'true')))
-    needs: [quality-and-e2e, e2e, dependency-audit, sonar-analysis]
+      github.event_name != 'workflow_dispatch' ||
+      (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')
+    needs: [quality-and-e2e, e2e, dependency-audit]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -382,7 +251,6 @@ jobs:
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
-          needs.sonar-analysis.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         run: |
           set -euo pipefail
@@ -405,7 +273,6 @@ jobs:
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
-          needs.sonar-analysis.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         run: |
           set -euo pipefail
@@ -436,7 +303,6 @@ jobs:
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
-          needs.sonar-analysis.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
           PRODUCTION_SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
@@ -496,7 +362,6 @@ jobs:
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
-          needs.sonar-analysis.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
           PRODUCTION_SSH_HOST: ${{ secrets.PRODUCTION_SSH_HOST }}

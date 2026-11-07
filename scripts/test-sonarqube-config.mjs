@@ -1,0 +1,97 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+const COMPOSE_PATH = "compose.sonarqube.yaml";
+const PROPERTIES_PATH = "sonar-project.properties";
+const ANALYSIS_SCRIPT_PATH = "scripts/run-sonarqube-analysis.sh";
+const PUSH_HOOK_PATH = ".husky/pre-push";
+const compose = await readFile(COMPOSE_PATH, "utf8");
+const properties = await readFile(PROPERTIES_PATH, "utf8");
+const analysisScript = await readFile(ANALYSIS_SCRIPT_PATH, "utf8");
+const pushHook = await readFile(PUSH_HOOK_PATH, "utf8");
+const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+const databaseSection = compose.match(
+  /^  database:\n([\s\S]*?)(?=^  sonarqube:)/m,
+)?.[1];
+
+assert.match(compose, /sonarqube:\n[\s\S]*?image: sonarqube:[^\n]*community/);
+assert.match(compose, /SONAR_TELEMETRY_ENABLE:\s*"false"/);
+assert.match(compose, /SONAR_UPDATECENTER_ACTIVATE:\s*"false"/);
+assert.match(compose, /sonar-private:\n\s+internal:\s+true/);
+assert.match(compose, /ipv4_address:\s*172\.30\.250\.10/);
+assert.doesNotMatch(compose, /^\s+ports:/m);
+assert.match(compose, /^  database:\n[\s\S]*?image: postgres:/m);
+assert.match(compose, /sonar-database:\n\s+internal:\s+true/);
+assert.match(compose, /sonarqube:[\s\S]*?sonar-database:\s*\{\}/);
+assert.match(databaseSection ?? "", /networks:\s*\[sonar-database\]/);
+assert.doesNotMatch(databaseSection ?? "", /sonar-private/);
+assert.equal(
+  properties.match(/^sonar\.sources=(.*)$/m)?.[1],
+  "apps/api/src,apps/web/src",
+);
+assert.equal(
+  properties.match(/^sonar\.javascript\.lcov\.reportPaths=(.*)$/m)?.[1],
+  "apps/api/coverage/lcov.info,apps/web/coverage/lcov.info",
+);
+assert.match(analysisScript, /sonar\.qualitygate\.wait=true/);
+assert.match(analysisScript, /sonar\.qualitygate\.timeout=300/);
+assert.match(analysisScript, /^set -Eeuo pipefail$/m);
+assert.match(analysisScript, /umask 077/);
+assert.match(analysisScript, /SONAR_TOKEN_FILE=\.env\.sonarqube\.token/);
+assert.match(analysisScript, /grep -Eq '\^SONAR_TOKEN=\[\^\[:space:\]#\].\*'/);
+assert.match(analysisScript, /-f "\$required_file" \|\| -L "\$required_file"/);
+assert.match(analysisScript, /8#\$file_mode & 077/);
+assert.match(analysisScript, /SONAR_NETWORK=grumphya-sonarqube_sonar-private/);
+assert.match(analysisScript, /git bundle create .*refs\/heads\/main HEAD/);
+assert.match(analysisScript, /refs\/heads\/main refs\/remotes\/origin\/main/);
+assert.match(analysisScript, /--network "\$SONAR_NETWORK"/);
+assert.match(analysisScript, /--env-file "\$SONAR_TOKEN_FILE"/);
+for (const mount of [
+  "apps/api/src:/usr/src/apps/api/src:ro",
+  "apps/api/coverage/lcov.info:/usr/src/apps/api/coverage/lcov.info:ro",
+  "apps/api/tsconfig.json:/usr/src/apps/api/tsconfig.json:ro",
+  "apps/web/src:/usr/src/apps/web/src:ro",
+  "apps/web/coverage/lcov.info:/usr/src/apps/web/coverage/lcov.info:ro",
+  "apps/web/tsconfig.json:/usr/src/apps/web/tsconfig.json:ro",
+]) {
+  assert.ok(
+    analysisScript.includes(mount),
+    `missing read-only scanner mount: ${mount}`,
+  );
+}
+assert.match(analysisScript, /checkout\/\.git:\/usr\/src\/\.git:ro/);
+assert.match(analysisScript, /sonar\.scm\.revision=/);
+assert.doesNotMatch(analysisScript, /sonar\.scm\.disabled=true/);
+assert.doesNotMatch(analysisScript, /\$ROOT\/apps:/);
+const apiCoverageCheck = analysisScript.indexOf(
+  "test -s apps/api/coverage/lcov.info",
+);
+const webCoverageCheck = analysisScript.indexOf(
+  "test -s apps/web/coverage/lcov.info",
+);
+const scannerInvocation = analysisScript.indexOf('\"$SONAR_SCANNER_IMAGE\"');
+assert.ok(apiCoverageCheck >= 0, "missing API coverage must block analysis");
+assert.ok(webCoverageCheck >= 0, "missing web coverage must block analysis");
+assert.ok(
+  apiCoverageCheck < scannerInvocation && webCoverageCheck < scannerInvocation,
+  "both coverage reports must be checked before the scanner runs",
+);
+assert.match(analysisScript, /trap cleanup EXIT/);
+assert.doesNotMatch(
+  analysisScript.slice(scannerInvocation),
+  /\|\|\s*(?:true|:)/,
+  "scanner or Quality Gate failures must propagate to the caller",
+);
+assert.match(pushHook, /remote_ref" = "refs\/heads\/main"/);
+assert.match(pushHook, /git status --porcelain/);
+assert.match(pushHook, /main_push_sha" != "\$head_sha/);
+assert.match(pushHook, /pnpm sonar:verify/);
+assert.doesNotMatch(
+  analysisScript,
+  /SonarSource\/sonarqube-scan-action|github\.com\/|sonarcloud\.io/,
+);
+assert.doesNotMatch(
+  workflow,
+  /sonar-analysis|SONAR_TOKEN|run_sonar_verification/,
+);
+process.stdout.write("SonarQube private-local policy checks passed.\n");

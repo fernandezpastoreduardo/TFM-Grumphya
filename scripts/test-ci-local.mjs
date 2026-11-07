@@ -150,7 +150,7 @@ try {
     "pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts",
     "pnpm NODE_OPTIONS=--no-experimental-webstorage quality:check",
     "node scripts/test-deploy-policy.mjs",
-    "node scripts/test-sonarqube-gate.mjs",
+    "node scripts/test-sonarqube-config.mjs",
     "node scripts/test-pre-push-hook.mjs",
     "bash -n docker/vps-deploy.sh scripts/test-vps-deploy.sh",
     "bash scripts/test-vps-deploy.sh",

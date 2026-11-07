@@ -4,10 +4,8 @@ import { readFile } from "node:fs/promises";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const CI_VERIFY_PATH = "scripts/ci-verify.sh";
 const PRODUCTION_COMPOSE_PATH = "compose.production.yaml";
-const SONAR_COMPOSE_PATH = "compose.sonarqube.yaml";
 const VPS_DEPLOY_HELPER_PATH = "docker/vps-deploy.sh";
 const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
-const SONAR_CONFIG_PATH = "sonar-project.properties";
 const REQUIRED_DEPLOY_GUARDS = [
   "success()",
   "github.event_name == 'workflow_dispatch'",
@@ -18,7 +16,6 @@ const REQUIRED_DEPLOY_GUARDS = [
   "needs.quality-and-e2e.result == 'success'",
   "needs.e2e.result == 'success'",
   "needs.dependency-audit.result == 'success'",
-  "needs.sonar-analysis.result == 'success'",
   "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
 ];
 const EXPECTED_DEPLOY_CONDITION = REQUIRED_DEPLOY_GUARDS.join(" && ");
@@ -34,60 +31,10 @@ const workflow = await readFile(WORKFLOW_PATH, "utf8");
 const lockfile = await readFile("pnpm-lock.yaml", "utf8");
 const ciVerify = await readFile(CI_VERIFY_PATH, "utf8");
 const productionCompose = await readFile(PRODUCTION_COMPOSE_PATH, "utf8");
-const sonarCompose = await readFile(SONAR_COMPOSE_PATH, "utf8");
 const vpsDeployHelper = await readFile(VPS_DEPLOY_HELPER_PATH, "utf8");
 const productionComposeSmoke = await readFile(
   PRODUCTION_COMPOSE_SMOKE_PATH,
   "utf8",
-);
-const sonarConfig = await readFile(SONAR_CONFIG_PATH, "utf8");
-const sonarProperties = Object.fromEntries(
-  sonarConfig
-    .split(/\r?\n/)
-    .filter((line) => line.includes("="))
-    .map((line) => {
-      const separator = line.indexOf("=");
-      return [line.slice(0, separator), line.slice(separator + 1)];
-    }),
-);
-assert.equal(sonarProperties["sonar.projectKey"], "grumphya");
-assert.equal(
-  sonarProperties["sonar.sources"],
-  "apps/api/src,apps/web/src",
-  "SonarQube must analyze both application source trees",
-);
-assert.equal(
-  sonarProperties["sonar.javascript.lcov.reportPaths"],
-  "apps/api/coverage/lcov.info,apps/web/coverage/lcov.info",
-  "SonarQube must consume coverage from both applications",
-);
-assert.doesNotMatch(
-  sonarConfig,
-  /^sonar\.(?:login|token|password)\s*=/m,
-  "SonarQube credentials must not be committed to project configuration",
-);
-assert.match(
-  sonarCompose,
-  /sonarqube:\n[\s\S]*?image: sonarqube:[^\n]*community/,
-);
-assert.match(sonarCompose, /SONAR_TELEMETRY_ENABLE:\s*"false"/);
-assert.match(sonarCompose, /SONAR_UPDATECENTER_ACTIVATE:\s*"false"/);
-assert.match(sonarCompose, /ipv4_address:\s*172\.30\.250\.10/);
-assert.match(sonarCompose, /subnet:\s*172\.30\.250\.0\/24/);
-assert.doesNotMatch(
-  sonarCompose,
-  /^\s+ports:/m,
-  "SonarQube must not publish a host port from its internal-only network",
-);
-assert.match(sonarCompose, /sonar-private:\n\s+internal:\s+true/);
-const sonarDatabaseSection = sonarCompose.match(
-  /^  database:\n([\s\S]*?)(?=^  sonarqube:)/m,
-)?.[1];
-assert.ok(sonarDatabaseSection, "SonarQube PostgreSQL service must exist");
-assert.doesNotMatch(
-  sonarDatabaseSection,
-  /^\s+ports:/m,
-  "SonarQube PostgreSQL must not publish a host port",
 );
 const secretFilePaths = productionCompose.matchAll(
   /^\s+file: \$\{GRUMPHYA_SECRETS_DIR:-\.\/\.secrets\}\//gm,
@@ -111,46 +58,10 @@ const releaseJobStart = workflow.indexOf("  supply-chain:");
 assert.notEqual(releaseJobStart, -1, "release job must exist");
 const releaseJob = workflow.slice(releaseJobStart);
 const beforeReleaseJob = workflow.slice(0, releaseJobStart);
-const sonarJobStart = workflow.indexOf("  sonar-analysis:");
-assert.notEqual(sonarJobStart, -1, "SonarQube analysis job must exist");
-const sonarJobEnd = workflow.indexOf("\n  supply-chain:", sonarJobStart);
-assert.ok(sonarJobEnd > sonarJobStart, "SonarQube must run before release");
-const sonarJob = workflow.slice(sonarJobStart, sonarJobEnd);
-const expectedSonarJobCondition = [
-  "github.event_name == 'workflow_dispatch'",
-  "github.actor == 'fernandezpastoreduardo'",
-  "github.triggering_actor == 'fernandezpastoreduardo'",
-  "github.ref == 'refs/heads/main'",
-  "((inputs.run_sonar_verification == true && inputs.approve_production_deploy != true) || (inputs.run_sonar_verification != true && inputs.approve_production_deploy == true && vars.PRODUCTION_DEPLOY_ENABLED == 'true'))",
-].join(" && ");
-const sonarJobCondition = sonarJob.match(
-  /^    if:\s*>-\s*\n((?:      .*\n)+)/m,
-)?.[1];
-assert.equal(
-  sonarJobCondition?.replace(/\s+/g, " ").trim(),
-  expectedSonarJobCondition,
-  "only an authorized main release or explicit Sonar-only run should analyze",
-);
-assert.match(
-  workflow,
-  /run_sonar_verification:[\s\S]*?type:\s*boolean[\s\S]*?default:\s*false/,
-  "Sonar-only execution must require an explicit manual input",
-);
-assert.match(sonarJob, /^    needs: quality-and-e2e$/m);
-assert.match(
-  sonarJob,
-  /node scripts\/verify-sonarqube-gate\.mjs/,
-  "SonarQube analysis must wait for the actual quality-gate result",
-);
-assert.doesNotMatch(
-  sonarJob,
-  /continue-on-error:\s*true|\|\|\s*true/,
-  "SonarQube scanner or gate failures must not be ignored",
-);
 const dependencyAuditStart = workflow.indexOf("  dependency-audit:");
 assert.notEqual(dependencyAuditStart, -1, "early dependency audit must exist");
 const dependencyAuditEnd = workflow.indexOf(
-  "  sonar-analysis:",
+  "  supply-chain:",
   dependencyAuditStart,
 );
 const dependencyAuditJob = workflow.slice(
@@ -194,7 +105,12 @@ assert.match(workflow, /approve_production_deploy:[\s\S]*?default:\s*false/);
 
 const expectedManualActorGate =
   "github.event_name != 'workflow_dispatch' || (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')";
-for (const jobName of ["quality-and-e2e", "e2e", "dependency-audit"]) {
+for (const jobName of [
+  "quality-and-e2e",
+  "e2e",
+  "dependency-audit",
+  "supply-chain",
+]) {
   const jobStart = workflow.indexOf(`  ${jobName}:`);
   const nextJobMatch = workflow
     .slice(jobStart + 1)
@@ -211,34 +127,8 @@ for (const jobName of ["quality-and-e2e", "e2e", "dependency-audit"]) {
     `${jobName} must reject unauthorized manual dispatches and reruns`,
   );
 }
-const supplyChainCondition = releaseJob.match(
-  /^    if:\s*>-\s*\n((?:      .*\n)+)/m,
-)?.[1];
-const expectedSupplyChainCondition = [
-  "always()",
-  `(${expectedManualActorGate})`,
-  "inputs.run_sonar_verification != true",
-  "needs.quality-and-e2e.result == 'success'",
-  "needs.e2e.result == 'success'",
-  "needs.dependency-audit.result == 'success'",
-  "(needs.sonar-analysis.result == 'success' || (needs.sonar-analysis.result == 'skipped' && (github.event_name != 'workflow_dispatch' || inputs.approve_production_deploy != true || github.ref != 'refs/heads/main' || vars.PRODUCTION_DEPLOY_ENABLED != 'true')))",
-].join(" && ");
-assert.equal(
-  supplyChainCondition?.replace(/\s+/g, " ").trim(),
-  expectedSupplyChainCondition,
-  "an approved main release must not bypass a failed, unavailable, or skipped SonarQube job",
-);
-assert.match(
-  supplyChainCondition ?? "",
-  /inputs\.run_sonar_verification != true/,
-  "Sonar-only verification must skip production image building and deployment",
-);
 
-assert.match(
-  releaseJob,
-  /needs:\s*\[[^\]]*quality-and-e2e[^\]]*e2e[^\]]*dependency-audit[^\]]*sonar-analysis[^\]]*\]/,
-  "release builds must depend on the completed SonarQube analysis",
-);
+assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e, dependency-audit\]/);
 assert.match(
   releaseJob,
   /BUILDX_BUILDER: \$\{\{ steps\.buildx\.outputs\.name \}\}[\s\S]*?docker compose --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
@@ -298,34 +188,10 @@ assert.equal(
   EXPECTED_DEPLOY_CONDITION,
   "deployment must require every safety gate together",
 );
-for (const stepName of [
-  "Save scanned release images",
-  "Assemble production release bundle",
-  "Preflight production deployment",
-  "Deploy and verify, rolling back on failed public health checks",
-]) {
-  const stepStart = releaseJob.indexOf(`      - name: ${stepName}`);
-  assert.notEqual(stepStart, -1, `release step must exist: ${stepName}`);
-  const followingStep = releaseJob.indexOf("\n      - name:", stepStart + 1);
-  const step = releaseJob.slice(
-    stepStart,
-    followingStep === -1 ? undefined : followingStep,
-  );
-  assert.match(
-    step,
-    /needs\.sonar-analysis\.result == 'success'/,
-    `${stepName} must require a successful SonarQube analysis`,
-  );
-}
 assert.doesNotMatch(
   beforeReleaseJob,
-  /PRODUCTION_SSH_(?:HOST|USER|PRIVATE_KEY|KNOWN_HOSTS)/,
-  "quality checks must not receive production deployment SSH credentials",
-);
-assert.doesNotMatch(
-  workflow.slice(0, sonarJobStart),
-  /SONAR_SSH_(?:HOST|USER|PRIVATE_KEY|KNOWN_HOSTS)/,
-  "other quality jobs must not receive the private SonarQube tunnel credentials",
+  /\bssh\s|PRODUCTION_SSH_(?:HOST|USER|PRIVATE_KEY|KNOWN_HOSTS)/,
+  "quality checks must not receive or use SSH credentials",
 );
 
 const deploymentContexts = [
@@ -395,62 +261,6 @@ const deploymentContexts = [
     quality: "success",
     e2e: "success",
     audit: "failure",
-    enabled: "true",
-    expected: false,
-  },
-  {
-    name: "failed SonarQube quality gate",
-    event: "workflow_dispatch",
-    ref: "refs/heads/main",
-    actor: "fernandezpastoreduardo",
-    triggeringActor: "fernandezpastoreduardo",
-    approve: true,
-    quality: "success",
-    e2e: "success",
-    audit: "success",
-    sonar: "failure",
-    enabled: "true",
-    expected: false,
-  },
-  {
-    name: "unavailable SonarQube analysis",
-    event: "workflow_dispatch",
-    ref: "refs/heads/main",
-    actor: "fernandezpastoreduardo",
-    triggeringActor: "fernandezpastoreduardo",
-    approve: true,
-    quality: "success",
-    e2e: "success",
-    audit: "success",
-    sonar: "failure",
-    enabled: "true",
-    expected: false,
-  },
-  {
-    name: "incomplete SonarQube analysis",
-    event: "workflow_dispatch",
-    ref: "refs/heads/main",
-    actor: "fernandezpastoreduardo",
-    triggeringActor: "fernandezpastoreduardo",
-    approve: true,
-    quality: "success",
-    e2e: "success",
-    audit: "success",
-    sonar: "skipped",
-    enabled: "true",
-    expected: false,
-  },
-  {
-    name: "canceled SonarQube analysis",
-    event: "workflow_dispatch",
-    ref: "refs/heads/main",
-    actor: "fernandezpastoreduardo",
-    triggeringActor: "fernandezpastoreduardo",
-    approve: true,
-    quality: "success",
-    e2e: "success",
-    audit: "success",
-    sonar: "cancelled",
     enabled: "true",
     expected: false,
   },
@@ -529,9 +339,7 @@ for (const context of deploymentContexts) {
     context.quality === "success" &&
     (context.e2e ?? "success") === "success" &&
     (context.audit ?? "success") === "success" &&
-    (context.sonar ?? "success") === "success" &&
     deploymentStep.includes("needs.e2e.result == 'success'") &&
-    deploymentStep.includes("needs.sonar-analysis.result == 'success'") &&
     context.enabled === "true";
   assert.equal(allowed, context.expected, `deploy gate: ${context.name}`);
 }

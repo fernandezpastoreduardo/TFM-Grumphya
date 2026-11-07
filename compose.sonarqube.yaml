@@ -15,7 +15,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    networks: [sonar-private]
+    networks: [sonar-database]
 
   sonarqube:
     image: sonarqube:26.10.0.133078-community
@@ -34,11 +34,14 @@ services:
       - sonar-extensions:/opt/sonarqube/extensions
       - sonar-logs:/opt/sonarqube/logs
     networks:
+      sonar-database: {}
       sonar-private:
         ipv4_address: 172.30.250.10
     stop_grace_period: 60s
 
 networks:
+  sonar-database:
+    internal: true
   sonar-private:
     internal: true
     ipam:

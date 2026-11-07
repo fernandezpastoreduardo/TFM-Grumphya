@@ -16,6 +16,7 @@
     "build": "pnpm -r build",
     "test": "pnpm --workspace-concurrency=1 -r test",
     "test:e2e": "pnpm --filter @grumphya/web test:e2e",
+    "sonar:verify": "bash scripts/run-sonarqube-analysis.sh",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "complexity:report": "node scripts/report-complexity.mjs",
