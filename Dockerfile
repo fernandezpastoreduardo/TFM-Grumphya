@@ -1,5 +1,9 @@
 FROM node:26.13.0-trixie-slim AS node-base
 
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 
 FROM node-base AS pnpm-base
