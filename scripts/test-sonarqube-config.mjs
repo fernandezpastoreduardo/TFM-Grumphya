@@ -5,11 +5,13 @@ const COMPOSE_PATH = "compose.sonarqube.yaml";
 const PROPERTIES_PATH = "sonar-project.properties";
 const ANALYSIS_SCRIPT_PATH = "scripts/run-sonarqube-analysis.sh";
 const PUSH_HOOK_PATH = ".husky/pre-push";
+const PACKAGE_PATH = "package.json";
 const compose = await readFile(COMPOSE_PATH, "utf8");
 const properties = await readFile(PROPERTIES_PATH, "utf8");
 const analysisScript = await readFile(ANALYSIS_SCRIPT_PATH, "utf8");
 const pushHook = await readFile(PUSH_HOOK_PATH, "utf8");
 const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+const packageJson = JSON.parse(await readFile(PACKAGE_PATH, "utf8"));
 const databaseSection = compose.match(
   /^  database:\n([\s\S]*?)(?=^  sonarqube:)/m,
 )?.[1];
@@ -42,8 +44,13 @@ assert.match(analysisScript, /grep -Eq '\^SONAR_TOKEN=\[\^\[:space:\]#\].\*'/);
 assert.match(analysisScript, /-f "\$required_file" \|\| -L "\$required_file"/);
 assert.match(analysisScript, /8#\$file_mode & 077/);
 assert.match(analysisScript, /SONAR_NETWORK=grumphya-sonarqube_sonar-private/);
-assert.match(analysisScript, /git bundle create .*refs\/heads\/main HEAD/);
-assert.match(analysisScript, /refs\/heads\/main refs\/remotes\/origin\/main/);
+assert.match(analysisScript, /REFERENCE_SHA=\$\{SONAR_REFERENCE_SHA:-\}/);
+assert.match(
+  analysisScript,
+  /GIT_REFERENCE_REF="refs\/heads\/sonar-main-base-/,
+);
+assert.match(analysisScript, /git bundle create .*"\$GIT_REFERENCE_REF" HEAD/);
+assert.match(analysisScript, /update-ref refs\/heads\/main "\$REFERENCE_SHA"/);
 assert.match(analysisScript, /--network "\$SONAR_NETWORK"/);
 assert.match(analysisScript, /--env-file "\$SONAR_TOKEN_FILE"/);
 for (const mount of [
@@ -83,8 +90,22 @@ assert.doesNotMatch(
   "scanner or Quality Gate failures must propagate to the caller",
 );
 assert.match(pushHook, /remote_ref" = "refs\/heads\/main"/);
+assert.match(pushHook, /git cat-file -e "\$main_remote_sha\^\{commit\}"/);
+assert.match(
+  pushHook,
+  /git merge-base --is-ancestor "\$main_remote_sha" "\$main_push_sha"/,
+);
 assert.match(pushHook, /git status --porcelain/);
 assert.match(pushHook, /main_push_sha" != "\$head_sha/);
+assert.match(
+  pushHook,
+  /SONAR_REFERENCE_SHA=\$main_remote_sha pnpm sonar:verify/,
+);
+assert.equal(
+  packageJson.scripts.prepare,
+  "husky",
+  "pnpm install must install Husky hooks in every checkout",
+);
 assert.match(pushHook, /pnpm sonar:verify/);
 assert.doesNotMatch(
   analysisScript,

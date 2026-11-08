@@ -13,6 +13,7 @@ POSTGRES_IMAGE=pgvector/pgvector:0.8.7-pg17
 RUN_ID="grumphya-sonar-check-$$-${RANDOM}"
 DB_CONTAINER="$RUN_ID-postgres"
 GIT_METADATA_DIRECTORY=
+GIT_REFERENCE_REF=
 
 for required_file in "$SONAR_ENV_FILE" "$SONAR_TOKEN_FILE"; do
   if [[ ! -f "$required_file" || -L "$required_file" || ! -r "$required_file" ]]; then
@@ -46,6 +47,9 @@ fi
 
 cleanup() {
   docker rm --force "$DB_CONTAINER" >/dev/null 2>&1 || true
+  if [[ -n "$GIT_REFERENCE_REF" ]]; then
+    git update-ref -d "$GIT_REFERENCE_REF" >/dev/null 2>&1 || true
+  fi
   if [[ -n "$GIT_METADATA_DIRECTORY" ]]; then
     rm -rf "$GIT_METADATA_DIRECTORY"
   fi
@@ -109,15 +113,35 @@ pnpm --filter @grumphya/web test:coverage
 test -s apps/api/coverage/lcov.info
 test -s apps/web/coverage/lcov.info
 
-if ! git show-ref --verify --quiet refs/heads/main; then
-  echo "Local main branch is required to calculate new code against the reference branch." >&2
+REFERENCE_SHA=${SONAR_REFERENCE_SHA:-}
+if [[ -z "$REFERENCE_SHA" ]]; then
+  if ! git show-ref --verify --quiet refs/heads/main; then
+    echo "Local main branch is required for an on-demand analysis." >&2
+    exit 1
+  fi
+  REFERENCE_SHA=$(git rev-parse refs/heads/main)
+fi
+if [[ ! "$REFERENCE_SHA" =~ ^[[:xdigit:]]{40}([[:xdigit:]]{24})?$ ]]; then
+  echo "The SonarQube reference commit must be a full Git object ID." >&2
+  exit 1
+fi
+if ! git cat-file -e "$REFERENCE_SHA^{commit}"; then
+  echo "The SonarQube reference commit is not available in this checkout." >&2
+  exit 1
+fi
+ANALYSIS_SHA=$(git rev-parse HEAD)
+if ! git merge-base --is-ancestor "$REFERENCE_SHA" "$ANALYSIS_SHA"; then
+  echo "The analysis commit must include the selected main reference commit." >&2
   exit 1
 fi
 GIT_METADATA_DIRECTORY=$(mktemp -d "$ROOT/.sonar-git.XXXXXX")
-git bundle create "$GIT_METADATA_DIRECTORY/repository.bundle" refs/heads/main HEAD
+GIT_REFERENCE_REF="refs/heads/sonar-main-base-$RUN_ID"
+git update-ref "$GIT_REFERENCE_REF" "$REFERENCE_SHA"
+git bundle create "$GIT_METADATA_DIRECTORY/repository.bundle" "$GIT_REFERENCE_REF" HEAD
+git update-ref -d "$GIT_REFERENCE_REF"
+GIT_REFERENCE_REF=
 git clone --quiet "$GIT_METADATA_DIRECTORY/repository.bundle" "$GIT_METADATA_DIRECTORY/checkout"
-git -C "$GIT_METADATA_DIRECTORY/checkout" update-ref \
-  refs/heads/main refs/remotes/origin/main
+git -C "$GIT_METADATA_DIRECTORY/checkout" update-ref refs/heads/main "$REFERENCE_SHA"
 
 echo "Running SonarScanner against the private internal SonarQube network."
 docker run --rm \
