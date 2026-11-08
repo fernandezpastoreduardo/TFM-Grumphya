@@ -42,5 +42,9 @@ if [ "$run_e2e" = true ]; then
   fi
   echo "Push a main detectado; ejecutando SonarQube y E2E antes de publicar."
   SONAR_REFERENCE_SHA=$main_remote_sha pnpm sonar:verify
+  if [ "$(git rev-parse HEAD)" != "$head_sha" ]; then
+    echo "Push a main bloqueado: HEAD cambió durante el análisis de SonarQube." >&2
+    exit 1
+  fi
   pnpm test:e2e
 fi

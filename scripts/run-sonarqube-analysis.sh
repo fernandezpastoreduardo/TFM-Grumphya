@@ -141,7 +141,12 @@ git bundle create "$GIT_METADATA_DIRECTORY/repository.bundle" "$GIT_REFERENCE_RE
 git update-ref -d "$GIT_REFERENCE_REF"
 GIT_REFERENCE_REF=
 git clone --quiet "$GIT_METADATA_DIRECTORY/repository.bundle" "$GIT_METADATA_DIRECTORY/checkout"
-git -C "$GIT_METADATA_DIRECTORY/checkout" update-ref refs/heads/main "$REFERENCE_SHA"
+env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_INDEX_FILE \
+  git -C "$GIT_METADATA_DIRECTORY/checkout" update-ref refs/heads/main "$REFERENCE_SHA"
+if [[ "$(git rev-parse HEAD)" != "$ANALYSIS_SHA" ]]; then
+  echo "SonarQube analysis changed the candidate Git revision." >&2
+  exit 1
+fi
 
 echo "Running SonarScanner against the private internal SonarQube network."
 docker run --rm \

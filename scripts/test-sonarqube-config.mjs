@@ -51,6 +51,11 @@ assert.match(
 );
 assert.match(analysisScript, /git bundle create .*"\$GIT_REFERENCE_REF" HEAD/);
 assert.match(analysisScript, /update-ref refs\/heads\/main "\$REFERENCE_SHA"/);
+assert.match(
+  analysisScript,
+  /env -u GIT_DIR -u GIT_WORK_TREE -u GIT_COMMON_DIR -u GIT_INDEX_FILE\s+\\?\s*git -C "\$GIT_METADATA_DIRECTORY\/checkout" update-ref/,
+);
+assert.match(analysisScript, /git rev-parse HEAD\)" != "\$ANALYSIS_SHA"/);
 assert.match(analysisScript, /--network "\$SONAR_NETWORK"/);
 assert.match(analysisScript, /--env-file "\$SONAR_TOKEN_FILE"/);
 for (const mount of [
@@ -97,6 +102,7 @@ assert.match(
 );
 assert.match(pushHook, /git status --porcelain/);
 assert.match(pushHook, /main_push_sha" != "\$head_sha/);
+assert.match(pushHook, /git rev-parse HEAD\)" != "\$head_sha"/);
 assert.match(
   pushHook,
   /SONAR_REFERENCE_SHA=\$main_remote_sha pnpm sonar:verify/,

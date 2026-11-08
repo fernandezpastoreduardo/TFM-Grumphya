@@ -9,6 +9,7 @@ const TEMP_DIRECTORY = await mkdtemp(join(tmpdir(), "grumphya-pre-push-"));
 const BIN_DIRECTORY = join(TEMP_DIRECTORY, "bin");
 const COMMAND_LOG_PATH = join(TEMP_DIRECTORY, "commands.log");
 const REFERENCE_LOG_PATH = join(TEMP_DIRECTORY, "reference.log");
+const SONAR_MARKER_PATH = join(TEMP_DIRECTORY, "sonar-ran");
 const FAKE_PNPM_PATH = join(BIN_DIRECTORY, "pnpm");
 const FAKE_GIT_PATH = join(BIN_DIRECTORY, "git");
 const HEAD_SHA = execFileSync("git", ["rev-parse", "HEAD"], {
@@ -25,6 +26,7 @@ await writeFile(
     "#!/usr/bin/env sh",
     'printf "%s\\n" "$*" >> "$PRE_PUSH_COMMAND_LOG"',
     'if [ "$*" = "sonar:verify" ]; then printf "%s\\n" "$SONAR_REFERENCE_SHA" > "$PRE_PUSH_REFERENCE_LOG"; fi',
+    'if [ "$*" = "sonar:verify" ]; then touch "$PRE_PUSH_SONAR_MARKER"; fi',
     'if [ "$*" = "sonar:verify" ] && [ "${FAIL_SONAR:-false}" = "true" ]; then exit 19; fi',
     'if [ "$*" = "test:e2e" ] && [ "${FAIL_E2E:-false}" = "true" ]; then exit 17; fi',
     "",
@@ -35,7 +37,7 @@ await writeFile(
   FAKE_GIT_PATH,
   [
     "#!/usr/bin/env sh",
-    'if [ "$1" = "rev-parse" ]; then printf "%s\\n" "$PRE_PUSH_HEAD_SHA"; exit 0; fi',
+    'if [ "$1" = "rev-parse" ]; then if [ "${FAKE_HEAD_CHANGED_AFTER_SONAR:-false}" = "true" ] && [ -f "$PRE_PUSH_SONAR_MARKER" ]; then printf "%s\\n" "1111111111111111111111111111111111111111"; else printf "%s\\n" "$PRE_PUSH_HEAD_SHA"; fi; exit 0; fi',
     'if [ "$1" = "cat-file" ]; then [ "${FAIL_REFERENCE_LOOKUP:-false}" != "true" ]; exit $?; fi',
     'if [ "$1" = "merge-base" ]; then [ "${FAIL_ANCESTRY_CHECK:-false}" != "true" ]; exit $?; fi',
     'if [ "$1" = "status" ]; then [ "${FAKE_GIT_DIRTY:-false}" = "true" ] && printf " M tracked-file\\n"; exit 0; fi',
@@ -53,10 +55,12 @@ async function runHook(
     dirty = false,
     failReferenceLookup = false,
     failAncestryCheck = false,
+    headChangedAfterSonar = false,
   } = {},
 ) {
   await rm(COMMAND_LOG_PATH, { force: true });
   await rm(REFERENCE_LOG_PATH, { force: true });
+  await rm(SONAR_MARKER_PATH, { force: true });
   const result = spawnSync("sh", [HOOK_PATH], {
     cwd: process.cwd(),
     encoding: "utf8",
@@ -65,12 +69,14 @@ async function runHook(
       PATH: `${BIN_DIRECTORY}${delimiter}${process.env.PATH ?? ""}`,
       PRE_PUSH_COMMAND_LOG: COMMAND_LOG_PATH,
       PRE_PUSH_REFERENCE_LOG: REFERENCE_LOG_PATH,
+      PRE_PUSH_SONAR_MARKER: SONAR_MARKER_PATH,
       PRE_PUSH_HEAD_SHA: HEAD_SHA,
       FAIL_SONAR: String(failSonar),
       FAIL_E2E: String(failE2e),
       FAKE_GIT_DIRTY: String(dirty),
       FAIL_REFERENCE_LOOKUP: String(failReferenceLookup),
       FAIL_ANCESTRY_CHECK: String(failAncestryCheck),
+      FAKE_HEAD_CHANGED_AFTER_SONAR: String(headChangedAfterSonar),
     },
     input: pushRefs,
   });
@@ -136,6 +142,13 @@ try {
     "a failed Quality Gate must reject the push",
   );
   assert.deepEqual(failedSonar.commands, ["migrations:check", "sonar:verify"]);
+
+  const changedHead = await runHook(
+    `refs/heads/new-features ${HEAD_SHA} refs/heads/main ${MAIN_REMOTE_SHA}\n`,
+    { headChangedAfterSonar: true },
+  );
+  assert.notEqual(changedHead.status, 0);
+  assert.deepEqual(changedHead.commands, ["migrations:check", "sonar:verify"]);
 
   const dirtyMainPush = await runHook(
     `refs/heads/new-features ${HEAD_SHA} refs/heads/main ${MAIN_REMOTE_SHA}\n`,
