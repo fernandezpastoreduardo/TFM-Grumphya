@@ -539,6 +539,12 @@ pnpm lint
 
 These standards ensure **first-try success** with lint and tests, maintain code quality, and follow industry best practices.
 
+## GitHub Actions: uso de minutos
+
+- No iniciar ni repetir workflows o jobs de GitHub Actions por iniciativa propia, incluido `workflow_dispatch`. Solo hacerlo si el usuario pide explícitamente ejecutar GitHub Actions.
+- Pedidos como «arregla CI», «haz push» o «verifica el cambio» no autorizan por sí solos a consumir minutos de GitHub Actions. Validar los cambios localmente e informar de lo que queda pendiente en Actions.
+- Antes de publicar, comprobar si el push disparará Actions automáticamente. Si lo hará y el usuario no ha autorizado explícitamente ese gasto, solicitar esa autorización antes del push.
+
 ## Persistent workflow aliases
 
 ### `dotese`
