@@ -675,6 +675,18 @@ describe("validateModelDecision", () => {
     expect(renderMessage(validated, "hard")).toContain(REJECTION_MESSAGE);
   });
 
+  it("does not expose an address with a punctuation-only local part in hard copy", () => {
+    const decision = {
+      ...createRejectedDecision(),
+      hardSetup: "la app publica -@foo.com sin permiso",
+    };
+
+    const validated = validateModelDecision(decision, IDEA_TEXT);
+
+    expect(validated.hardSetup).toBeNull();
+    expect(renderMessage(validated, "hard")).not.toContain("-@foo.com");
+  });
+
   it("accepts a rejection without optional hard-copy fragments", () => {
     const decision = {
       ...createRejectedDecision(),

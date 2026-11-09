@@ -2,7 +2,6 @@ import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-hea
 import {
   isSafePublicTitle,
   PUBLIC_CONTROL_PATTERN as CONTROL_PATTERN,
-  PUBLIC_EMAIL_PATTERN as EMAIL_PATTERN,
   PUBLIC_PHONE_PATTERN as PHONE_PATTERN,
   PUBLIC_URL_PATTERN as URL_PATTERN,
 } from "../infrastructure/validation/public-safe-title";
@@ -357,7 +356,7 @@ function isValidHardCopyComponent(value: unknown): value is string {
     value.length >= HARD_COPY_MIN_LENGTH &&
     value.length <= HARD_COPY_MAX_LENGTH &&
     !/[.!?\r\n\t]/u.test(value) &&
-    !EMAIL_PATTERN.test(value) &&
+    !containsEmailAddress(value) &&
     !URL_PATTERN.test(value) &&
     !PHONE_PATTERN.test(value) &&
     !CONTROL_PATTERN.test(value)
@@ -541,7 +540,7 @@ function isValidExistingProductExample(value: unknown): value is string | null {
     normalizedValue !== "null" &&
     normalizedValue !== "undefined" &&
     SAFE_PRODUCT_EXAMPLE_PATTERN.test(value) &&
-    !EMAIL_PATTERN.test(value) &&
+    !containsEmailAddress(value) &&
     !URL_PATTERN.test(value) &&
     !PHONE_PATTERN.test(value) &&
     !CONTROL_PATTERN.test(value)
