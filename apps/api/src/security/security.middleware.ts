@@ -76,6 +76,7 @@ export function createSecurityMiddleware(
       request.path.startsWith("/api/registration") ||
       request.path === "/api/contact-messages" ||
       request.path.startsWith("/api/admin/") ||
+      request.path.startsWith("/api/internal/lighthouse-quality/") ||
       request.path.startsWith("/api/dev/mail-preview")
     ) {
       response.setHeader("Cache-Control", "no-store");

@@ -1,5 +1,45 @@
 # CI/CD y seguridad de la imagen
 
+## Línea base Lighthouse sintética
+
+El job `performance-lab` construye la web de producción y mide Inicio, Precios y
+Peores ideas en móvil y escritorio con Lighthouse CI y Chromium local de
+Playwright. La ejecución usa tres repeticiones por ruta y dispositivo; guarda
+los informes como artefacto de GitHub Actions durante siete días. No visita
+producción ni envía mediciones de personas usuarias, y no instala RUM, cookies o
+SDKs de analítica. Evalúa las categorías de Lighthouse y usa umbrales iniciales
+de aviso para puntuación, LCP (4,5 s) y CLS (0,25), no gates, hasta revisar la
+variación de CI. Lighthouse de esta configuración no mide INP. Estas
+puntuaciones son mediciones de laboratorio:
+no representan Core Web Vitals de campo ni sustituyen datos RUM. `@lhci/cli`
+está fijado como dependencia de desarrollo exacta y su árbol queda en
+`pnpm-lock.yaml`.
+
+El resumen allowlisted se publica en el panel con un `POST` a
+`/api/internal/lighthouse-quality/ingest`. CI solo ejecuta este paso cuando el
+evento es `workflow_dispatch`, la rama es `main` y tanto `github.actor` como
+`github.triggering_actor` son `fernandezpastoreduardo`. Configura los secretos
+de Actions `LIGHTHOUSE_INGEST_URL` (URL HTTPS completa del endpoint) y
+`LIGHTHOUSE_INGEST_TOKEN`; el token debe coincidir con
+`QUALITY_METRICS_INGEST_TOKEN` en el secreto runtime `grumphya_env` de la API y
+ser Base64URL de al menos 32 caracteres. Se recomiendan 32 bytes aleatorios
+codificados en Base64URL. Este formato funciona con la cabecera Bearer que
+construye el workflow. No se envía el secreto a jobs de pull request ni al
+navegador. Si faltan los secretos de Actions, la publicación se omite sin
+fallar la medición ni el artefacto.
+
+El script de resumen conserva solo commit, fecha, una ruta y dispositivo de
+listas cerradas, cantidad de muestras, puntuaciones de categorías y métricas
+técnicas; no envía informes LHR completos. La API valida la estructura y guarda
+resultados sintéticos, sin datos de ideas, IP, cookies, sesiones o visitantes.
+Tras desplegar la API/web y aplicar la migración, Jappy puede consultar
+`GET /api/admin/web-quality` en la pestaña **Calidad web** de `/panel-control`.
+La respuesta contiene hasta seis resúmenes: el más reciente para cada una de
+tres rutas y dos dispositivos. `DataRetentionService` ejecuta la purga cada
+hora y elimina resultados de más de 90 días. El artefacto
+`lighthouse-lab-${{ github.sha }}` con informes completos se mantiene aparte
+durante siete días.
+
 El incidente del 28 de octubre de 2026 —recuperación SSH del VPS, actualización del helper y excepción restringida para la migración `034`— está documentado en [recuperación de acceso y despliegue](incident-vps-access-and-deployment-2026-10.md).
 
 Los fallos de Compose y del preflight de migraciones del 29 de octubre de 2026 están resumidos en [fallos recientes de CI](ci-failures-2026-10-29.md).

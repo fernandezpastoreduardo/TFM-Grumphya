@@ -64,7 +64,7 @@ const PROTOTYPE_RECORDS: readonly AccreditationRecord[] = [
         id: "first-party",
         title: "Sin seguimiento de terceros en el navegador",
         description:
-          "Los recursos de la web y las llamadas de los recorridos públicos revisados se sirven desde el propio dominio. El código revisado no incorpora analítica ni cookies de terceros.",
+          "La web mide páginas públicas y selecciones de plan con contadores propios agregados, sin cookies de analítica ni seguimiento de terceros. Los recursos y llamadas revisados se sirven desde el propio dominio.",
         evidence:
           "Inspección de recursos y cookies del frontend y prueba de peticiones del navegador en recorridos públicos.",
         limitation:

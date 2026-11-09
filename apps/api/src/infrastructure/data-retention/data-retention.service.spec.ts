@@ -56,6 +56,13 @@ describe("DataRetentionService", () => {
       )?.[0];
     expect(anonymousAnalyticsCleanup).toContain("interval '13 months'");
     expect(anonymousAnalyticsCleanup).toContain("LIMIT 500");
+    const lighthouseCleanup = vi
+      .mocked(pool.query)
+      .mock.calls.find(([sql]) =>
+        String(sql).includes("DELETE FROM admin_lighthouse_quality_runs"),
+      )?.[0];
+    expect(lighthouseCleanup).toContain("interval '90 days'");
+    expect(lighthouseCleanup).toContain("LIMIT 500");
 
     await service.onApplicationShutdown();
 

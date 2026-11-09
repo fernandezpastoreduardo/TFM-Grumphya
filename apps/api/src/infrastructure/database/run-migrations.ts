@@ -124,6 +124,10 @@ const MIGRATIONS = [
     version: "037_anonymous_analytics",
     file: "037_anonymous_analytics.sql",
   },
+  {
+    version: "038_admin_lighthouse_quality",
+    file: "038_admin_lighthouse_quality.sql",
+  },
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

@@ -14,6 +14,7 @@ example.env
 *.local
 playwright-report/
 test-results/
+.lighthouseci/
 .ci-artifacts/
 .husky/_/
 *.log
