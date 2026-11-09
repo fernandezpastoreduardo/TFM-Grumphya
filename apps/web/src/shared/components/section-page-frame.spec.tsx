@@ -98,6 +98,5 @@ describe("SectionPageFrame desktop mascot", () => {
     expect(desktopMascots).toHaveLength(1);
     expect(desktopMascots[0]).toHaveAttribute("role", "img");
     expect(desktopMascots[0]?.querySelector("img")).toBeNull();
-
   });
 });
