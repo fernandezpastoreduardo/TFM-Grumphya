@@ -31,13 +31,20 @@ describe("parseAnonymousAnalyticsInput", () => {
 
   it.each([
     null,
-    {
+    ...[
+      { sessionId: "session-123" },
+      { visitorId: "visitor-123" },
+      { userId: "user-123" },
+      { ip: "203.0.113.10" },
+      { text: "Una idea privada" },
+      { url: "https://example.test/precios?email=persona@example.test" },
+    ].map((sensitiveField) => ({
       event: "page_view",
       page: "precios",
       device: "mobile",
       plan: null,
-      sessionId: "x",
-    },
+      ...sensitiveField,
+    })),
     { event: "page_view", page: "perfil", device: "mobile", plan: null },
     {
       event: "page_view",

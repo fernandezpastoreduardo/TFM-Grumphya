@@ -54,6 +54,24 @@ export type AdminDashboardSnapshot = {
   }>;
 };
 
+export type LighthousePageCode = "home" | "precios" | "lo-peor-de-lo-peor";
+export type LighthouseDevice = "mobile" | "desktop";
+export type LighthouseQualityRun = {
+  commitSha: string;
+  measuredAt: string;
+  page: LighthousePageCode;
+  device: LighthouseDevice;
+  sampleCount: 3;
+  performance: number;
+  accessibility: number;
+  bestPractices: number;
+  seo: number;
+  lcpMs: number | null;
+  cls: number | null;
+  tbtMs: number | null;
+  speedIndexMs: number | null;
+};
+
 export type TokenVolumeBucket = "under_1k" | "1k_5k" | "5k_20k" | "20k_plus";
 
 export type MaximumMonthlyPlanCost = {
@@ -138,6 +156,8 @@ export type ContactMessageReplyClaim = {
 export interface AdminDashboardRepository {
   getSnapshot(): Promise<AdminDashboardSnapshot>;
   getAnonymousAnalytics(): Promise<AnonymousAnalyticsSnapshot>;
+  getLighthouseQuality(): Promise<{ runs: LighthouseQualityRun[] }>;
+  saveLighthouseQuality(runs: LighthouseQualityRun[]): Promise<void>;
   getApplicationError(id: string): Promise<AdminApplicationErrorDetail | null>;
   listContactMessages(): Promise<AdminContactMessage[]>;
   claimContactMessageReply(

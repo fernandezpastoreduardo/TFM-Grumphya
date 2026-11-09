@@ -53,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Run production source preflight guards
         run: bash scripts/ci-preflight.sh
@@ -90,6 +91,65 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm ci:verify e2e
+
+  performance-lab:
+    name: Lighthouse laboratory baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 12.5.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the isolated production web app
+        run: pnpm --dir apps/web build
+      - name: Install the pinned synthetic browser
+        run: pnpm --dir apps/web exec playwright install --with-deps chromium
+      - name: Collect mobile and desktop Lighthouse baselines
+        shell: bash
+        run: |
+          set -euo pipefail
+          GRUMPHYA_LHCI_FORM_FACTOR=mobile GRUMPHYA_LHCI_OUTPUT_DIR=.lighthouseci/mobile pnpm --dir apps/web exec lhci autorun --config=lighthouserc.cjs
+          GRUMPHYA_LHCI_FORM_FACTOR=desktop GRUMPHYA_LHCI_OUTPUT_DIR=.lighthouseci/desktop pnpm --dir apps/web exec lhci autorun --config=lighthouserc.cjs
+      - name: Publish the allowlisted report to the admin dashboard
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo'
+        env:
+          LIGHTHOUSE_INGEST_URL: ${{ secrets.LIGHTHOUSE_INGEST_URL }}
+          LIGHTHOUSE_INGEST_TOKEN: ${{ secrets.LIGHTHOUSE_INGEST_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$LIGHTHOUSE_INGEST_URL" || -z "$LIGHTHOUSE_INGEST_TOKEN" ]]; then
+            echo "Ingesta no configurada; no se publica el resumen de Lighthouse."
+            exit 0
+          fi
+          case "$LIGHTHOUSE_INGEST_URL" in
+            https://*) ;;
+            *) echo "LIGHTHOUSE_INGEST_URL debe usar HTTPS." >&2; exit 1 ;;
+          esac
+          if [[ ! "$LIGHTHOUSE_INGEST_TOKEN" =~ ^[A-Za-z0-9_-]{32,}$ ]]; then
+            echo "LIGHTHOUSE_INGEST_TOKEN debe ser un secreto Base64URL de al menos 32 caracteres." >&2
+            exit 1
+          fi
+          node apps/web/scripts/summarize-lighthouse.mjs \
+            apps/web/.lighthouseci "$RUNNER_TEMP/lighthouse-quality.json"
+          umask 077
+          auth_config="$RUNNER_TEMP/lighthouse-curl-auth.conf"
+          trap 'rm -f "$auth_config" "$RUNNER_TEMP/lighthouse-quality.json"' EXIT
+          printf 'header = "Authorization: Bearer %s"\n' "$LIGHTHOUSE_INGEST_TOKEN" > "$auth_config"
+          curl --fail --silent --show-error --retry 3 --retry-all-errors --retry-delay 2 \
+            --config "$auth_config" \
+            --header 'Content-Type: application/json' \
+            --data-binary "@$RUNNER_TEMP/lighthouse-quality.json" \
+            "$LIGHTHOUSE_INGEST_URL"
 
   dependency-audit:
     name: Dependency security audit

@@ -13,6 +13,7 @@ import type {
   AdminDashboardRepository,
   AdminDashboardSnapshot,
   TokenVolumeBucket,
+  LighthouseQualityRun,
 } from "./admin-dashboard.models";
 import type { AnonymousAnalyticsSnapshot } from "../anonymous-analytics/anonymous-analytics.models";
 
@@ -610,6 +611,102 @@ export class PostgresAdminDashboardRepository implements AdminDashboardRepositor
           : [];
       }),
     };
+  }
+
+  async getLighthouseQuality(): Promise<{ runs: LighthouseQualityRun[] }> {
+    await this.ensureSchema();
+    const result = await this.pool.query<{
+      commit_sha: string;
+      measured_at: Date;
+      page_code: LighthouseQualityRun["page"];
+      device_class: LighthouseQualityRun["device"];
+      sample_count: number;
+      performance: number;
+      accessibility: number;
+      best_practices: number;
+      seo: number;
+      lcp_ms: number | null;
+      cls: number | null;
+      tbt_ms: number | null;
+      speed_index_ms: number | null;
+    }>(`
+      SELECT DISTINCT ON (page_code, device_class)
+        commit_sha, measured_at, page_code, device_class, sample_count,
+        performance, accessibility, best_practices, seo, lcp_ms, cls,
+        tbt_ms, speed_index_ms
+      FROM admin_lighthouse_quality_runs
+      WHERE measured_at >= now() - interval '90 days'
+      ORDER BY page_code, device_class, measured_at DESC, commit_sha DESC
+    `);
+    return {
+      runs: result.rows.map((row) => ({
+        commitSha: row.commit_sha,
+        measuredAt: row.measured_at.toISOString(),
+        page: row.page_code,
+        device: row.device_class,
+        sampleCount: 3,
+        performance: row.performance,
+        accessibility: row.accessibility,
+        bestPractices: row.best_practices,
+        seo: row.seo,
+        lcpMs: row.lcp_ms,
+        cls: row.cls,
+        tbtMs: row.tbt_ms,
+        speedIndexMs: row.speed_index_ms,
+      })),
+    };
+  }
+
+  async saveLighthouseQuality(runs: LighthouseQualityRun[]): Promise<void> {
+    await this.ensureSchema();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const run of runs) {
+        await client.query(
+          `INSERT INTO admin_lighthouse_quality_runs (
+          commit_sha, measured_at, page_code, device_class, sample_count,
+          performance, accessibility, best_practices, seo, lcp_ms, cls,
+          tbt_ms, speed_index_ms
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        ON CONFLICT (commit_sha, page_code, device_class) DO UPDATE SET
+          measured_at=EXCLUDED.measured_at,
+          sample_count=EXCLUDED.sample_count,
+          performance=EXCLUDED.performance,
+          accessibility=EXCLUDED.accessibility,
+          best_practices=EXCLUDED.best_practices,
+          seo=EXCLUDED.seo,
+          lcp_ms=EXCLUDED.lcp_ms,
+          cls=EXCLUDED.cls,
+          tbt_ms=EXCLUDED.tbt_ms,
+          speed_index_ms=EXCLUDED.speed_index_ms`,
+          [
+            run.commitSha,
+            run.measuredAt,
+            run.page,
+            run.device,
+            run.sampleCount,
+            run.performance,
+            run.accessibility,
+            run.bestPractices,
+            run.seo,
+            run.lcpMs,
+            run.cls,
+            run.tbtMs,
+            run.speedIndexMs,
+          ],
+        );
+      }
+      await client.query(
+        "DELETE FROM admin_lighthouse_quality_runs WHERE measured_at < now() - interval '90 days'",
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async getApplicationError(

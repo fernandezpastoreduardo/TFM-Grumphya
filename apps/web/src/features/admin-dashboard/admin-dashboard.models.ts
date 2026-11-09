@@ -13,3 +13,19 @@ export type AdminContactMessage = {
     retryAllowed: boolean;
   };
 };
+
+export type AdminLighthouseRun = {
+  commitSha: string;
+  measuredAt: string;
+  page: "home" | "precios" | "lo-peor-de-lo-peor";
+  device: "mobile" | "desktop";
+  sampleCount: 3;
+  performance: number;
+  accessibility: number;
+  bestPractices: number;
+  seo: number;
+  lcpMs: number | null;
+  cls: number | null;
+  tbtMs: number | null;
+  speedIndexMs: number | null;
+};

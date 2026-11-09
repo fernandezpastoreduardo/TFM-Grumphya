@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runMigrations } from "../infrastructure/database/run-migrations";
+import type {
+  LighthouseDevice,
+  LighthousePageCode,
+  LighthouseQualityRun,
+} from "./admin-dashboard.models";
 import { PostgresAdminDashboardRepository } from "./postgres-admin-dashboard.repository";
 
 const DATABASE_URL = process.env.ADMIN_DASHBOARD_TEST_DATABASE_URL;
@@ -278,6 +283,48 @@ describe.skipIf(!DATABASE_URL)("admin dashboard AI cost attribution", () => {
     expect(currentMonth?.aiCostUsd).toBeCloseTo(2.56);
     expect(currentMonth?.aiCostEur).toBeCloseTo(2.56 / 1.115);
     expect(currentMonth?.netEur).toBeCloseTo(3 - 12 - 2.56 / 1.115);
+  });
+
+  it("stores only the latest synthetic Lighthouse summary per page and device", async () => {
+    const pages: LighthousePageCode[] = [
+      "home",
+      "precios",
+      "lo-peor-de-lo-peor",
+    ];
+    const devices: LighthouseDevice[] = ["mobile", "desktop"];
+    const measuredAt = new Date().toISOString();
+    const runs: LighthouseQualityRun[] = pages.flatMap((page) =>
+      devices.map((device) => ({
+        commitSha: "b".repeat(40),
+        measuredAt,
+        page,
+        device,
+        sampleCount: 3,
+        performance: 0.91,
+        accessibility: 1,
+        bestPractices: 0.96,
+        seo: 1,
+        lcpMs: 1200,
+        cls: 0.02,
+        tbtMs: 10,
+        speedIndexMs: 2100,
+      })),
+    );
+
+    await repository.saveLighthouseQuality(runs);
+    const snapshot = await repository.getLighthouseQuality();
+
+    expect(snapshot.runs).toHaveLength(6);
+    expect(snapshot.runs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          commitSha: "b".repeat(40),
+          page: "home",
+          device: "mobile",
+          performance: 0.91,
+        }),
+      ]),
+    );
   });
 });
 

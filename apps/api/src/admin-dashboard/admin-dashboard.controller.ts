@@ -17,6 +17,7 @@ import {
   AdminContactReplyError,
 } from "./admin-contact-message-reply.service";
 import { AdminDashboardService } from "./admin-dashboard.service";
+import { LighthouseQualityService } from "./lighthouse-quality";
 
 type AuthenticatedAdminRequest = Request & {
   user?: { userId?: unknown };
@@ -30,6 +31,8 @@ export class AdminDashboardController {
     private readonly dashboard: AdminDashboardService,
     @Inject(AdminContactMessageReply)
     private readonly contactReply: AdminContactMessageReply,
+    @Inject(LighthouseQualityService)
+    private readonly lighthouseQuality: LighthouseQualityService,
   ) {}
 
   @Get("dashboard")
@@ -40,6 +43,11 @@ export class AdminDashboardController {
   @Get("anonymous-analytics")
   getAnonymousAnalytics() {
     return this.dashboard.getAnonymousAnalytics();
+  }
+
+  @Get("web-quality")
+  getWebQuality() {
+    return this.lighthouseQuality.getLatest();
   }
 
   @Get("application-errors/:eventId")

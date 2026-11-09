@@ -1,7 +1,10 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
 import { AdminContactMessageReply } from "./admin-contact-message-reply";
-import type { AdminContactMessage } from "./admin-dashboard.models";
+import type {
+  AdminContactMessage,
+  AdminLighthouseRun,
+} from "./admin-dashboard.models";
 import { AdminErrorDetail } from "./components/admin-error-detail";
 import { getApplicationErrorLabel } from "./application-error-labels";
 import {
@@ -129,7 +132,59 @@ type DashboardState =
       data: DashboardData;
       messages: AdminContactMessage[];
       anonymousAnalytics: AnonymousAnalyticsData;
+      webQuality: AdminLighthouseRun[];
     };
+
+const LIGHTHOUSE_RUN_KEYS = [
+  "commitSha",
+  "measuredAt",
+  "page",
+  "device",
+  "sampleCount",
+  "performance",
+  "accessibility",
+  "bestPractices",
+  "seo",
+  "lcpMs",
+  "cls",
+  "tbtMs",
+  "speedIndexMs",
+] as const;
+const LIGHTHOUSE_PAGES = ["home", "precios", "lo-peor-de-lo-peor"] as const;
+function isLighthouseRun(value: unknown): value is AdminLighthouseRun {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, LIGHTHOUSE_RUN_KEYS) &&
+    typeof value.commitSha === "string" &&
+    /^[a-f0-9]{40}$/u.test(value.commitSha) &&
+    isIsoDateTime(value.measuredAt) &&
+    LIGHTHOUSE_PAGES.includes(
+      value.page as (typeof LIGHTHOUSE_PAGES)[number],
+    ) &&
+    (value.device === "mobile" || value.device === "desktop") &&
+    value.sampleCount === 3 &&
+    [
+      value.performance,
+      value.accessibility,
+      value.bestPractices,
+      value.seo,
+    ].every((score) => isFiniteNumber(score) && score >= 0 && score <= 1) &&
+    [value.lcpMs, value.cls, value.tbtMs, value.speedIndexMs].every(
+      isNullableCount,
+    )
+  );
+}
+function isLighthouseQuality(
+  value: unknown,
+): value is { runs: AdminLighthouseRun[] } {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ["runs"]) &&
+    Array.isArray(value.runs) &&
+    value.runs.length <= 6 &&
+    value.runs.every(isLighthouseRun)
+  );
+}
 
 const DASHBOARD_ERROR = "No se han podido consultar los datos del panel.";
 const EUR = new Intl.NumberFormat("es-ES", {
@@ -191,6 +246,7 @@ const ADMIN_TABS = [
   { id: "telemetry", label: "Telemetría de IA" },
   { id: "security", label: "Seguridad y acceso" },
   { id: "anonymous", label: "Analítica anónima" },
+  { id: "web-quality", label: "Calidad web" },
 ] as const;
 type AdminTab = (typeof ADMIN_TABS)[number]["id"];
 
@@ -585,10 +641,17 @@ function AdminDashboardOverview() {
       authenticatedFetch("/api/admin/dashboard"),
       authenticatedFetch("/api/admin/contact-messages"),
       authenticatedFetch("/api/admin/anonymous-analytics"),
+      authenticatedFetch("/api/admin/web-quality").catch(() => null),
     ])
       .then(
-        async ([dashboardResponse, contactsResponse, analyticsResponse]) => {
-          const [dashboardBody, contactsBody, analyticsBody]: [
+        async ([
+          dashboardResponse,
+          contactsResponse,
+          analyticsResponse,
+          qualityResponse,
+        ]) => {
+          const [dashboardBody, contactsBody, analyticsBody, qualityBody]: [
+            unknown,
             unknown,
             unknown,
             unknown,
@@ -596,6 +659,9 @@ function AdminDashboardOverview() {
             dashboardResponse.json(),
             contactsResponse.json(),
             analyticsResponse.json(),
+            qualityResponse?.ok
+              ? qualityResponse.json().catch(() => null)
+              : Promise.resolve(null),
           ]);
           if (!active) return;
           if (
@@ -616,6 +682,9 @@ function AdminDashboardOverview() {
             data: dashboardBody,
             messages: contactsBody.messages,
             anonymousAnalytics: analyticsBody,
+            webQuality: isLighthouseQuality(qualityBody)
+              ? qualityBody.runs
+              : [],
           });
         },
       )
@@ -921,6 +990,9 @@ function AdminDashboardOverview() {
         {activeTab === "anonymous" ? (
           <AnonymousAnalyticsTab data={state.anonymousAnalytics} />
         ) : null}
+        {activeTab === "web-quality" ? (
+          <LighthouseQualityTab runs={state.webQuality} />
+        ) : null}
       </section>
     </div>
   );
@@ -1116,6 +1188,118 @@ function AnalyticsPlanMonths({
         </tbody>
       </table>
     </div>
+  );
+}
+
+const LIGHTHOUSE_PAGE_LABELS: Readonly<
+  Record<AdminLighthouseRun["page"], string>
+> = {
+  home: "Inicio",
+  precios: "Planes",
+  "lo-peor-de-lo-peor": "El muro de la vergüenza",
+};
+const LIGHTHOUSE_SCORE = new Intl.NumberFormat("es-ES", {
+  style: "percent",
+  maximumFractionDigits: 0,
+});
+const LIGHTHOUSE_NUMBER = new Intl.NumberFormat("es-ES", {
+  maximumFractionDigits: 2,
+});
+
+function LighthouseQualityTab({ runs }: { runs: AdminLighthouseRun[] }) {
+  return (
+    <section
+      className="admin-analytics"
+      aria-labelledby="lighthouse-quality-title"
+    >
+      <header className="admin-dashboard-card">
+        <span className="eyebrow">
+          Pruebas sintéticas · no mide visitas reales
+        </span>
+        <h2 id="lighthouse-quality-title">Calidad web · Lighthouse</h2>
+        <p>
+          Última medición disponible por página y dispositivo. Cada resultado
+          resume tres ejecuciones sobre la compilación indicada.
+        </p>
+      </header>
+      {runs.length === 0 ? (
+        <section className="admin-dashboard-card" role="status">
+          <p>Todavía no hay mediciones publicadas desde CI.</p>
+        </section>
+      ) : (
+        <div className="admin-analytics-grid">
+          {runs.map((run) => (
+            <article
+              className="admin-dashboard-card"
+              key={`${run.page}-${run.device}`}
+              aria-label={`${LIGHTHOUSE_PAGE_LABELS[run.page]} · ${run.device === "mobile" ? "móvil" : "escritorio"}`}
+            >
+              <h3>
+                {LIGHTHOUSE_PAGE_LABELS[run.page]} ·{" "}
+                {run.device === "mobile" ? "Móvil" : "Escritorio"}
+              </h3>
+              <dl className="admin-lighthouse-scores">
+                <div>
+                  <dt>Rendimiento</dt>
+                  <dd>{LIGHTHOUSE_SCORE.format(run.performance)}</dd>
+                </div>
+                <div>
+                  <dt>Accesibilidad</dt>
+                  <dd>{LIGHTHOUSE_SCORE.format(run.accessibility)}</dd>
+                </div>
+                <div>
+                  <dt>Buenas prácticas</dt>
+                  <dd>{LIGHTHOUSE_SCORE.format(run.bestPractices)}</dd>
+                </div>
+                <div>
+                  <dt>SEO</dt>
+                  <dd>{LIGHTHOUSE_SCORE.format(run.seo)}</dd>
+                </div>
+                <div>
+                  <dt>LCP</dt>
+                  <dd>
+                    {run.lcpMs === null
+                      ? "—"
+                      : `${LIGHTHOUSE_NUMBER.format(run.lcpMs)} ms`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>CLS</dt>
+                  <dd>
+                    {run.cls === null ? "—" : LIGHTHOUSE_NUMBER.format(run.cls)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>TBT</dt>
+                  <dd>
+                    {run.tbtMs === null
+                      ? "—"
+                      : `${LIGHTHOUSE_NUMBER.format(run.tbtMs)} ms`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Speed Index</dt>
+                  <dd>
+                    {run.speedIndexMs === null
+                      ? "—"
+                      : `${LIGHTHOUSE_NUMBER.format(run.speedIndexMs)} ms`}
+                  </dd>
+                </div>
+              </dl>
+              <p className="admin-dashboard-note">
+                Mediana de {run.sampleCount} mediciones ·{" "}
+                {DATE.format(new Date(run.measuredAt))} · commit{" "}
+                {run.commitSha.slice(0, 7)}
+              </p>
+            </article>
+          ))}
+        </div>
+      )}
+      <p className="admin-dashboard-note">
+        Son mediciones de laboratorio en un navegador automatizado; no son Core
+        Web Vitals de usuarios reales.
+      </p>
+    </section>
   );
 }
 

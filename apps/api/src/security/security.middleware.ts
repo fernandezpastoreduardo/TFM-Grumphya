@@ -61,6 +61,7 @@ function shouldDisableCaching(path: string): boolean {
     path.startsWith("/api/registration") ||
     path === "/api/contact-messages" ||
     path.startsWith("/api/admin/") ||
+    path.startsWith("/api/internal/lighthouse-quality/") ||
     path.startsWith("/api/dev/mail-preview")
   );
 }

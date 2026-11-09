@@ -103,6 +103,13 @@ const EXPIRED_DATA_DELETIONS = [
      ORDER BY metric_date LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED
    ) DELETE FROM anonymous_analytics_daily AS metric USING due WHERE metric.ctid=due.ctid`,
   `WITH due AS (
+     SELECT commit_sha, page_code, device_class FROM admin_lighthouse_quality_runs
+     WHERE measured_at <= now() - interval '90 days'
+     ORDER BY measured_at LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED
+   ) DELETE FROM admin_lighthouse_quality_runs AS report USING due
+     WHERE report.commit_sha=due.commit_sha AND report.page_code=due.page_code
+       AND report.device_class=due.device_class`,
+  `WITH due AS (
      SELECT user_id, idempotency_hash FROM account_roast_message_events
      WHERE created_at <= now() - interval '12 months'
      ORDER BY created_at LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED

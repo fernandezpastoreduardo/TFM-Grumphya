@@ -56,6 +56,8 @@ describe("AdminDashboardService", () => {
         .fn()
         .mockRejectedValue(new Error(PRIVATE_DATABASE_DETAIL)),
       getAnonymousAnalytics: vi.fn(),
+      getLighthouseQuality: vi.fn(),
+      saveLighthouseQuality: vi.fn(),
       getApplicationError: vi.fn(),
       listContactMessages: vi.fn(),
       claimContactMessageReply: vi.fn(),
@@ -148,6 +150,8 @@ describe("AdminDashboardService", () => {
     const repository = {
       getSnapshot: vi.fn(),
       getAnonymousAnalytics: vi.fn(),
+      getLighthouseQuality: vi.fn(),
+      saveLighthouseQuality: vi.fn(),
       getApplicationError: vi.fn(),
       listContactMessages: vi
         .fn()

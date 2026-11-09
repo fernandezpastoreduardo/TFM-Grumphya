@@ -111,6 +111,10 @@ const MIGRATIONS = [
     "036_redact_application_error_context.sql",
   ),
   defineMigration("037_anonymous_analytics", "037_anonymous_analytics.sql"),
+  defineMigration(
+    "038_admin_lighthouse_quality",
+    "038_admin_lighthouse_quality.sql",
+  ),
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {
