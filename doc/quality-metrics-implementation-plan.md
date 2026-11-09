@@ -5,8 +5,8 @@
 - **Privacidad:** revisión completada. No se incorporan métricas de resultados de ideas reales ni nuevos eventos de producto, porque podrían ampliar la finalidad o permitir inferencias en grupos pequeños. La configuración efectiva de logs y copias del alojamiento aún debe comprobarse en producción.
 - **Contratos y telemetría:** implementados. La analítica de páginas rechaza claves no permitidas; la telemetría de IA limita etiquetas a valores seguros y elimina el identificador por operación.
 - **Calidad de IA:** las pruebas existentes sobre casos sintéticos corren en CI. El benchmark comparativo contra el proveedor sigue siendo manual y puede generar coste.
-- **Rendimiento:** implementada una línea base Lighthouse de laboratorio para tres rutas, escritorio y móvil, en CI. Los umbrales iniciales solo avisan y los artefactos caducan a los siete días.
-- **Consulta desde el panel:** implementada la pestaña admin **Calidad web**, la ingesta CI→API autenticada y la retención de 90 días. Tras configurar `LIGHTHOUSE_INGEST_URL`, `LIGHTHOUSE_INGEST_TOKEN` y el secreto coincidente `QUALITY_METRICS_INGEST_TOKEN` en `grumphya_env`, los `workflow_dispatch` confiables de `main` publicados por `fernandezpastoreduardo` guardan seis resúmenes sintéticos (tres páginas × móvil/escritorio); Jappy consulta la última medición por combinación en `/panel-control`. Los artefactos completos de Actions permanecen siete días.
+- **Rendimiento:** implementada una línea base Lighthouse de laboratorio para tres rutas, escritorio y móvil, en CI. Los umbrales iniciales solo avisan. Los informes completos solo viven durante el job; Actions no los conserva ni sube artefactos.
+- **Consulta desde el panel:** implementada la pestaña admin **Calidad web**, la ingesta CI→API autenticada y la retención de 90 días. Tras configurar `LIGHTHOUSE_INGEST_URL`, `LIGHTHOUSE_INGEST_TOKEN` y el secreto coincidente `QUALITY_METRICS_INGEST_TOKEN` en `grumphya_env`, los `workflow_dispatch` confiables de `main` publicados por `fernandezpastoreduardo` guardan seis resúmenes sintéticos (tres páginas × móvil/escritorio); Jappy consulta la última medición por combinación en `/panel-control`. Solo se conserva el resumen allowlisted en la base de datos.
 - **Pendiente operativo:** revisar rotación, acceso y retención reales de logs de proxy/hosting, comprobar purgas en producción y ajustar umbrales tras observar variación de CI.
 
 ## Objetivo y límites
@@ -117,12 +117,12 @@ Los resultados de laboratorio no representan la experiencia real de toda la pobl
 1. Elegir rutas principales y viewport móvil/escritorio para pruebas Lighthouse de laboratorio.
 2. Establecer umbrales iniciales como informativos; recoger una línea base y después convertirlos en gates para evitar falsos positivos.
 3. Añadir comprobaciones de accesibilidad automatizadas y mantener E2E visual aislado de producción.
-4. Guardar artefactos de CI con retención limitada, sin datos de usuarios ni credenciales.
+4. Mantener los informes completos solo en el runner durante el job; no subirlos a Actions. Publicar únicamente el resumen allowlisted.
 5. Documentar que Lighthouse sintético no sustituye RUM ni acredita Core Web Vitals de campo.
 
 **Aceptación:** las mediciones se ejecutan sobre entornos sintéticos/aislados, no envían datos de usuarios, son reproducibles por commit y sus umbrales no generan ruido de red no controlable.
 
-La consulta admin y la ingesta del resumen Lighthouse están implementadas. Para activarlas en un entorno desplegado, configura `LIGHTHOUSE_INGEST_URL` como URL HTTPS completa de `/api/internal/lighthouse-quality/ingest` y `LIGHTHOUSE_INGEST_TOKEN` en los secretos de GitHub Actions. Configura el mismo token Base64URL, de al menos 32 caracteres (se recomiendan 32 bytes aleatorios codificados en Base64URL), como `QUALITY_METRICS_INGEST_TOKEN` en `grumphya_env` de la API y despliega la migración incluida. El workflow solo envía datos desde `workflow_dispatch` en `main` iniciado y reejecutado por `fernandezpastoreduardo`. La vista admin `GET /api/admin/web-quality` enseña hasta seis resúmenes, uno por página/dispositivo, y la purga horaria borra datos de más de 90 días. Sin secretos configurados, el paso de publicación se omite; los artefactos originales de CI siguen disponibles siete días.
+La consulta admin y la ingesta del resumen Lighthouse están implementadas. Para activarlas en un entorno desplegado, configura `LIGHTHOUSE_INGEST_URL` como URL HTTPS completa de `/api/internal/lighthouse-quality/ingest` y `LIGHTHOUSE_INGEST_TOKEN` en los secretos de GitHub Actions. Configura el mismo token Base64URL, de al menos 32 caracteres (se recomiendan 32 bytes aleatorios codificados en Base64URL), como `QUALITY_METRICS_INGEST_TOKEN` en `grumphya_env` de la API y despliega la migración incluida. El workflow solo envía datos desde `workflow_dispatch` en `main` iniciado y reejecutado por `fernandezpastoreduardo`. La vista admin `GET /api/admin/web-quality` enseña hasta seis resúmenes, uno por página/dispositivo, y la purga horaria borra datos de más de 90 días. Sin secretos configurados, el paso de publicación se omite; los informes temporales no se guardan como artefactos de Actions.
 
 ### Fase 5 — Revisión, retención y operación
 
@@ -150,7 +150,7 @@ Las pistas pueden avanzar en paralelo tras acordar el diccionario de métricas; 
 - Reutilizar PostgreSQL, CI y panel admin que ya existen.
 - Lighthouse y pruebas automatizadas pueden ejecutarse con herramientas libres en CI; no introducir proveedor RUM.
 - El benchmark automatizado offline no consume API. Las comparaciones con OpenAI pueden consumir cuota y quedan bajo ejecución manual explícita.
-- Costes residuales: tiempo de CI, almacenamiento de artefactos y operación de la infraestructura existente.
+- Costes residuales: tiempo de CI, almacenamiento de resúmenes en la base existente y operación de la infraestructura.
 
 ## Comprobaciones de cierre de cada fase
 

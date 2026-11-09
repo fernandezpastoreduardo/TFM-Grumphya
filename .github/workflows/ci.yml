@@ -117,13 +117,6 @@ jobs:
           set -euo pipefail
           GRUMPHYA_LHCI_FORM_FACTOR=mobile GRUMPHYA_LHCI_OUTPUT_DIR=.lighthouseci/mobile pnpm --dir apps/web exec lhci autorun --config=lighthouserc.cjs
           GRUMPHYA_LHCI_FORM_FACTOR=desktop GRUMPHYA_LHCI_OUTPUT_DIR=.lighthouseci/desktop pnpm --dir apps/web exec lhci autorun --config=lighthouserc.cjs
-      - name: Retain synthetic Lighthouse reports for seven days
-        if: always() && hashFiles('apps/web/.lighthouseci/**') != ''
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: lighthouse-lab-${{ github.sha }}
-          path: apps/web/.lighthouseci
-          retention-days: 7
       - name: Publish the allowlisted report to the admin dashboard
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo'
         env:
@@ -134,7 +127,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$LIGHTHOUSE_INGEST_URL" || -z "$LIGHTHOUSE_INGEST_TOKEN" ]]; then
-            echo "Ingesta no configurada; se conserva el artefacto de Lighthouse de esta ejecución."
+            echo "Ingesta no configurada; no se publica el resumen de Lighthouse."
             exit 0
           fi
           case "$LIGHTHOUSE_INGEST_URL" in

@@ -26,7 +26,8 @@ ser Base64URL de al menos 32 caracteres. Se recomiendan 32 bytes aleatorios
 codificados en Base64URL. Este formato funciona con la cabecera Bearer que
 construye el workflow. No se envía el secreto a jobs de pull request ni al
 navegador. Si faltan los secretos de Actions, la publicación se omite sin
-fallar la medición ni el artefacto.
+fallar el laboratorio; los informes completos no se suben ni se conservan como
+artefactos de Actions.
 
 El script de resumen conserva solo commit, fecha, una ruta y dispositivo de
 listas cerradas, cantidad de muestras, puntuaciones de categorías y métricas
