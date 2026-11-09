@@ -72,3 +72,32 @@ describe("SectionPageFrame mobile mascot", () => {
     },
   );
 });
+
+describe("SectionPageFrame desktop mascot", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("uses one contained, non-repeating mascot asset in the desktop hero", () => {
+    const { container } = render(
+      <SectionPageFrame
+        page={{
+          title: "Panel de control",
+          intro: "Ingresos simulados y señales operativas.",
+          theme: "mint",
+          mascot: "admin",
+        }}
+      >
+        <p>Contenido de la sección</p>
+      </SectionPageFrame>,
+    );
+    const desktopMascots = container.querySelectorAll(
+      ".section-hero .section-hero-mascot",
+    );
+
+    expect(desktopMascots).toHaveLength(1);
+    expect(desktopMascots[0]).toHaveAttribute("role", "img");
+    expect(desktopMascots[0]?.querySelector("img")).toBeNull();
+
+  });
+});
