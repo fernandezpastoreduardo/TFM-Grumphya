@@ -74,6 +74,9 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
     recomendaciones generales de estilo.
 - Los heroes de sección presentan titular, introducción y mascota; no llevan
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
+- Cada hero muestra una sola instancia visible de su ilustración de mascota.
+  Las variantes de escritorio y móvil no deben aparecer a la vez; en móvil,
+  la misma ilustración se recoloca después del contenido principal.
 - En escritorio, los heroes de sección toman su altura del titular y la
   introducción; la mascota ocupa el espacio lateral sin imponer una altura
   mínima. La separación con el contenido se conserva en el espaciado del marco.
