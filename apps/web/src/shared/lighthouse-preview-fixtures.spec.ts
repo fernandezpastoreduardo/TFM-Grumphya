@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { LIGHTHOUSE_ACCREDITATION_RESPONSE } from "./lighthouse-preview-fixtures";
+import {
+  LIGHTHOUSE_ACCREDITATION_RESPONSE,
+  LIGHTHOUSE_ANONYMOUS_USAGE_RESPONSE,
+} from "./lighthouse-preview-fixtures";
 import { createLighthousePreviewMiddleware } from "./lighthouse-preview-middleware";
 
 type PreviewRequest = { method: string; url: string };
@@ -74,5 +77,18 @@ describe("Lighthouse preview fixtures", () => {
       204,
     );
     expect(requestFixture(handler, "GET", "/precios").nextCalled).toBe(true);
+  });
+
+  it("serves a valid synthetic anonymous quota for the home page", () => {
+    const handler = createLighthousePreviewMiddleware(true) as PreviewHandler;
+    expect(handler).toBeDefined();
+    if (!handler) return;
+
+    const usage = requestFixture(handler, "POST", "/api/anonymous-usage");
+    expect(usage.status).toBe(200);
+    expect(JSON.parse(usage.body ?? "")).toEqual(
+      LIGHTHOUSE_ANONYMOUS_USAGE_RESPONSE,
+    );
+    expect(usage.headers.get("Cache-Control")).toBe("no-store");
   });
 });

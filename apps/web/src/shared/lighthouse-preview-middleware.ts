@@ -1,6 +1,9 @@
 import type { Connect } from "vite";
 import { LIGHTHOUSE_WORST_IDEAS_RESPONSES } from "../features/worst-ideas/lighthouse-fixtures";
-import { LIGHTHOUSE_ACCREDITATION_RESPONSE } from "./lighthouse-preview-fixtures";
+import {
+  LIGHTHOUSE_ACCREDITATION_RESPONSE,
+  LIGHTHOUSE_ANONYMOUS_USAGE_RESPONSE,
+} from "./lighthouse-preview-fixtures";
 
 function getFixture(
   method: string | undefined,
@@ -31,6 +34,12 @@ export function createLighthousePreviewMiddleware(
     ) {
       response.statusCode = 204;
       response.end();
+      return;
+    }
+    if (request.method === "POST" && pathname === "/api/anonymous-usage") {
+      response.statusCode = 200;
+      response.setHeader("Content-Type", "application/json; charset=utf-8");
+      response.end(JSON.stringify(LIGHTHOUSE_ANONYMOUS_USAGE_RESPONSE));
       return;
     }
     const fixture = getFixture(request.method, pathname);

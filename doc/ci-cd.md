@@ -7,7 +7,7 @@ Peores ideas en móvil y escritorio con Lighthouse CI y Chromium local de
 Playwright. La ejecución usa tres repeticiones por ruta y dispositivo; guarda
 los informes solo durante el job. Sirve la compilación en `127.0.0.1:4173`.
 El servidor de preview responde con datos públicos sintéticos y estables para
-el ranking y la ficha del sello, y con `204` para la analítica y la renovación
+el ranking, la ficha del sello y los cupos anónimos, y con `204` para la analítica y la renovación
 de una sesión ausente. Así Lighthouse mide las vistas cargadas y no estados de
 error por ausencia de API. Una petición registrada con estado HTTP 4xx/5xx
 invalida el resumen. El sello ilustrado no aparece en este preview: la
