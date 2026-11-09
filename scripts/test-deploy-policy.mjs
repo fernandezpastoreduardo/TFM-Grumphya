@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const CI_VERIFY_PATH = "scripts/ci-verify.sh";
@@ -71,6 +72,26 @@ assert.notEqual(
 const performanceLabJob = workflow.slice(
   performanceLabStart,
   lighthousePublishStart,
+);
+const require = createRequire(import.meta.url);
+const lighthouseConfigPath = require.resolve("../apps/web/lighthouserc.cjs");
+const previousFormFactor = process.env.GRUMPHYA_LHCI_FORM_FACTOR;
+process.env.GRUMPHYA_LHCI_FORM_FACTOR = "desktop";
+const desktopLighthouseConfig = require(lighthouseConfigPath);
+delete require.cache[lighthouseConfigPath];
+process.env.GRUMPHYA_LHCI_FORM_FACTOR = "mobile";
+const mobileLighthouseConfig = require(lighthouseConfigPath);
+if (previousFormFactor === undefined) {
+  delete process.env.GRUMPHYA_LHCI_FORM_FACTOR;
+} else {
+  process.env.GRUMPHYA_LHCI_FORM_FACTOR = previousFormFactor;
+}
+assert.equal(desktopLighthouseConfig.ci.collect.settings.preset, "desktop");
+assert.equal(mobileLighthouseConfig.ci.collect.settings.preset, undefined);
+assert.equal(desktopLighthouseConfig.ci.collect.settings.throttling, undefined);
+assert.match(
+  desktopLighthouseConfig.ci.collect.startServerCommand,
+  /GRUMPHYA_LHCI_FIXTURES=1/,
 );
 const lighthousePublishJob = workflow.slice(
   lighthousePublishStart,

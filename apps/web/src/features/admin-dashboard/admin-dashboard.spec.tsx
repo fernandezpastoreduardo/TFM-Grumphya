@@ -196,7 +196,9 @@ describe("AdminDashboard", () => {
     expect(screen.getByText("90 %")).toBeInTheDocument();
     expect(screen.getByText("1234 ms")).toBeInTheDocument();
     expect(
-      screen.getByText("Mediana de 3 mediciones", { exact: false }),
+      screen.getByText("Mediana por métrica de 3 mediciones", {
+        exact: false,
+      }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/no son Core Web Vitals de usuarios reales/i),

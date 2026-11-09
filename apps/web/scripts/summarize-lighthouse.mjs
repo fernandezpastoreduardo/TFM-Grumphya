@@ -3,6 +3,7 @@ import { basename, resolve } from "node:path";
 
 const REPORT_DIRECTORY = resolve(process.argv[2] ?? ".lighthouseci");
 const OUTPUT_PATH = resolve(process.argv[3] ?? "/tmp/lighthouse-quality.json");
+const PREVIEW_ORIGIN = "http://127.0.0.1:4173";
 const PAGE_BY_PATH = new Map([
   ["/", "home"],
   ["/precios", "precios"],
@@ -64,7 +65,29 @@ for (const file of files) {
   const finalUrl = new URL(report.finalDisplayedUrl);
   const page = PAGE_BY_PATH.get(finalUrl.pathname);
   const device = report.configSettings?.formFactor;
-  if (!page || (device !== "mobile" && device !== "desktop")) continue;
+  if (
+    report.runtimeError ||
+    finalUrl.origin !== PREVIEW_ORIGIN ||
+    !page ||
+    (device !== "mobile" && device !== "desktop")
+  ) {
+    throw new Error(`Informe Lighthouse inesperado en ${basename(file)}.`);
+  }
+  const requests = report.audits?.["network-requests"]?.details?.items;
+  if (
+    !Array.isArray(requests) ||
+    requests.some(
+      (request) =>
+        typeof request.url !== "string" ||
+        !URL.canParse(request.url) ||
+        new URL(request.url).origin !== PREVIEW_ORIGIN ||
+        (typeof request.statusCode === "number" && request.statusCode >= 400),
+    )
+  ) {
+    throw new Error(
+      `La página tiene peticiones fallidas o externas en ${basename(file)}.`,
+    );
+  }
   const scores = Object.fromEntries(
     SCORE_KEYS.map((key) => [key, report.categories?.[key]?.score]),
   );
@@ -79,15 +102,16 @@ for (const file of files) {
   }
   const key = `${page}:${device}`;
   const samples = grouped.get(key) ?? [];
-  samples.push({
-    scores,
-    metrics: Object.fromEntries(
-      Object.entries(AUDIT_KEYS).map(([name, auditId]) => [
-        name,
-        readMetric(report, auditId),
-      ]),
-    ),
-  });
+  const metrics = Object.fromEntries(
+    Object.entries(AUDIT_KEYS).map(([name, auditId]) => [
+      name,
+      readMetric(report, auditId),
+    ]),
+  );
+  if (Object.values(metrics).some((metric) => metric === null)) {
+    throw new Error(`Faltan métricas Lighthouse en ${basename(file)}.`);
+  }
+  samples.push({ scores, metrics });
   grouped.set(key, samples);
 }
 
@@ -107,12 +131,8 @@ for (const [key, samples] of grouped) {
   const [page, device] = key.split(":");
   const scoreMedian = (name) =>
     median(samples.map((sample) => sample.scores[name]));
-  const metricMedian = (name) => {
-    const values = samples
-      .map((sample) => sample.metrics[name])
-      .filter((value) => value !== null);
-    return values.length === 0 ? null : median(values);
-  };
+  const metricMedian = (name) =>
+    median(samples.map((sample) => sample.metrics[name]));
   runs.push({
     commitSha,
     measuredAt,

@@ -5,6 +5,7 @@ import { prerenderToNodeStream } from "react-dom/static";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import prerenderedPublicRoutes from "./src/shared/prerendered-public-routes.json";
+import { createLighthousePreviewMiddleware } from "./src/shared/lighthouse-preview-middleware";
 
 const API_PROXY_TARGET =
   process.env.API_PROXY_TARGET ?? "http://127.0.0.1:3000";
@@ -126,6 +127,16 @@ const publicRoutePrerenderPlugin: Plugin = {
   },
 };
 
+const lighthousePreviewFixturesPlugin: Plugin = {
+  name: "grumphya-lighthouse-preview-fixtures",
+  configurePreviewServer(server) {
+    const middleware = createLighthousePreviewMiddleware(
+      process.env.GRUMPHYA_LHCI_FIXTURES === "1",
+    );
+    if (middleware) server.middlewares.use(middleware);
+  },
+};
+
 const developmentSecurityPrototypePlugin: Plugin = {
   name: "grumphya-development-security-prototype",
   configureServer(server) {
@@ -187,6 +198,7 @@ export default defineConfig({
   plugins: [
     react(),
     developmentSecurityPrototypePlugin,
+    lighthousePreviewFixturesPlugin,
     publicRoutePrerenderPlugin,
   ],
   build: { cssCodeSplit: true, manifest: true },

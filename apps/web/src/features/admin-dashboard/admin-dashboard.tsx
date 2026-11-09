@@ -1218,8 +1218,9 @@ function LighthouseQualityTab({ runs }: { runs: AdminLighthouseRun[] }) {
         </span>
         <h2 id="lighthouse-quality-title">Calidad web · Lighthouse</h2>
         <p>
-          Última medición disponible por página y dispositivo. Cada resultado
-          resume tres ejecuciones sobre la compilación indicada.
+          Última medición disponible por página y dispositivo. CI mide una
+          compilación local con datos públicos de prueba para el ranking, sin
+          pasar por la red ni la API de producción.
         </p>
       </header>
       {runs.length === 0 ? (
@@ -1287,7 +1288,7 @@ function LighthouseQualityTab({ runs }: { runs: AdminLighthouseRun[] }) {
                 </div>
               </dl>
               <p className="admin-dashboard-note">
-                Mediana de {run.sampleCount} mediciones ·{" "}
+                Mediana por métrica de {run.sampleCount} mediciones ·{" "}
                 {DATE.format(new Date(run.measuredAt))} · commit{" "}
                 {run.commitSha.slice(0, 7)}
               </p>
@@ -1297,7 +1298,8 @@ function LighthouseQualityTab({ runs }: { runs: AdminLighthouseRun[] }) {
       )}
       <p className="admin-dashboard-note">
         Son mediciones de laboratorio en un navegador automatizado; no son Core
-        Web Vitals de usuarios reales.
+        Web Vitals de usuarios reales. Los resultados del inspector sobre
+        producción pueden variar por red, equipo, contenido y sesión.
       </p>
     </section>
   );

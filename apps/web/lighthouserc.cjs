@@ -5,27 +5,10 @@ const FORM_FACTOR =
 const WEB_PORT = "4173";
 const OUTPUT_DIRECTORY =
   process.env.GRUMPHYA_LHCI_OUTPUT_DIR ?? ".lighthouseci";
-const SCREEN_EMULATION =
-  FORM_FACTOR === "desktop"
-    ? {
-        mobile: false,
-        width: 1350,
-        height: 940,
-        deviceScaleFactor: 1,
-        disabled: false,
-      }
-    : {
-        mobile: true,
-        width: 412,
-        height: 823,
-        deviceScaleFactor: 1.75,
-        disabled: false,
-      };
-
 module.exports = {
   ci: {
     collect: {
-      startServerCommand: `pnpm preview --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
+      startServerCommand: `GRUMPHYA_LHCI_FIXTURES=1 pnpm preview --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
       startServerReadyPattern: "127.0.0.1:4173",
       url: [
         `http://127.0.0.1:${WEB_PORT}/`,
@@ -36,14 +19,7 @@ module.exports = {
       chromePath: chromium.executablePath(),
       settings: {
         chromeFlags: ["--no-sandbox"],
-        formFactor: FORM_FACTOR,
-        screenEmulation: SCREEN_EMULATION,
-        ...(FORM_FACTOR === "desktop"
-          ? {
-              emulatedUserAgent:
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-            }
-          : {}),
+        ...(FORM_FACTOR === "desktop" ? { preset: "desktop" } : {}),
         onlyCategories: [
           "performance",
           "accessibility",
