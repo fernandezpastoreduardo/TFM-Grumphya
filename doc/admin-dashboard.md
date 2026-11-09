@@ -216,7 +216,11 @@ token y `AdminRoleGuard`. Muestra hasta seis resúmenes: la medición más recie
 para cada combinación de tres páginas (Inicio, Precios y Peores ideas) y dos
 dispositivos (móvil y escritorio). Cada resultado corresponde a tres
 ejecuciones y contiene commit, fecha, puntuaciones de categoría y métricas LCP,
-CLS, TBT y Speed Index. La vista aclara que no son Core Web Vitals de campo.
+CLS, TBT y Speed Index. Cada valor es una mediana independiente de tres
+ejecuciones; no corresponde necesariamente a un único informe. La vista aclara
+que CI usa una compilación local con ranking sintético y que no son Core Web
+Vitals de campo ni una medición de producción. En ese preview local el sello
+ilustrado no se muestra porque la compilación exige un dominio autorizado.
 
 Tras desplegar, CI publica el resumen allowlisted mediante
 `POST /api/internal/lighthouse-quality/ingest`, autenticado con Bearer token.

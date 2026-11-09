@@ -76,7 +76,9 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
   una etiqueta o kicker independiente sobre el título ni el adorno «¿En serio?».
 - Cada hero muestra una sola instancia visible de su ilustración de mascota.
   Las variantes de escritorio y móvil no deben aparecer a la vez; en móvil,
-  la misma ilustración se recoloca después del contenido principal.
+  la variante correspondiente aparece después del contenido principal. En
+  escritorio, el fondo de la mascota usa `contain` sin repetición para que la
+  ilustración no se convierta en un mosaico.
 - En escritorio, los heroes de sección toman su altura del titular y la
   introducción; la mascota ocupa el espacio lateral sin imponer una altura
   mínima. La separación con el contenido se conserva en el espaciado del marco.

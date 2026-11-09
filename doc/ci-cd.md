@@ -5,15 +5,42 @@
 El job `performance-lab` construye la web de producción y mide Inicio, Precios y
 Peores ideas en móvil y escritorio con Lighthouse CI y Chromium local de
 Playwright. La ejecución usa tres repeticiones por ruta y dispositivo; guarda
-los informes solo durante el job. No visita
-producción ni envía mediciones de personas usuarias, y no instala RUM, cookies o
-SDKs de analítica. Evalúa las categorías de Lighthouse y usa umbrales iniciales
-de aviso para puntuación, LCP (4,5 s) y CLS (0,25), no gates, hasta revisar la
+los informes solo durante el job. Sirve la compilación en `127.0.0.1:4173`.
+El servidor de preview responde con datos públicos sintéticos y estables para
+el ranking y la ficha del sello, y con `204` para la analítica y la renovación
+de una sesión ausente. Así Lighthouse mide las vistas cargadas y no estados de
+error por ausencia de API. Una petición registrada con estado HTTP 4xx/5xx
+invalida el resumen. El sello ilustrado no aparece en este preview: la
+compilación de producción en `127.0.0.1` no está en la lista de dominios
+autorizados del sello, aunque su ficha sintética se pueda consultar. La muestra
+sigue siendo de laboratorio y no incluye la latencia, el contenido cambiante,
+la sesión ni las cabeceras de producción.
+No visita producción ni envía mediciones de personas usuarias, y no instala RUM,
+cookies o SDKs de analítica. Móvil usa el perfil predeterminado de Lighthouse;
+escritorio usa `preset: desktop`, que aplica también su perfil de red y CPU.
+Antes, el perfil de escritorio cambiaba solo viewport y agente de usuario, por
+lo que conservaba el throttling móvil y podía parecer más lento que el móvil.
+El resumen rechaza informes con error, rutas ajenas o métricas ausentes; cada
+cifra mostrada es la mediana independiente de las tres ejecuciones, no una
+captura única de Lighthouse. Evalúa las categorías de Lighthouse y usa umbrales
+iniciales de aviso para puntuación, LCP (4,5 s) y CLS (0,25), no gates, hasta revisar la
 variación de CI. Lighthouse de esta configuración no mide INP. Estas
 puntuaciones son mediciones de laboratorio:
 no representan Core Web Vitals de campo ni sustituyen datos RUM. `@lhci/cli`
 está fijado como dependencia de desarrollo exacta y su árbol queda en
 `pnpm-lock.yaml`.
+
+Para comparar con Chrome DevTools, ejecuta Lighthouse tres veces en la misma
+revisión, ruta, modo móvil/escritorio y configuración de limpieza de datos; usa
+una ventana sin sesión. Incluso así, el inspector sobre `https://grumphya.com`
+mide la red, el servidor y el contenido reales, incluido el sello cuando el
+dominio está autorizado; CI usa localhost y datos sintéticos para el ranking.
+La CPU del equipo y la versión de Chrome
+también influyen. No atribuyas una diferencia a un cambio de código sin
+igualar estas condiciones y revisar los informes de cada ejecución. Consulta
+las guías de [emulación](https://github.com/GoogleChrome/lighthouse/blob/main/docs/emulation.md),
+[variabilidad](https://github.com/GoogleChrome/lighthouse/blob/main/docs/variability.md)
+y [Lighthouse en DevTools](https://developer.chrome.com/docs/devtools/lighthouse/).
 
 El laboratorio entrega únicamente el resumen allowlisted como salida temporal
 del job, sin artefactos. Después de que `supply-chain` confirme el despliegue,
