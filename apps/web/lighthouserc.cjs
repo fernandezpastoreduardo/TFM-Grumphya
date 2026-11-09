@@ -35,6 +35,7 @@ module.exports = {
       numberOfRuns: 3,
       chromePath: chromium.executablePath(),
       settings: {
+        chromeFlags: ["--no-sandbox"],
         formFactor: FORM_FACTOR,
         screenEmulation: SCREEN_EMULATION,
         ...(FORM_FACTOR === "desktop"
