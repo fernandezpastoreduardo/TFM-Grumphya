@@ -18,7 +18,10 @@ import {
     AccessTokenGuard,
     OptionalAccessTokenGuard,
     PendingEmailVerificationGuard,
-    PendingEmailVerificationService,
+    {
+      provide: PendingEmailVerificationService,
+      useFactory: () => new PendingEmailVerificationService(),
+    },
     {
       provide: ACCESS_TOKEN_SESSION_LOOKUP,
       useFactory: () => new PostgresAccessTokenSessionLookup(),

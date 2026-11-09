@@ -1,4 +1,5 @@
 import { isSafeGeneratedHeadline } from "../infrastructure/validation/public-headline";
+import { containsEmailAddress } from "../infrastructure/validation/email-address";
 
 export const EVALUATION_CRITERION_IDS = [
   "C01",
@@ -94,7 +95,6 @@ const SAFE_TITLE_WORD_PATTERN = /^[\p{L}\p{N}]+(?:[ '\u2019-][\p{L}\p{N}]+)*$/u;
 const SAFE_PRODUCT_EXAMPLE_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
 const MIN_PRODUCT_EXAMPLE_LENGTH = 2;
 const MAX_PRODUCT_EXAMPLE_LENGTH = 80;
-const EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
 const CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
@@ -356,7 +356,7 @@ function isValidHardCopyComponent(value: unknown): value is string {
     value.length >= HARD_COPY_MIN_LENGTH &&
     value.length <= HARD_COPY_MAX_LENGTH &&
     !/[.!?\r\n\t]/u.test(value) &&
-    !EMAIL_PATTERN.test(value) &&
+    !containsEmailAddress(value) &&
     !URL_PATTERN.test(value) &&
     !PHONE_PATTERN.test(value) &&
     !CONTROL_PATTERN.test(value)
@@ -514,7 +514,7 @@ function isSafeTitle(value: unknown, ideaText: string): value is string {
     value.length < MIN_SAFE_TITLE_LENGTH ||
     value.length > MAX_SAFE_TITLE_LENGTH ||
     !SAFE_TITLE_WORD_PATTERN.test(value) ||
-    EMAIL_PATTERN.test(value) ||
+    containsEmailAddress(value) ||
     URL_PATTERN.test(value) ||
     PHONE_PATTERN.test(value) ||
     CONTROL_PATTERN.test(value)
@@ -551,7 +551,7 @@ function isValidExistingProductExample(value: unknown): value is string | null {
     normalizedValue !== "null" &&
     normalizedValue !== "undefined" &&
     SAFE_PRODUCT_EXAMPLE_PATTERN.test(value) &&
-    !EMAIL_PATTERN.test(value) &&
+    !containsEmailAddress(value) &&
     !URL_PATTERN.test(value) &&
     !PHONE_PATTERN.test(value) &&
     !CONTROL_PATTERN.test(value)

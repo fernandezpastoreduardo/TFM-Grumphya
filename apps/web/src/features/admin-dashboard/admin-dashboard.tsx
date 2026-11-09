@@ -237,6 +237,7 @@ const REFERENCE_DATE_LABEL = new Intl.DateTimeFormat("es-ES", {
 });
 const BCE_EXCHANGE_RATES_URL =
   "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html";
+const DASHBOARD_MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/u;
 const DIAGNOSTIC_CODE_PATTERN = /^[a-z][a-z0-9_]{0,99}$/u;
 const ERROR_EVENT_ID_PATTERN = /^[1-9]\d{0,18}$/u;
 const ADMIN_TABS = [
@@ -391,7 +392,7 @@ function isMonthlyPlanMetric(value: unknown): boolean {
     isRecord(value) &&
     hasExactKeys(value, ["month", "plan", "count"]) &&
     typeof value.month === "string" &&
-    /^\d{4}-(0[1-9]|1[0-2])$/u.test(value.month) &&
+    DASHBOARD_MONTH_PATTERN.test(value.month) &&
     (value.plan === "ILUMINADO" || value.plan === "FALTON") &&
     isSuppressedCount(value.count)
   );
@@ -474,7 +475,7 @@ function isFinanceMonth(value: unknown): value is FinanceMonth {
   return (
     isRecord(value) &&
     typeof value.month === "string" &&
-    /^\d{4}-(0[1-9]|1[0-2])$/u.test(value.month) &&
+    DASHBOARD_MONTH_PATTERN.test(value.month) &&
     isCount(value.revenueEur) &&
     isCount(value.aiCostUsd) &&
     isCount(value.aiCostEur) &&
@@ -500,70 +501,81 @@ function isAiCostTrendWeek(value: unknown): value is AiCostTrendWeek {
   );
 }
 function isDashboardData(value: unknown): value is DashboardData {
-  if (
-    !isRecord(value) ||
-    !isRecord(value.revenue) ||
-    !isRecord(value.maximumMonthlyCost) ||
-    !Array.isArray(value.weeklyActivePlans) ||
-    !isRecord(value.annualFinance) ||
-    !isRecord(value.estimatedAiCost) ||
-    !Array.isArray(value.recentAiActivity) ||
-    !isLoginSecurityMetrics(value.loginSecurity) ||
-    !Array.isArray(value.errors)
-  )
-    return false;
-  const revenue = value.revenue;
-  const costs = value.estimatedAiCost;
-  const maximum = value.maximumMonthlyCost;
-  const finance = value.annualFinance;
   return (
-    isCount(revenue.weeklyEur) &&
-    isCount(revenue.totalEur) &&
-    isMaximumPlanCost(maximum.iluminado) &&
-    isMaximumPlanCost(maximum.falton) &&
-    isCount(maximum.dailyAttempts) &&
-    Number.isInteger(maximum.dailyAttempts) &&
-    isCount(maximum.assumedDaysPerMonth) &&
-    Number.isInteger(maximum.assumedDaysPerMonth) &&
+    isRecord(value) &&
+    isDashboardRevenue(value.revenue) &&
+    isDashboardMaximumCost(value.maximumMonthlyCost) &&
+    Array.isArray(value.weeklyActivePlans) &&
     value.weeklyActivePlans.every(isActivePlanWeek) &&
-    isCount(finance.year) &&
-    Number.isInteger(finance.year) &&
-    isCount(finance.hostingMonthlyEur) &&
-    typeof finance.hostingStartsMonth === "string" &&
-    /^\d{4}-(0[1-9]|1[0-2])$/u.test(finance.hostingStartsMonth) &&
-    isCount(finance.usdToEurRate) &&
-    finance.usdToEurRate > 0 &&
-    finance.exchangeRateSource === "BCE" &&
-    isIsoDay(finance.exchangeRateAsOf) &&
-    Array.isArray(finance.months) &&
-    finance.months.every(isFinanceMonth) &&
-    isCount(costs.weeklyUsd) &&
-    isCount(costs.totalUsd) &&
-    isCount(costs.weeklyAveragePerAccountUsd) &&
-    isCount(costs.totalAveragePerAccountUsd) &&
-    isCount(costs.activeRegisteredAccountCount) &&
-    isCount(costs.activeAdminAccountCount) &&
-    isAiCostByActor(costs.weeklyByActor) &&
-    isAiCostByActor(costs.totalByActor) &&
-    Array.isArray(costs.weeklyTrend) &&
-    costs.weeklyTrend.every(isAiCostTrendWeek) &&
-    isCount(costs.unpricedUsageEvents) &&
+    isDashboardAnnualFinance(value.annualFinance) &&
+    isDashboardAiCost(value.estimatedAiCost) &&
+    Array.isArray(value.recentAiActivity) &&
     value.recentAiActivity.every(isRecentAiActivity) &&
     hasUniqueRecentAiActivity(value.recentAiActivity) &&
-    value.errors.every(
-      (item) =>
-        isRecord(item) &&
-        typeof item.code === "string" &&
-        typeof item.latestEventId === "string" &&
-        ERROR_EVENT_ID_PATTERN.test(item.latestEventId) &&
-        isCount(item.weeklyCount) &&
-        isCount(item.totalCount) &&
-        typeof item.lastOccurredAt === "string" &&
-        Number.isFinite(Date.parse(item.lastOccurredAt)) &&
-        (item.latestDiagnosticCode === null ||
-          (typeof item.latestDiagnosticCode === "string" &&
-            DIAGNOSTIC_CODE_PATTERN.test(item.latestDiagnosticCode))),
-    )
+    isLoginSecurityMetrics(value.loginSecurity) &&
+    Array.isArray(value.errors) &&
+    value.errors.every(isDashboardError)
+  );
+}
+function isDashboardRevenue(value: unknown): boolean {
+  return isRecord(value) && isCount(value.weeklyEur) && isCount(value.totalEur);
+}
+function isDashboardMaximumCost(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isMaximumPlanCost(value.iluminado) &&
+    isMaximumPlanCost(value.falton) &&
+    isCount(value.dailyAttempts) &&
+    Number.isInteger(value.dailyAttempts) &&
+    isCount(value.assumedDaysPerMonth) &&
+    Number.isInteger(value.assumedDaysPerMonth)
+  );
+}
+function isDashboardAnnualFinance(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isCount(value.year) &&
+    Number.isInteger(value.year) &&
+    isCount(value.hostingMonthlyEur) &&
+    typeof value.hostingStartsMonth === "string" &&
+    DASHBOARD_MONTH_PATTERN.test(value.hostingStartsMonth) &&
+    isCount(value.usdToEurRate) &&
+    value.usdToEurRate > 0 &&
+    value.exchangeRateSource === "BCE" &&
+    isIsoDay(value.exchangeRateAsOf) &&
+    Array.isArray(value.months) &&
+    value.months.every(isFinanceMonth)
+  );
+}
+function isDashboardAiCost(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isCount(value.weeklyUsd) &&
+    isCount(value.totalUsd) &&
+    isCount(value.weeklyAveragePerAccountUsd) &&
+    isCount(value.totalAveragePerAccountUsd) &&
+    isCount(value.activeRegisteredAccountCount) &&
+    isCount(value.activeAdminAccountCount) &&
+    isAiCostByActor(value.weeklyByActor) &&
+    isAiCostByActor(value.totalByActor) &&
+    Array.isArray(value.weeklyTrend) &&
+    value.weeklyTrend.every(isAiCostTrendWeek) &&
+    isCount(value.unpricedUsageEvents)
+  );
+}
+function isDashboardError(item: unknown): boolean {
+  return (
+    isRecord(item) &&
+    typeof item.code === "string" &&
+    typeof item.latestEventId === "string" &&
+    ERROR_EVENT_ID_PATTERN.test(item.latestEventId) &&
+    isCount(item.weeklyCount) &&
+    isCount(item.totalCount) &&
+    typeof item.lastOccurredAt === "string" &&
+    Number.isFinite(Date.parse(item.lastOccurredAt)) &&
+    (item.latestDiagnosticCode === null ||
+      (typeof item.latestDiagnosticCode === "string" &&
+        DIAGNOSTIC_CODE_PATTERN.test(item.latestDiagnosticCode)))
   );
 }
 function isContact(value: unknown): value is AdminContactMessage {
@@ -1137,7 +1149,7 @@ function AnalyticsPlanMonths({
       ...selections.map((entry) => entry.month),
       ...activations.map((entry) => entry.month),
     ]),
-  ].sort();
+  ].sort((left, right) => left.localeCompare(right, "es-ES"));
   if (!months.length)
     return <p>Aún no hay grupos mensuales con diez eventos.</p>;
   return (

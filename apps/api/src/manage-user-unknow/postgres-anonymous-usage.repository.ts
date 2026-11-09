@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import type {
   AnonymousQuota,
@@ -44,7 +45,7 @@ export class PostgresAnonymousUsageRepository implements AnonymousUsageRepositor
 
   async initialize(tokenHash: string, ipHmac: string): Promise<boolean> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       await client.query(
         "DELETE FROM anonymous_usage_requests WHERE expires_at <= now()",
       );
@@ -117,7 +118,7 @@ export class PostgresAnonymousUsageRepository implements AnonymousUsageRepositor
     requestHash: string,
   ): Promise<ReservationResult> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       await client.query(
         "DELETE FROM anonymous_usage_requests WHERE expires_at <= now()",
       );
@@ -190,7 +191,7 @@ export class PostgresAnonymousUsageRepository implements AnonymousUsageRepositor
     response: unknown,
   ): Promise<AnonymousUsageState> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const visitorId = await this.requireVisitor(client, tokenHash);
       const request = await client.query(
         `UPDATE anonymous_usage_requests SET state = 'committed', response_json = $5
@@ -225,7 +226,7 @@ export class PostgresAnonymousUsageRepository implements AnonymousUsageRepositor
     idempotencyHash: string,
   ): Promise<void> {
     await this.ensureSchema();
-    await this.transaction(async (client) => {
+    await withTransaction(this.pool, async (client) => {
       const visitorId = await this.requireVisitor(client, tokenHash);
       const released = await client.query(
         `UPDATE anonymous_usage_requests SET state = 'released', response_json = NULL
@@ -283,23 +284,6 @@ export class PostgresAnonymousUsageRepository implements AnonymousUsageRepositor
       return { limit: 3, used, remaining: Math.max(0, 3 - used) };
     };
     return { ideas: quota("ideas"), roasts: quota("roasts") };
-  }
-
-  private async transaction<T>(
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 
   private async ensureSchema(): Promise<void> {

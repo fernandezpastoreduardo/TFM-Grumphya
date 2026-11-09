@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { isEmailAddress } from "../../shared/utils/email-address";
 import {
   LoadingSkeleton,
   SkeletonBlock,
@@ -29,7 +30,6 @@ const GENERIC_ERROR =
   "No se ha podido completar el alta. Para evitar duplicados, vuelve a cargar la página antes de intentarlo otra vez.";
 const PENDING_COPY =
   "Si el correo puede usarse, recibirás un enlace para verificarlo. No se activa la cuenta ni el plan hasta que confirmes el correo y la contratación simulada.";
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN =
   /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
 const PASSWORD_UPPERCASE_PATTERN = /\p{Lu}/u;
@@ -123,7 +123,7 @@ export function RegisterWithPlan() {
     const privacyPolicyAcknowledged =
       formData.get("privacyPolicyAcknowledged") === "on";
 
-    if (!EMAIL_PATTERN.test(email)) {
+    if (!isEmailAddress(email)) {
       setError(EMAIL_ERROR);
       setErrorField("email");
       return;

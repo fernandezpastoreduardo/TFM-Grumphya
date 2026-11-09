@@ -48,6 +48,278 @@ function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
   }
 }
 
+type SecurityRequest = Parameters<RequestHandler>[0];
+type SecurityResponse = Parameters<RequestHandler>[1];
+type ScopedLimit = [string, number];
+
+function shouldDisableCaching(path: string): boolean {
+  return (
+    path === "/api/account" ||
+    path.startsWith("/api/account/") ||
+    path === "/api/auth" ||
+    path.startsWith("/api/auth/") ||
+    path.startsWith("/api/registration") ||
+    path === "/api/contact-messages" ||
+    path.startsWith("/api/admin/") ||
+    path.startsWith("/api/internal/lighthouse-quality/") ||
+    path.startsWith("/api/dev/mail-preview")
+  );
+}
+
+function isProtectedCookieMutation(request: SecurityRequest): boolean {
+  if (
+    request.method !== "POST" &&
+    !(request.method === "DELETE" && request.path === "/api/account")
+  ) {
+    return false;
+  }
+  return (
+    request.path.startsWith("/api/registration") ||
+    request.path.startsWith("/api/account/") ||
+    request.path === "/api/account" ||
+    request.path.startsWith("/api/auth/") ||
+    request.path === "/api/anonymous-usage" ||
+    request.path === "/api/evaluation-process" ||
+    request.path === "/api/roast" ||
+    request.path === "/api/contact-messages"
+  );
+}
+
+function rejectInvalidMutation(
+  request: SecurityRequest,
+  response: SecurityResponse,
+): boolean {
+  if (!isProtectedCookieMutation(request)) return false;
+  const allowedOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
+  if (request.get("origin") !== allowedOrigin) {
+    response.status(403).json({
+      statusCode: 403,
+      message: "Origen de solicitud no permitido.",
+    });
+    return true;
+  }
+  if (
+    !request.is("application/json") &&
+    !(isAvatarUploadRequest(request) && request.is("multipart/form-data"))
+  ) {
+    response
+      .status(415)
+      .json({ statusCode: 415, message: "Se requiere application/json." });
+    return true;
+  }
+  return false;
+}
+
+function isLoginRequest(request: SecurityRequest): boolean {
+  return request.method === "POST" && request.path === "/api/auth/login";
+}
+
+function rejectBlockedLogin(
+  request: SecurityRequest,
+  response: SecurityResponse,
+  protection: LoginAbuseProtection,
+  clientAddress: string,
+  now: number,
+): boolean {
+  if (!isLoginRequest(request)) return false;
+  const blockedSeconds = protection.getBlockedRetryAfter(clientAddress, now);
+  if (blockedSeconds <= 0) return false;
+  protection.recordBlockedLoginRequest(now);
+  response.setHeader("Retry-After", String(blockedSeconds));
+  response.status(429).json({
+    statusCode: 429,
+    code: "LOGIN_IP_BLOCKED",
+    message: RATE_LIMIT_MESSAGE,
+  });
+  return true;
+}
+
+function evaluationLimit(request: SecurityRequest): ScopedLimit | undefined {
+  const { method, path } = request;
+  if (method === "POST" && path === "/api/csp-reports") {
+    return ["csp-report", CSP_REPORT_REQUEST_LIMIT];
+  }
+  if (method === "GET" && path.startsWith("/api/admin/")) {
+    return ["admin-read", ADMIN_READ_REQUEST_LIMIT];
+  }
+  if (
+    method === "POST" &&
+    (path === "/api/evaluation-process" || path === "/api/roast")
+  ) {
+    return ["evaluation", EVALUATION_REQUEST_LIMIT];
+  }
+  return undefined;
+}
+
+function readLimit(request: SecurityRequest): ScopedLimit | undefined {
+  const { method, path } = request;
+  if (
+    method === "GET" &&
+    (path === "/api/worst-ideas" || path === "/api/worst-ideas/all-time")
+  ) {
+    return ["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT];
+  }
+  if (method === "GET" && path === "/api/account/worst-ideas") {
+    return ["worst-ideas-user-read", WORST_IDEAS_USER_READ_REQUEST_LIMIT];
+  }
+  if (method === "GET" && path === "/api/roast-ranking") {
+    return ["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT];
+  }
+  if (method === "GET" && stripTrailingSlashes(path) === "/api/best-users") {
+    return ["best-users-read", BEST_USERS_READ_REQUEST_LIMIT];
+  }
+  return undefined;
+}
+
+function stripTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (end > 0 && path[end - 1] === "/") end -= 1;
+  return path.slice(0, end) || "/";
+}
+
+function registrationLimit(path: string): ScopedLimit {
+  if (path.includes("verify") || path.includes("confirm")) {
+    return ["registration-verification", REGISTRATION_VERIFY_REQUEST_LIMIT];
+  }
+  if (path.includes("intents")) {
+    return ["registration-intent", REGISTRATION_INTENT_REQUEST_LIMIT];
+  }
+  return ["registration-create", REGISTRATION_REQUEST_LIMIT];
+}
+
+function mutationLimit(
+  request: SecurityRequest,
+  sessionRefreshRequestLimit: number,
+): ScopedLimit | undefined {
+  const { method, path } = request;
+  if (method === "DELETE" && path === "/api/account") {
+    return ["account-delete", ACCOUNT_DELETE_REQUEST_LIMIT];
+  }
+  if (method !== "POST") return undefined;
+  if (path === "/api/contact-messages") {
+    return ["contact-message", CONTACT_MESSAGE_REQUEST_LIMIT];
+  }
+  if (isAvatarUploadRequest(request)) {
+    return ["account-avatar-upload", AVATAR_UPLOAD_REQUEST_LIMIT];
+  }
+  if (isLoginRequest(request)) {
+    return ["session-login", LOGIN_REQUEST_LIMIT];
+  }
+  if (path === "/api/auth/logout") {
+    return ["session-logout", SESSION_LOGOUT_REQUEST_LIMIT];
+  }
+  if (path === "/api/auth/refresh") {
+    return readCookie(request, REFRESH_COOKIE) === undefined
+      ? undefined
+      : ["session-refresh", sessionRefreshRequestLimit];
+  }
+  if (path.startsWith("/api/auth/")) {
+    return ["session-refresh", sessionRefreshRequestLimit];
+  }
+  if (
+    path.startsWith("/api/registration") ||
+    path.startsWith("/api/account/")
+  ) {
+    return registrationLimit(path);
+  }
+  return undefined;
+}
+
+function requestLimits(
+  request: SecurityRequest,
+  apiRequestLimit: number,
+  sessionRefreshRequestLimit: number,
+): ScopedLimit[] {
+  const scoped =
+    evaluationLimit(request) ??
+    readLimit(request) ??
+    mutationLimit(request, sessionRefreshRequestLimit);
+  return scoped
+    ? [["api", apiRequestLimit], scoped]
+    : [["api", apiRequestLimit]];
+}
+
+function consumeRateLimits(
+  limits: ScopedLimit[],
+  buckets: Map<string, RateLimitBucket>,
+  clientAddress: string,
+  now: number,
+  response: SecurityResponse,
+): boolean {
+  for (const [scope, limit] of limits) {
+    const key = `${clientAddress}:${scope}`;
+    const current = buckets.get(key);
+    const bucket =
+      !current || current.resetAt <= now
+        ? { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }
+        : current;
+    if (bucket.count >= limit) {
+      response.setHeader(
+        "Retry-After",
+        String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))),
+      );
+      response.status(429).json({
+        statusCode: 429,
+        message: RATE_LIMIT_MESSAGE,
+      });
+      return true;
+    }
+    bucket.count += 1;
+    if (!buckets.has(key) && buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
+      const oldestKey = buckets.keys().next().value;
+      if (oldestKey) buckets.delete(oldestKey);
+    }
+    buckets.set(key, bucket);
+  }
+  return false;
+}
+
+function rejectLoginChallenge(
+  request: SecurityRequest,
+  response: SecurityResponse,
+  protection: LoginAbuseProtection,
+  clientAddress: string,
+  now: number,
+): boolean {
+  if (!isLoginRequest(request) || !protection.isChallengeModeActive(now)) {
+    return false;
+  }
+  if (
+    protection.verifyChallenge(
+      clientAddress,
+      request.get("x-login-challenge") ?? "",
+      request.get("x-login-proof") ?? "",
+      now,
+    )
+  ) {
+    return false;
+  }
+  response.status(428).json({
+    statusCode: 428,
+    code: "LOGIN_CHALLENGE_REQUIRED",
+    message: "Verifica el navegador para continuar.",
+    challenge: protection.createChallenge(clientAddress, now),
+  });
+  return true;
+}
+
+function rejectRegistrationQuery(
+  request: SecurityRequest,
+  response: SecurityResponse,
+): boolean {
+  if (
+    !request.path.startsWith("/api/registration") ||
+    !request.originalUrl?.includes("?")
+  ) {
+    return false;
+  }
+  response.status(400).json({
+    statusCode: 400,
+    message: "La URL no admite parámetros para esta solicitud.",
+  });
+  return true;
+}
+
 export function createSecurityMiddleware(
   options: SecurityMiddlewareOptions = {},
 ): RequestHandler {
@@ -68,54 +340,14 @@ export function createSecurityMiddleware(
 
   return (request, response, next) => {
     setSecurityHeaders(response);
-    if (
-      request.path === "/api/account" ||
-      request.path.startsWith("/api/account/") ||
-      request.path === "/api/auth" ||
-      request.path.startsWith("/api/auth/") ||
-      request.path.startsWith("/api/registration") ||
-      request.path === "/api/contact-messages" ||
-      request.path.startsWith("/api/admin/") ||
-      request.path.startsWith("/api/internal/lighthouse-quality/") ||
-      request.path.startsWith("/api/dev/mail-preview")
-    ) {
+    if (shouldDisableCaching(request.path)) {
       response.setHeader("Cache-Control", "no-store");
     }
     if (request.method === "OPTIONS") {
       next();
       return;
     }
-
-    const isProtectedCookieMutation =
-      (request.method === "POST" ||
-        (request.method === "DELETE" && request.path === "/api/account")) &&
-      (request.path.startsWith("/api/registration") ||
-        request.path.startsWith("/api/account/") ||
-        request.path === "/api/account" ||
-        request.path.startsWith("/api/auth/") ||
-        request.path === "/api/anonymous-usage" ||
-        request.path === "/api/evaluation-process" ||
-        request.path === "/api/roast" ||
-        request.path === "/api/contact-messages");
-    if (isProtectedCookieMutation) {
-      const allowedOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
-      if (request.get("origin") !== allowedOrigin) {
-        response.status(403).json({
-          statusCode: 403,
-          message: "Origen de solicitud no permitido.",
-        });
-        return;
-      }
-      if (
-        !request.is("application/json") &&
-        !(isAvatarUploadRequest(request) && request.is("multipart/form-data"))
-      ) {
-        response
-          .status(415)
-          .json({ statusCode: 415, message: "Se requiere application/json." });
-        return;
-      }
-    }
+    if (rejectInvalidMutation(request, response)) return;
 
     const now = Date.now();
     requestCount += 1;
@@ -127,183 +359,38 @@ export function createSecurityMiddleware(
 
     const clientAddress =
       request.ip ?? request.socket.remoteAddress ?? "unknown";
-    const normalizedPath = request.path.replace(/\/+$/, "") || "/";
+    if (rejectRegistrationQuery(request, response)) return;
     if (
-      request.path.startsWith("/api/registration") &&
-      request.originalUrl?.includes("?")
-    ) {
-      response.status(400).json({
-        statusCode: 400,
-        message: "La URL no admite parámetros para esta solicitud.",
-      });
-      return;
-    }
-    const isEvaluation =
-      request.method === "POST" &&
-      (request.path === "/api/evaluation-process" ||
-        request.path === "/api/roast");
-    const isCspReport =
-      request.method === "POST" && request.path === "/api/csp-reports";
-    const isWorstIdeasRead =
-      request.method === "GET" &&
-      (request.path === "/api/worst-ideas" ||
-        request.path === "/api/worst-ideas/all-time");
-    const isWorstIdeasUserRead =
-      request.method === "GET" && request.path === "/api/account/worst-ideas";
-    const isRoastRankingRead =
-      request.method === "GET" && request.path === "/api/roast-ranking";
-    const isBestUsersRead =
-      request.method === "GET" && normalizedPath === "/api/best-users";
-    const isAdminRead =
-      request.method === "GET" && request.path.startsWith("/api/admin/");
-    const isRegistrationPost =
-      request.method === "POST" && request.path.startsWith("/api/registration");
-    const isRefreshPost =
-      request.method === "POST" && request.path === "/api/auth/refresh";
-    const hasRefreshCookie =
-      isRefreshPost && readCookie(request, REFRESH_COOKIE) !== undefined;
-    const isLoginPost =
-      request.method === "POST" && request.path === "/api/auth/login";
-    if (isLoginPost) {
-      const blockedSeconds = loginAbuseProtection.getBlockedRetryAfter(
+      rejectBlockedLogin(
+        request,
+        response,
+        loginAbuseProtection,
         clientAddress,
-        now,
-      );
-      if (blockedSeconds > 0) {
-        loginAbuseProtection.recordBlockedLoginRequest(now);
-        response.setHeader("Retry-After", String(blockedSeconds));
-        response.status(429).json({
-          statusCode: 429,
-          code: "LOGIN_IP_BLOCKED",
-          message: RATE_LIMIT_MESSAGE,
-        });
-        return;
-      }
-    }
-    const isLogoutPost =
-      request.method === "POST" && request.path === "/api/auth/logout";
-    const isAuthPost =
-      request.method === "POST" && request.path.startsWith("/api/auth/");
-    const isAccountPost =
-      request.method === "POST" && request.path.startsWith("/api/account/");
-    const isAvatarUpload = isAvatarUploadRequest(request);
-    const isAccountDelete =
-      request.method === "DELETE" && request.path === "/api/account";
-    const isContactMessagePost =
-      request.method === "POST" && request.path === "/api/contact-messages";
-    const registrationScope = isContactMessagePost
-      ? "contact-message"
-      : isAccountDelete
-        ? "account-delete"
-        : isAvatarUpload
-          ? "account-avatar-upload"
-          : isLoginPost
-            ? "session-login"
-            : isLogoutPost
-              ? "session-logout"
-              : isAuthPost
-                ? "session-refresh"
-                : request.path.includes("verify") ||
-                    request.path.includes("confirm")
-                  ? "registration-verification"
-                  : request.path.includes("intents")
-                    ? "registration-intent"
-                    : "registration-create";
-    const registrationLimit =
-      registrationScope === "session-login"
-        ? LOGIN_REQUEST_LIMIT
-        : registrationScope === "session-logout"
-          ? SESSION_LOGOUT_REQUEST_LIMIT
-          : registrationScope === "account-delete"
-            ? ACCOUNT_DELETE_REQUEST_LIMIT
-            : registrationScope === "account-avatar-upload"
-              ? AVATAR_UPLOAD_REQUEST_LIMIT
-              : registrationScope === "contact-message"
-                ? CONTACT_MESSAGE_REQUEST_LIMIT
-                : registrationScope === "registration-intent"
-                  ? REGISTRATION_INTENT_REQUEST_LIMIT
-                  : registrationScope === "session-refresh"
-                    ? sessionRefreshRequestLimit
-                    : registrationScope === "registration-verification" ||
-                        isRefreshPost
-                      ? REGISTRATION_VERIFY_REQUEST_LIMIT
-                      : REGISTRATION_REQUEST_LIMIT;
-    const limits: [string, number][] = [["api", apiRequestLimit]];
-    if (isCspReport) {
-      limits.push(["csp-report", CSP_REPORT_REQUEST_LIMIT]);
-    } else if (isAdminRead) {
-      limits.push(["admin-read", ADMIN_READ_REQUEST_LIMIT]);
-    } else if (isEvaluation) {
-      limits.push(["evaluation", EVALUATION_REQUEST_LIMIT]);
-    } else if (isWorstIdeasRead) {
-      limits.push(["worst-ideas-read", WORST_IDEAS_READ_REQUEST_LIMIT]);
-    } else if (isWorstIdeasUserRead) {
-      limits.push([
-        "worst-ideas-user-read",
-        WORST_IDEAS_USER_READ_REQUEST_LIMIT,
-      ]);
-    } else if (isRoastRankingRead) {
-      limits.push(["roast-ranking-read", ROAST_RANKING_READ_REQUEST_LIMIT]);
-    } else if (isBestUsersRead) {
-      limits.push(["best-users-read", BEST_USERS_READ_REQUEST_LIMIT]);
-    } else if (
-      isRegistrationPost ||
-      isAuthPost ||
-      isAccountPost ||
-      isAccountDelete ||
-      isContactMessagePost
-    ) {
-      if (!isRefreshPost || hasRefreshCookie) {
-        limits.push([registrationScope, registrationLimit]);
-      }
-    }
-
-    for (const [scope, limit] of limits) {
-      const key = `${clientAddress}:${scope}`;
-      const current = buckets.get(key);
-      const bucket =
-        !current || current.resetAt <= now
-          ? { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS }
-          : current;
-      if (bucket.count >= limit) {
-        response.setHeader(
-          "Retry-After",
-          String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))),
-        );
-        response.status(429).json({
-          statusCode: 429,
-          message: RATE_LIMIT_MESSAGE,
-        });
-        return;
-      }
-      bucket.count += 1;
-      if (!buckets.has(key) && buckets.size >= MAX_RATE_LIMIT_BUCKETS) {
-        const oldestKey = buckets.keys().next().value;
-        if (oldestKey) buckets.delete(oldestKey);
-      }
-      buckets.set(key, bucket);
-    }
-
-    if (isLoginPost) loginAbuseProtection.recordLoginRequest(now);
-
-    if (
-      isLoginPost &&
-      loginAbuseProtection.isChallengeModeActive(now) &&
-      !loginAbuseProtection.verifyChallenge(
-        clientAddress,
-        request.get("x-login-challenge") ?? "",
-        request.get("x-login-proof") ?? "",
         now,
       )
-    ) {
-      response.status(428).json({
-        statusCode: 428,
-        code: "LOGIN_CHALLENGE_REQUIRED",
-        message: "Verifica el navegador para continuar.",
-        challenge: loginAbuseProtection.createChallenge(clientAddress, now),
-      });
+    )
       return;
-    }
+    if (
+      consumeRateLimits(
+        requestLimits(request, apiRequestLimit, sessionRefreshRequestLimit),
+        buckets,
+        clientAddress,
+        now,
+        response,
+      )
+    )
+      return;
+    if (isLoginRequest(request)) loginAbuseProtection.recordLoginRequest(now);
+    if (
+      rejectLoginChallenge(
+        request,
+        response,
+        loginAbuseProtection,
+        clientAddress,
+        now,
+      )
+    )
+      return;
 
     next();
   };

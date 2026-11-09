@@ -174,6 +174,8 @@ on_error() {
     fi
     printf 'Web container logs:\n' >&2
     "${compose[@]}" logs --no-color --tail=100 web >&2 || true
+    printf 'Migration container logs:\n' >&2
+    "${compose[@]}" logs --no-color --tail=100 migrate >&2 || true
     printf 'Proxy container logs:\n' >&2
     "${compose[@]}" logs --no-color --tail=100 proxy >&2 || true
   fi

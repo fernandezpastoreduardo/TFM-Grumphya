@@ -8,6 +8,7 @@ coverage/
 # Environment files may contain credentials. Keep every variant out of Git.
 .env
 .env.*
+!.env.sonarqube.example
 .secrets/*
 !.secrets/*.example
 example.env
@@ -19,6 +20,7 @@ test-results/
 .husky/_/
 *.log
 *.tsbuildinfo
+.scannerwork/
 apps/*/.env*
 !apps/*/.env.example
 apps/web/public/assets/.DS_Store

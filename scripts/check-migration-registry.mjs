@@ -11,9 +11,12 @@ const REGISTRY_PATH = join(
 const registry = readFileSync(REGISTRY_PATH, "utf8");
 const registeredMigrations = [
   ...registry.matchAll(
-    /\{\s*version:\s*"([^"]+)"\s*,\s*file:\s*"([^"]+\.sql)"\s*,?\s*\}/g,
+    /(?:defineMigration\(\s*"([^"]+)"\s*,\s*"([^"]+\.sql)"\s*,?\s*\)|\{\s*version:\s*"([^"]+)"\s*,\s*file:\s*"([^"]+\.sql)"\s*,?\s*\})/g,
   ),
-].map((match) => ({ version: match[1], file: match[2] }));
+].map((match) => ({
+  version: match[1] ?? match[3],
+  file: match[2] ?? match[4],
+}));
 const registeredFiles = registeredMigrations.map(({ file }) => file);
 const migrationFiles = readdirSync(MIGRATIONS_DIRECTORY)
   .filter((file) => file.endsWith(".sql"))

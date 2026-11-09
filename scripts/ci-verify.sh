@@ -12,6 +12,7 @@ if [[ "$MODE" == quality ]]; then
   export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage"
   pnpm quality:check
   node scripts/test-deploy-policy.mjs
+  node scripts/test-sonarqube-config.mjs
   node scripts/test-pre-push-hook.mjs
   bash -n docker/vps-deploy.sh scripts/test-vps-deploy.sh
   bash scripts/test-vps-deploy.sh

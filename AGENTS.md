@@ -132,7 +132,7 @@ La primera entrega incluye evaluación de ideas web/móviles, dictado por voz, d
 - Cuentas con plan Faltón activo: 11 envíos de roast al día.
 - Los contadores diarios se reinician a las 00:00 de `Europe/Madrid`, también en los cambios de horario de verano/invierno, mientras el plan siga vigente.
 - En la primera entrega la contratación se simula. La activación del plan y sus permisos se registran y comprueban en el servidor; no se procesa dinero real.
-- La rúbrica conceptual vigente se define en `agentic-guidelines/scoring-viability-software.md`; la coincidencia semántica estricta `> 0,90` se define en `agentic-guidelines/features.md`.
+- La rúbrica conceptual vigente se define en `agentic-guidelines/scoring-viability-software.md`. Para detectar una idea rechazada repetida, pgvector recupera hasta 20 candidatas cercanas sin umbral coseno fijo; el comparador semántico solo confirma coincidencia cuando coinciden finalidad y público u objeto, según `agentic-guidelines/features.md`.
 - Las ideas aprobadas (`promising`) nunca se muestran: «Humanos notables» solo publica alias y número de ideas distintas aprobadas. «Worst Ideas» publica títulos genéricos seguros y cantidades semanales de ideas rechazadas, sin autor ni texto original.
 
 **Architecture:**
@@ -538,6 +538,12 @@ pnpm lint
 - **Extracted functions** → Better readability, testability, reusability
 
 These standards ensure **first-try success** with lint and tests, maintain code quality, and follow industry best practices.
+
+## GitHub Actions: uso de minutos
+
+- No iniciar ni repetir workflows o jobs de GitHub Actions por iniciativa propia, incluido `workflow_dispatch`. Solo hacerlo si el usuario pide explícitamente ejecutar GitHub Actions.
+- Pedidos como «arregla CI», «haz push» o «verifica el cambio» no autorizan por sí solos a consumir minutos de GitHub Actions. Validar los cambios localmente e informar de lo que queda pendiente en Actions.
+- Antes de publicar, comprobar si el push disparará Actions automáticamente. Si lo hará y el usuario no ha autorizado explícitamente ese gasto, solicitar esa autorización antes del push.
 
 ## Persistent workflow aliases
 

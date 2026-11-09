@@ -1,5 +1,6 @@
 import { type Pool, type PoolClient } from "pg";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import type {
   AccountProfile,
   AccountPlanStatus,
@@ -63,7 +64,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     verificationExpiresAt: Date,
   ): Promise<PendingRegistration> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       await client.query(
         `DELETE FROM users AS expired_user
          USING pending_registrations AS expired_registration
@@ -108,7 +109,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     verificationExpiresAt: Date,
   ): Promise<PendingRegistration | null> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query<{ id: string; email: string }>(
         `UPDATE pending_registrations AS pending
          SET verification_token_hash=$2, verification_expires_at=$3,
@@ -238,7 +239,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     verifiedTokenExpiresAt: Date,
   ): Promise<VerifiedResult> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query<{
         plan_code: PlanCode;
         user_id: string;
@@ -277,7 +278,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     expiresAt: Date,
   ): Promise<ConfirmedRegistration> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const found = await client.query<{
         id: string;
         user_id: string;
@@ -344,7 +345,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     nextRefreshTokenHash: string,
   ): Promise<SessionIdentity> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const found = await client.query<{
         id: string;
         user_id: string;
@@ -435,7 +436,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     requestHash: string,
   ): Promise<boolean> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const inserted = await client.query<{ request_hash: string }>(
         `INSERT INTO approved_ideas(user_id,title,submission_hash,request_hash)
          VALUES($1,$2,$3,$4)
@@ -459,7 +460,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     idempotencyKey: string,
   ): Promise<AccountProfile | null> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const user = await client.query<{ id: string }>(
         "SELECT id FROM users WHERE id=$1 AND status='active' FOR UPDATE",
         [userId],
@@ -699,22 +700,5 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
 
   async close(): Promise<void> {
     await this.pool.end();
-  }
-
-  private async transaction<T>(
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 }

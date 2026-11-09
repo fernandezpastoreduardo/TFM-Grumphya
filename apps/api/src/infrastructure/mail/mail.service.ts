@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { isEmailAddress } from "../validation/email-address";
 import { SmtpMailTransport, type MailEnvelope } from "./smtp-mail.transport";
 
 export type MailMessage = MailEnvelope;
@@ -82,7 +83,7 @@ function validateMessage(message: MailMessage): void {
 
 function requireEmail(value: string): string {
   const email = value.trim();
-  if (!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(email)) {
+  if (!isEmailAddress(email)) {
     throw new Error("Mail address configuration is invalid.");
   }
   return email;

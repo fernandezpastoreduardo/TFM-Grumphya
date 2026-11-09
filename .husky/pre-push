@@ -4,15 +4,47 @@ set -eu
 pnpm migrations:check
 
 run_e2e=false
+main_push_sha=
+main_remote_sha=
 while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_ref" = "refs/heads/main" ]; then
+    main_remote_sha=$remote_sha
     case "$local_sha" in
-      *[!0]*) run_e2e=true ;;
+      *[!0]*) run_e2e=true; main_push_sha=$local_sha ;;
     esac
   fi
 done
 
 if [ "$run_e2e" = true ]; then
-  echo "Push a main detectado; ejecutando E2E antes de publicar."
+  head_sha=$(git rev-parse HEAD)
+  if [ "$main_push_sha" != "$head_sha" ]; then
+    echo "Push a main bloqueado: el commit enviado no coincide con HEAD analizado." >&2
+    exit 1
+  fi
+  case "$main_remote_sha" in
+    ''|*[!0]*) ;;
+    *)
+      echo "Push a main bloqueado: no hay un commit remoto de referencia para SonarQube." >&2
+      exit 1
+      ;;
+  esac
+  if ! git cat-file -e "$main_remote_sha^{commit}"; then
+    echo "Push a main bloqueado: falta el commit remoto de referencia; actualiza origin/main y reintenta." >&2
+    exit 1
+  fi
+  if ! git merge-base --is-ancestor "$main_remote_sha" "$main_push_sha"; then
+    echo "Push a main bloqueado: el commit candidato no incluye la punta remota de main." >&2
+    exit 1
+  fi
+  if [ -n "$(git status --porcelain)" ]; then
+    echo "Push a main bloqueado: el árbol de trabajo debe estar limpio para analizar el commit exacto." >&2
+    exit 1
+  fi
+  echo "Push a main detectado; ejecutando SonarQube y E2E antes de publicar."
+  SONAR_REFERENCE_SHA=$main_remote_sha pnpm sonar:verify
+  if [ "$(git rev-parse HEAD)" != "$head_sha" ]; then
+    echo "Push a main bloqueado: HEAD cambió durante el análisis de SonarQube." >&2
+    exit 1
+  fi
   pnpm test:e2e
 fi

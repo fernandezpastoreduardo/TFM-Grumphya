@@ -2,132 +2,119 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Pool } from "pg";
 
+const defineMigration = (version: string, file: string) => ({ version, file });
+
 const MIGRATIONS = [
-  { version: "001_registration", file: "001_registration.sql" },
-  { version: "002_sessions", file: "002_sessions.sql" },
-  { version: "003_registration_plans", file: "003_registration_plans.sql" },
-  {
-    version: "004_registration_lifecycle",
-    file: "004_registration_lifecycle.sql",
-  },
-  { version: "005_worst_ideas", file: "005_worst_ideas.sql" },
-  {
-    version: "006_verified_token_expiry",
-    file: "006_verified_token_expiry.sql",
-  },
-  {
-    version: "007_idempotency_request_hash",
-    file: "007_idempotency_request_hash.sql",
-  },
-  { version: "008_anonymous_usage", file: "008_anonymous_usage.sql" },
-  {
-    version: "009_account_daily_plan_usage",
-    file: "009_account_daily_plan_usage.sql",
-  },
-  { version: "010_approved_ideas", file: "010_approved_ideas.sql" },
-  {
-    version: "011_approved_idea_idempotency",
-    file: "011_approved_idea_idempotency.sql",
-  },
-  {
-    version: "012_auth_session_persistence",
-    file: "012_auth_session_persistence.sql",
-  },
-  {
-    version: "013_approved_idea_request_hash",
-    file: "013_approved_idea_request_hash.sql",
-  },
-  {
-    version: "014_ephemeral_auth_retention_indexes",
-    file: "014_ephemeral_auth_retention_indexes.sql",
-  },
-  {
-    version: "015_account_plan_usage_requests",
-    file: "015_account_plan_usage_requests.sql",
-  },
-  {
-    version: "016_auth_refresh_rotation_history",
-    file: "016_auth_refresh_rotation_history.sql",
-  },
-  {
-    version: "017_worst_ideas_rubric_score",
-    file: "017_worst_ideas_rubric_score.sql",
-  },
-  {
-    version: "018_user_rejected_ideas",
-    file: "018_user_rejected_ideas.sql",
-  },
-  {
-    version: "019_user_roast_message_count",
-    file: "019_user_roast_message_count.sql",
-  },
-  {
-    version: "020_roast_message_events",
-    file: "020_roast_message_events.sql",
-  },
-  { version: "021_user_avatar", file: "021_user_avatar.sql" },
-  { version: "022_contact_messages", file: "022_contact_messages.sql" },
-  { version: "023_admin_dashboard", file: "023_admin_dashboard.sql" },
-  {
-    version: "024_admin_ai_usage_attribution",
-    file: "024_admin_ai_usage_attribution.sql",
-  },
-  {
-    version: "025_contact_confirmation_delivery",
-    file: "025_contact_confirmation_delivery.sql",
-  },
-  {
-    version: "026_registration_verification_delivery",
-    file: "026_registration_verification_delivery.sql",
-  },
-  {
-    version: "027_password_reset_tokens",
-    file: "027_password_reset_tokens.sql",
-  },
-  {
-    version: "028_admin_contact_message_replies",
-    file: "028_admin_contact_message_replies.sql",
-  },
-  {
-    version: "029_application_error_diagnostics",
-    file: "029_application_error_diagnostics.sql",
-  },
-  {
-    version: "030_public_rankings_consent",
-    file: "030_public_rankings_consent.sql",
-  },
-  {
-    version: "031_application_error_context",
-    file: "031_application_error_context.sql",
-  },
-  {
-    version: "032_worst_ideas_all_time_ranking",
-    file: "032_worst_ideas_all_time_ranking.sql",
-  },
-  {
-    version: "033_rejected_idea_match_headline",
-    file: "033_rejected_idea_match_headline.sql",
-  },
-  {
-    version: "034_illuminado_price_retroactive",
-    file: "034_illuminado_price_retroactive.sql",
-  },
-  {
-    version: "035_admin_ai_cached_input_tokens",
-    file: "035_admin_ai_cached_input_tokens.sql",
-  },
-  {
-    version: "036_redact_application_error_context",
-    file: "036_redact_application_error_context.sql",
-  },
-  {
-    version: "037_anonymous_analytics",
-    file: "037_anonymous_analytics.sql",
-  },
-  {
-    version: "038_admin_lighthouse_quality",
-    file: "038_admin_lighthouse_quality.sql",
-  },
+  defineMigration("001_registration", "001_registration.sql"),
+  defineMigration("002_sessions", "002_sessions.sql"),
+  defineMigration("003_registration_plans", "003_registration_plans.sql"),
+  defineMigration(
+    "004_registration_lifecycle",
+    "004_registration_lifecycle.sql",
+  ),
+  defineMigration("005_worst_ideas", "005_worst_ideas.sql"),
+  defineMigration("006_verified_token_expiry", "006_verified_token_expiry.sql"),
+  defineMigration(
+    "007_idempotency_request_hash",
+    "007_idempotency_request_hash.sql",
+  ),
+  defineMigration("008_anonymous_usage", "008_anonymous_usage.sql"),
+  defineMigration(
+    "009_account_daily_plan_usage",
+    "009_account_daily_plan_usage.sql",
+  ),
+  defineMigration("010_approved_ideas", "010_approved_ideas.sql"),
+  defineMigration(
+    "011_approved_idea_idempotency",
+    "011_approved_idea_idempotency.sql",
+  ),
+  defineMigration(
+    "012_auth_session_persistence",
+    "012_auth_session_persistence.sql",
+  ),
+  defineMigration(
+    "013_approved_idea_request_hash",
+    "013_approved_idea_request_hash.sql",
+  ),
+  defineMigration(
+    "014_ephemeral_auth_retention_indexes",
+    "014_ephemeral_auth_retention_indexes.sql",
+  ),
+  defineMigration(
+    "015_account_plan_usage_requests",
+    "015_account_plan_usage_requests.sql",
+  ),
+  defineMigration(
+    "016_auth_refresh_rotation_history",
+    "016_auth_refresh_rotation_history.sql",
+  ),
+  defineMigration(
+    "017_worst_ideas_rubric_score",
+    "017_worst_ideas_rubric_score.sql",
+  ),
+  defineMigration("018_user_rejected_ideas", "018_user_rejected_ideas.sql"),
+  defineMigration(
+    "019_user_roast_message_count",
+    "019_user_roast_message_count.sql",
+  ),
+  defineMigration("020_roast_message_events", "020_roast_message_events.sql"),
+  defineMigration("021_user_avatar", "021_user_avatar.sql"),
+  defineMigration("022_contact_messages", "022_contact_messages.sql"),
+  defineMigration("023_admin_dashboard", "023_admin_dashboard.sql"),
+  defineMigration(
+    "024_admin_ai_usage_attribution",
+    "024_admin_ai_usage_attribution.sql",
+  ),
+  defineMigration(
+    "025_contact_confirmation_delivery",
+    "025_contact_confirmation_delivery.sql",
+  ),
+  defineMigration(
+    "026_registration_verification_delivery",
+    "026_registration_verification_delivery.sql",
+  ),
+  defineMigration("027_password_reset_tokens", "027_password_reset_tokens.sql"),
+  defineMigration(
+    "028_admin_contact_message_replies",
+    "028_admin_contact_message_replies.sql",
+  ),
+  defineMigration(
+    "029_application_error_diagnostics",
+    "029_application_error_diagnostics.sql",
+  ),
+  defineMigration(
+    "030_public_rankings_consent",
+    "030_public_rankings_consent.sql",
+  ),
+  defineMigration(
+    "031_application_error_context",
+    "031_application_error_context.sql",
+  ),
+  defineMigration(
+    "032_worst_ideas_all_time_ranking",
+    "032_worst_ideas_all_time_ranking.sql",
+  ),
+  defineMigration(
+    "033_rejected_idea_match_headline",
+    "033_rejected_idea_match_headline.sql",
+  ),
+  defineMigration(
+    "034_illuminado_price_retroactive",
+    "034_illuminado_price_retroactive.sql",
+  ),
+  defineMigration(
+    "035_admin_ai_cached_input_tokens",
+    "035_admin_ai_cached_input_tokens.sql",
+  ),
+  defineMigration(
+    "036_redact_application_error_context",
+    "036_redact_application_error_context.sql",
+  ),
+  defineMigration("037_anonymous_analytics", "037_anonymous_analytics.sql"),
+  defineMigration(
+    "038_admin_lighthouse_quality",
+    "038_admin_lighthouse_quality.sql",
+  ),
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

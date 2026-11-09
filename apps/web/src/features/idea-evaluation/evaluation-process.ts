@@ -2,6 +2,7 @@ import {
   authenticatedFetch,
   getAccessToken,
 } from "../../infrastructure/auth/session";
+import { containsEmailAddress } from "../../shared/utils/email-address";
 
 export type EvaluationStatus =
   | "RECHAZADA"
@@ -101,7 +102,6 @@ const PUBLIC_FAILED_CRITERION_COPY_SET = new Set<string>(
 );
 const SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN =
   /^[\p{L}\p{N}][\p{L}\p{N} .&'’()+_-]*$/u;
-const PUBLIC_EMAIL_PATTERN = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/u;
 const PUBLIC_URL_PATTERN = /(?:https?:\/\/|www\.)\S+/iu;
 const PUBLIC_PHONE_PATTERN = /(?:\+?\d[\d ()-]{7,}\d)/u;
 const PUBLIC_CONTROL_PATTERN = /[\p{Cc}\p{Cf}]/u;
@@ -119,7 +119,7 @@ export function getPublicExistingProductExample(
     value.toLowerCase() === "null" ||
     value.toLowerCase() === "undefined" ||
     !SAFE_PUBLIC_PRODUCT_EXAMPLE_PATTERN.test(value) ||
-    PUBLIC_EMAIL_PATTERN.test(value) ||
+    containsEmailAddress(value) ||
     PUBLIC_URL_PATTERN.test(value) ||
     PUBLIC_PHONE_PATTERN.test(value) ||
     PUBLIC_CONTROL_PATTERN.test(value)
@@ -186,28 +186,56 @@ function parseFailedCriteria(value: unknown): string[] | null {
   return criteria;
 }
 
+type ValidEvaluationCore = {
+  status: EvaluationStatus;
+  score: number | null;
+  headline: string;
+  message: string;
+};
+
+function isValidEvaluationText(
+  status: EvaluationStatus,
+  headline: unknown,
+  message: unknown,
+): headline is string {
+  return (
+    typeof headline === "string" &&
+    headline.trim().length > 0 &&
+    headline.length <= MAX_PUBLIC_HEADLINE_LENGTH &&
+    typeof message === "string" &&
+    message.trim().length > 0 &&
+    message.length <=
+      (status === "RECHAZADA"
+        ? MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
+        : MAX_PUBLIC_MESSAGE_LENGTH)
+  );
+}
+
+function isValidEvaluationScore(
+  status: EvaluationStatus,
+  score: unknown,
+): score is number | null {
+  return (
+    isValidPublicScore(score) &&
+    (status === "IDEA_INSUFICIENTE" ? score === null : score !== null)
+  );
+}
+
+function isValidEvaluationCore(
+  input: Record<string, unknown>,
+): input is Record<string, unknown> & ValidEvaluationCore {
+  return (
+    isEvaluationStatus(input.status) &&
+    isValidEvaluationScore(input.status, input.score) &&
+    isValidEvaluationText(input.status, input.headline, input.message)
+  );
+}
+
 function parseEvaluationResponse(
   input: unknown,
 ): EvaluationProcessResult | null {
-  if (!isRecord(input)) return null;
+  if (!isRecord(input) || !isValidEvaluationCore(input)) return null;
   const { status, score, headline, message } = input;
-  if (
-    !isEvaluationStatus(status) ||
-    !isValidPublicScore(score) ||
-    typeof headline !== "string" ||
-    headline.trim().length === 0 ||
-    headline.length > MAX_PUBLIC_HEADLINE_LENGTH ||
-    typeof message !== "string" ||
-    message.trim().length === 0 ||
-    message.length >
-      (status === "RECHAZADA"
-        ? MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
-        : MAX_PUBLIC_MESSAGE_LENGTH) ||
-    (status === "IDEA_INSUFICIENTE" && score !== null) ||
-    (status !== "IDEA_INSUFICIENTE" && score === null)
-  ) {
-    return null;
-  }
   const existingProductExample = getPublicExistingProductExample(
     input.existingProductExample,
     status,
@@ -222,13 +250,7 @@ function parseEvaluationResponse(
 
   let safeTitle: string | undefined;
   if (status === "RECHAZADA") {
-    if (
-      typeof input.safeTitle !== "string" ||
-      input.safeTitle.trim().length < MIN_PUBLIC_SAFE_TITLE_LENGTH ||
-      input.safeTitle.length > MAX_PUBLIC_SAFE_TITLE_LENGTH
-    ) {
-      return null;
-    }
+    if (!isValidPublicSafeTitle(input.safeTitle)) return null;
     safeTitle = input.safeTitle.trim();
   }
 
@@ -243,73 +265,93 @@ function parseEvaluationResponse(
   };
 }
 
-function parseSubmissionResponse(
-  input: unknown,
-): EvaluationSubmissionResult | null {
-  if (!isRecord(input)) return null;
-  if (input.status === "special_case") {
+function isValidPublicSafeTitle(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim().length >= MIN_PUBLIC_SAFE_TITLE_LENGTH &&
+    value.length <= MAX_PUBLIC_SAFE_TITLE_LENGTH
+  );
+}
+
+function parseSpecialCaseResponse(
+  input: Record<string, unknown>,
+): SpecialIdeaCaseResult | null {
+  if (
+    !isSpecialIdeaCaseId(input.caseId) ||
+    typeof input.title !== "string" ||
+    input.title.trim().length === 0 ||
+    input.title.length > 120 ||
+    typeof input.message !== "string" ||
+    input.message.trim().length === 0 ||
+    input.message.length > MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
+  ) {
+    return null;
+  }
+  if (input.action !== undefined) {
     if (
-      !isSpecialIdeaCaseId(input.caseId) ||
-      typeof input.title !== "string" ||
-      input.title.trim().length === 0 ||
-      input.title.length > 120 ||
-      typeof input.message !== "string" ||
-      input.message.trim().length === 0 ||
-      input.message.length > MAX_PUBLIC_REJECTION_MESSAGE_LENGTH
+      input.caseId !== "insult" ||
+      !isRecord(input.action) ||
+      input.action.label !== "Me atrevo" ||
+      input.action.href !== "/descargate"
     ) {
       return null;
     }
-    if (input.action !== undefined) {
-      if (
-        input.caseId !== "insult" ||
-        !isRecord(input.action) ||
-        input.action.label !== "Me atrevo" ||
-        input.action.href !== "/descargate"
-      ) {
-        return null;
-      }
-      return {
-        status: "special_case",
-        caseId: input.caseId,
-        title: input.title.trim(),
-        message: input.message.trim(),
-        action: { label: "Me atrevo", href: "/descargate" },
-      };
-    }
-    if (input.caseId === "insult") return null;
     return {
       status: "special_case",
       caseId: input.caseId,
       title: input.title.trim(),
       message: input.message.trim(),
+      action: { label: "Me atrevo", href: "/descargate" },
     };
   }
-  if (input.status === "similar_idea_match") {
-    if (
-      typeof input.headline !== "string" ||
-      input.headline.trim() !== input.headline ||
-      input.headline.length < 4 ||
-      input.headline.length > MAX_PUBLIC_HEADLINE_LENGTH ||
-      /[\p{Cc}\p{Cf}]/u.test(input.headline) ||
-      /\bC(?:0[1-9]|10)\b/iu.test(input.headline) ||
-      /(?:https?:\/\/|www\.)|\b[^\s@]+@[^\s@]+\.[^\s@]+\b/iu.test(
-        input.headline,
-      ) ||
-      typeof input.safeTitle !== "string" ||
-      input.safeTitle.trim().length < MIN_PUBLIC_SAFE_TITLE_LENGTH ||
-      input.safeTitle.length > MAX_PUBLIC_SAFE_TITLE_LENGTH ||
-      !Number.isSafeInteger(input.submissionCount) ||
-      (input.submissionCount as number) < 1
-    ) {
-      return null;
-    }
-    return {
-      status: "similar_idea_match",
-      headline: input.headline,
-      safeTitle: input.safeTitle.trim(),
-      submissionCount: input.submissionCount as number,
-    };
+  if (input.caseId === "insult") return null;
+  return {
+    status: "special_case",
+    caseId: input.caseId,
+    title: input.title.trim(),
+    message: input.message.trim(),
+  };
+}
+
+function isValidSimilarHeadline(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim() === value &&
+    value.length >= 4 &&
+    value.length <= MAX_PUBLIC_HEADLINE_LENGTH &&
+    !/[\p{Cc}\p{Cf}]/u.test(value) &&
+    !/\bC(?:0[1-9]|10)\b/iu.test(value) &&
+    !/(?:https?:\/\/|www\.)/iu.test(value) &&
+    !containsEmailAddress(value)
+  );
+}
+
+function parseSimilarIdeaResponse(
+  input: Record<string, unknown>,
+): SimilarIdeaMatchResult | null {
+  if (
+    !isValidSimilarHeadline(input.headline) ||
+    !isValidPublicSafeTitle(input.safeTitle) ||
+    !Number.isSafeInteger(input.submissionCount) ||
+    (input.submissionCount as number) < 1
+  ) {
+    return null;
   }
+  return {
+    status: "similar_idea_match",
+    headline: input.headline,
+    safeTitle: input.safeTitle.trim(),
+    submissionCount: input.submissionCount as number,
+  };
+}
+
+function parseSubmissionResponse(
+  input: unknown,
+): EvaluationSubmissionResult | null {
+  if (!isRecord(input)) return null;
+  if (input.status === "special_case") return parseSpecialCaseResponse(input);
+  if (input.status === "similar_idea_match")
+    return parseSimilarIdeaResponse(input);
   if (input.status !== "evaluated") return null;
   return parseEvaluationResponse(input.result);
 }

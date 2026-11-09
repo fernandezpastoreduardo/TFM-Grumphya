@@ -13,6 +13,9 @@ const IMAGE_PROBE = String.raw`
 const { createRequire } = require("node:module");
 const { existsSync, readdirSync } = require("node:fs");
 const requireFromApp = createRequire("/workspace/apps/api/package.json");
+requireFromApp("reflect-metadata");
+const { NestFactory } = requireFromApp("@nestjs/core");
+const { AuthSecurityModule } = requireFromApp("/workspace/apps/api/dist/infrastructure/auth/auth-security.module.js");
 const runtimeDependencies = ["@nestjs/core", "bcryptjs", "pg", "sharp"];
 const packageManagers = [
   "/usr/local/bin/npm",
@@ -25,14 +28,27 @@ const packageManagers = [
 ];
 const migrationsDirectory = "/workspace/apps/api/migrations";
 const migrationFiles = readdirSync(migrationsDirectory).filter((file) => file.endsWith(".sql"));
-const result = {
-  nodeEnv: process.env.NODE_ENV,
-  uid: process.getuid?.(),
-  dependencies: runtimeDependencies.map((dependency) => [dependency, requireFromApp.resolve(dependency)]),
-  migrationCount: migrationFiles.length,
-  packageManagersPresent: packageManagers.filter(existsSync),
-};
-process.stdout.write(JSON.stringify(result));
+const imageNodeEnv = process.env.NODE_ENV;
+process.env.NODE_ENV = "development";
+NestFactory.createApplicationContext(AuthSecurityModule, { logger: false, abortOnError: false })
+  .then(async (app) => {
+    await app.close();
+    if (imageNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = imageNodeEnv;
+    const result = {
+      nodeEnv: imageNodeEnv,
+      uid: process.getuid?.(),
+      dependencies: runtimeDependencies.map((dependency) => [dependency, requireFromApp.resolve(dependency)]),
+      migrationCount: migrationFiles.length,
+      packageManagersPresent: packageManagers.filter(existsSync),
+      authModuleBootstrapped: true,
+    };
+    process.stdout.write(JSON.stringify(result));
+  })
+  .catch(() => {
+    process.stderr.write("The compiled authentication module failed to bootstrap.\n");
+    process.exit(1);
+  });
 `;
 
 let output;
@@ -73,6 +89,7 @@ const hasImageContractShape =
       dependency.every((value) => typeof value === "string"),
   ) &&
   Number.isInteger(imageContract.migrationCount) &&
+  imageContract.authModuleBootstrapped === true &&
   Array.isArray(imageContract.packageManagersPresent) &&
   imageContract.packageManagersPresent.every(
     (path) => typeof path === "string",

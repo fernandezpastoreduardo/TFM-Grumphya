@@ -1,5 +1,6 @@
-import { type Pool, type PoolClient } from "pg";
+import { type Pool } from "pg";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 import type { UserDeleteRepository } from "./user-delete.models";
 import { LocalUserAvatarStorage } from "../user-avatar/local-user-avatar.storage";
@@ -19,7 +20,7 @@ export class PostgresUserDeleteRepository implements UserDeleteRepository {
     await this.ensureSchema();
     const rollbackState: { avatarBackup?: { key: string; image: Buffer } } = {};
     try {
-      return await this.transaction(async (client) => {
+      return await withTransaction(this.pool, async (client) => {
         const lockedUser = await client.query<{
           id: string;
           avatar_key: string | null;
@@ -71,20 +72,5 @@ export class PostgresUserDeleteRepository implements UserDeleteRepository {
   private async ensureSchema(): Promise<void> {
     this.ready ??= runMigrations(this.pool);
     await this.ready;
-  }
-
-  private async transaction<T>(operation: (client: PoolClient) => Promise<T>) {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 }
