@@ -218,24 +218,28 @@ dispositivos (móvil y escritorio). Cada resultado corresponde a tres
 ejecuciones y contiene commit, fecha, puntuaciones de categoría y métricas LCP,
 CLS, TBT y Speed Index. La vista aclara que no son Core Web Vitals de campo.
 
-CI publica el resumen allowlisted mediante
+Tras desplegar, CI publica el resumen allowlisted mediante
 `POST /api/internal/lighthouse-quality/ingest`, autenticado con Bearer token.
-La publicación solo se habilita en el `workflow_dispatch` confiable desde
-`main`, cuando `github.actor` y `github.triggering_actor` son
+El laboratorio pasa solo ese resumen como salida temporal del job, sin
+artefactos. La publicación solo se habilita en el `workflow_dispatch` aprobado
+desde `main`, cuando `github.actor` y `github.triggering_actor` son
 `fernandezpastoreduardo`. Para activarla, configura los secretos de Actions
-`LIGHTHOUSE_INGEST_URL` (URL HTTPS completa del endpoint) y
+`LIGHTHOUSE_INGEST_URL` (exactamente
+`https://<PRODUCTION_DOMAIN>/api/internal/lighthouse-quality/ingest`) y
 `LIGHTHOUSE_INGEST_TOKEN`, y configura el mismo token Base64URL, de al menos
 32 caracteres (se recomiendan 32 bytes aleatorios codificados en Base64URL),
 como `QUALITY_METRICS_INGEST_TOKEN` en el secreto runtime de la API
 (`grumphya_env`). Despliega también la migración y la versión de API/web que
 incluyen la función. Si faltan los secretos de Actions, el job omite la
-publicación y conserva el artefacto normal de CI.
+publicación; si su formato no es válido o el endpoint falla, emite un aviso sin
+invalidar el despliegue.
 
 La base conserva resultados por commit/página/dispositivo y la purga horaria
 elimina los que superan 90 días. El reporte es enteramente sintético: no añade
 cookies ni instrumentación de visitantes, y no recoge IPs, sesiones o
-visitantes únicos. Los informes Lighthouse completos siguen disponibles como
-artefactos de GitHub Actions durante siete días, según [`ci-cd.md`](ci-cd.md).
+visitantes únicos. Los informes Lighthouse completos solo existen durante el
+job de laboratorio; no se suben como artefactos de GitHub Actions, según
+[`ci-cd.md`](ci-cd.md).
 
 - Contacto: hasta 100 mensajes recientes, con alias, correo, asunto, contenido,
   fecha y estado de confirmación/respuesta. El contenido no se escribe en logs.

@@ -170,15 +170,17 @@ Haz primero la instalación y una puesta en marcha manual siguiendo las seccione
 
 5. En **Settings → Secrets and variables → Actions**, crea estos secretos:
 
-   | Secreto                      | Contenido                                                    |
-   | ---------------------------- | ------------------------------------------------------------ |
-   | `PRODUCTION_SSH_HOST`        | Host o IP pública del VPS                                    |
-   | `PRODUCTION_SSH_USER`        | Usuario SSH dedicado (`grumphya-deploy`)                     |
-   | `PRODUCTION_SSH_PRIVATE_KEY` | Clave privada Ed25519 exclusiva de Actions                   |
-   | `PRODUCTION_SSH_KNOWN_HOSTS` | Línea `known_hosts` cuya huella contrastaste fuera de banda  |
-   | `OPENAI_API_KEY`             | Clave de OpenAI para el smoke sintético previo al despliegue |
+   | Secreto                      | Contenido                                                                       |
+   | ---------------------------- | ------------------------------------------------------------------------------- |
+   | `PRODUCTION_SSH_HOST`        | Host o IP pública del VPS                                                       |
+   | `PRODUCTION_SSH_USER`        | Usuario SSH dedicado (`grumphya-deploy`)                                        |
+   | `PRODUCTION_SSH_PRIVATE_KEY` | Clave privada Ed25519 exclusiva de Actions                                      |
+   | `PRODUCTION_SSH_KNOWN_HOSTS` | Línea `known_hosts` cuya huella contrastaste fuera de banda                     |
+   | `OPENAI_API_KEY`             | Clave de OpenAI para el smoke sintético previo al despliegue                    |
+   | `LIGHTHOUSE_INGEST_URL`      | `https://<PRODUCTION_DOMAIN>/api/internal/lighthouse-quality/ingest` (opcional) |
+   | `LIGHTHOUSE_INGEST_TOKEN`    | Token Base64URL de ingesta sintética, igual al de `grumphya_env` (opcional)     |
 
-   `OPENAI_API_KEY` es la única excepción: Actions la usa solo en el smoke sintético condicionado a una ejecución manual autorizada desde `main` que confirme el despliegue. No se pasa a los jobs de pull request ni al contenedor desplegado. La clave de runtime de OpenAI, junto con las credenciales de PostgreSQL y SMTP, permanece exclusivamente en `.secrets/` del VPS.
+   Actions usa `OPENAI_API_KEY` solo en el smoke sintético condicionado a una ejecución manual autorizada desde `main` que confirme el despliegue. No se pasa a los jobs de pull request ni al contenedor desplegado. La clave de runtime de OpenAI, junto con las credenciales de PostgreSQL y SMTP, permanece exclusivamente en `.secrets/` del VPS. El token Lighthouse solo llega al job opcional de ingesta posterior a un despliegue autorizado y debe coincidir con `QUALITY_METRICS_INGEST_TOKEN` del VPS; el laboratorio no lo recibe. El job exige que la URL coincida exactamente con el endpoint del dominio `PRODUCTION_DOMAIN` antes de enviar la cabecera Bearer. Para rotarlo, actualiza ambos extremos sin mostrar el valor, conserva los permisos privados de `grumphya_env` y publica una nueva release para que la API cargue el secreto. Una rotación por sí sola no activa el endpoint si la release actual aún no lo contiene; verifica después la ingesta y la pestaña **Calidad web**.
 
 6. Crea estas variables de Actions:
 
@@ -195,6 +197,8 @@ La clave de host se fija en `known_hosts` y SSH usa `StrictHostKeyChecking=yes`,
 Al iniciar manualmente el workflow desde `main` con la confirmación marcada, `quality-and-e2e`, `e2e` y `dependency-audit` corren en paralelo. `supply-chain` solo comienza si los tres pasan. Compose construye API, web estática, PostgreSQL/pgvector y Caddy en paralelo con tags derivados de `github.sha`, y Trivy escanea cada imagen. El job empaqueta esas mismas imágenes y las envía al VPS; no reconstruye ni descarga tags mutables. En Compose, `PROXY_IMAGE` selecciona la imagen Caddy escaneada y el helper arranca la release con `--no-build`. El arranque manual sin `PROXY_IMAGE` usa `grumphya-proxy:production` y construye el proxy desde `docker/Caddy.Dockerfile`. El archivo de Actions anterior se generaba solo después de desplegar y validar la versión nueva, así que los fallos previos de CI ya dejaban cero artefactos de release. Se elimina ese archivo igualmente: el VPS conserva las dos releases necesarias para operar y hacer rollback, mientras que las copias de Actions ocupaban cuota redundante y podían convertir una publicación sana en un run fallido.
 
 Si el último job de Actions falla durante las comprobaciones públicas, comprueba `https://<tu-dominio>/api/health` y `https://<tu-dominio>/build.json`. Si ambos anuncian el SHA del run y la salud indica `status: ok`, la publicación está activa; el helper restaura automáticamente la versión anterior cuando falla el healthcheck local del VPS. Actions ya no sube bundles, por lo que un problema de cuota de artefactos no puede fallar después de una publicación sana.
+
+En un reintento, si el preflight encuentra que el SHA solicitado ya es el activo, Actions comprueba los endpoints públicos sin transferir el bundle ni recrear servicios. Una comprobación pública fallida de esa release preexistente no solicita rollback automáticamente: investiga la causa y consulta el SHA activo antes de intervenir. La ingesta Lighthouse es opcional; una URL o token inválidos, o un endpoint inaccesible, generan un aviso sin invalidar una publicación sana. Revisa ese aviso por separado si el panel sigue sin resultados.
 
 La etapa de despliegue está dentro de `supply-chain` y solo se ejecuta en un `workflow_dispatch` autorizado desde `main`, con la confirmación manual marcada y `PRODUCTION_DEPLOY_ENABLED=true`. `supply-chain` depende de `quality-and-e2e`, `e2e` y `dependency-audit`, por lo que espera a la calidad, las pruebas de navegador y las auditorías. Los pull requests, otras ramas, fallos y variable ausente/desactivada no acceden a secretos SSH. El job final `deploy-production` solo confirma que el flujo integrado terminó con éxito. La concurrencia no cancela un run en curso; además, el helper del VPS usa un lock para excluir ejecuciones simultáneas.
 

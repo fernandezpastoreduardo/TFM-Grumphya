@@ -5,7 +5,7 @@
 El job `performance-lab` construye la web de producción y mide Inicio, Precios y
 Peores ideas en móvil y escritorio con Lighthouse CI y Chromium local de
 Playwright. La ejecución usa tres repeticiones por ruta y dispositivo; guarda
-los informes como artefacto de GitHub Actions durante siete días. No visita
+los informes solo durante el job. No visita
 producción ni envía mediciones de personas usuarias, y no instala RUM, cookies o
 SDKs de analítica. Evalúa las categorías de Lighthouse y usa umbrales iniciales
 de aviso para puntuación, LCP (4,5 s) y CLS (0,25), no gates, hasta revisar la
@@ -15,19 +15,25 @@ no representan Core Web Vitals de campo ni sustituyen datos RUM. `@lhci/cli`
 está fijado como dependencia de desarrollo exacta y su árbol queda en
 `pnpm-lock.yaml`.
 
-El resumen allowlisted se publica en el panel con un `POST` a
-`/api/internal/lighthouse-quality/ingest`. CI solo ejecuta este paso cuando el
-evento es `workflow_dispatch`, la rama es `main` y tanto `github.actor` como
-`github.triggering_actor` son `fernandezpastoreduardo`. Configura los secretos
-de Actions `LIGHTHOUSE_INGEST_URL` (URL HTTPS completa del endpoint) y
+El laboratorio entrega únicamente el resumen allowlisted como salida temporal
+del job, sin artefactos. Después de que `supply-chain` confirme el despliegue,
+un job posterior lo publica en el panel con un `POST` a
+`/api/internal/lighthouse-quality/ingest`. CI solo ejecuta esta publicación
+cuando el evento es `workflow_dispatch` con despliegue aprobado, la rama es
+`main` y tanto `github.actor` como `github.triggering_actor` son
+`fernandezpastoreduardo`. Configura los secretos
+de Actions `LIGHTHOUSE_INGEST_URL` (exactamente
+`https://<PRODUCTION_DOMAIN>/api/internal/lighthouse-quality/ingest`) y
 `LIGHTHOUSE_INGEST_TOKEN`; el token debe coincidir con
 `QUALITY_METRICS_INGEST_TOKEN` en el secreto runtime `grumphya_env` de la API y
 ser Base64URL de al menos 32 caracteres. Se recomiendan 32 bytes aleatorios
 codificados en Base64URL. Este formato funciona con la cabecera Bearer que
-construye el workflow. No se envía el secreto a jobs de pull request ni al
-navegador. Si faltan los secretos de Actions, la publicación se omite sin
-fallar el laboratorio; los informes completos no se suben ni se conservan como
-artefactos de Actions.
+construye el workflow. El laboratorio no recibe el token; se entrega solo al
+paso posterior autorizado. No se envía el secreto a jobs de pull request ni al
+navegador. Si faltan los secretos de Actions, su formato no es válido o el
+endpoint no responde, la publicación opcional se omite con un aviso sin hacer
+fallar el laboratorio ni el despliegue. Los informes completos no se suben ni
+se conservan como artefactos de Actions.
 
 El script de resumen conserva solo commit, fecha, una ruta y dispositivo de
 listas cerradas, cantidad de muestras, puntuaciones de categorías y métricas
@@ -37,9 +43,7 @@ Tras desplegar la API/web y aplicar la migración, Jappy puede consultar
 `GET /api/admin/web-quality` en la pestaña **Calidad web** de `/panel-control`.
 La respuesta contiene hasta seis resúmenes: el más reciente para cada una de
 tres rutas y dos dispositivos. `DataRetentionService` ejecuta la purga cada
-hora y elimina resultados de más de 90 días. El artefacto
-`lighthouse-lab-${{ github.sha }}` con informes completos se mantiene aparte
-durante siete días.
+hora y elimina resultados de más de 90 días.
 
 El incidente del 28 de octubre de 2026 —recuperación SSH del VPS, actualización del helper y excepción restringida para la migración `034`— está documentado en [recuperación de acceso y despliegue](incident-vps-access-and-deployment-2026-10.md).
 
@@ -57,7 +61,22 @@ El Dockerfile separa las etapas `development` y `production`. Docker Compose sel
 
 El job `dependency-audit` empieza en paralelo con calidad y E2E, para detectar pronto fallos de auditoría. Ejecuta `pnpm audit --audit-level moderate` para todo el workspace y `pnpm audit --prod --audit-level high` para dependencias de producción. Trivy analiza las cuatro imágenes finales (API, web, PostgreSQL y Caddy) con severidad alta/crítica e `ignore-unfixed`. Durante el build paralelo de imágenes, una descarga única obtiene la base de vulnerabilidades de Trivy para reutilizarla en los análisis; la base Java se omite porque estos escaneos solo usan el detector `vuln`. Después, Trivy analiza las imágenes de una en una y reutiliza la misma caché local. El escaneo secuencial limita el espacio temporal usado al exportar capas de Docker; cada análisis conserva su propio registro y el job falla si cualquiera devuelve un error o detecta vulnerabilidades que superen el umbral. `--skip-version-check` y `--disable-telemetry` se usan juntas para suprimir el aviso de versión y desactivar las llamadas opcionales a `check.trivy.dev`, sin cambiar los resultados ni el umbral del análisis. El job `supply-chain` configura Buildx y selecciona su builder con `BUILDX_BUILDER`, compatible con las versiones de Compose del runner, y construye las cuatro imágenes en paralelo con `docker compose --parallel 4 ... build`; las etiquetas llevan el SHA del commit. Un override temporal habilita la caché remota de BuildKit solo para el build de Caddy, que es la parte lenta; el contexto de Compose de producción no cambia. La caché usa el backend `type=gha`, no crea artefactos de Actions ni cambia el bundle publicado, y su exportación está marcada `ignore-error=true`: si GitHub no permite guardar la caché, el build sigue siendo válido y solo tardará más la siguiente vez. La descarga de la base de Trivy sigue en paralelo con el build. Después escanea las imágenes construidas y arranca exactamente esas mismas imágenes con `compose.production.yaml`, CA y certificados efímeros, secretos ficticios y volúmenes de prueba exclusivos del run. El smoke comprueba TLS de servidor entre Caddy y ambos upstreams, con verificación de CA y hostname, TLS `verify-full` entre API y PostgreSQL, rechazo de conexiones PostgreSQL sin TLS, HTTPS local en Caddy, `/api/health`, pgvector, `NODE_ENV=production`, que API y PostgreSQL no publiquen puertos y que PostgreSQL y avatares sobrevivan a recrear servicios. También comprueba que `/desarrollo-seguro` redirija con 308 y `Location: /desarrollo-seguro/` relativo; que `/desarrollo-seguro/` sirva el prototipo estático esperado, con su único script del mismo origen y CSP aplicada y `Cache-Control: no-cache`; que la hoja de estilos exista con `Cache-Control: no-cache`; y que una ruta inexistente dentro del prototipo devuelva 404. El smoke comprueba además que `/crear-cuenta` y `/crear-cuenta/planes` respondan `200` sin `Location` a través de Caddy; así detecta una redirección accidental al host interno `web:8443` causada por el directorio prerenderizado. Estas son comprobaciones locales de las imágenes del run, no una validación del despliegue público. El healthcheck de `web` consulta ahora `/` por HTTPS a Nginx y valida la CA y el hostname `web`; el smoke mantiene además la comprobación de `/` a través de Caddy, que cubre el recorrido público. Si el smoke falla, conserva en la salida de Actions el estado de Compose, los estados de salud de base de datos, API y web, y los últimos 100 registros de web, migración y proxy. No publica registros sin filtrar de la API ni de la base de datos. No llama a OpenAI ni a SMTP. La limpieza elimina únicamente los volúmenes etiquetados para la prueba; nunca ejecuta `down -v` ni `volume prune`. La imagen web ejecuta `nginx -t` durante su construcción. La imagen PostgreSQL conserva Debian Bookworm para no cambiar la plataforma del volumen existente, actualiza paquetes y recompila `gosu` 1.19 con Go 1.27.3. Caddy 2.11.7 se recompila con Go 1.27.3 y `golang.org/x/net` 0.62.0; la imagen final actualiza Alpine. Las versiones fuente se fijan a commits exactos y el escaneo no excluye archivos ni tipos de vulnerabilidad. Las etapas de compilación no entran en las imágenes finales. Dependabot propone actualizaciones semanales de dependencias y acciones. Ignora TypeScript `>=7.0.0` mientras el parser `typescript-eslint` no declare soporte para esa versión.
 
-Los pull requests ejecutan las comprobaciones de CI. Un push a `main` no inicia Actions: el despliegue se solicita manualmente desde la pestaña Actions, seleccionando `main` y confirmando `approve_production_deploy`. Solo `fernandezpastoreduardo` puede iniciar el flujo o volver a ejecutar un run. También se requiere `PRODUCTION_DEPLOY_ENABLED=true` y los secretos SSH del VPS. `quality-and-e2e`, `e2e` y `dependency-audit` corren en paralelo; `supply-chain` espera a que los tres pasen. Dentro de `supply-chain`, Buildx compila en paralelo las imágenes etiquetadas por SHA mientras Trivy descarga una vez su base de vulnerabilidades; la caché GitHub de BuildKit se limita a Caddy. Después, Trivy analiza las imágenes secuencialmente con la misma caché de vulnerabilidades, lo que reduce el espacio temporal requerido para exportar capas. `--skip-version-check` y `--disable-telemetry` se usan juntas para suprimir el aviso de versión y desactivar las llamadas opcionales a `check.trivy.dev`, sin cambiar los resultados del escaneo. El smoke valida esas mismas imágenes. En la vista del job se distinguen ahora `Save scanned release images`, `Assemble production release bundle`, `Preflight production deployment` y `Deploy and verify`; el helper del VPS registra hitos al recibir/verificar el bundle, validar migraciones y configuración, cargar imágenes y comenzar la actualización de Compose. El job empaqueta el bundle y lo envía al VPS sin reconstruir ni descargar tags mutables. Actions ya no sube el bundle a GitHub: antes solo lo archivaba después de desplegar y comprobar públicamente una versión sana, de modo que no consumía cuota cuando CI fallaba, pero retenía copias grandes redundantes y podía hacer que una publicación ya activa apareciera como fallida si se agotaba la cuota. Para Caddy, Compose usa `docker/Caddy.Dockerfile`, que recompila el binario parcheado y actualiza Alpine; `PROXY_IMAGE` apunta a la imagen escaneada y el helper arranca con `--no-build`. El helper root-owned valida el paquete y las migraciones, conserva la release anterior, espera healthchecks y permite rollback. No hay publicación a un registry. Consulta [production.md](production.md) para prerrequisitos, permisos SSH/sudoers, huella del host, activación y límites operativos. Los tests de CI cubren políticas, seguridad de contenedores, arranque con imágenes/datos desechables y rollback simulado. Los jobs `quality-and-e2e`, `e2e`, `dependency-audit`, `supply-chain` y `deploy-production` permiten distinguir fallos de calidad, navegador, auditoría, imagen y publicación en Actions. Todas las GitHub Actions están fijadas a SHA inmutables con etiquetas legibles; Dependabot propone actualizaciones semanales. Trivy `v0.76.0` se instala mediante `aquasecurity/setup-trivy` `v0.3.1`, fijado por SHA.
+Los pull requests ejecutan las comprobaciones de CI. Un push a `main` no inicia Actions: el despliegue se solicita manualmente desde la pestaña Actions, seleccionando `main` y confirmando `approve_production_deploy`. Solo `fernandezpastoreduardo` puede iniciar el flujo o volver a ejecutar un run. También se requiere `PRODUCTION_DEPLOY_ENABLED=true` y los secretos SSH del VPS. `quality-and-e2e`, `e2e` y `dependency-audit` corren en paralelo; `supply-chain` espera a que los tres pasen. Dentro de `supply-chain`, Buildx compila en paralelo las imágenes etiquetadas por SHA mientras Trivy descarga una vez su base de vulnerabilidades; la caché GitHub de BuildKit se limita a Caddy. Después, Trivy analiza las imágenes secuencialmente con la misma caché de vulnerabilidades, lo que reduce el espacio temporal requerido para exportar capas. `--skip-version-check` y `--disable-telemetry` se usan juntas para suprimir el aviso de versión y desactivar las llamadas opcionales a `check.trivy.dev`, sin cambiar los resultados del escaneo. El smoke valida esas mismas imágenes. En la vista del job se distinguen ahora `Save scanned release images`, `Assemble production release bundle`, `Preflight production deployment` y `Deploy and verify`; el helper del VPS registra hitos al recibir/verificar el bundle, validar migraciones y configuración, cargar imágenes y comenzar la actualización de Compose. El job empaqueta el bundle y lo envía al VPS sin reconstruir ni descargar tags mutables. Actions ya no sube el bundle a GitHub: antes solo lo archivaba después de desplegar y comprobar públicamente una versión sana, de modo que no consumía cuota cuando CI fallaba, pero retenía copias grandes redundantes y podía hacer que una publicación ya activa apareciera como fallida si se agotaba la cuota. Para Caddy, Compose usa `docker/Caddy.Dockerfile`, que recompila el binario parcheado y actualiza Alpine; `PROXY_IMAGE` apunta a la imagen escaneada y el helper arranca con `--no-build`. El helper root-owned valida el paquete y las migraciones, conserva la release anterior, espera healthchecks y permite rollback. No hay publicación a un registry. Consulta [production.md](production.md) para prerrequisitos, permisos SSH/sudoers, huella del host, activación y límites operativos. Los tests de CI cubren políticas, seguridad de contenedores, arranque con imágenes/datos desechables y rollback simulado. Los jobs `quality-and-e2e`, `e2e`, `dependency-audit`, `supply-chain`, `publish-lighthouse` y `deploy-production` permiten distinguir fallos de calidad, navegador, auditoría, imagen, ingesta opcional y publicación en Actions. Todas las GitHub Actions están fijadas a SHA inmutables con etiquetas legibles; Dependabot propone actualizaciones semanales. Trivy `v0.76.0` se instala mediante `aquasecurity/setup-trivy` `v0.3.1`, fijado por SHA.
+
+En un reintento manual, el preflight puede encontrar que el SHA solicitado ya
+está activo. En ese caso Actions solo verifica los endpoints públicos: no
+transfiere el bundle, no recrea contenedores y no arma un rollback para una
+comprobación de solo lectura. El 9 de noviembre de 2026, con el flujo anterior
+que enviaba el resumen desde `performance-lab` antes del despliegue, la primera
+ejecución de `5732a66` desplegó correctamente, pero el laboratorio falló por un
+token de ingesta Lighthouse con formato inválido. Un reintento intentó desplegar el mismo
+SHA, recibió `release directory already exists` y revirtió la release sana. La
+ingesta opcional ahora avisa si la configuración o el endpoint fallan, sin
+invalidar la publicación de la aplicación. Ese mismo día se rotó el token en
+los dos extremos, Actions y el secreto del VPS, sin registrar su valor aquí.
+Antes del siguiente despliegue se verificó por SSH y en la API pública que la
+release activa y sana era `71d1ec1684a380f29c8e05296aeac1986619fd0a`;
+esa observación fechada no acredita el resultado de ejecuciones posteriores.
 
 ## Ejecución local equivalente
 
@@ -68,7 +87,7 @@ bash scripts/ci-local.sh e2e
 bash scripts/ci-local.sh audit
 ```
 
-El comando crea un runner `linux/amd64` con Node de `.node-version`, pnpm `12.5.1`, Playwright `1.64.0` y PostgreSQL `pgvector/pgvector:0.8.7-pg17`. Instala sobre una copia temporal, sin sustituir `node_modules` del host, montar archivos `.env` ni exponer el socket Docker a los servicios. PostgreSQL usa una red aislada sin puertos publicados ni volúmenes persistentes. Los logs, los resultados y los traces de Playwright se guardan en `.ci-artifacts/` también cuando falla una prueba. CI y la ejecución local comparten `scripts/ci-preflight.sh` y `scripts/ci-verify.sh` para evitar que sus puertas diverjan.
+El comando crea un runner `linux/amd64` con Node de `.node-version`, pnpm `12.5.1`, Playwright `1.64.1` y PostgreSQL `pgvector/pgvector:0.8.7-pg17`. Instala sobre una copia temporal, sin sustituir `node_modules` del host, montar archivos `.env` ni exponer el socket Docker a los servicios. PostgreSQL usa una red aislada sin puertos publicados ni volúmenes persistentes. Los logs, los resultados y los traces de Playwright se guardan en `.ci-artifacts/` también cuando falla una prueba. CI y la ejecución local comparten `scripts/ci-preflight.sh` y `scripts/ci-verify.sh` para evitar que sus puertas diverjan.
 
 `quality` incluye checks de React y migraciones, formato, lint, typecheck, tests, build, seguridad de contenedores/TLS y políticas de despliegue. `e2e` ejecuta Playwright; `audit` ejecuta ambas auditorías pnpm. El modo predeterminado corre los tres grupos de forma secuencial. La auditoría necesita acceso al registry y a los avisos actuales.
 
