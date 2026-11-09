@@ -11,6 +11,7 @@ import type { Request } from "express";
 import { IdeaSubmissionService } from "./idea-submission.service";
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import { PendingEmailVerificationGuard } from "../infrastructure/auth/pending-email-verification";
 
 type OptionalAuthenticatedRequest = Request & {
   user?: { userId: string };
@@ -24,7 +25,7 @@ export class EvaluationProcessController {
   ) {}
 
   @Post()
-  @UseGuards(OptionalAccessTokenGuard)
+  @UseGuards(PendingEmailVerificationGuard, OptionalAccessTokenGuard)
   evaluate(
     @Body() input: unknown,
     @Headers("idempotency-key") idempotencyKey: unknown,

@@ -22,6 +22,27 @@ export type ContactMessageSubmission = {
   createdAt: string;
 };
 
+export class ContactEmailVerificationRequiredError extends Error {}
+
+async function throwSubmissionError(response: Response): Promise<never> {
+  if (response.status === 403) {
+    try {
+      const body: unknown = await response.json();
+      if (
+        typeof body === "object" &&
+        body !== null &&
+        "code" in body &&
+        body.code === "EMAIL_VERIFICATION_REQUIRED"
+      ) {
+        throw new ContactEmailVerificationRequiredError();
+      }
+    } catch (error) {
+      if (error instanceof ContactEmailVerificationRequiredError) throw error;
+    }
+  }
+  throw new Error("CONTACT_MESSAGE_SUBMISSION_FAILED");
+}
+
 export async function submitContactMessage(
   subject: string,
   message: string,
@@ -35,7 +56,7 @@ export async function submitContactMessage(
     },
     body: JSON.stringify({ subject, message }),
   });
-  if (!response.ok) throw new Error("CONTACT_MESSAGE_SUBMISSION_FAILED");
+  if (!response.ok) await throwSubmissionError(response);
   return parseSubmission(await response.json());
 }
 

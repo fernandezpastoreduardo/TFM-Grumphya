@@ -1,0 +1,55 @@
+name: grumphya-sonarqube
+
+services:
+  database:
+    image: postgres:17.7-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sonarqube
+      POSTGRES_USER: sonarqube
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in .env.sonarqube}
+    volumes:
+      - sonar-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube -d sonarqube"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [sonar-database]
+
+  sonarqube:
+    image: sonarqube:26.10.0.133078-community
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://database:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonarqube
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:?Set SONAR_DB_PASSWORD in .env.sonarqube}
+      SONAR_TELEMETRY_ENABLE: "false"
+      SONAR_UPDATECENTER_ACTIVATE: "false"
+    volumes:
+      - sonar-data:/opt/sonarqube/data
+      - sonar-extensions:/opt/sonarqube/extensions
+      - sonar-logs:/opt/sonarqube/logs
+    networks:
+      sonar-database: {}
+      sonar-private:
+        ipv4_address: 172.30.250.10
+    stop_grace_period: 60s
+
+networks:
+  sonar-database:
+    internal: true
+  sonar-private:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.250.0/24
+
+volumes:
+  sonar-postgres:
+  sonar-data:
+  sonar-extensions:
+  sonar-logs:

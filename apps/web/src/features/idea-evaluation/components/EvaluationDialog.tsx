@@ -1,5 +1,18 @@
-import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import styles from "./EvaluationDialog.module.scss";
+
+const LOADING_STAGE_INTERVAL_MS = 2_800;
+const LOADING_STAGES = [
+  "Descartando graciosillos…",
+  "Consultando si a alguien más se le ha ocurrido tu idea…",
+  "Evaluando tu idea con el DEBIDO respeto…",
+] as const;
 
 type EvaluationDialogProps = {
   open: boolean;
@@ -15,6 +28,22 @@ export function EvaluationDialog({
   children,
 }: EvaluationDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [loadingStageIndex, setLoadingStageIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isEvaluating) {
+      setLoadingStageIndex(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setLoadingStageIndex((currentIndex) =>
+        Math.min(currentIndex + 1, LOADING_STAGES.length - 1),
+      );
+    }, LOADING_STAGE_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [isEvaluating]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -65,11 +94,26 @@ export function EvaluationDialog({
           <span>Cerrar</span>
         </button>
         {isEvaluating ? (
-          <section className={styles.loading} role="status" aria-live="polite">
+          <section className={styles.loading}>
             <span className={styles.mascot} aria-hidden="true" />
             <div>
               <h2>Buscando dónde puede romperse…</h2>
               <p>Evaluando tu idea. La espera no mejora el resultado.</p>
+              <p
+                className={styles.loadingStage}
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {LOADING_STAGES[loadingStageIndex]}
+              </p>
+              <div
+                className={styles.progressTrack}
+                role="progressbar"
+                aria-label="Progreso de la evaluación"
+              >
+                <span className={styles.progressBar} aria-hidden="true" />
+              </div>
             </div>
           </section>
         ) : null}

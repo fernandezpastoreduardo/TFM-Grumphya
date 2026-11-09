@@ -62,7 +62,7 @@ La aplicación usa `Authorization: Bearer` para el access token y cookies de ref
 
 El cifrado de transporte protege cada conexión de red, pero no es cifrado de extremo a extremo: Caddy termina el TLS público y la API procesa los datos en claro. Quien controle el host Docker, los procesos de los servicios o sus claves puede acceder al contenido. El cifrado en reposo de PostgreSQL y sus copias de seguridad requiere controles separados. Caddy confía en la IP fija del proxy a través de la allowlist `TRUST_PROXY`, no en todos los proxies.
 
-Caddy publica `Cross-Origin-Opener-Policy: same-origin` y `Cross-Origin-Embedder-Policy: require-corp`; los recursos de la app se sirven desde el mismo origen. La CSP aplicada en modo de bloqueo es deliberadamente limitada a `base-uri 'self'`, `object-src 'none'`, `frame-ancestors 'none'` y `form-action 'self'`. La política completa se entrega inicialmente como `Content-Security-Policy-Report-Only`, para observar `default-src`, scripts, estilos, imágenes, fuentes y conexiones antes de bloquearlos. Los informes se reciben en `/api/csp-reports` y se escriben en los logs de API como `csp_violation`; el receptor descarta consultas, fragmentos y cargas de datos antes de registrarlos. Revisa periódicamente los informes con `docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml logs --since=24h api | grep csp_violation`. Mantén Report-Only durante al menos siete días consecutivos y hasta observar un ciclo representativo que cubra inicio de sesión, perfil y avatar, dictado, evaluación, rankings y móvil/escritorio. Registra el intervalo revisado, la versión desplegada, los destinos legítimos detectados y la decisión de cada tipo de infracción. Corrige cualquier recurso legítimo bloqueado. La salida es **no-go** mientras haya informes sin clasificar o una infracción legítima que vaya a bloquearse; es **go** cuando todos los destinos observados estén clasificados, los recursos necesarios estén permitidos explícitamente y el responsable de la revisión haya aprobado el resumen. Solo entonces amplía la política `Content-Security-Policy` de `docker/Caddyfile` para aplicar las directivas observadas, conserva temporalmente `Report-Only` para detectar regresiones y despliega de nuevo. No bloquees las directivas de recursos hasta completar y registrar esta revisión de tráfico real.
+Caddy publica `Cross-Origin-Opener-Policy: same-origin` y `Cross-Origin-Embedder-Policy: require-corp`; los recursos de la app se sirven desde el mismo origen. La CSP aplicada en modo de bloqueo es deliberadamente limitada a `base-uri 'self'`, `object-src 'none'`, `frame-ancestors 'none'` y `form-action 'self'`. La política completa se entrega inicialmente como `Content-Security-Policy-Report-Only`, para observar `default-src`, scripts, estilos, imágenes, fuentes y conexiones antes de bloquearlos. Los informes se reciben en `/api/csp-reports` y se escriben en los logs de API como `csp_violation`; el receptor descarta consultas, fragmentos y cargas de datos antes de registrarlos. Revisa periódicamente los informes con `docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml logs --since=24h api | grep csp_violation`. Conserva fuera del repositorio una captura saneada cada día y antes de recrear la API, con marcas de tiempo, intervalo exacto, SHA activo y recuento incluso si es cero: los logs del contenedor anterior pueden desaparecer al retirarlo. Mantén Report-Only durante al menos siete días consecutivos y hasta observar un ciclo representativo que cubra inicio de sesión, perfil y avatar, dictado, evaluación, rankings y móvil/escritorio. Registra el intervalo revisado, la versión desplegada, los destinos legítimos detectados y la decisión de cada tipo de infracción. Corrige cualquier recurso legítimo bloqueado. La salida es **no-go** mientras haya informes sin clasificar o una infracción legítima que vaya a bloquearse; es **go** cuando todos los destinos observados estén clasificados, los recursos necesarios estén permitidos explícitamente y el responsable de la revisión haya aprobado el resumen. Solo entonces amplía la política `Content-Security-Policy` de `docker/Caddyfile` para aplicar las directivas observadas, conserva temporalmente `Report-Only` para detectar regresiones y despliega de nuevo. No bloquees las directivas de recursos hasta completar y registrar esta revisión de tráfico real. El estado de la revisión iniciada en noviembre de 2026 figura en [su acta](csp-review-2026-11.md).
 
 La API, las migraciones y el aprovisionamiento usan exclusivamente `PGSSL_MODE=verify-full` en producción. El pool exige la ruta a la CA y falla al arrancar si no puede leerla; no existe una excepción de TLS desactivado para PostgreSQL interno. Esta configuración Compose fija PostgreSQL en `db` y monta su CA interna. Un despliegue con una base externa queda fuera de esta topología; cada proceso que se conecte a ella debe configurar su entrypoint para que `PGSSL_CA_FILE` apunte a una CA legible que valide el certificado y nombre de `PGHOST`.
 
@@ -86,7 +86,7 @@ Instala Docker Engine con Compose v2 en el VPS, clona esta rama en `/opt/grumphy
 2. Genera los certificados internos en una máquina administrativa confiable como se indica en [Transporte y límites del cifrado](#transporte-y-límites-del-cifrado), y copia los siete archivos requeridos a `.secrets/` del VPS. No copies allí `internal_tls_ca.key`.
 3. Deja los archivos bajo control de `root` y con permisos privados: `chown -R root:root .secrets .env.production && chmod 700 .secrets && chmod 600 .secrets/* .env.production`. Ejecuta Compose como `root` en este VPS; el helper comprueba el propietario y los permisos antes de actualizar.
 4. Rellena los archivos en el VPS con secretos nuevos y únicos. No los copies al repositorio ni a la imagen. No los pongas en comandos, historial de shell, argumentos de construcción, `VITE_*` ni registros.
-5. En `postgres_admin_settings`, define una contraseña aleatoria y única para el usuario bootstrap `postgres`. En `database_settings`, define el nombre de la base, el usuario runtime dedicado y otra contraseña larga aleatoria. El usuario runtime no es superusuario. En `grumphya_env`, define `ACCESS_TOKEN_SECRET` y `ANONYMOUS_IP_HMAC_SECRET` con al menos 32 bytes aleatorios cada uno. No reutilices valores entre campos o entornos.
+5. En `postgres_admin_settings`, define una contraseña aleatoria y única para el usuario bootstrap `postgres`. En `database_settings`, define el nombre de la base, el usuario runtime dedicado y otra contraseña larga aleatoria. El usuario runtime no es superusuario. En `grumphya_env`, define `ACCESS_TOKEN_SECRET` y `ANONYMOUS_IP_HMAC_SECRET` con al menos 32 bytes aleatorios cada uno. Para recibir métricas sintéticas de Lighthouse, añade opcionalmente `QUALITY_METRICS_INGEST_TOKEN` con un valor aleatorio Base64URL de al menos 32 caracteres; configura el mismo valor como secreto `LIGHTHOUSE_INGEST_TOKEN` en GitHub Actions. No reutilices valores entre campos o entornos.
 6. Completa `openai_key` con la clave del servidor y `openai_settings` con el proveedor/modelo elegido. Completa `mail_settings` con las credenciales SMTP. Son credenciales independientes; la API exige estos cinco archivos: `grumphya_env`, `database_settings`, `openai_settings`, `openai_key` y `mail_settings`. `postgres_admin_settings` se reserva al contenedor de PostgreSQL.
 7. `admin_settings` solo se monta en el comando explícito de aprovisionamiento de Jappy. No se carga al iniciar la API. Guarda ahí una contraseña inicial que cumpla 12–128 caracteres e incluya mayúscula, minúscula, número y símbolo.
 8. En `.env.production`, configura `DOMAIN` como nombre DNS sin esquema ni ruta. `WEB_ORIGIN` puede quedar vacío para usar `https://$DOMAIN`, o contener el origen HTTPS exacto. `DEPLOY_SHA` puede quedar vacío para una instalación manual; antes del bootstrap de CI escribe ahí el SHA completo (40 caracteres) de la versión inicial que acabas de probar.
@@ -111,6 +111,8 @@ curl --fail https://<tu-dominio>/una-ruta-interna-de-la-spa
 ```
 
 La respuesta de salud confirma PostgreSQL y pgvector. Comprueba también en el navegador que la página y `/api/*` usan HTTPS y que el HTML recibe `Permissions-Policy: camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)`. La disponibilidad del dictado depende además del navegador del usuario.
+
+Las rutas `/crear-cuenta` y `/crear-cuenta/planes` deben responder `200` sin redirección. La segunda usa un HTML prerenderizado dentro de la carpeta `crear-cuenta`; Nginx no debe interpretar la primera como una URL de directorio ni exponer su nombre interno `web:8443` en un encabezado `Location`. El smoke de Compose comprueba ambas rutas a través de Caddy.
 
 ## Despliegue manual desde GitHub (opcional)
 
@@ -168,15 +170,17 @@ Haz primero la instalación y una puesta en marcha manual siguiendo las seccione
 
 5. En **Settings → Secrets and variables → Actions**, crea estos secretos:
 
-   | Secreto                      | Contenido                                                    |
-   | ---------------------------- | ------------------------------------------------------------ |
-   | `PRODUCTION_SSH_HOST`        | Host o IP pública del VPS                                    |
-   | `PRODUCTION_SSH_USER`        | Usuario SSH dedicado (`grumphya-deploy`)                     |
-   | `PRODUCTION_SSH_PRIVATE_KEY` | Clave privada Ed25519 exclusiva de Actions                   |
-   | `PRODUCTION_SSH_KNOWN_HOSTS` | Línea `known_hosts` cuya huella contrastaste fuera de banda  |
-   | `OPENAI_API_KEY`             | Clave de OpenAI para el smoke sintético previo al despliegue |
+   | Secreto                      | Contenido                                                                       |
+   | ---------------------------- | ------------------------------------------------------------------------------- |
+   | `PRODUCTION_SSH_HOST`        | Host o IP pública del VPS                                                       |
+   | `PRODUCTION_SSH_USER`        | Usuario SSH dedicado (`grumphya-deploy`)                                        |
+   | `PRODUCTION_SSH_PRIVATE_KEY` | Clave privada Ed25519 exclusiva de Actions                                      |
+   | `PRODUCTION_SSH_KNOWN_HOSTS` | Línea `known_hosts` cuya huella contrastaste fuera de banda                     |
+   | `OPENAI_API_KEY`             | Clave de OpenAI para el smoke sintético previo al despliegue                    |
+   | `LIGHTHOUSE_INGEST_URL`      | `https://<PRODUCTION_DOMAIN>/api/internal/lighthouse-quality/ingest` (opcional) |
+   | `LIGHTHOUSE_INGEST_TOKEN`    | Token Base64URL de ingesta sintética, igual al de `grumphya_env` (opcional)     |
 
-   `OPENAI_API_KEY` es la única excepción: Actions la usa solo en el smoke sintético condicionado a una ejecución manual autorizada desde `main` que confirme el despliegue. No se pasa a los jobs de pull request ni al contenedor desplegado. La clave de runtime de OpenAI, junto con las credenciales de PostgreSQL y SMTP, permanece exclusivamente en `.secrets/` del VPS.
+   Actions usa `OPENAI_API_KEY` solo en el smoke sintético condicionado a una ejecución manual autorizada desde `main` que confirme el despliegue. No se pasa a los jobs de pull request ni al contenedor desplegado. La clave de runtime de OpenAI, junto con las credenciales de PostgreSQL y SMTP, permanece exclusivamente en `.secrets/` del VPS. El token Lighthouse solo llega al job opcional de ingesta posterior a un despliegue autorizado y debe coincidir con `QUALITY_METRICS_INGEST_TOKEN` del VPS; el laboratorio no lo recibe. El job exige que la URL coincida exactamente con el endpoint del dominio `PRODUCTION_DOMAIN` antes de enviar la cabecera Bearer. Para rotarlo, actualiza ambos extremos sin mostrar el valor, conserva los permisos privados de `grumphya_env` y publica una nueva release para que la API cargue el secreto. Una rotación por sí sola no activa el endpoint si la release actual aún no lo contiene; verifica después la ingesta y la pestaña **Calidad web**.
 
 6. Crea estas variables de Actions:
 
@@ -194,6 +198,8 @@ Al iniciar manualmente el workflow desde `main` con la confirmación marcada, `q
 
 Si el último job de Actions falla durante las comprobaciones públicas, comprueba `https://<tu-dominio>/api/health` y `https://<tu-dominio>/build.json`. Si ambos anuncian el SHA del run y la salud indica `status: ok`, la publicación está activa; el helper restaura automáticamente la versión anterior cuando falla el healthcheck local del VPS. Actions ya no sube bundles, por lo que un problema de cuota de artefactos no puede fallar después de una publicación sana.
 
+En un reintento, si el preflight encuentra que el SHA solicitado ya es el activo, Actions comprueba los endpoints públicos sin transferir el bundle ni recrear servicios. Una comprobación pública fallida de esa release preexistente no solicita rollback automáticamente: investiga la causa y consulta el SHA activo antes de intervenir. La ingesta Lighthouse es opcional; una URL o token inválidos, o un endpoint inaccesible, generan un aviso sin invalidar una publicación sana. Revisa ese aviso por separado si el panel sigue sin resultados.
+
 La etapa de despliegue está dentro de `supply-chain` y solo se ejecuta en un `workflow_dispatch` autorizado desde `main`, con la confirmación manual marcada y `PRODUCTION_DEPLOY_ENABLED=true`. `supply-chain` depende de `quality-and-e2e`, `e2e` y `dependency-audit`, por lo que espera a la calidad, las pruebas de navegador y las auditorías. Los pull requests, otras ramas, fallos y variable ausente/desactivada no acceden a secretos SSH. El job final `deploy-production` solo confirma que el flujo integrado terminó con éxito. La concurrencia no cancela un run en curso; además, el helper del VPS usa un lock para excluir ejecuciones simultáneas.
 
 Antes de sustituir servicios, el helper comprueba la release actual, configuración, espacio disponible y todos los secretos requeridos, incluidos los siete archivos TLS (`internal_tls_ca.crt` y los pares de certificado/clave de API, web y PostgreSQL). Exige que `.secrets/` y sus archivos sean propiedad de root, que el directorio y los archivos no den permisos a grupo u otros, y que los secretos requeridos sean archivos regulares, legibles y no enlaces simbólicos; aplica controles equivalentes a `.env.production`. También rechaza que `internal_tls_ca.key` esté presente en `.secrets/`, incluso si es un enlace simbólico, para mantener la clave privada de la CA fuera del VPS. El helper comprueba el tamaño y SHA-256 recibido, carga las imágenes inmutables de esa revisión y valida la configuración. Compose espera a las migraciones y a los healthchecks. Durante el bootstrap inicial, el helper consulta la API local por HTTPS en `127.0.0.1` con la CA interna y comprueba que la revisión servida coincide con el SHA previsto. Si `up --wait` falla porque un servicio todavía no está saludable (por ejemplo, un fallo temporal del healthcheck de la web), el helper restaura la release anterior y espera sus healthchecks antes de devolver un error; Actions comprueba entonces que vuelve a responder la revisión anterior. Si también falla la restauración, el helper lo informa y requiere inspección manual. Los tags y directorios de la release actual/anterior se retienen; PostgreSQL, avatares y certificados usan nombres de volumen estables. El despliegue y el rollback no llaman `down -v`, `volume prune` ni hacen restauraciones destructivas.
@@ -207,9 +213,10 @@ reales del VPS. La evaluación se reintenta una sola vez, con una pausa de
 1 segundo, únicamente si falla con el
 diagnóstico `visible_message`; otros errores no se reintentan. Cada llamada a
 `evaluate` puede hacer también su propio reintento semántico, por lo que el
-smoke puede generar hasta cuatro completions de evaluación en total y una de
-roast. Si el smoke sigue fallando, el helper restaura la release anterior y no
-confirma la candidata. Estas llamadas pueden generar coste en el proveedor.
+smoke puede generar hasta cuatro completions de evaluación en total y dos
+solicitudes de roast en su presupuesto de 30 segundos. Si el smoke sigue
+fallando, el helper restaura la release anterior y no confirma la candidata.
+Estas llamadas pueden generar coste en el proveedor.
 Este smoke real del despliegue es distinto del smoke integrado local de Compose,
 que usa secretos ficticios y no llama a OpenAI ni envía correo.
 
@@ -218,9 +225,10 @@ candidata, después del escaneo Trivy y antes de guardar y empaquetar las
 imágenes para el despliegue. Solo lo hace para una ejecución autorizada desde
 `main` que haya confirmado el despliegue; requiere el secreto `OPENAI_API_KEY`
 de Actions y usa `gpt-5.4-mini` con razonamiento bajo para la evaluación. El
-roast usa también `gpt-5.4-mini`. Las solicitudes no se almacenan (`store: false`)
-y emplean entradas sintéticas fijas. Puede consumir hasta cuatro completions de
-evaluación y una de roast por los reintentos descritos arriba. Si falta la clave
+roast usa también `gpt-5.4-mini` con razonamiento desactivado. Las solicitudes no
+se almacenan (`store: false`) y emplean entradas sintéticas fijas. Puede
+consumir hasta cuatro completions de evaluación y dos solicitudes de roast por
+los reintentos descritos arriba. Si falta la clave
 o falla cualquiera de las operaciones, CI no continúa con el release. El smoke
 del VPS se conserva para verificar además las credenciales reales que usa el
 servicio desplegado.
@@ -259,7 +267,7 @@ Si el helper informa `new release failed; automatic rollback completed`, la acti
 
 ### Alcance que requiere el VPS real
 
-CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Si falla, el smoke imprime el estado de Compose, el estado de salud de `web` y sus últimos 100 registros para facilitar el diagnóstico. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. El 28 de octubre de 2026 se recuperó el acceso root por SSH y se verificó el helper v2 en el VPS real; esa recuperación no demuestra por sí sola que una release posterior se haya publicado. Para cada despliegue hay que comprobar el resultado de Actions, el SHA activo, la salud pública y, si procede, el comportamiento de rollback.
+CI también ejecuta un smoke integrado de Compose con las cuatro imágenes exactas ya escaneadas, secretos y datos ficticios, HTTPS local con certificado interno, y volúmenes desechables etiquetados que elimina al terminar. Si falla, el smoke imprime el estado de Compose, la salud de base de datos, API y web, y los últimos 100 registros de web, API, migración y proxy para facilitar el diagnóstico. Puede repetirse en local con Docker, como se explica en [ci-cd.md](ci-cd.md); no llama a OpenAI ni envía correo. Esto comprueba la topología y persistencia del Compose, pero no equivale a publicar ni hacer rollback en un VPS. El 28 de octubre de 2026 se recuperó el acceso root por SSH y se verificó el helper v2 en el VPS real; esa recuperación no demuestra por sí sola que una release posterior se haya publicado. Para cada despliegue hay que comprobar el resultado de Actions, el SHA activo, la salud pública y, si procede, el comportamiento de rollback.
 
 Después de que la migración inicial haya terminado, aprovisiona Jappy explícitamente:
 
@@ -327,4 +335,4 @@ Para una restauración real sobre una base existente, crea una base limpia y res
 - La compra de planes sigue simulada. Esta entrega no envía pagos.
 - Una sola instancia mantiene el alcance de esta caja; los límites por IP no se distribuyen entre réplicas.
 - Los logs no deben contener contraseñas, tokens ni texto de ideas. No uses `docker compose config` sin `--quiet` en terminales compartidas, aunque el Compose solo referencia rutas de secretos.
-- La verificación de DNS, emisión del certificado, reglas del firewall, copia fuera del VPS, restauración y comportamiento del hardware quedan pendientes hasta disponer del dominio y servidor reales.
+- DNS, certificados públicos, firewall, copias externas, restauración y comportamiento del hardware requieren comprobaciones operativas en el VPS. Esta guía no acredita que se hayan completado para la release activa; registra su evidencia y revisa el resultado tras cada despliegue.

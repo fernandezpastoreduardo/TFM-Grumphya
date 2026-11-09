@@ -1,10 +1,9 @@
-import { randomUUID } from "node:crypto";
 import { type Pool, type PoolClient } from "pg";
 import { createPostgresPool } from "../infrastructure/database/postgres-pool";
+import { withTransaction } from "../infrastructure/database/with-transaction";
 import type {
   AccountProfile,
   AccountPlanStatus,
-  DirectRegistration,
   ConfirmedRegistration,
   PlanCode,
   LoginIdentity,
@@ -65,7 +64,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     verificationExpiresAt: Date,
   ): Promise<PendingRegistration> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       await client.query(
         `DELETE FROM users AS expired_user
          USING pending_registrations AS expired_registration
@@ -110,7 +109,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     verificationExpiresAt: Date,
   ): Promise<PendingRegistration | null> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query<{ id: string; email: string }>(
         `UPDATE pending_registrations AS pending
          SET verification_token_hash=$2, verification_expires_at=$3,
@@ -141,75 +140,6 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
        WHERE id=$1 AND verified_token_hash IS NULL`,
       [registrationId],
     );
-  }
-
-  async activateWithRegistration(
-    userId: string,
-    tokenHash: string,
-    input: RegistrationInput,
-    passwordHash: string,
-    accessTokenHash: string,
-    refreshTokenHash: string,
-    sessionExpiresAt: Date,
-  ): Promise<DirectRegistration> {
-    await this.ensureSchema();
-    return this.transaction(async (client) => {
-      const intent = await client.query<{ plan_code: PlanCode }>(
-        `DELETE FROM registration_intents WHERE token_hash=$1 AND expires_at > now()
-         RETURNING plan_code`,
-        [tokenHash],
-      );
-      const plan = intent.rows[0]?.plan_code;
-      if (!plan) throw new Error("Registration intent unavailable.");
-
-      const user = await client.query<{ id: string }>(
-        `INSERT INTO users(id,email,email_normalized,username,username_normalized,password_hash,
-          privacy_policy_version,privacy_policy_acknowledged_at,email_verified_at,status)
-         VALUES($1,$2,$3,$4,$5,$6,$7,now(),NULL,'active') RETURNING id`,
-        [
-          userId,
-          input.email,
-          input.email,
-          input.username,
-          input.username.toLowerCase(),
-          passwordHash,
-          PRIVACY_POLICY_VERSION,
-        ],
-      );
-      const createdUserId = user.rows[0]?.id;
-      if (!createdUserId || createdUserId !== userId)
-        throw new Error("User could not be created.");
-
-      const activationKey = randomUUID();
-      const subscription = await client.query<{ id: string }>(
-        `INSERT INTO subscriptions(user_id,plan_code,status,starts_at,expires_at,activation_source,idempotency_key)
-         SELECT $1,p.code,'active',now(),now()+make_interval(months => p.validity_months),'simulated',$2
-         FROM plans p WHERE p.code=$3 RETURNING id`,
-        [userId, activationKey, plan],
-      );
-      const subscriptionId = subscription.rows[0]?.id;
-      if (!subscriptionId) throw new Error("Selected plan unavailable.");
-      await client.query(
-        `INSERT INTO simulated_purchases(user_id,subscription_id,idempotency_key,status,confirmed_at,amount_eur)
-         SELECT $1,$2,$3,'confirmed',now(),monthly_price_eur FROM plans WHERE code=$4`,
-        [userId, subscriptionId, activationKey, plan],
-      );
-      await client.query(
-        `INSERT INTO account_daily_plan_usage(user_id,plan_code,usage_date,ideas_used,roasts_used)
-         SELECT $1,p.code,(now() AT TIME ZONE 'Europe/Madrid')::date,0,0 FROM plans p
-         ON CONFLICT (user_id,plan_code,usage_date) DO NOTHING`,
-        [userId],
-      );
-      await this.cleanupStaleAuthSessions(client);
-      await client.query(
-        `INSERT INTO auth_sessions(user_id,access_token_hash,refresh_token_hash,expires_at,remember_me)
-         VALUES($1,$2,$3,$4,false)`,
-        [userId, accessTokenHash, refreshTokenHash, sessionExpiresAt],
-      );
-      const account = await this.readProfile(client, refreshTokenHash);
-      if (!account) throw new Error("New account could not be loaded.");
-      return { userId, plan, account };
-    });
   }
 
   async findLoginIdentity(identifier: string): Promise<LoginIdentity | null> {
@@ -309,7 +239,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     verifiedTokenExpiresAt: Date,
   ): Promise<VerifiedResult> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const result = await client.query<{
         plan_code: PlanCode;
         user_id: string;
@@ -348,7 +278,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     expiresAt: Date,
   ): Promise<ConfirmedRegistration> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const found = await client.query<{
         id: string;
         user_id: string;
@@ -415,7 +345,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     nextRefreshTokenHash: string,
   ): Promise<SessionIdentity> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const found = await client.query<{
         id: string;
         user_id: string;
@@ -506,7 +436,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     requestHash: string,
   ): Promise<boolean> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const inserted = await client.query<{ request_hash: string }>(
         `INSERT INTO approved_ideas(user_id,title,submission_hash,request_hash)
          VALUES($1,$2,$3,$4)
@@ -530,7 +460,7 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
     idempotencyKey: string,
   ): Promise<AccountProfile | null> {
     await this.ensureSchema();
-    return this.transaction(async (client) => {
+    return withTransaction(this.pool, async (client) => {
       const user = await client.query<{ id: string }>(
         "SELECT id FROM users WHERE id=$1 AND status='active' FOR UPDATE",
         [userId],
@@ -770,22 +700,5 @@ export class PostgresRegistrationRepository implements RegistrationRepository {
 
   async close(): Promise<void> {
     await this.pool.end();
-  }
-
-  private async transaction<T>(
-    operation: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
-      const result = await operation(client);
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
   }
 }

@@ -43,7 +43,7 @@ fi
 
 if [ -r "$SECRETS_DIR/grumphya_env" ]; then
   load_api_settings "$SECRETS_DIR/grumphya_env" \
-    ACCESS_TOKEN_SECRET ANONYMOUS_IP_HMAC_SECRET
+    ACCESS_TOKEN_SECRET ANONYMOUS_IP_HMAC_SECRET QUALITY_METRICS_INGEST_TOKEN
   if [ ! -r "$SECRETS_DIR/database_settings" ]; then
     load_api_settings "$SECRETS_DIR/grumphya_env" PGDATABASE PGUSER GRUMPHYA_DB_PASSWORD
   fi

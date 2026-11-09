@@ -18,11 +18,13 @@ import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
+import { PENDING_REGISTRATION_COOKIE } from "../infrastructure/auth/pending-email-verification";
 
 const INTENT_COOKIE = "grumphya_registration_intent";
 const VERIFIED_COOKIE = "grumphya_verified_registration";
 const REFRESH_COOKIE = "grumphya_refresh";
 const INTENT_COOKIE_OPTIONS = privateCookieOptions(15 * 60 * 1000);
+const PENDING_COOKIE_OPTIONS = privateCookieOptions(400 * 24 * 60 * 60 * 1000);
 type AuthenticatedRequest = Request & { user?: { userId: string } };
 
 @Controller()
@@ -81,7 +83,14 @@ export class RegistrationController {
       body,
     );
     response.clearCookie(INTENT_COOKIE, privateCookieOptions());
-    return pending;
+    if (pending.pendingRegistrationId) {
+      response.cookie(
+        PENDING_REGISTRATION_COOKIE,
+        pending.pendingRegistrationId,
+        PENDING_COOKIE_OPTIONS,
+      );
+    }
+    return { status: pending.status };
   }
 
   @Post("registrations/resend-verification")
@@ -130,6 +139,7 @@ export class RegistrationController {
       sessionCookieOptions(session),
     );
     response.clearCookie(VERIFIED_COOKIE, privateCookieOptions());
+    response.clearCookie(PENDING_REGISTRATION_COOKIE, privateCookieOptions());
     return session.result;
   }
 
@@ -149,6 +159,7 @@ export class RegistrationController {
       session.refreshToken,
       sessionCookieOptions(session),
     );
+    response.clearCookie(PENDING_REGISTRATION_COOKIE, privateCookieOptions());
     return session.result;
   }
 
@@ -179,6 +190,7 @@ export class RegistrationController {
       session.refreshToken,
       sessionCookieOptions(session),
     );
+    response.clearCookie(PENDING_REGISTRATION_COOKIE, privateCookieOptions());
     return session.result;
   }
 

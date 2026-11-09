@@ -18,7 +18,7 @@ const MIGRATIONS_DIRECTORY = "apps/api/migrations";
 const TYPESCRIPT_7_IGNORE = 'versions: [">=7.0.0"]';
 const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
 const CADDY_SOURCE_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37";
-const CADDY_X_NET_VERSION = "golang.org/x/net@v0.60.0";
+const CADDY_X_NET_VERSION = "golang.org/x/net@v0.62.0";
 const CADDY_GO_JOSE_VERSION = "github.com/go-jose/go-jose/v4@v4.1.6";
 
 const [
@@ -88,6 +88,10 @@ assert.ok(
 );
 
 assert.match(caddyDockerfile, /^FROM golang:1\.27\.3-alpine AS caddy-build$/m);
+const nodeBaseStage = dockerfile.split("FROM node-base AS pnpm-base")[0];
+assert.match(nodeBaseStage, /^FROM node:26\.13\.0-trixie-slim AS node-base$/m);
+assert.match(nodeBaseStage, /apt-get update[\s\S]*?apt-get upgrade -y/);
+assert.match(nodeBaseStage, /rm -rf \/var\/lib\/apt\/lists\/\*/);
 assert.ok(
   caddyDockerfile.includes(
     `test "$(git -C /src rev-parse HEAD)" = ${CADDY_SOURCE_COMMIT}`,
@@ -489,6 +493,18 @@ assert.doesNotMatch(
   homeLocation,
   /\balias\b/,
   "the root route must not use alias, which can append index.html twice",
+);
+
+const spaFallbackLocation = readLocationBlock(nginxSpa, "location / {");
+assert.match(
+  spaFallbackLocation,
+  /try_files \$uri \$uri\.html \/app\.html;/,
+  "SPA routes must resolve files or the app shell without directory redirects",
+);
+assert.doesNotMatch(
+  spaFallbackLocation,
+  /\$uri\//,
+  "SPA routes must not redirect to internal Nginx directory URLs",
 );
 
 const newConventionMigrations = migrationFiles

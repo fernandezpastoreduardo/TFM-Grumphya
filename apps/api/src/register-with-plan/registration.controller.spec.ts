@@ -11,6 +11,7 @@ const RANKING_BODY = { enabled: true };
 const PLAN_BODY = { plan: "FALTON" };
 const REGISTRATION_INTENT_COOKIE = "grumphya_registration_intent";
 const VERIFIED_REGISTRATION_COOKIE = "grumphya_verified_registration";
+const PENDING_REGISTRATION_COOKIE = "grumphya_pending_registration";
 const REFRESH_COOKIE = "grumphya_refresh";
 const REFRESH_TOKEN = "refresh-token";
 const ACCESS_TOKEN = "access-token";
@@ -132,6 +133,10 @@ describe("RegistrationController", () => {
 
   it("registers with the intent cookie and clears it only after success", async () => {
     const { controller, service } = createController();
+    vi.mocked(service.register).mockResolvedValueOnce({
+      status: "verification_pending",
+      pendingRegistrationId: USER_ID,
+    });
     const response = createResponse();
     const body = { email: "persona@example.es" };
 
@@ -148,6 +153,11 @@ describe("RegistrationController", () => {
     expect(service.register).toHaveBeenCalledWith("intent-token", body);
     expect(response.clearCookie).toHaveBeenCalledWith(
       REGISTRATION_INTENT_COOKIE,
+      expect.objectContaining({ httpOnly: true, sameSite: "strict" }),
+    );
+    expect(response.cookie).toHaveBeenCalledWith(
+      PENDING_REGISTRATION_COOKIE,
+      USER_ID,
       expect.objectContaining({ httpOnly: true, sameSite: "strict" }),
     );
   });

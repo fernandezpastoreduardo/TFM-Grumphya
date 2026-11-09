@@ -5,6 +5,7 @@ import {
 } from "../../../infrastructure/auth/session";
 import type { AccountAttempts } from "../../../infrastructure/auth/use-session-status";
 import { SkeletonBlock } from "../../../shared/components/loading-skeleton";
+import { usePendingEmailVerification } from "../../../shared/hooks/use-pending-email-verification";
 
 const ROAST_ENDPOINT = "/api/roast";
 const ROAST_ERROR_MESSAGE = "No se pudo enviar el mensaje. Inténtalo de nuevo.";
@@ -12,6 +13,7 @@ const MESSAGE_MAX_LENGTH = 400;
 const QUOTA_EXHAUSTED_STATUS = 429;
 const PLAN_QUOTA_EXHAUSTED_CODE = "PLAN_QUOTA_EXHAUSTED";
 const ROAST_REPLY_UNAVAILABLE_CODE = "ROAST_REPLY_UNAVAILABLE";
+const EMAIL_VERIFICATION_REQUIRED_CODE = "EMAIL_VERIFICATION_REQUIRED";
 const ROAST_QUOTA_SCOPE = "roasts";
 
 type RoastInputProps = {
@@ -23,6 +25,7 @@ type RoastInputProps = {
   onAccountUsageRefresh?: () => Promise<AccountAttempts | null>;
   onDailyQuotaExhausted?: () => void;
   onReplyUnavailable: () => void;
+  onEmailVerificationRequired?: () => void;
 };
 
 export function RoastInput({
@@ -34,7 +37,9 @@ export function RoastInput({
   onAccountUsageRefresh,
   onDailyQuotaExhausted,
   onReplyUnavailable,
+  onEmailVerificationRequired,
 }: RoastInputProps) {
+  const emailVerification = usePendingEmailVerification();
   const [message, setMessage] = useState("");
   const [displayRemaining, setDisplayRemaining] = useState<number | null>(
     remainingAttempts,
@@ -58,62 +63,71 @@ export function RoastInput({
     setIsSending(true);
     setError("");
     try {
-      const accessToken = await getAccessToken();
-      const init: RequestInit = {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
-        },
-        body: JSON.stringify({ message: value }),
-      };
-      const response = accessToken
-        ? await authenticatedFetch(ROAST_ENDPOINT, init)
-        : await fetch(ROAST_ENDPOINT, init);
+      if (await emailVerification.check()) {
+        onEmailVerificationRequired?.();
+        return;
+      }
+      const response = await requestRoast(value);
       if (!response.ok) {
-        const failure = await readErrorDetails(response);
-        if (
-          response.status === QUOTA_EXHAUSTED_STATUS &&
-          failure.code === PLAN_QUOTA_EXHAUSTED_CODE &&
-          failure.scope === ROAST_QUOTA_SCOPE
-        ) {
-          onDailyQuotaExhausted?.();
-          setError("");
-          await Promise.all([
-            onUsageRefresh(),
-            onAccountUsageRefresh?.() ?? Promise.resolve(null),
-          ]);
-          return;
-        }
-        if (failure.code === ROAST_REPLY_UNAVAILABLE_CODE) {
-          onReplyUnavailable();
-          setError("");
-          return;
-        }
-        throw new Error(failure.message ?? ROAST_ERROR_MESSAGE);
+        await handleFailedResponse(response);
+        return;
       }
 
-      const payload: unknown = await response.json();
-      if (!isRoastReply(payload)) throw new Error(ROAST_ERROR_MESSAGE);
-      onSubmitted(value, payload.reply);
-      setMessage("");
-      setDisplayRemaining((current) =>
-        current === null ? null : Math.max(0, current - 1),
-      );
-      const [, accountAttempts] = await Promise.all([
-        onUsageRefresh(),
-        onAccountUsageRefresh?.() ?? Promise.resolve(null),
-      ]);
-      if (accountAttempts?.roastsPlanActive && accountAttempts.roasts === 0) {
-        onDailyQuotaExhausted?.();
-      }
+      await handleSuccessfulReply(response, value);
     } catch (caught: unknown) {
       setError(caught instanceof Error ? caught.message : ROAST_ERROR_MESSAGE);
     } finally {
       isSendingRef.current = false;
       setIsSending(false);
     }
+  }
+
+  async function handleSuccessfulReply(
+    response: Response,
+    value: string,
+  ): Promise<void> {
+    const payload: unknown = await response.json();
+    if (!isRoastReply(payload)) throw new Error(ROAST_ERROR_MESSAGE);
+    onSubmitted(value, payload.reply);
+    setMessage("");
+    setDisplayRemaining((current) =>
+      current === null ? null : Math.max(0, current - 1),
+    );
+    const [, accountAttempts] = await Promise.all([
+      onUsageRefresh(),
+      onAccountUsageRefresh?.() ?? Promise.resolve(null),
+    ]);
+    if (accountAttempts?.roastsPlanActive && accountAttempts.roasts === 0) {
+      onDailyQuotaExhausted?.();
+    }
+  }
+
+  async function handleFailedResponse(response: Response): Promise<void> {
+    const failure = await readErrorDetails(response);
+    if (
+      response.status === QUOTA_EXHAUSTED_STATUS &&
+      failure.code === PLAN_QUOTA_EXHAUSTED_CODE &&
+      failure.scope === ROAST_QUOTA_SCOPE
+    ) {
+      onDailyQuotaExhausted?.();
+      setError("");
+      await Promise.all([
+        onUsageRefresh(),
+        onAccountUsageRefresh?.() ?? Promise.resolve(null),
+      ]);
+      return;
+    }
+    if (failure.code === ROAST_REPLY_UNAVAILABLE_CODE) {
+      onReplyUnavailable();
+      setError("");
+      return;
+    }
+    if (failure.code === EMAIL_VERIFICATION_REQUIRED_CODE) {
+      onEmailVerificationRequired?.();
+      setError("");
+      return;
+    }
+    throw new Error(failure.message ?? ROAST_ERROR_MESSAGE);
   }
 
   const isUnavailable = remainingAttempts === null || remainingAttempts === 0;
@@ -176,6 +190,22 @@ export function RoastInput({
       ) : null}
     </>
   );
+}
+
+async function requestRoast(value: string): Promise<Response> {
+  const accessToken = await getAccessToken();
+  const init: RequestInit = {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": crypto.randomUUID(),
+    },
+    body: JSON.stringify({ message: value }),
+  };
+  return accessToken
+    ? authenticatedFetch(ROAST_ENDPOINT, init)
+    : fetch(ROAST_ENDPOINT, init);
 }
 
 function isRoastReply(value: unknown): value is { reply: string } {

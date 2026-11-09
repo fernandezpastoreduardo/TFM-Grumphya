@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RegisterWithPlan } from "./register-with-plan";
@@ -56,7 +56,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
@@ -88,7 +92,11 @@ describe("RegisterWithPlan", () => {
       VALID_USERNAME,
     );
     await user.type(
-      screen.getByLabelText(/contraseña/i),
+      screen.getByLabelText("Contraseña"),
+      "una clave larga 2026!",
+    );
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
       "una clave larga 2026!",
     );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
@@ -120,7 +128,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
     );
@@ -159,7 +171,7 @@ describe("RegisterWithPlan", () => {
       screen.getByText(/no tendrás que cancelar nada/i),
     ).toBeInTheDocument();
 
-    const password = screen.getByLabelText(/contraseña/i);
+    const password = screen.getByLabelText("Contraseña");
     const help = screen.getByText(PASSWORD_REQUIREMENTS);
     const passwordField = password.closest(".registration-field");
     expect(password).toHaveAttribute(
@@ -172,6 +184,87 @@ describe("RegisterWithPlan", () => {
     expect(fieldElements.indexOf(password)).toBeLessThan(
       fieldElements.indexOf(help),
     );
+    expect(screen.getByLabelText("Repite la contraseña")).toBeInTheDocument();
+  });
+
+  it("rejects mismatched passwords before sending the registration request", async () => {
+    const user = userEvent.setup();
+    render(<RegisterWithPlan />);
+
+    await user.type(
+      await screen.findByLabelText(/correo electrónico/i),
+      VALID_EMAIL,
+    );
+    await user.type(
+      screen.getByLabelText(/nombre de usuario/i),
+      VALID_USERNAME,
+    );
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    const confirmation = screen.getByLabelText("Repite la contraseña");
+    await user.type(confirmation, "Otra contraseña segura 48!");
+    await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
+    await user.click(
+      screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Las contraseñas no coinciden. Revísalas y vuelve a intentarlo.",
+    );
+    expect(confirmation).toHaveAttribute("aria-invalid", "true");
+    expect(confirmation).toHaveAttribute(
+      "aria-describedby",
+      "registration-error",
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("reveals and hides each password independently", async () => {
+    const user = userEvent.setup();
+    render(<RegisterWithPlan />);
+
+    const password = await screen.findByLabelText("Contraseña");
+    const confirmation = screen.getByLabelText("Repite la contraseña");
+    const [showPasswordButton, showConfirmationButton] = screen.getAllByRole(
+      "button",
+      { name: "Mostrar contraseña" },
+    );
+    if (!showPasswordButton || !showConfirmationButton) {
+      throw new Error("Password visibility controls are missing.");
+    }
+    const confirmationField = confirmation.closest(
+      ".registration-password-field",
+    );
+    if (!(confirmationField instanceof HTMLElement)) {
+      throw new Error("Password confirmation field wrapper is missing.");
+    }
+
+    expect(password).toHaveAttribute("type", "password");
+    expect(confirmation).toHaveAttribute("type", "password");
+    expect(showPasswordButton).toHaveAttribute(
+      "aria-controls",
+      "registration-password",
+    );
+    expect(showConfirmationButton).toHaveAttribute(
+      "aria-controls",
+      "registration-password-confirmation",
+    );
+
+    await user.click(showPasswordButton);
+    expect(password).toHaveAttribute("type", "text");
+    expect(confirmation).toHaveAttribute("type", "password");
+    expect(
+      screen.getByRole("button", { name: "Ocultar contraseña" }),
+    ).toHaveAttribute("aria-controls", "registration-password");
+
+    await user.click(showConfirmationButton);
+    expect(confirmation).toHaveAttribute("type", "text");
+    await user.click(
+      within(confirmationField).getByRole("button", {
+        name: "Ocultar contraseña",
+      }),
+    );
+    expect(confirmation).toHaveAttribute("type", "password");
+    expect(password).toHaveAttribute("type", "text");
   });
 
   it("posts the registration and asks the user to check email without starting a session", async () => {
@@ -199,7 +292,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
@@ -238,7 +335,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     const submitButton = screen.getByRole("button", {
       name: REGISTER_SUBMIT_BUTTON_NAME,
@@ -277,7 +378,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
@@ -309,7 +414,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),
@@ -341,7 +450,11 @@ describe("RegisterWithPlan", () => {
       screen.getByLabelText(/nombre de usuario/i),
       VALID_USERNAME,
     );
-    await user.type(screen.getByLabelText(/contraseña/i), VALID_PASSWORD);
+    await user.type(screen.getByLabelText("Contraseña"), VALID_PASSWORD);
+    await user.type(
+      screen.getByLabelText(/repite la contraseña/i),
+      VALID_PASSWORD,
+    );
     await user.click(screen.getByRole("checkbox", { name: /he leído/i }));
     await user.click(
       screen.getByRole("button", { name: REGISTER_SUBMIT_BUTTON_NAME }),

@@ -6,6 +6,7 @@ import {
   PUBLIC_PHONE_PATTERN as PHONE_PATTERN,
   PUBLIC_URL_PATTERN as URL_PATTERN,
 } from "../infrastructure/validation/public-safe-title";
+import { containsEmailAddress } from "../infrastructure/validation/email-address";
 
 export const EVALUATION_CRITERION_IDS = [
   "C01",
@@ -508,7 +509,7 @@ function getRejectedDecisionError(
 }
 
 function isSafeTitle(value: unknown, ideaText: string): value is string {
-  if (!isSafePublicTitle(value)) return false;
+  if (!isSafePublicTitle(value) || containsEmailAddress(value)) return false;
 
   const normalizedTitle = value.toLocaleLowerCase("es-ES");
   const normalizedIdea = ideaText.toLocaleLowerCase("es-ES");

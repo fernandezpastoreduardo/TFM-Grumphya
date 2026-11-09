@@ -7,7 +7,11 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
-import type { SearchSimilarIdea } from "../search-similar-idea/search-similar-idea";
+import type {
+  DetailedSimilarIdeaSearchResult,
+  SearchSimilarIdea,
+  SimilarIdeaSearchResult,
+} from "../search-similar-idea/search-similar-idea";
 import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import type { AnonymousUsageService } from "../manage-user-unknow/anonymous-usage.service";
 import { REPEATED_IDEA_HEADLINE_FALLBACK } from "../infrastructure/copy/public-headlines";
@@ -75,6 +79,14 @@ type EvaluationRequest = ReturnType<typeof normalizeAndValidateRequest>;
 type UsageReservation =
   | { source: "account"; userId: string; result: PlanUsageReservation }
   | { source: "anonymous"; result?: ReservationResult };
+type SubmissionFlow = {
+  request: EvaluationRequest;
+  idempotencyHash: string;
+  requestHash: string;
+  anonymousVisitorToken: unknown;
+  authenticatedUserId: string | undefined;
+};
+type SimilarMatch = Extract<SimilarIdeaSearchResult, { kind: "match" }>;
 
 export type IdeaSubmissionResponse =
   | {
@@ -309,66 +321,19 @@ export class IdeaSubmissionService {
     anonymousVisitorToken: unknown,
     authenticatedUserId: string | undefined,
   ): Promise<IdeaSubmissionResponse> {
+    const flow: SubmissionFlow = {
+      request,
+      idempotencyHash,
+      requestHash,
+      anonymousVisitorToken,
+      authenticatedUserId,
+    };
     const specialCase = detectSpecialIdeaCase(request.ideaText);
-    if (specialCase) {
-      const reservation = await this.reserveUsage(
-        anonymousVisitorToken,
-        idempotencyHash,
-        requestHash,
-        authenticatedUserId,
-      );
-      if (reservation?.result?.state === "cached")
-        return readCachedSubmission(reservation.result.response);
+    if (specialCase) return this.submitSpecialCase(flow, specialCase);
+    this.validateEvaluationRequest(request);
+    const previousMatch = await this.readPreviousMatch(flow);
+    if (previousMatch) return previousMatch;
 
-      try {
-        await this.commitUsage(
-          anonymousVisitorToken,
-          idempotencyHash,
-          requestHash,
-          specialCase,
-          reservation,
-        );
-        return specialCase;
-      } catch {
-        await this.releaseUsage(
-          anonymousVisitorToken,
-          idempotencyHash,
-          reservation,
-        );
-        this.logger.error("IDEA_SPECIAL_CASE_COMMIT_FAILED");
-        throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
-      }
-    }
-
-    try {
-      normalizeAndValidateRequest(request);
-    } catch (error) {
-      if (!(error instanceof InvalidEvaluationInputError)) throw error;
-      throw new BadRequestException(INVALID_REQUEST_RESPONSE);
-    }
-
-    try {
-      const previousMatch = await this.repository.getIdempotentMatch(
-        idempotencyHash,
-        requestHash,
-      );
-      if (previousMatch) {
-        return {
-          status: "similar_idea_match",
-          headline: isSafeGeneratedHeadline(
-            previousMatch.headline,
-            request.ideaText,
-          )
-            ? previousMatch.headline
-            : REPEATED_IDEA_HEADLINE_FALLBACK[request.tone],
-          safeTitle: previousMatch.safeTitle,
-          submissionCount: previousMatch.count,
-        };
-      }
-    } catch {
-      this.logger.error("IDEA_IDEMPOTENCY_LOOKUP_FAILED");
-      throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
-    }
     const reservation = await this.reserveUsage(
       anonymousVisitorToken,
       idempotencyHash,
@@ -377,132 +342,222 @@ export class IdeaSubmissionService {
     );
     if (reservation?.result?.state === "cached")
       return readCachedSubmission(reservation.result.response);
-    if (!this.search) {
-      await this.releaseUsage(
-        anonymousVisitorToken,
-        idempotencyHash,
+    const detailedSearch = await this.searchWithReservation(flow, reservation);
+    if (detailedSearch.result.kind === "match") {
+      return this.recordSimilarMatch(flow, reservation, detailedSearch.result);
+    }
+    return this.evaluateNewIdea(flow, reservation, detailedSearch.embedding);
+  }
+
+  private async submitSpecialCase(
+    flow: SubmissionFlow,
+    specialCase: SpecialIdeaCase,
+  ): Promise<IdeaSubmissionResponse> {
+    const {
+      anonymousVisitorToken: token,
+      idempotencyHash: keyHash,
+      requestHash,
+      authenticatedUserId: userId,
+    } = flow;
+    const reservation = await this.reserveUsage(
+      token,
+      keyHash,
+      requestHash,
+      userId,
+    );
+    if (reservation?.result?.state === "cached")
+      return readCachedSubmission(reservation.result.response);
+    try {
+      await this.commitUsage(
+        token,
+        keyHash,
+        requestHash,
+        specialCase,
         reservation,
       );
+      return specialCase;
+    } catch {
+      await this.releaseUsage(token, keyHash, reservation);
+      this.logger.error("IDEA_SPECIAL_CASE_COMMIT_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
-    let detailedSearch;
+  }
+
+  private validateEvaluationRequest(request: EvaluationRequest): void {
     try {
-      const searchInput = { ideaText: request.ideaText };
-      detailedSearch = authenticatedUserId
-        ? await this.search.executeDetailed(
-            searchInput,
-            authenticatedUserId,
-            request.tone,
-          )
-        : await this.search.executeDetailed(
-            searchInput,
-            undefined,
-            request.tone,
-          );
-    } catch {
-      await this.releaseUsage(
-        anonymousVisitorToken,
+      normalizeAndValidateRequest(request);
+    } catch (error) {
+      if (!(error instanceof InvalidEvaluationInputError)) throw error;
+      throw new BadRequestException(INVALID_REQUEST_RESPONSE);
+    }
+  }
+
+  private async readPreviousMatch(
+    flow: SubmissionFlow,
+  ): Promise<IdeaSubmissionResponse | undefined> {
+    const { idempotencyHash, requestHash, request } = flow;
+    try {
+      const previousMatch = await this.repository.getIdempotentMatch(
         idempotencyHash,
-        reservation,
+        requestHash,
       );
+      if (!previousMatch) return undefined;
+      return {
+        status: "similar_idea_match",
+        headline: isSafeGeneratedHeadline(
+          previousMatch.headline,
+          request.ideaText,
+        )
+          ? previousMatch.headline
+          : REPEATED_IDEA_HEADLINE_FALLBACK[request.tone],
+        safeTitle: previousMatch.safeTitle,
+        submissionCount: previousMatch.count,
+      };
+    } catch {
+      this.logger.error("IDEA_IDEMPOTENCY_LOOKUP_FAILED");
+      throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
+    }
+  }
+
+  private async searchWithReservation(
+    flow: SubmissionFlow,
+    reservation: UsageReservation | undefined,
+  ): Promise<DetailedSimilarIdeaSearchResult> {
+    const {
+      anonymousVisitorToken: token,
+      idempotencyHash: keyHash,
+      request,
+    } = flow;
+    if (!this.search) {
+      await this.releaseUsage(token, keyHash, reservation);
+      throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
+    }
+    try {
+      return await this.search.executeDetailed(
+        { ideaText: request.ideaText },
+        flow.authenticatedUserId,
+        request.tone,
+      );
+    } catch {
+      await this.releaseUsage(token, keyHash, reservation);
       this.logger.error("IDEA_SIMILARITY_CHECK_FAILED");
       throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
+  }
 
-    if (detailedSearch.result.kind === "match") {
-      await this.releaseUsage(
-        anonymousVisitorToken,
-        idempotencyHash,
-        reservation,
-      );
-      try {
-        const submissionCount = authenticatedUserId
-          ? await this.repository.updateWorstIdea(
-              detailedSearch.result.ideaId,
-              idempotencyHash,
-              requestHash,
-              detailedSearch.result.headline,
-              authenticatedUserId,
-            )
-          : await this.repository.updateWorstIdea(
-              detailedSearch.result.ideaId,
-              idempotencyHash,
-              requestHash,
-              detailedSearch.result.headline,
-            );
-        return {
-          status: "similar_idea_match",
-          headline: detailedSearch.result.headline,
-          safeTitle: detailedSearch.result.semanticTitle,
-          submissionCount,
-        };
-      } catch {
-        this.logger.error("IDEA_SIMILARITY_COUNT_UPDATE_FAILED");
-        throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
-      }
+  private async recordSimilarMatch(
+    flow: SubmissionFlow,
+    reservation: UsageReservation | undefined,
+    match: SimilarMatch,
+  ): Promise<IdeaSubmissionResponse> {
+    const {
+      anonymousVisitorToken: token,
+      idempotencyHash: keyHash,
+      requestHash,
+      authenticatedUserId: userId,
+    } = flow;
+    await this.releaseUsage(token, keyHash, reservation);
+    try {
+      const submissionCount = userId
+        ? await this.repository.updateWorstIdea(
+            match.ideaId,
+            keyHash,
+            requestHash,
+            match.headline,
+            userId,
+          )
+        : await this.repository.updateWorstIdea(
+            match.ideaId,
+            keyHash,
+            requestHash,
+            match.headline,
+          );
+      return {
+        status: "similar_idea_match",
+        headline: match.headline,
+        safeTitle: match.semanticTitle,
+        submissionCount,
+      };
+    } catch {
+      this.logger.error("IDEA_SIMILARITY_COUNT_UPDATE_FAILED");
+      throw new ServiceUnavailableException(SIMILARITY_UNAVAILABLE_RESPONSE);
     }
+  }
 
+  private async evaluateNewIdea(
+    flow: SubmissionFlow,
+    reservation: UsageReservation | undefined,
+    embedding: readonly number[],
+  ): Promise<IdeaSubmissionResponse> {
+    const {
+      request,
+      anonymousVisitorToken: token,
+      idempotencyHash: keyHash,
+      requestHash,
+      authenticatedUserId: userId,
+    } = flow;
     try {
       const evaluationRequest = this.toEvaluationRequest(request);
-      const result = authenticatedUserId
-        ? await this.evaluation.evaluate(evaluationRequest, authenticatedUserId)
+      const result = userId
+        ? await this.evaluation.evaluate(evaluationRequest, userId)
         : await this.evaluation.evaluate(evaluationRequest);
       if (result.status === "RECHAZADA") {
-        if (!result.safeTitle || result.score === null) {
-          this.logger.error("IDEA_REJECTION_TITLE_UNAVAILABLE");
-          throw new ServiceUnavailableException(
-            INVALID_REJECTION_TITLE_RESPONSE,
-          );
-        }
-        try {
-          if (authenticatedUserId) {
-            await this.repository.addToWorstIdeas(
-              result.safeTitle,
-              result.score,
-              detailedSearch.embedding,
-              idempotencyHash,
-              requestHash,
-              authenticatedUserId,
-            );
-          } else {
-            await this.repository.addToWorstIdeas(
-              result.safeTitle,
-              result.score,
-              detailedSearch.embedding,
-              idempotencyHash,
-              requestHash,
-            );
-          }
-        } catch {
-          this.logger.error("IDEA_REJECTION_PERSISTENCE_FAILED");
-          throw new ServiceUnavailableException(
-            INVALID_REJECTION_TITLE_RESPONSE,
-          );
-        }
+        await this.persistRejectedIdea(flow, result, embedding);
       }
       await this.persistApprovedIdeaIfNeeded(
-        authenticatedUserId,
-        idempotencyHash,
+        userId,
+        keyHash,
         requestHash,
         request.ideaText,
         result,
       );
       const response: IdeaSubmissionResponse = { status: "evaluated", result };
       await this.commitUsage(
-        anonymousVisitorToken,
-        idempotencyHash,
+        token,
+        keyHash,
         requestHash,
         response,
         reservation,
       );
       return response;
     } catch (error) {
-      await this.releaseUsage(
-        anonymousVisitorToken,
-        idempotencyHash,
-        reservation,
-      );
+      await this.releaseUsage(token, keyHash, reservation);
       throw error;
+    }
+  }
+
+  private async persistRejectedIdea(
+    flow: SubmissionFlow,
+    result: EvaluationProcessResponse,
+    embedding: readonly number[],
+  ): Promise<void> {
+    if (!result.safeTitle || result.score === null) {
+      this.logger.error("IDEA_REJECTION_TITLE_UNAVAILABLE");
+      throw new ServiceUnavailableException(INVALID_REJECTION_TITLE_RESPONSE);
+    }
+    try {
+      const { idempotencyHash, requestHash, authenticatedUserId } = flow;
+      if (authenticatedUserId) {
+        await this.repository.addToWorstIdeas(
+          result.safeTitle,
+          result.score,
+          embedding,
+          idempotencyHash,
+          requestHash,
+          authenticatedUserId,
+        );
+      } else {
+        await this.repository.addToWorstIdeas(
+          result.safeTitle,
+          result.score,
+          embedding,
+          idempotencyHash,
+          requestHash,
+        );
+      }
+    } catch {
+      this.logger.error("IDEA_REJECTION_PERSISTENCE_FAILED");
+      throw new ServiceUnavailableException(INVALID_REJECTION_TITLE_RESPONSE);
     }
   }
 
@@ -644,54 +699,58 @@ function readCachedSubmission(input: unknown): IdeaSubmissionResponse {
 function isEvaluationProcessResponse(
   input: unknown,
 ): input is EvaluationProcessResponse {
-  if (
-    !isRecord(input) ||
-    typeof input.status !== "string" ||
-    !EVALUATION_STATUSES.has(input.status) ||
-    typeof input.headline !== "string" ||
-    input.headline.trim().length === 0 ||
-    input.headline.length > MAX_CACHED_EVALUATION_HEADLINE_LENGTH ||
-    typeof input.message !== "string" ||
-    input.message.trim().length === 0 ||
-    input.message.length > MAX_CACHED_EVALUATION_MESSAGE_LENGTH ||
-    !isValidCachedScore(input.score, input.status)
-  ) {
-    return false;
-  }
-  if (Object.hasOwn(input, "safeTitle")) {
-    if (
-      input.status !== "RECHAZADA" ||
-      typeof input.safeTitle !== "string" ||
-      input.safeTitle.trim().length < MIN_CACHED_EVALUATION_TITLE_LENGTH ||
-      input.safeTitle.length > MAX_CACHED_EVALUATION_TITLE_LENGTH
-    ) {
-      return false;
-    }
-  } else if (input.status === "RECHAZADA") {
-    return false;
-  }
-  if (Object.hasOwn(input, "existingProductExample")) {
-    if (
-      input.status !== "RECHAZADA" ||
-      typeof input.existingProductExample !== "string" ||
-      input.existingProductExample.length < MIN_CACHED_PRODUCT_EXAMPLE_LENGTH ||
-      input.existingProductExample.length > MAX_CACHED_PRODUCT_EXAMPLE_LENGTH
-    ) {
-      return false;
-    }
-  }
-  if (Object.hasOwn(input, "failedCriteria")) {
-    if (
-      input.status !== "RECHAZADA" ||
-      !Array.isArray(input.failedCriteria) ||
-      input.failedCriteria.length === 0 ||
-      input.failedCriteria.length > MAX_CACHED_FAILED_CRITERIA ||
-      input.failedCriteria.some((criterion) => typeof criterion !== "string")
-    ) {
-      return false;
-    }
-  }
-  return true;
+  return (
+    isRecord(input) &&
+    hasValidCachedCore(input) &&
+    hasValidCachedSafeTitle(input) &&
+    hasValidCachedProductExample(input) &&
+    hasValidCachedFailedCriteria(input)
+  );
+}
+
+function hasValidCachedCore(input: Record<string, unknown>): boolean {
+  return (
+    typeof input.status === "string" &&
+    EVALUATION_STATUSES.has(input.status) &&
+    typeof input.headline === "string" &&
+    input.headline.trim().length > 0 &&
+    input.headline.length <= MAX_CACHED_EVALUATION_HEADLINE_LENGTH &&
+    typeof input.message === "string" &&
+    input.message.trim().length > 0 &&
+    input.message.length <= MAX_CACHED_EVALUATION_MESSAGE_LENGTH &&
+    isValidCachedScore(input.score, input.status)
+  );
+}
+
+function hasValidCachedSafeTitle(input: Record<string, unknown>): boolean {
+  if (!Object.hasOwn(input, "safeTitle")) return input.status !== "RECHAZADA";
+  return (
+    input.status === "RECHAZADA" &&
+    typeof input.safeTitle === "string" &&
+    input.safeTitle.trim().length >= MIN_CACHED_EVALUATION_TITLE_LENGTH &&
+    input.safeTitle.length <= MAX_CACHED_EVALUATION_TITLE_LENGTH
+  );
+}
+
+function hasValidCachedProductExample(input: Record<string, unknown>): boolean {
+  if (!Object.hasOwn(input, "existingProductExample")) return true;
+  return (
+    input.status === "RECHAZADA" &&
+    typeof input.existingProductExample === "string" &&
+    input.existingProductExample.length >= MIN_CACHED_PRODUCT_EXAMPLE_LENGTH &&
+    input.existingProductExample.length <= MAX_CACHED_PRODUCT_EXAMPLE_LENGTH
+  );
+}
+
+function hasValidCachedFailedCriteria(input: Record<string, unknown>): boolean {
+  if (!Object.hasOwn(input, "failedCriteria")) return true;
+  return (
+    input.status === "RECHAZADA" &&
+    Array.isArray(input.failedCriteria) &&
+    input.failedCriteria.length > 0 &&
+    input.failedCriteria.length <= MAX_CACHED_FAILED_CRITERIA &&
+    !input.failedCriteria.some((criterion) => typeof criterion !== "string")
+  );
 }
 
 function isValidCachedScore(score: unknown, status: string): boolean {

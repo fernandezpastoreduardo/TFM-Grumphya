@@ -497,3 +497,8 @@ Corrección del diagnóstico `visible_message` en rechazos, 4 de noviembre de 20
 - Las diez suites focalizadas suman 101 pruebas aprobadas; los 12 archivos de pruebas focales de este bloque suman 125. La suite completa de API pasa con 854 pruebas aprobadas y 21 omitidas, e incluye el caso válido de 20 candidatas. Su cobertura global queda en 92,63 % de sentencias, 86,76 % de ramas, 96,36 % de funciones y 94,07 % de líneas. Web pasa 321 pruebas.
 - También pasan `pnpm lint`, `pnpm typecheck`, `pnpm format:check` y `git diff --check`. La corrida de cobertura de API necesitó permiso para abrir listeners locales en `127.0.0.1`.
 - El siguiente paso es evaluar el cableado de proveedores de `app.module.ts` con pruebas de integración que verifiquen configuración observable, no detalles internos de Nest.
+
+## Resistencia del roast ante fallos transitorios, 5 de noviembre de 2026
+
+- `OpenAiRoastReplyPort` amplía el presupuesto total abortable a 30 segundos, permite un único reintento acotado ante transporte, HTTP 5xx o salida incompleta por límite de tokens, y valida la respuesta antes de confirmar el uso. Los errores 429 y las salidas inválidas no se reintentan.
+- Las pruebas comprueban que el segundo intento conserva el plazo original, que una salida inválida no provoca otra solicitud y que el `failureCode` de telemetría no incluye el texto del usuario ni la clave. La suite focalizada pasa con 34 pruebas; también pasan el lint y el typecheck de API.

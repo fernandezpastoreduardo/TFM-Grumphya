@@ -16,6 +16,10 @@ import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import {
+  PendingEmailVerificationGuard,
+  PendingEmailVerificationService,
+} from "../infrastructure/auth/pending-email-verification";
 import { issueAccessToken } from "../infrastructure/auth/access-token";
 import { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import { FakeEvaluationPort } from "./fake-evaluation.port";
@@ -23,6 +27,11 @@ import { FakeEvaluationPort } from "./fake-evaluation.port";
 const AUTH_GUARD_TEST_PROVIDERS = [
   AccessTokenGuard,
   OptionalAccessTokenGuard,
+  PendingEmailVerificationGuard,
+  {
+    provide: PendingEmailVerificationService,
+    useValue: { isPending: async () => false },
+  },
   {
     provide: ACCESS_TOKEN_SESSION_LOOKUP,
     useValue: { isActive: async () => false },
@@ -43,6 +52,11 @@ function createAuthenticatedQuotaModule(planUsage: PlanUsageService) {
     providers: [
       AccessTokenGuard,
       OptionalAccessTokenGuard,
+      PendingEmailVerificationGuard,
+      {
+        provide: PendingEmailVerificationService,
+        useValue: { isPending: async () => false },
+      },
       {
         provide: ACCESS_TOKEN_SESSION_LOOKUP,
         useValue: { isActive: async () => true },
@@ -231,6 +245,28 @@ afterEach(() => {
 });
 
 describe("evaluation process HTTP endpoint", () => {
+  it("rejects an idea before reaching evaluation while email verification is pending", async () => {
+    const application = await startHttpApplication(EvaluationTestingModule);
+    const pending = application.get(PendingEmailVerificationService);
+    const pendingSpy = vi.spyOn(pending, "isPending").mockResolvedValue(true);
+    const submit = vi.spyOn(application.get(IdeaSubmissionService), "submit");
+    try {
+      const response = await postEvaluation(application, {
+        ideaText: VALID_IDEA,
+        tone: "soft",
+      });
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({
+        code: "EMAIL_VERIFICATION_REQUIRED",
+      });
+      expect(submit).not.toHaveBeenCalled();
+    } finally {
+      pendingSpy.mockRestore();
+      submit.mockRestore();
+      await application.close();
+    }
+  });
+
   it("checks and commits the authenticated Iluminado quota around successful evaluation", async () => {
     process.env.ACCESS_TOKEN_SECRET = ACCESS_TOKEN_SECRET;
     const planUsage = {

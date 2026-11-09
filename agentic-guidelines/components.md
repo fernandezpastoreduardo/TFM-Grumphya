@@ -10,6 +10,17 @@ Componente presentacional local a `get-user-idea`. Captura una idea escrita, peg
 
 Presenta veredicto, puntuación, riesgos, supuestos y próximos pasos. No calcula ni modifica el resultado.
 
+### EvaluationDialog
+
+Contenedor modal local a `idea-evaluation` para el resultado y los estados de
+carga de Home. Mientras espera, usa copy rotativo cada 2,8 segundos y una barra
+indeterminada; los textos son ambientación, no reflejan fases ni avance medidos
+del backend. No mostrar porcentaje o tiempo restante. El diálogo comunica la
+carga con `aria-busy`. La frase rotativa es el único `role="status"` live
+region; la barra conserva el nombre accesible estático «Progreso de la
+evaluación» y no tiene `aria-valuetext`, para evitar anuncios duplicados. La
+preferencia `prefers-reduced-motion` detiene su animación.
+
 ### EvaluationFailureNotice
 
 Componente presentacional local a `idea-evaluation`, mostrado dentro del diálogo de Home cuando una evaluación falla y el servidor confirma la liberación del intento. Presenta el mensaje y la ilustración `evaluation-error-spilled-coffee.png`; los resultados inciertos de transporte conservan su aviso textual neutro.

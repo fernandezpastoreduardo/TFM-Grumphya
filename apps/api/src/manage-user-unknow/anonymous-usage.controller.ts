@@ -19,6 +19,7 @@ import {
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import { PendingEmailVerificationGuard } from "../infrastructure/auth/pending-email-verification";
 import { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import { ServiceUnavailableException } from "@nestjs/common";
 import {
@@ -94,7 +95,7 @@ export class AnonymousUsageController {
   }
 
   @Post("roast")
-  @UseGuards(OptionalAccessTokenGuard)
+  @UseGuards(PendingEmailVerificationGuard, OptionalAccessTokenGuard)
   async roast(
     @Req() request: OptionalAuthenticatedRequest,
     @Body() input: unknown,

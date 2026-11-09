@@ -5,6 +5,17 @@ import { Contact } from "./contact";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import { authenticatedFetch } from "../../infrastructure/auth/session";
 
+const emailVerification = vi.hoisted(() => ({
+  check: vi.fn(async () => false),
+}));
+
+vi.mock("../../shared/hooks/use-pending-email-verification", () => ({
+  usePendingEmailVerification: () => ({
+    isPending: false,
+    check: emailVerification.check,
+  }),
+}));
+
 vi.mock("../../infrastructure/auth/use-session-status", () => ({
   useSessionStatus: vi.fn(),
 }));
@@ -30,6 +41,7 @@ function contactResponse(confirmation = "sent"): Response {
 }
 
 beforeEach(() => {
+  emailVerification.check.mockReset().mockResolvedValue(false);
   mockedUseSessionStatus.mockReturnValue({
     isAuthenticated: true,
     accountAttempts: null,
@@ -46,6 +58,52 @@ afterEach(() => {
 });
 
 describe("Contact", () => {
+  it("does not submit a contact message while email verification is pending", async () => {
+    emailVerification.check.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<Contact />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: /asunto/i }),
+      "Consulta",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /mensaje/i }),
+      "Necesito ayuda con mi cuenta.",
+    );
+    await user.click(screen.getByRole("button", { name: /enviar mensaje/i }));
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "Por seguridad tienes que confirmar tu correo",
+      }),
+    ).toBeInTheDocument();
+    expect(mockedAuthenticatedFetch).not.toHaveBeenCalled();
+  });
+
+  it("shows the verification notice for a pending visitor using the contact demo", async () => {
+    mockedUseSessionStatus.mockReturnValue({
+      isAuthenticated: false,
+      accountAttempts: null,
+      avatarUrl: null,
+      isSigningOut: false,
+      refresh: vi.fn(async () => null),
+      signOut: vi.fn(),
+    });
+    emailVerification.check.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<Contact />);
+
+    await user.click(screen.getByRole("textbox", { name: "Nombre" }));
+
+    expect(
+      await screen.findByRole("dialog", {
+        name: "Por seguridad tienes que confirmar tu correo",
+      }),
+    ).toBeInTheDocument();
+    expect(mockedAuthenticatedFetch).not.toHaveBeenCalled();
+  });
+
   it("renders the contact layout skeleton immediately while session status is unresolved", () => {
     mockedUseSessionStatus.mockReturnValue({
       isAuthenticated: null,

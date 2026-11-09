@@ -67,11 +67,6 @@ export type AccountProfile = {
   };
   plans: AccountPlanStatus[];
 };
-export type DirectRegistration = {
-  userId: string;
-  plan: PlanCode;
-  account: AccountProfile;
-};
 export type LoginIdentity = {
   userId: string;
   username: string;
@@ -90,6 +85,9 @@ export type PendingRegistration = {
 };
 export type RegistrationPendingResult = {
   status: "verification_pending";
+};
+export type RegistrationCreatedResult = RegistrationPendingResult & {
+  pendingRegistrationId?: string;
 };
 
 export class RegistrationError extends HttpException {

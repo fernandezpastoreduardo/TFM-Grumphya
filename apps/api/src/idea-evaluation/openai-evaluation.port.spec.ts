@@ -369,7 +369,7 @@ describe("OpenAiEvaluationPort", () => {
       outputTokens: 5,
       estimatedCostUsd: 0.0000045,
     });
-    expect(event.traceId).toEqual(expect.any(String));
+    expect(event.traceId).toBeUndefined();
     expect(JSON.stringify(event)).not.toContain(IDEA_TEXT);
     expect(JSON.stringify(event)).not.toContain("session");
   });

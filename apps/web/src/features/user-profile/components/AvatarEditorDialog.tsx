@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, MouseEvent, PointerEvent } from "react";
+import type { FormEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePersistentTheme } from "../../../shared/hooks/use-persistent-theme";
 
@@ -170,10 +170,7 @@ export function AvatarEditorDialog({
   const previewTransform = `translate(calc(-50% + ${offset.x * previewScale}px), calc(-50% + ${offset.y * previewScale}px))`;
 
   return createPortal(
-    <div
-      className={`avatar-dialog-backdrop theme-${theme}`}
-      onMouseDown={handleBackdropClick}
-    >
+    <div className={`avatar-dialog-backdrop theme-${theme}`}>
       <section
         ref={dialogRef}
         className="avatar-editor-dialog"
@@ -350,10 +347,6 @@ export function AvatarEditorDialog({
     </div>,
     document.body,
   );
-
-  function handleBackdropClick(event: MouseEvent<HTMLDivElement>) {
-    if (event.target === event.currentTarget && !uploading) onClose();
-  }
 }
 
 function getImageScale(

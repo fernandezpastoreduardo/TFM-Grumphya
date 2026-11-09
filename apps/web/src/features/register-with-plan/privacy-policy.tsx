@@ -308,13 +308,16 @@ export function PrivacyPolicy() {
       <section aria-labelledby="privacy-cookies-title">
         <h3 id="privacy-cookies-title">7. Cookies y almacenamiento local</h3>
         <p>
-          El código utiliza una cookie propia para el perfil sin cuenta, dos
-          cookies temporales durante el alta y una cookie protegida para la
-          sesión. La cookie del perfil dura hasta 400 días; la intención de alta
-          y la confirmación del plan caducan a los 15 minutos. La cookie de
-          sesión dura hasta 30 días si eliges «Recordarme» y, si no, es de
-          sesión, con caducidad máxima de 24 horas en el servidor. Todas son
-          cookies propias <code>HttpOnly</code>, <code>SameSite=Strict</code> y
+          El código utiliza una cookie propia para el perfil sin cuenta, tres
+          cookies durante el alta y una cookie protegida para la sesión. La
+          cookie del perfil dura hasta 400 días. Una cookie de alta pendiente
+          recuerda en este navegador que debes confirmar el correo: contiene un
+          identificador aleatorio del registro, dura hasta 400 días y se elimina
+          al activar la cuenta o iniciar sesión. La intención de alta y la
+          confirmación del plan caducan a los 15 minutos. La cookie de sesión
+          dura hasta 30 días si eliges «Recordarme» y, si no, es de sesión, con
+          caducidad máxima de 24 horas en el servidor. Todas son cookies propias{" "}
+          <code>HttpOnly</code>, <code>SameSite=Strict</code> y
           <code>Secure</code> en producción. También se guarda en{" "}
           <code>localStorage</code> el tema visual y la confirmación de lectura
           del aviso; si el navegador no admite <code>BroadcastChannel</code>, se

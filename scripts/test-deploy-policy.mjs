@@ -60,6 +60,84 @@ const releaseJob = workflow.slice(releaseJobStart);
 const beforeReleaseJob = workflow.slice(0, releaseJobStart);
 const dependencyAuditStart = workflow.indexOf("  dependency-audit:");
 assert.notEqual(dependencyAuditStart, -1, "early dependency audit must exist");
+const performanceLabStart = workflow.indexOf("  performance-lab:");
+assert.notEqual(performanceLabStart, -1, "Lighthouse lab job must exist");
+const lighthousePublishStart = workflow.indexOf("  publish-lighthouse:");
+assert.notEqual(
+  lighthousePublishStart,
+  -1,
+  "post-deployment Lighthouse publication job must exist",
+);
+const performanceLabJob = workflow.slice(
+  performanceLabStart,
+  lighthousePublishStart,
+);
+const lighthousePublishJob = workflow.slice(
+  lighthousePublishStart,
+  dependencyAuditStart,
+);
+assert.match(
+  performanceLabJob,
+  /report_base64: \$\{\{ steps\.summarize\.outputs\.report_base64 \}\}/,
+  "Lighthouse lab must expose only an allowlisted summary to later jobs",
+);
+assert.match(
+  performanceLabJob,
+  /node apps\/web\/scripts\/summarize-lighthouse\.mjs[\s\S]*?report_base64=%s/,
+  "Lighthouse lab must summarize before setting its job output",
+);
+assert.doesNotMatch(
+  performanceLabJob,
+  /LIGHTHOUSE_INGEST_(?:TOKEN|URL)|secrets\./,
+  "the laboratory job must not receive ingestion secrets",
+);
+assert.match(
+  lighthousePublishJob,
+  /needs: \[performance-lab, supply-chain\]/,
+  "Lighthouse publication must wait for a successful deployment",
+);
+const lighthousePublishCondition = lighthousePublishJob.match(
+  /if:\s*>-\s*([\s\S]*?)\n\s*runs-on:/,
+)?.[1];
+assert.equal(
+  lighthousePublishCondition?.replace(/\s+/g, " ").trim(),
+  [
+    "github.event_name == 'workflow_dispatch'",
+    "github.ref == 'refs/heads/main'",
+    "github.actor == 'fernandezpastoreduardo'",
+    "github.triggering_actor == 'fernandezpastoreduardo'",
+    "inputs.approve_production_deploy == true",
+    "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
+    "needs.performance-lab.result == 'success'",
+    "needs.supply-chain.result == 'success'",
+  ].join(" && "),
+  "Lighthouse ingestion must require an approved and successful release",
+);
+assert.match(
+  lighthousePublishJob,
+  /LIGHTHOUSE_REPORT_BASE64: \$\{\{ needs\.performance-lab\.outputs\.report_base64 \}\}/,
+  "the publication job must consume the allowlisted lab summary",
+);
+assert.match(
+  lighthousePublishJob,
+  /LIGHTHOUSE_INGEST_TOKEN: \$\{\{ secrets\.LIGHTHOUSE_INGEST_TOKEN \}\}/,
+  "the ingestion token must be scoped to the post-deployment step",
+);
+assert.match(
+  lighthousePublishJob,
+  /if \[\[ ! "\$LIGHTHOUSE_INGEST_TOKEN" =~ [^\n]+\]\]; then[\s\S]*?::warning::[^\n]+[\s\S]*?exit 0/,
+  "an invalid optional Lighthouse token must not fail a deployed release",
+);
+assert.match(
+  lighthousePublishJob,
+  /if \[\[ "\$LIGHTHOUSE_INGEST_URL" != "https:\/\/\$PRODUCTION_DOMAIN\/api\/internal\/lighthouse-quality\/ingest" \]\]; then[\s\S]*?::warning::LIGHTHOUSE_INGEST_URL[^\n]+[\s\S]*?exit 0/,
+  "the optional Lighthouse URL must target the production ingestion endpoint",
+);
+assert.match(
+  lighthousePublishJob,
+  /if ! curl --fail[\s\S]*?"\$LIGHTHOUSE_INGEST_URL"; then[\s\S]*?::warning::[^\n]+\n\s*fi/,
+  "an unavailable optional Lighthouse endpoint must report a warning without failing the release",
+);
 const dependencyAuditEnd = workflow.indexOf(
   "  supply-chain:",
   dependencyAuditStart,
@@ -585,6 +663,11 @@ assert.match(
   deploymentExecutionStep,
   /\[\[ "\$release_bytes" == "\$RELEASE_BYTES" && "\$release_sha256" == "\$RELEASE_SHA256" \]\]/,
   "deployment must revalidate bundle size and hash after preflight",
+);
+assert.match(
+  deploymentExecutionStep,
+  /if \[\[ "\$PREVIOUS_RELEASE_SHA" == "\$GITHUB_SHA" \]\]; then[\s\S]*?already active; verifying public endpoints without redeploying[\s\S]*?else[\s\S]*?"deploy \$GITHUB_SHA \$release_bytes \$release_sha256"[\s\S]*?trap request_rollback_and_verify ERR\n\s*fi/,
+  "an already-active SHA must skip transfer and must not arm rollback for read-only health checks",
 );
 for (const guard of REQUIRED_DEPLOY_GUARDS) {
   assert.ok(

@@ -139,6 +139,25 @@ const anonymousAnalytics = {
   monthlyPlanSelections: [],
   monthlyPlanActivations: [],
 };
+const lighthouseQuality = {
+  runs: [
+    {
+      commitSha: "a".repeat(40),
+      measuredAt: "2026-11-09T12:00:00.000Z",
+      page: "home",
+      device: "mobile",
+      sampleCount: 3,
+      performance: 0.9,
+      accessibility: 1,
+      bestPractices: 0.96,
+      seo: 1,
+      lcpMs: 1234,
+      cls: 0.02,
+      tbtMs: 10,
+      speedIndexMs: 2345,
+    },
+  ],
+};
 
 describe("AdminDashboard", () => {
   beforeEach(async () => {
@@ -150,9 +169,11 @@ describe("AdminDashboard", () => {
           JSON.stringify(
             String(input).includes("anonymous-analytics")
               ? anonymousAnalytics
-              : String(input).includes("contact-messages")
-                ? contacts
-                : dashboard,
+              : String(input).includes("web-quality")
+                ? lighthouseQuality
+                : String(input).includes("contact-messages")
+                  ? contacts
+                  : dashboard,
           ),
           {
             status: 200,
@@ -160,6 +181,26 @@ describe("AdminDashboard", () => {
           },
         ),
     );
+  });
+
+  it("shows synthetic Lighthouse scores and vitals in the web-quality tab", async () => {
+    const user = userEvent.setup();
+    render(<AdminDashboard />);
+
+    await screen.findByRole("heading", { name: "Hola, Jappy." });
+    await user.click(screen.getByRole("tab", { name: "Calidad web" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Calidad web · Lighthouse" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("90 %")).toBeInTheDocument();
+    expect(screen.getByText("1234 ms")).toBeInTheDocument();
+    expect(
+      screen.getByText("Mediana de 3 mediciones", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no son Core Web Vitals de usuarios reales/i),
+    ).toBeInTheDocument();
   });
 
   it("shows revenue, costs including admin and anonymous use, a trend chart, errors and contacts", async () => {
@@ -634,11 +675,11 @@ describe("AdminDashboard", () => {
       screen.getByRole("tab", { name: "Benchmark de IA" }),
     ).toHaveAttribute("aria-selected", "true");
     await user.keyboard("{End}");
+    expect(screen.getByRole("tab", { name: "Calidad web" })).toHaveFocus();
+    await user.keyboard("{ArrowLeft}");
     expect(
       screen.getByRole("tab", { name: "Analítica anónima" }),
     ).toHaveFocus();
-    await user.keyboard("{ArrowLeft}");
-    expect(screen.getByRole("tab", { name: SECURITY_TAB_LABEL })).toHaveFocus();
   });
 
   it("shows a generic failure when an admin endpoint rejects the request", async () => {

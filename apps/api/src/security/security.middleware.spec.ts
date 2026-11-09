@@ -423,6 +423,35 @@ describe("security middleware", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["POST", "/api/registration-intents"],
+    ["POST", "/api/account/avatar"],
+    ["DELETE", "/api/account"],
+    ["POST", "/api/auth/login"],
+    ["POST", "/api/anonymous-usage"],
+    ["POST", EVALUATION_PATH],
+    ["POST", "/api/roast"],
+    ["POST", "/api/contact-messages"],
+  ])(
+    "rejects %s %s from a foreign origin before checking content type",
+    (method, path) => {
+      const middleware = createSecurityMiddleware();
+      const request = {
+        ...createRequest(path, method),
+        get: () => "https://attacker.example",
+        is: vi.fn(() => false),
+      } as unknown as Request;
+      const { response } = createResponse();
+      const next = vi.fn() as NextFunction;
+
+      middleware(request, response, next);
+
+      expect(response.status).toHaveBeenCalledWith(403);
+      expect(request.is).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    },
+  );
+
   it("protects anonymous profile issuance and roast submissions with origin and JSON checks", () => {
     const middleware = createSecurityMiddleware();
     const next = vi.fn() as NextFunction;
@@ -551,6 +580,24 @@ describe("security middleware", () => {
     const queryResponse = createResponse();
     middleware(queryRequest, queryResponse.response, next);
     expect(queryResponse.response.status).toHaveBeenCalledWith(400);
+  });
+
+  it("rate limits account creation submissions and returns a retry interval", () => {
+    const middleware = createSecurityMiddleware();
+    const next = vi.fn() as NextFunction;
+    const request = createRequest("/api/registrations", "POST");
+    for (let index = 0; index < 8; index += 1)
+      middleware(request, createResponse().response, next);
+
+    const limited = createResponse();
+    middleware(request, limited.response, next);
+
+    expect(limited.response.status).toHaveBeenCalledWith(429);
+    expect(limited.response.setHeader).toHaveBeenCalledWith(
+      "Retry-After",
+      expect.any(String),
+    );
+    expect(next).toHaveBeenCalledTimes(8);
   });
 
   it("keeps logout available after the refresh limit is reached", () => {

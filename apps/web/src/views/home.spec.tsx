@@ -8,6 +8,17 @@ import {
 } from "../infrastructure/auth/session";
 import { Home } from "./home";
 
+const emailVerification = vi.hoisted(() => ({
+  check: vi.fn(async () => false),
+}));
+
+vi.mock("../shared/hooks/use-pending-email-verification", () => ({
+  usePendingEmailVerification: () => ({
+    isPending: false,
+    check: emailVerification.check,
+  }),
+}));
+
 const TEST_IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const SHORT_INSULT_IDEA_TEXT = "idiota";
 const IDEA_INPUT_NAME = /(escribe, pega o dicta|escribe o pega) tu idea/i;
@@ -50,9 +61,39 @@ describe("Home", () => {
   beforeEach(() => {
     localStorage.clear();
     clearAccessToken();
+    emailVerification.check.mockReset().mockResolvedValue(false);
   });
 
   afterEach(() => vi.unstubAllGlobals());
+
+  it("does not send an idea while email verification is pending", async () => {
+    const user = userEvent.setup();
+    emailVerification.check.mockResolvedValue(true);
+    const fetchMock = vi.fn(
+      (url: unknown) =>
+        respondToUsageInitialization(url) ?? Promise.resolve(Response.json({})),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Home />);
+
+    await user.type(
+      screen.getByRole("textbox", { name: IDEA_INPUT_NAME }),
+      TEST_IDEA_TEXT,
+    );
+    await continueToToneStep(user);
+    await user.click(screen.getByRole("button", { name: SUBMIT_BUTTON_NAME }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Por seguridad tienes que confirmar tu correo",
+    });
+    expect(dialog).toHaveTextContent(
+      "Te hemos enviado un email con un enlace para que puedas confirmarlo.",
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/evaluation-process",
+      expect.anything(),
+    );
+  });
 
   it("links to the secure-development prototype from the home footer", async () => {
     vi.stubGlobal(
@@ -162,6 +203,33 @@ describe("Home", () => {
         name: "Panel de control",
       }),
     ).toHaveAttribute("href", "/panel-control");
+  });
+
+  it("opens the mobile navigation and returns focus after Escape", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => undefined)),
+    );
+    render(<Home />);
+
+    const menuButton = screen.getByRole("button", {
+      name: "Abrir menú de secciones",
+    });
+    await user.click(menuButton);
+    const menu = screen.getByRole("dialog", { name: "Menú de navegación" });
+    expect(menu).toBeVisible();
+    expect(within(menu).getByRole("link", { name: "Planes" })).toHaveAttribute(
+      "href",
+      "/precios",
+    );
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Menú de navegación" }),
+    ).toBeNull();
+    expect(menuButton).toHaveFocus();
   });
 
   it("shows the 429 page when the API temporarily blocks browser profile creation", async () => {
@@ -704,7 +772,7 @@ describe("Home", () => {
     );
     expect(screen.getByRole("link", { name: /crear cuenta/i })).toHaveAttribute(
       "href",
-      "/precios",
+      "/crear-cuenta/planes",
     );
   });
 
@@ -1095,9 +1163,9 @@ describe("Home", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent(
       /la espera no mejora el resultado/i,
     );
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /buscando dónde puede romperse/i,
-    );
+    expect(
+      screen.getByRole("heading", { name: /buscando dónde puede romperse/i }),
+    ).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([url]) => url === "/api/evaluation-process"),
     ).toHaveLength(1);

@@ -58,7 +58,7 @@ describe("AccountActions", () => {
     );
     expect(screen.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute(
       "href",
-      "/precios",
+      "/crear-cuenta/planes",
     );
   });
 });

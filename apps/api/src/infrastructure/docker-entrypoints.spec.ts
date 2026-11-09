@@ -35,6 +35,7 @@ const API_PROBE = `
   const output = {
     accessTokenSecret: process.env.ACCESS_TOKEN_SECRET,
     anonymousIpSecret: process.env.ANONYMOUS_IP_HMAC_SECRET,
+    qualityMetricsToken: process.env.QUALITY_METRICS_INGEST_TOKEN,
     database: process.env.PGDATABASE,
     user: process.env.PGUSER,
     password: process.env.PGPASSWORD,
@@ -83,6 +84,7 @@ describe("Docker service entrypoints", () => {
       [
         "ACCESS_TOKEN_SECRET=access-secret",
         "ANONYMOUS_IP_HMAC_SECRET=anonymous-secret",
+        "QUALITY_METRICS_INGEST_TOKEN=quality-metrics-token",
       ].join("\n"),
     );
     writeSecret(
@@ -138,6 +140,7 @@ describe("Docker service entrypoints", () => {
     const result = readJsonOutput<{
       accessTokenSecret: string;
       anonymousIpSecret: string;
+      qualityMetricsToken: string;
       database: string;
       user: string;
       password: string;
@@ -154,6 +157,7 @@ describe("Docker service entrypoints", () => {
     expect(result).toMatchObject({
       accessTokenSecret: "access-secret",
       anonymousIpSecret: "anonymous-secret",
+      qualityMetricsToken: "quality-metrics-token",
       database: "grumphya_test",
       user: "app_test",
       password: "database-secret",

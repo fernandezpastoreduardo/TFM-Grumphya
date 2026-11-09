@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { domainToASCII } from "node:url";
+import { normalizeEmailAddress } from "../infrastructure/validation/normalize-email-address";
 import { Logger } from "@nestjs/common";
 import {
   RegistrationError,
@@ -12,6 +12,7 @@ import {
   type AccountProfile,
   type UserGoodIdeas,
   type RegistrationPendingResult,
+  type RegistrationCreatedResult,
   type PendingRegistration,
 } from "./registration.models";
 import type { RegistrationRepository } from "./registration.repository";
@@ -42,7 +43,6 @@ const GENERIC_LOGIN_ERROR = {
   message:
     "No se ha podido iniciar sesión. Revisa los datos e inténtalo de nuevo.",
 } as const;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN =
   /^[\p{L}\p{N}](?:[\p{L}\p{N}]|[._-](?=[\p{L}\p{N}])){1,28}[\p{L}\p{N}]$/u;
 export function hashToken(token: string): string {
@@ -67,7 +67,7 @@ function validateResendEmail(value: unknown): string {
       "Escribe un correo válido.",
     );
   }
-  const email = normalizeEmail(value.email);
+  const email = normalizeEmailAddress(value.email);
   if (!email)
     throw new RegistrationError(
       400,
@@ -134,7 +134,7 @@ export class RegistrationService {
   async register(
     token: string | undefined,
     value: unknown,
-  ): Promise<RegistrationPendingResult> {
+  ): Promise<RegistrationCreatedResult> {
     const intentPlan = await this.currentIntent(token);
     if (!token || !intentPlan)
       throw new RegistrationError(
@@ -161,7 +161,10 @@ export class RegistrationService {
         pendingRegistration.email,
         verificationToken,
       );
-      return { status: "verification_pending" };
+      return {
+        status: "verification_pending",
+        pendingRegistrationId: pendingRegistration.id,
+      };
     } catch (error) {
       if (error instanceof RegistrationError) throw error;
       if (isUniqueViolation(error)) return { status: "verification_pending" };
@@ -173,7 +176,10 @@ export class RegistrationService {
         this.logger.error("Registration verification delivery failed", {
           errorCode: "MAIL_DELIVERY_FAILED",
         });
-        return { status: "verification_pending" };
+        return {
+          status: "verification_pending",
+          pendingRegistrationId: pendingRegistration?.id,
+        };
       }
       throw new RegistrationError(
         503,
@@ -592,7 +598,7 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
       "Venga ya, ese correo no es de verdad, escribe bien anda.",
     );
   }
-  const normalizedEmail = normalizeEmail(email);
+  const normalizedEmail = normalizeEmailAddress(email);
   if (!normalizedEmail) {
     throw new RegistrationError(
       400,
@@ -632,19 +638,6 @@ function validateRegistrationInput(value: unknown): RegistrationInput {
     password,
     privacyPolicyAcknowledged: true,
   };
-}
-
-function normalizeEmail(value: string): string | null {
-  const trimmed = value.trim();
-  if (trimmed.length > 254 || !EMAIL_PATTERN.test(trimmed)) return null;
-  const separator = trimmed.lastIndexOf("@");
-  const localPart = trimmed.slice(0, separator);
-  const domain = domainToASCII(trimmed.slice(separator + 1));
-  if (!domain || localPart.length > 64 || domain.length > 253) return null;
-  const normalized = `${localPart}@${domain}`.toLowerCase();
-  return normalized.length <= 254 && EMAIL_PATTERN.test(normalized)
-    ? normalized
-    : null;
 }
 
 function loginUnavailable(): RegistrationError {

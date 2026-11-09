@@ -12,6 +12,7 @@ type PlanCode = "ILUMINADO" | "FALTON";
 const PUBLIC_PAGE_CODES: Readonly<Record<string, PublicAnalyticsPage>> = {
   "/": "home",
   "/precios": "precios",
+  "/crear-cuenta/planes": "precios",
   "/buenas-practicas": "buenas-practicas",
   "/humanos-notables": "humanos-notables",
   "/lo-peor-de-lo-peor": "lo-peor-de-lo-peor",
@@ -28,7 +29,7 @@ export function recordAnonymousPageView(path: string): void {
 }
 
 export function recordAnonymousPlanSelection(plan: PlanCode): void {
-  sendAnonymousEvent({ event: "plan_selection", page: "precios", plan });
+  void sendAnonymousEvent({ event: "plan_selection", page: "precios", plan });
 }
 
 function sendAnonymousEvent(event: {

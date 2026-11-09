@@ -4,6 +4,13 @@ Las ideas aprobadas que aparecen en el perfil se guardan en `approved_ideas`, cr
 
 La fila contiene el identificador, el usuario propietario, un título privado de hasta 160 caracteres, un hash de idempotencia, el hash de la solicitud y la fecha de creación. El título se deriva del texto de la propia idea normalizando espacios, retirando caracteres de control y limitándolo a 160 caracteres; no se guardan notas ni evaluaciones. El texto/título aprobado nunca se publica en rankings. Solo se guarda cuando una evaluación autenticada termina con `SIN_BLOQUEO_EVIDENTE` y una media de al menos 7/10; `REQUIERE_REVISION` no cuenta como aprobación ni se guarda como idea prometedora. Visitantes anónimos no crean historial. La API obtiene el propietario exclusivamente del `AccessTokenGuard` (o del guard opcional de la evaluación) y filtra por ese `user_id`; nunca acepta un propietario del cuerpo o la query.
 
+El título privado puede reproducir íntegramente una idea breve y contener datos
+personales o información sensible introducida por la persona usuaria. Su
+carácter privado depende del control de acceso y de la protección de la base y
+sus copias; recortarlo a 160 caracteres no lo anonimiza. La UI lo presenta
+como texto React, sin interpretarlo como HTML. El ranking de «Humanos notables»
+solo publica alias y número de ideas distintas aprobadas, nunca esos títulos.
+
 `submission_hash` se calcula con SHA-256 sobre el `Idempotency-Key`; `request_hash` es un HMAC-SHA-256 del payload y no almacena la clave ni el texto de idea. El índice único `(user_id, submission_hash)` evita duplicados por reintentos. La inserción y comprobación se hacen en una transacción: misma clave y payload devuelve no-op; si la clave se reutiliza con otro payload, el primer título queda intacto y la API responde con conflicto genérico. No se registra el texto de idea en logs. El contrato de lectura del perfil es `{ ideas: [{ id, title, createdAt }] }`; devuelve las diez más recientes, ordenadas por fecha e ID descendentes.
 
 La relación usa `ON DELETE CASCADE`, por lo que el borrado físico de un usuario elimina también sus ideas aprobadas. El índice compuesto por usuario y fecha respalda la consulta del perfil. No se cargan ideas de muestra en la base de datos de producción.

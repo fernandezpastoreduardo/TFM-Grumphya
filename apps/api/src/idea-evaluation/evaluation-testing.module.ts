@@ -12,12 +12,21 @@ import type { WorstIdeasRepository } from "../worst-ideas/worst-ideas.models";
 import { ACCESS_TOKEN_SESSION_LOOKUP } from "../infrastructure/auth/access-token-session.lookup";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 import { OptionalAccessTokenGuard } from "../infrastructure/auth/optional-access-token.guard";
+import {
+  PendingEmailVerificationGuard,
+  PendingEmailVerificationService,
+} from "../infrastructure/auth/pending-email-verification";
 
 @Module({
   controllers: [EvaluationProcessController, EvaluationTestReadinessController],
   providers: [
     AccessTokenGuard,
     OptionalAccessTokenGuard,
+    PendingEmailVerificationGuard,
+    {
+      provide: PendingEmailVerificationService,
+      useValue: { isPending: async () => false },
+    },
     {
       provide: ACCESS_TOKEN_SESSION_LOOKUP,
       useValue: { isActive: async () => false },

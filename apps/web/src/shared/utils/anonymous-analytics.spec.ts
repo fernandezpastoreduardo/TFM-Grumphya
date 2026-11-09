@@ -6,7 +6,7 @@ import {
 } from "./anonymous-analytics";
 
 const ANALYTICS_ENDPOINT = "/api/anonymous-analytics";
-const PRICING_PATH = "/precios";
+const PRICING_PATHS = ["/precios", "/crear-cuenta/planes"] as const;
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -14,34 +14,37 @@ afterEach(() => {
 });
 
 describe("anonymous analytics client", () => {
-  it("sends only an allowlisted page code and coarse device class without credentials", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
-    vi.stubGlobal("fetch", fetchMock);
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      value: vi.fn().mockReturnValue({ matches: true }),
-    });
+  it.each(PRICING_PATHS)(
+    "records %s as an allowlisted plans page without credentials",
+    async (path) => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal("fetch", fetchMock);
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: vi.fn().mockReturnValue({ matches: true }),
+      });
 
-    recordAnonymousPageView(PRICING_PATH);
+      recordAnonymousPageView(path);
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(ANALYTICS_ENDPOINT);
-    expect(options).toMatchObject({
-      method: "POST",
-      mode: "same-origin",
-      credentials: "omit",
-      cache: "no-store",
-      keepalive: true,
-      referrerPolicy: "no-referrer",
-    });
-    expect(JSON.parse(String(options.body))).toEqual({
-      event: "page_view",
-      page: "precios",
-      plan: null,
-      device: "mobile",
-    });
-  });
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe(ANALYTICS_ENDPOINT);
+      expect(options).toMatchObject({
+        method: "POST",
+        mode: "same-origin",
+        credentials: "omit",
+        cache: "no-store",
+        keepalive: true,
+        referrerPolicy: "no-referrer",
+      });
+      expect(JSON.parse(String(options.body))).toEqual({
+        event: "page_view",
+        page: "precios",
+        plan: null,
+        device: "mobile",
+      });
+    },
+  );
 
   it("does not send page views for routes outside the public allowlist", async () => {
     const fetchMock = vi.fn();

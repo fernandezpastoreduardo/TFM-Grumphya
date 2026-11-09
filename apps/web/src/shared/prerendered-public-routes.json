@@ -42,6 +42,17 @@
     ]
   },
   {
+    "path": "/crear-cuenta/planes",
+    "manifestEntry": "src/features/pricing/pricing.tsx",
+    "developmentStyles": ["/src/features/pricing/pricing.scss"],
+    "requiredCopy": [
+      "Para crear tu cuenta, primero elige un plan",
+      "Iluminado",
+      "Faltón",
+      "UltraChachi"
+    ]
+  },
+  {
     "path": "/contacto",
     "manifestEntry": "src/features/contact/contact.tsx",
     "developmentStyles": ["/src/features/contact/contact.scss"],

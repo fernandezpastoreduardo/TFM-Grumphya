@@ -155,8 +155,9 @@ pestaña **Resumen**, y añade tres vistas informativas de operación:
   100 grupos. Oculta los grupos con menos de tres usos.
   No incluye ideas, IDs de evento, actor, cuenta, IP ni sesión. Los eventos
   estructurados de stdout incluyen operación, modelo, resultado, latencia,
-  identificador aleatorio por llamada, tokens disponibles y coste estimado; no
-  incluyen ideas, mensajes, cuenta, IP, token de sesión ni clave API. La tabla
+  tokens disponibles y coste estimado; las etiquetas se limitan a valores
+  seguros y no se emite identificador por llamada. Las líneas no incluyen
+  ideas, mensajes, cuenta, IP, token de sesión ni clave API. La tabla
   privada de consumo persiste tokens y coste por operación/modelo y puede asociar una
   cuenta para calcular promedios; la vista reciente no expone esos datos de
   actor ni identificadores individuales.
@@ -206,6 +207,39 @@ pestaña **Resumen**, y añade tres vistas informativas de operación:
 
 Las pestañas son información de operación y documentación. No lanzan
 benchmarks, escaneos ni pruebas desde el navegador.
+
+### Métricas Lighthouse del laboratorio
+
+La pestaña **Calidad web** presenta a Jappy los resultados sintéticos de
+Lighthouse. La lectura usa `GET /api/admin/web-quality`, protegido por access
+token y `AdminRoleGuard`. Muestra hasta seis resúmenes: la medición más reciente
+para cada combinación de tres páginas (Inicio, Precios y Peores ideas) y dos
+dispositivos (móvil y escritorio). Cada resultado corresponde a tres
+ejecuciones y contiene commit, fecha, puntuaciones de categoría y métricas LCP,
+CLS, TBT y Speed Index. La vista aclara que no son Core Web Vitals de campo.
+
+Tras desplegar, CI publica el resumen allowlisted mediante
+`POST /api/internal/lighthouse-quality/ingest`, autenticado con Bearer token.
+El laboratorio pasa solo ese resumen como salida temporal del job, sin
+artefactos. La publicación solo se habilita en el `workflow_dispatch` aprobado
+desde `main`, cuando `github.actor` y `github.triggering_actor` son
+`fernandezpastoreduardo`. Para activarla, configura los secretos de Actions
+`LIGHTHOUSE_INGEST_URL` (exactamente
+`https://<PRODUCTION_DOMAIN>/api/internal/lighthouse-quality/ingest`) y
+`LIGHTHOUSE_INGEST_TOKEN`, y configura el mismo token Base64URL, de al menos
+32 caracteres (se recomiendan 32 bytes aleatorios codificados en Base64URL),
+como `QUALITY_METRICS_INGEST_TOKEN` en el secreto runtime de la API
+(`grumphya_env`). Despliega también la migración y la versión de API/web que
+incluyen la función. Si faltan los secretos de Actions, el job omite la
+publicación; si su formato no es válido o el endpoint falla, emite un aviso sin
+invalidar el despliegue.
+
+La base conserva resultados por commit/página/dispositivo y la purga horaria
+elimina los que superan 90 días. El reporte es enteramente sintético: no añade
+cookies ni instrumentación de visitantes, y no recoge IPs, sesiones o
+visitantes únicos. Los informes Lighthouse completos solo existen durante el
+job de laboratorio; no se suben como artefactos de GitHub Actions, según
+[`ci-cd.md`](ci-cd.md).
 
 - Contacto: hasta 100 mensajes recientes, con alias, correo, asunto, contenido,
   fecha y estado de confirmación/respuesta. El contenido no se escribe en logs.

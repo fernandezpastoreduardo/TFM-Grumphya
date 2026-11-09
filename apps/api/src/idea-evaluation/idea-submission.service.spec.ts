@@ -12,6 +12,7 @@ import { IdeaSubmissionService } from "./idea-submission.service";
 import type { PlanUsageService } from "../register-with-plan/plan-usage.service";
 import type { AnonymousUsageService } from "../manage-user-unknow/anonymous-usage.service";
 
+const VISITOR_TOKEN = "visitor-token";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const GRASSHOPPER_PARAPHRASE =
   "hacer un tinder pero en lugar de para personas para saltamontes";
@@ -111,14 +112,14 @@ describe("IdeaSubmissionService", () => {
     const response = await service.submit(
       { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
       IDEMPOTENCY_KEY,
-      "visitor-token",
+      VISITOR_TOKEN,
     );
 
     expect(response).toMatchObject(expectedResponse);
     expect(repository.getIdempotentMatch).not.toHaveBeenCalled();
     expect(anonymousUsage.reserve).toHaveBeenCalledOnce();
     expect(anonymousUsage.commit).toHaveBeenCalledWith(
-      "visitor-token",
+      VISITOR_TOKEN,
       "ideas",
       IDEMPOTENCY_HASH,
       expect.stringMatching(/^[a-f0-9]{64}$/u),
@@ -139,7 +140,7 @@ describe("IdeaSubmissionService", () => {
     const firstResponse = await service.submit(
       request,
       IDEMPOTENCY_KEY,
-      "visitor-token",
+      VISITOR_TOKEN,
     );
     vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
       state: "cached",
@@ -152,7 +153,7 @@ describe("IdeaSubmissionService", () => {
     const replayedResponse = await service.submit(
       request,
       IDEMPOTENCY_KEY,
-      "visitor-token",
+      VISITOR_TOKEN,
     );
 
     expect(firstResponse).toMatchObject({ status: "special_case" });
@@ -237,12 +238,12 @@ describe("IdeaSubmissionService", () => {
       service.submit(
         { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
         IDEMPOTENCY_KEY,
-        "visitor-token",
+        VISITOR_TOKEN,
       ),
     ).rejects.toMatchObject({ status: 503 });
 
     expect(quota.release).toHaveBeenCalledWith(
-      "visitor-token",
+      VISITOR_TOKEN,
       "ideas",
       IDEMPOTENCY_HASH,
     );
@@ -272,7 +273,7 @@ describe("IdeaSubmissionService", () => {
       service.submit(
         { ideaText: TOO_BRIEF_SPECIAL_IDEA, tone: "soft" },
         IDEMPOTENCY_KEY,
-        "visitor-token",
+        VISITOR_TOKEN,
       ),
     ).rejects.toThrow(ConflictException);
     expect(search.executeDetailed).not.toHaveBeenCalled();
@@ -292,9 +293,61 @@ describe("IdeaSubmissionService", () => {
     });
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
     ).rejects.toThrow(ConflictException);
     expect(search.executeDetailed).not.toHaveBeenCalled();
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ...EVALUATION_RESULT, score: Number.NaN },
+    { ...EVALUATION_RESULT, score: 11 },
+    { ...EVALUATION_RESULT, safeTitle: undefined },
+    { ...EVALUATION_RESULT, safeTitle: "corta" },
+    { ...EVALUATION_RESULT, existingProductExample: "x" },
+    { ...EVALUATION_RESULT, failedCriteria: [] },
+    { ...EVALUATION_RESULT, failedCriteria: [42] },
+    { ...PROMISING_EVALUATION_RESULT, safeTitle: SAFE_TITLE },
+    { ...PROMISING_EVALUATION_RESULT, failedCriteria: ["criterio"] },
+  ])("rejects invalid cached evaluation fields: %j", async (result) => {
+    const { service, anonymousUsage, evaluation } = createDependencies();
+    vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
+      state: "cached",
+      response: { status: "evaluated", result },
+      usage: {
+        ideas: { limit: 3, used: 1, remaining: 2 },
+        roasts: { limit: 3, used: 0, remaining: 3 },
+      },
+    });
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
+    ).rejects.toThrow(ConflictException);
+    expect(evaluation.evaluate).not.toHaveBeenCalled();
+  });
+
+  it("replays a cached rejection with valid optional evidence", async () => {
+    const response = {
+      status: "evaluated",
+      result: {
+        ...EVALUATION_RESULT,
+        existingProductExample: "Una solución existente",
+        failedCriteria: ["Sin usuarios confirmados"],
+      },
+    };
+    const { service, anonymousUsage, evaluation } = createDependencies();
+    vi.mocked(anonymousUsage.reserve).mockResolvedValueOnce({
+      state: "cached",
+      response,
+      usage: {
+        ideas: { limit: 3, used: 1, remaining: 2 },
+        roasts: { limit: 3, used: 0, remaining: 3 },
+      },
+    });
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
+    ).resolves.toEqual(response);
     expect(evaluation.evaluate).not.toHaveBeenCalled();
   });
 
@@ -322,7 +375,7 @@ describe("IdeaSubmissionService", () => {
     });
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
     ).resolves.toEqual(reviewResponse);
     expect(search.executeDetailed).not.toHaveBeenCalled();
     expect(evaluation.evaluate).not.toHaveBeenCalled();
@@ -337,7 +390,7 @@ describe("IdeaSubmissionService", () => {
       service.submit(
         { ideaText: "   ", tone: "soft" },
         IDEMPOTENCY_KEY,
-        "visitor-token",
+        VISITOR_TOKEN,
       ),
     ).rejects.toThrow();
 
@@ -354,7 +407,7 @@ describe("IdeaSubmissionService", () => {
       service.submit(
         { ideaText: "app taxi", tone: "soft" },
         IDEMPOTENCY_KEY,
-        "visitor-token",
+        VISITOR_TOKEN,
       ),
     ).rejects.toThrow(BadRequestException);
 
@@ -381,7 +434,7 @@ describe("IdeaSubmissionService", () => {
     await service.submit(
       VALID_REQUEST,
       IDEMPOTENCY_KEY,
-      "visitor-token",
+      VISITOR_TOKEN,
       AUTHENTICATED_USER_ID,
     );
 
@@ -392,7 +445,7 @@ describe("IdeaSubmissionService", () => {
       expect.stringMatching(/^[a-f0-9]{64}$/u),
     );
     expect(anonymousUsage.reserve).toHaveBeenCalledWith(
-      "visitor-token",
+      VISITOR_TOKEN,
       "ideas",
       IDEMPOTENCY_HASH,
       expect.stringMatching(/^[a-f0-9]{64}$/u),
@@ -855,6 +908,49 @@ describe("IdeaSubmissionService", () => {
     expect(JSON.stringify(loggerError.mock.calls)).not.toContain(privateText);
   });
 
+  it("releases a failed rejection write and retries with the same idempotency key", async () => {
+    const { service, repository, evaluation, anonymousUsage } =
+      createDependencies();
+    vi.mocked(repository.addToWorstIdeas)
+      .mockRejectedValueOnce(new Error("temporary database failure"))
+      .mockResolvedValueOnce("idea-created");
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
+    ).rejects.toMatchObject({
+      response: { code: "INVALID_REJECTION_TITLE" },
+    });
+    expect(anonymousUsage.release).toHaveBeenCalledWith(
+      VISITOR_TOKEN,
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
+    expect(anonymousUsage.commit).not.toHaveBeenCalled();
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
+    ).resolves.toEqual({ status: "evaluated", result: EVALUATION_RESULT });
+    expect(evaluation.evaluate).toHaveBeenCalledTimes(2);
+    expect(anonymousUsage.commit).toHaveBeenCalledOnce();
+  });
+
+  it("releases a completed evaluation when committing quota fails", async () => {
+    const { service, anonymousUsage, repository } = createDependencies();
+    vi.mocked(anonymousUsage.commit).mockRejectedValueOnce(
+      new Error("temporary quota failure"),
+    );
+
+    await expect(
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
+    ).rejects.toThrow("temporary quota failure");
+    expect(repository.addToWorstIdeas).toHaveBeenCalledOnce();
+    expect(anonymousUsage.release).toHaveBeenCalledWith(
+      VISITOR_TOKEN,
+      "ideas",
+      IDEMPOTENCY_HASH,
+    );
+  });
+
   it("continues evaluation only when the same key has an unexpired prior match and does not count again", async () => {
     const { service, search, repository, evaluation } = createDependencies({
       kind: "no-match",
@@ -988,7 +1084,7 @@ describe("IdeaSubmissionService", () => {
     const { service, repository, anonymousUsage } = createDependencies();
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token", "bad-id"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN, "bad-id"),
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(repository.hasDifferentIdempotentRequest).not.toHaveBeenCalled();
@@ -1002,7 +1098,7 @@ describe("IdeaSubmissionService", () => {
     );
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
     ).rejects.toMatchObject({
       status: 503,
       response: { code: "SIMILARITY_UNAVAILABLE" },
@@ -1021,7 +1117,7 @@ describe("IdeaSubmissionService", () => {
     );
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
     ).rejects.toMatchObject({
       status: 503,
       response: { code: "SIMILARITY_UNAVAILABLE" },
@@ -1029,7 +1125,7 @@ describe("IdeaSubmissionService", () => {
 
     expect(anonymousUsage.reserve).toHaveBeenCalledOnce();
     expect(anonymousUsage.release).toHaveBeenCalledWith(
-      "visitor-token",
+      VISITOR_TOKEN,
       "ideas",
       IDEMPOTENCY_HASH,
     );
@@ -1045,14 +1141,14 @@ describe("IdeaSubmissionService", () => {
     );
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
     ).rejects.toMatchObject({
       status: 503,
       response: { code: "SIMILARITY_UNAVAILABLE" },
     });
 
     expect(anonymousUsage.release).toHaveBeenCalledWith(
-      "visitor-token",
+      VISITOR_TOKEN,
       "ideas",
       IDEMPOTENCY_HASH,
     );
@@ -1074,14 +1170,14 @@ describe("IdeaSubmissionService", () => {
     );
 
     await expect(
-      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, "visitor-token"),
+      service.submit(VALID_REQUEST, IDEMPOTENCY_KEY, VISITOR_TOKEN),
     ).rejects.toMatchObject({
       status: 503,
       response: { code: "SIMILARITY_UNAVAILABLE" },
     });
 
     expect(anonymousUsage.release).toHaveBeenCalledWith(
-      "visitor-token",
+      VISITOR_TOKEN,
       "ideas",
       IDEMPOTENCY_HASH,
     );
@@ -1098,7 +1194,7 @@ describe("IdeaSubmissionService", () => {
       service.submit(
         { ...VALID_REQUEST, continueAnyway: true },
         IDEMPOTENCY_KEY,
-        "visitor-token",
+        VISITOR_TOKEN,
       ),
     ).rejects.toMatchObject({
       status: 503,

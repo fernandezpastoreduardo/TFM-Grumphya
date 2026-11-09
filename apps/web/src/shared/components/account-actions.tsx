@@ -13,6 +13,7 @@ const BUTTON_TEXT = {
   SIGN_OUT: "Cerrar sesión",
   SIGNING_OUT: "Cerrando sesión…",
 } as const;
+const REGISTRATION_PLAN_PATH = "/crear-cuenta/planes";
 
 export function AccountActions({
   isAuthenticated,
@@ -47,7 +48,10 @@ export function AccountActions({
       <a className={getAccountLinkClass(variant)} href="/login">
         {BUTTON_TEXT.LOGIN}
       </a>
-      <a className={getSignOutButtonClass(variant)} href="/precios">
+      <a
+        className={getSignOutButtonClass(variant)}
+        href={REGISTRATION_PLAN_PATH}
+      >
         {BUTTON_TEXT.CREATE_ACCOUNT}
       </a>
     </div>

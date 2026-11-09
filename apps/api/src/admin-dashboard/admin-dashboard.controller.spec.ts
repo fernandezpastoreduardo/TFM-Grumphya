@@ -6,6 +6,7 @@ import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
 import { AdminRoleGuard } from "./admin-role.guard";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
+import { LighthouseQualityService } from "./lighthouse-quality";
 import {
   AdminContactMessageReply,
   AdminContactReplyError,
@@ -25,7 +26,11 @@ describe("AdminDashboardController", () => {
       listContactMessages: vi.fn(),
     } as unknown as AdminDashboardService;
     const reply = { execute: vi.fn() } as unknown as AdminContactMessageReply;
-    const controller = new AdminDashboardController(service, reply);
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      {} as LighthouseQualityService,
+    );
 
     await expect(controller.getDashboard()).resolves.toBe(snapshot);
     expect(service.getSnapshot).toHaveBeenCalledTimes(1);
@@ -38,10 +43,31 @@ describe("AdminDashboardController", () => {
       listContactMessages: vi.fn().mockResolvedValue(messages),
     } as unknown as AdminDashboardService;
     const reply = { execute: vi.fn() } as unknown as AdminContactMessageReply;
-    const controller = new AdminDashboardController(service, reply);
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      {} as LighthouseQualityService,
+    );
 
     await expect(controller.listContactMessages()).resolves.toBe(messages);
     expect(service.listContactMessages).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns synthetic Lighthouse quality data from its service", async () => {
+    const quality = { runs: [] };
+    const lighthouseQuality = {
+      getLatest: vi.fn().mockResolvedValue(quality),
+    } as unknown as LighthouseQualityService;
+    const service = {} as AdminDashboardService;
+    const reply = {} as AdminContactMessageReply;
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      lighthouseQuality,
+    );
+
+    await expect(controller.getWebQuality()).resolves.toBe(quality);
+    expect(lighthouseQuality.getLatest).toHaveBeenCalledOnce();
   });
 
   it("returns the requested error detail from its injected service", async () => {
@@ -50,7 +76,11 @@ describe("AdminDashboardController", () => {
       getApplicationError: vi.fn().mockResolvedValue(detail),
     } as unknown as AdminDashboardService;
     const reply = { execute: vi.fn() } as unknown as AdminContactMessageReply;
-    const controller = new AdminDashboardController(service, reply);
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      {} as LighthouseQualityService,
+    );
 
     await expect(controller.getApplicationError("42")).resolves.toBe(detail);
     expect(service.getApplicationError).toHaveBeenCalledWith("42");
@@ -62,7 +92,11 @@ describe("AdminDashboardController", () => {
     const reply = {
       execute: vi.fn().mockResolvedValue(replyResult),
     } as unknown as AdminContactMessageReply;
-    const controller = new AdminDashboardController(service, reply);
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      {} as LighthouseQualityService,
+    );
     const request = { user: { userId: "admin-from-auth" } } as never;
     const body = { response: "Gracias por escribirnos." };
 
@@ -86,7 +120,11 @@ describe("AdminDashboardController", () => {
     const reply = {
       execute: vi.fn().mockRejectedValue(replyError),
     } as unknown as AdminContactMessageReply;
-    const controller = new AdminDashboardController(service, reply);
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      {} as LighthouseQualityService,
+    );
     const request = { user: { userId: "admin-from-auth" } } as never;
 
     await expect(
@@ -110,7 +148,11 @@ describe("AdminDashboardController", () => {
     const reply = {
       execute: vi.fn().mockRejectedValue(unexpectedError),
     } as unknown as AdminContactMessageReply;
-    const controller = new AdminDashboardController(service, reply);
+    const controller = new AdminDashboardController(
+      service,
+      reply,
+      {} as LighthouseQualityService,
+    );
     const request = { user: { userId: "admin-from-auth" } } as never;
 
     await expect(

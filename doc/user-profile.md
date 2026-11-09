@@ -4,7 +4,10 @@ La ruta `/perfil` muestra el hero de Grumphya con el asset transparente
 `profile-account-shield.png` (`527.469 B`).
 
 `GET /api/account/profile` exige un access JWT válido. `AccessTokenGuard`
-valida el bearer y establece `request.user.userId`; el endpoint no acepta el
+valida el bearer y una sesión vigente de una cuenta `active`; después
+establece `request.user.userId`. Una cuenta histórica activa sin fecha en
+`email_verified_at` conserva acceso, sin atribuirle una verificación que no
+consta. El endpoint no acepta el
 identificador del usuario desde el cuerpo ni la query. La respuesta contiene
 el alias, correo, estado de verificación, fecha de alta, contador de roasts,
 URL pública opcional del avatar y ambos planes.
@@ -108,8 +111,47 @@ opaca del avatar a `users`.
 
 Si una persona ya inició sesión, elegir cualquiera de los planes desde
 `/precios` la lleva a `/perfil`, desde donde puede contratar el plan inactivo.
-La ruta `/crear-cuenta` también redirige a `/perfil` para cuentas autenticadas;
-los visitantes no autenticados pueden completar el alta allí.
+La ruta `/crear-cuenta` redirige a `/perfil` para cuentas normales autenticadas y
+a `/panel-control` para la cuenta administradora; los visitantes no autenticados
+pueden completar el alta allí.
+
+## Alta de cuenta
+
+El acceso «Crear cuenta» abre `/crear-cuenta/planes`, una página de selección
+de plan que reutiliza las tarjetas de `/precios`. Al elegir Iluminado o Faltón,
+el navegador crea una intención con `POST /api/registration-intents` y continúa
+a `/crear-cuenta`; el plan se conserva en el servidor y no aparece en la URL.
+La intención dura 15 minutos y se vincula a una cookie opaca. Una intención
+ausente, vencida o consumida requiere volver a elegir plan.
+
+El formulario solicita correo, alias, contraseña y «Repite la contraseña».
+Ambos campos de contraseña empiezan ocultos y tienen controles independientes
+«Mostrar contraseña»/«Ocultar contraseña». El navegador comprueba que coincidan
+antes de enviar el alta; el valor de confirmación no se envía a la API. El
+servidor valida la política de contraseña y no recibe el plan desde el
+navegador. La cuenta permanece pendiente hasta que se verifica el correo y se
+confirma expresamente la contratación simulada; entonces se activan cuenta,
+plan y sesión en una transacción, sin cobro real.
+
+Durante el alta pendiente de verificación, el navegador recibe una cookie
+propia que permite al servidor reconocer ese registro. Las ideas, los roasts y
+los mensajes de contacto se bloquean hasta que la persona abre el enlace de
+correo y pulsa «Confirmar correo» en la página de verificación. La web muestra
+un diálogo con Grumphya y el café derramado; la API responde `403` y no ejecuta
+ninguno de los envíos. La verificación del correo y la confirmación posterior
+de la contratación simulada son pasos distintos. El contrato, la ubicación de
+la regla compartida y los límites de identificación están en
+[Bloqueo de envíos](email-verification-gate.md).
+
+La API limita `POST /api/registration-intents` a 20 solicitudes por minuto e
+IP y `POST /api/registrations` a 8 por minuto e IP. Cada ruta también comparte
+el límite general de 120 solicitudes por minuto e IP; verificación y
+confirmación tienen su límite específico de 10 por minuto e IP. Se usa la IP
+que Express resuelve en `request.ip`, según la configuración de proxies
+confiables. Los límites viven en memoria por proceso, se reinician al reiniciar
+la API y no se comparten entre réplicas. Al superarlos, la API devuelve `429`
+con `Retry-After`; detrás de una NAT o proxy compartido, varias personas pueden
+compartir el cupo.
 
 ## Contratación y vigencia de planes
 

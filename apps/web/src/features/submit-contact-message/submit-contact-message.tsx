@@ -3,8 +3,11 @@ import {
   retryContactMessageConfirmation,
   submitContactMessage,
   type ContactDeliveryStatus,
+  ContactEmailVerificationRequiredError,
 } from "./submit-contact-message.service";
 import { ContactMessageForm } from "./contact-message-form";
+import { EmailVerificationRequiredDialog } from "../../shared/components/email-verification-required-dialog";
+import { usePendingEmailVerification } from "../../shared/hooks/use-pending-email-verification";
 
 const SUBMISSION_ERROR =
   "No se ha podido registrar el mensaje. Inténtalo de nuevo dentro de un momento.";
@@ -25,6 +28,8 @@ const RETRY_ERROR =
   "No se ha podido reintentar el correo. Tu mensaje sigue guardado.";
 
 export function SubmitContactMessage() {
+  const emailVerification = usePendingEmailVerification();
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const requestKey = useRef<string | null>(null);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -43,6 +48,10 @@ export function SubmitContactMessage() {
     setSuccess("");
     setIsSubmitting(true);
     try {
+      if (await emailVerification.check()) {
+        setShowVerificationDialog(true);
+        return;
+      }
       requestKey.current ??= crypto.randomUUID();
       const result = await submitContactMessage(
         subject.trim(),
@@ -54,8 +63,12 @@ export function SubmitContactMessage() {
       setMessage("");
       setSavedReference(result.retryAllowed ? result.reference : "");
       setSuccess(CONFIRMATION_COPY[result.confirmation]);
-    } catch {
-      setError(SUBMISSION_ERROR);
+    } catch (caught: unknown) {
+      if (caught instanceof ContactEmailVerificationRequiredError) {
+        setShowVerificationDialog(true);
+      } else {
+        setError(SUBMISSION_ERROR);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -96,6 +109,10 @@ export function SubmitContactMessage() {
         <div className="contact-creature" aria-hidden="true" />
         <p>Por fin, alguien al otro lado que sí está tomando nota.</p>
       </aside>
+      <EmailVerificationRequiredDialog
+        open={showVerificationDialog}
+        onClose={() => setShowVerificationDialog(false)}
+      />
     </div>
   );
 }

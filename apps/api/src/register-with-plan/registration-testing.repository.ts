@@ -7,7 +7,6 @@ import {
   type SessionIdentity,
   type ConfirmedRegistration,
   type AccountProfile,
-  type DirectRegistration,
   type UserGoodIdea,
   type LoginIdentity,
 } from "./registration.models";
@@ -176,50 +175,6 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
     );
     if (registration) registration.lastSentAt = Date.now() - 61_000;
   }
-  async activateWithRegistration(
-    userId: string,
-    tokenHash: string,
-    input: RegistrationInput,
-    passwordHash: string,
-    accessTokenHash: string,
-    refreshTokenHash: string,
-    sessionExpiresAt: Date,
-  ): Promise<DirectRegistration> {
-    const plan = await this.currentIntent(tokenHash);
-    if (!plan) throw new Error("Registration intent unavailable.");
-    const email = input.email.trim().toLowerCase();
-    const username = input.username.trim().normalize("NFC");
-    if (
-      this.users.some(
-        (user) =>
-          user.email.toLowerCase() === email ||
-          user.username.toLowerCase() === username.toLowerCase(),
-      )
-    ) {
-      throw Object.assign(new Error("Unique conflict"), { code: "23505" });
-    }
-    this.intents.delete(tokenHash);
-    this.users.push({
-      id: userId,
-      email,
-      username,
-      passwordHash,
-      emailVerified: true,
-      status: "active",
-    });
-    this.subscriptions.push({ userId, plan, status: "active" });
-    this.sessions.push({
-      userId,
-      accessHash: accessTokenHash,
-      refreshHash: refreshTokenHash,
-      expiresAt: sessionExpiresAt,
-      rememberMe: false,
-    });
-    const account = await this.getProfile(refreshTokenHash);
-    if (!account) throw new Error("New account could not be loaded.");
-    return { userId, plan, account };
-  }
-
   async findLoginIdentity(identifier: string): Promise<LoginIdentity | null> {
     const normalized = identifier.trim().toLowerCase();
     const user = this.users.find(

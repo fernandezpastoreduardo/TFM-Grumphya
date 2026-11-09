@@ -7,7 +7,6 @@ import type {
   ConfirmedRegistration,
   SessionIdentity,
   AccountProfile,
-  DirectRegistration,
   UserGoodIdea,
 } from "./registration.models";
 
@@ -31,15 +30,6 @@ export interface RegistrationRepository {
     verificationExpiresAt: Date,
   ): Promise<PendingRegistration | null>;
   releaseVerificationResendCooldown(registrationId: string): Promise<void>;
-  activateWithRegistration(
-    userId: string,
-    tokenHash: string,
-    input: RegistrationInput,
-    passwordHash: string,
-    accessTokenHash: string,
-    refreshTokenHash: string,
-    sessionExpiresAt: Date,
-  ): Promise<DirectRegistration>;
   findLoginIdentity(identifier: string): Promise<LoginIdentity | null>;
   updatePasswordHash(
     userId: string,

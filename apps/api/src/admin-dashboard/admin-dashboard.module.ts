@@ -14,10 +14,13 @@ import {
 } from "./admin-contact-message-reply.service";
 import { AdminContactReplyMailer } from "./admin-contact-reply-mailer";
 import { RegistrationModule } from "../register-with-plan/registration.module";
+import { LighthouseQualityService } from "./lighthouse-quality";
+import { LighthouseQualityIngestionController } from "./lighthouse-quality-ingestion.controller";
+import { LighthouseQualityIngestionGuard } from "./lighthouse-quality-ingestion.guard";
 
 @Module({
   imports: [AuthSecurityModule, RegistrationModule],
-  controllers: [AdminDashboardController],
+  controllers: [AdminDashboardController, LighthouseQualityIngestionController],
   providers: [
     {
       provide: ADMIN_DASHBOARD_REPOSITORY,
@@ -25,6 +28,8 @@ import { RegistrationModule } from "../register-with-plan/registration.module";
         new PostgresAdminDashboardRepository(createPostgresPool()),
     },
     AdminDashboardService,
+    LighthouseQualityService,
+    LighthouseQualityIngestionGuard,
     AdminContactMessageReply,
     {
       provide: ADMIN_CONTACT_REPLY_MAILER,

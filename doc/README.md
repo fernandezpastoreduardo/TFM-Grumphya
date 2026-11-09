@@ -7,7 +7,8 @@
 ### Usar la aplicación y entender sus funciones
 
 - [Límites de uso anónimo](anonymous-usage.md): cuotas, reintentos y retención de datos.
-- [Perfil, contratación simulada y avatar](user-profile.md): funciones de la cuenta autenticada.
+- [Alta, perfil, contratación simulada y avatar](user-profile.md): selección de plan, verificación del correo y funciones de la cuenta.
+- [Bloqueo de envíos hasta verificar el correo](email-verification-gate.md): contrato de API, diálogo y límites de identidad por navegador.
 - [Recuperación de contraseña](password-reset.md): solicitar y completar el restablecimiento.
 - [Ideas aprobadas privadas](approved-ideas.md): qué se guarda en el perfil y quién puede verlo.
 - [Baja física de cuenta](user-delete.md): datos que elimina la baja y límites de esa eliminación.
@@ -20,6 +21,7 @@
 - [Dirección e implementación de la UI](ui.md): decisiones visuales vigentes y referencias de diseño.
 - [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md): benchmark y métricas operativas.
 - [Línea base de calidad y cobertura](quality-baseline.md): mediciones de calidad registradas.
+- [Complejidad ciclomática](cyclomatic-complexity-plan.md): línea base actual, focos de riesgo y plan de refactorización.
 - [Verificación de infraestructura](verification.md): comprobaciones de una sesión fechada; es un registro histórico, no el resultado más reciente garantizado.
 
 ### Administrar y operar
@@ -28,6 +30,7 @@
 - [Producción en un VPS](production.md): preparación y despliegue manual.
 - [Credenciales y secretos](credentials.md): configuración disponible y manejo seguro de secretos.
 - [CI/CD y seguridad de la imagen](ci-cd.md): flujos automatizados y controles de publicación.
+- [SonarQube Community Build privado](sonarqube.md): operación, Quality Gate y análisis local bajo demanda o antes de publicar `main`.
 - [Prototipo de Desarrollo Seguro](desarrollo-seguro.md): alcance y límites del sitio demostrativo.
 
 ### Revisar privacidad y seguridad

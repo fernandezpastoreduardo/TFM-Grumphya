@@ -77,6 +77,29 @@ describe("SectionPage", () => {
     expect(container.textContent).not.toMatch(/¿en serio\?/i);
   });
 
+  it("shows the usual plans with a clear account-creation hero", async () => {
+    render(<SectionPage path="/crear-cuenta/planes" />);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Para crear tu cuenta, primero elige un plan",
+      }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Iluminado" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Faltón" }),
+    ).toBeVisible();
+    expect(screen.getByText("UltraChachi")).toBeVisible();
+    expect(
+      screen.getByRole("navigation", { name: "Navegación principal" }),
+    ).toContainElement(
+      screen.getByRole("link", { name: "Planes", current: "page" }),
+    );
+  });
+
   it("routes the terms page and presents the idea processing notice there", async () => {
     render(<SectionPage path="/terminos-y-condiciones" />);
 
