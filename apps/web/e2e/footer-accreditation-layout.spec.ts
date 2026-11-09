@@ -6,7 +6,7 @@ const DESKTOP = { width: 1440, height: 1000 };
 const MOBILE = { width: 390, height: 844 };
 const RECORD = {
   id: "DS-GRUMPHYA-2026-001",
-  issuer: "Desarrollo Seguro",
+  issuer: "Grumphya · revisión interna",
   application: "Grumphya",
   authorizedDomains: ["grumphya.com"],
   status: "demonstration",
@@ -118,9 +118,7 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
     );
     const sealElement = element.querySelector(".accreditation-seal");
     const sealImage = sealElement?.querySelector("img");
-    const sealCaption = sealElement?.querySelector(
-      ".accreditation-seal-caption",
-    );
+    const sealCaption = sealElement?.querySelector(".accreditation-seal-copy");
     if (!sealImage || !sealCaption) return null;
     const imageBox = sealImage.getBoundingClientRect();
     const captionBox = sealCaption.getBoundingClientRect();
@@ -151,24 +149,18 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
   await expect(caption).toBeVisible();
   await seal.scrollIntoViewIfNeeded();
   const mobileSealImage = seal.locator("img");
-  await expect
-    .poll(() => mobileSealImage.evaluate((image) => image.currentSrc))
-    .toContain("sello-s4-mobile.webp");
-  expect(
-    await page.evaluate(async () => {
-      const image = new Image();
-      image.src = "/assets/desarrollo-seguro/sello-s4-mobile.webp";
-      await image.decode();
-      return image.naturalWidth;
-    }),
-  ).toBe(84);
+  await expect(mobileSealImage).toHaveAttribute(
+    "src",
+    "/assets/desarrolloseguro.org/icon.svg",
+  );
+  await expect(mobileSealImage).toHaveJSProperty("naturalWidth", 128);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(MOBILE.width);
 
   const mobileLayout = await seal.evaluate((element) => {
     const image = element.querySelector("img");
-    const text = element.querySelector(".accreditation-seal-caption");
+    const text = element.querySelector(".accreditation-seal-copy");
     if (!image || !text) return null;
     const imageBox = image.getBoundingClientRect();
     const textBox = text.getBoundingClientRect();

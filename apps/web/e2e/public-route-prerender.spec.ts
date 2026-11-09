@@ -13,7 +13,7 @@ const PUBLIC_PRERENDERED_PAGES = [
   { path: "/terminos-y-condiciones", heading: "Términos y condiciones" },
   {
     path: "/acreditaciones/DS-GRUMPHYA-2026-001",
-    heading: "Ficha pública de verificación",
+    heading: "Ficha pública de revisión interna",
   },
 ] as const;
 

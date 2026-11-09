@@ -31,7 +31,7 @@
 - [Credenciales y secretos](credentials.md): configuración disponible y manejo seguro de secretos.
 - [CI/CD y seguridad de la imagen](ci-cd.md): flujos automatizados y controles de publicación.
 - [SonarQube Community Build privado](sonarqube.md): operación, Quality Gate y análisis local bajo demanda o antes de publicar `main`.
-- [Prototipo de Desarrollo Seguro](desarrollo-seguro.md): alcance y límites del sitio demostrativo.
+- [Enlace a desarrolloseguro.org](desarrolloseguro.org.md): integración con el proyecto y dominio independientes.
 
 ### Revisar privacidad y seguridad
 

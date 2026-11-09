@@ -396,9 +396,12 @@ El isotipo activo mide 144 × 117 px y pesa 19.013 B; `admin-dashboard-audit.svg
 mide 900 × 900 px y pesa 73.585 B. No se ha medido el efecto de este cambio
 en Lighthouse.
 `worst-ideas-wall.webp`, usado en el hero de Peores ideas, mide 600 × 480 px y
-pesa 44.232 B. El sello S4 del footer usa una variante móvil de 84 × 84 px y
-4.788 B para pantallas de hasta 767 px; en tamaños mayores usa la imagen
-principal de 128 × 128 px y 7.550 B. En el ranking público, el skeleton
+pesa 44.232 B. El antiguo sello S4 del footer usaba una variante móvil de
+84 × 84 px y 4.788 B para pantallas de hasta 767 px, y una imagen principal de
+128 × 128 px y 7.550 B en tamaños mayores. La integración actual usa un icono
+SVG neutro local de 128 × 128 px y 735 B junto al nombre
+`desarrolloseguro.org`; el enlace abre el proyecto independiente. En el ranking
+público, el skeleton
 representa las diez filas máximas y conserva la altura de la tarjeta al recibir
 una respuesta con diez resultados. Se muestra inmediatamente, sin el retraso
 del skeleton compartido, para evitar dejar el bloque vacío durante la carga; la

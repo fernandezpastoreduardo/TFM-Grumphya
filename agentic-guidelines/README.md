@@ -16,15 +16,15 @@ Aplica estas fuentes en este orden y resuelve cualquier discrepancia antes de ca
 
 ## Lectura rápida por tipo de tarea
 
-| Si vas a…                                            | Lee primero                                                                  | Consulta también                                                                                           |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Entender producto, alcance y criterios de aceptación | [`sections.md`](sections.md)                                                 | [`features.md`](features.md), [`copy-style.md`](copy-style.md)                                             |
-| Implementar o modificar una funcionalidad            | [`features.md`](features.md)                                                 | El contrato de [`Dtos.md`](Dtos.md), [`persistence.md`](persistence.md) y la guía de componente pertinente |
-| Cambiar evaluación, puntuación o seguridad de IA     | [`scoring-viability-software.md`](scoring-viability-software.md)             | [`ai-evaluation.md`](ai-evaluation.md), [`features.md`](features.md), [`Dtos.md`](Dtos.md)                 |
-| Diseñar interfaz o microcopy                         | [`UI-aestethics.md`](UI-aestethics.md)                                       | [`copy-style.md`](copy-style.md), [`sections.md`](sections.md), [`components.md`](components.md)           |
-| Cambiar persistencia o contratos de API              | [`persistence.md`](persistence.md) o [`Dtos.md`](Dtos.md), según corresponda | [`features.md`](features.md) y el esquema/código actual                                                    |
-| Explorar una mejora todavía no priorizada            | [`wanna-bes.md`](wanna-bes.md)                                               | No la implementes sin encargo o aprobación de alcance                                                      |
-| Trabajar en Desarrollo Seguro                        | [`roadmap-desarrollo-seguro/README.md`](roadmap-desarrollo-seguro/README.md) | Sigue su orden de lectura y sus límites de fase                                                            |
+| Si vas a…                                            | Lee primero                                                                             | Consulta también                                                                                           |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Entender producto, alcance y criterios de aceptación | [`sections.md`](sections.md)                                                            | [`features.md`](features.md), [`copy-style.md`](copy-style.md)                                             |
+| Implementar o modificar una funcionalidad            | [`features.md`](features.md)                                                            | El contrato de [`Dtos.md`](Dtos.md), [`persistence.md`](persistence.md) y la guía de componente pertinente |
+| Cambiar evaluación, puntuación o seguridad de IA     | [`scoring-viability-software.md`](scoring-viability-software.md)                        | [`ai-evaluation.md`](ai-evaluation.md), [`features.md`](features.md), [`Dtos.md`](Dtos.md)                 |
+| Diseñar interfaz o microcopy                         | [`UI-aestethics.md`](UI-aestethics.md)                                                  | [`copy-style.md`](copy-style.md), [`sections.md`](sections.md), [`components.md`](components.md)           |
+| Cambiar persistencia o contratos de API              | [`persistence.md`](persistence.md) o [`Dtos.md`](Dtos.md), según corresponda            | [`features.md`](features.md) y el esquema/código actual                                                    |
+| Explorar una mejora todavía no priorizada            | [`wanna-bes.md`](wanna-bes.md)                                                          | No la implementes sin encargo o aprobación de alcance                                                      |
+| Trabajar en desarrolloseguro.org                     | [Repositorio independiente](https://github.com/fernandezpastoreduardo/desarrolloseguro) | Usa las guías y el código de ese repositorio; Grumphya solo conserva el enlace y una ficha académica local |
 
 ## Alcance de los documentos
 
@@ -33,7 +33,7 @@ Aplica estas fuentes en este orden y resuelve cualquier discrepancia antes de ca
 - [`scoring-viability-software.md`](scoring-viability-software.md) es la especificación dedicada de evaluación y scoring; [`ai-evaluation.md`](ai-evaluation.md) cubre evaluación comparativa y límites de seguridad de IA.
 - [`Dtos.md`](Dtos.md) define contratos y comportamientos observables de API. [`persistence.md`](persistence.md) define decisiones y relaciones de almacenamiento.
 - [`components.md`](components.md), [`UI-aestethics.md`](UI-aestethics.md) y [`copy-style.md`](copy-style.md) orientan estructura de componentes, presentación visual y voz de interfaz, respectivamente.
-- [`roadmap-desarrollo-seguro/`](roadmap-desarrollo-seguro/README.md) es un plan acotado para una iniciativa/fase independiente. No amplía por sí solo el alcance normal de Grumphya ni ordena ejecutar escaneos, despliegues o cambios.
+- El roadmap de desarrolloseguro.org vive en su [repositorio independiente](https://github.com/fernandezpastoreduardo/desarrolloseguro/tree/main/agentic-guidelines/desarrollo-seguro). Sus instrucciones no amplían por sí solas el alcance de Grumphya.
 - La documentación de [`../doc/`](../doc/README.md) está dirigida a personas. Cuando sea necesario, actualiza ambas capas de documentación: aquí las reglas de trabajo para agentes y en `/doc` la explicación, procedimientos y límites para humanos. No dupliques una guía operativa humana completa en esta carpeta.
 
 ## Antes de implementar

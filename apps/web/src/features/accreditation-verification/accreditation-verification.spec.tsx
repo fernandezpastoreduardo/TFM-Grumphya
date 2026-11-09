@@ -5,7 +5,7 @@ import { ACCREDITATION_ID } from "../../shared/accreditation-verification";
 
 const record = {
   id: ACCREDITATION_ID,
-  issuer: "Desarrollo Seguro",
+  issuer: "Grumphya · revisión interna",
   application: "Grumphya",
   authorizedDomains: ["grumphya.com"],
   status: "demonstration",
@@ -38,14 +38,16 @@ describe("AccreditationVerification", () => {
     render(<AccreditationVerification />);
 
     const article = await screen.findByRole("article", {
-      name: "Ficha de verificación de Desarrollo Seguro",
+      name: "Ficha de revisión interna de Grumphya",
     });
     expect(within(article).getByText("Grumphya")).toBeVisible();
     expect(
-      within(article).getByRole("img", {
-        name: "Logotipo de Desarrollo Seguro",
-      }),
-    ).toHaveAttribute("src", "/assets/desarrollo-seguro/logo-l4.webp");
+      article.querySelector(".accreditation-brand span"),
+    ).toHaveTextContent("Grumphya · revisión interna");
+    expect(article.querySelector("img")).toHaveAttribute(
+      "src",
+      "/assets/desarrolloseguro.org/icon.svg",
+    );
     expect(within(article).getByText("grumphya.com")).toBeVisible();
     expect(within(article).getByText("Prototipo académico")).toBeVisible();
     expect(

@@ -24,6 +24,17 @@
   height: auto;
 }
 
+.accreditation-seal-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.accreditation-seal-site {
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
 .accreditation-seal:hover,
 .accreditation-seal:focus-visible {
   text-decoration: underline;

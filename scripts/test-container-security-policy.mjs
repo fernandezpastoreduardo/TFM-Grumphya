@@ -549,42 +549,24 @@ assert.match(
 );
 assert.match(staticAssetsLocation, /try_files \$uri =404;/);
 
-const developmentSecurityLocation = readLocationBlock(
+const legacyPrototypeLocation = readLocationBlock(
   nginxSpa,
   "location ^~ /desarrollo-seguro/",
 );
-const developmentSecurityRedirectLocation = readLocationBlock(
+const legacyPrototypeRootLocation = readLocationBlock(
   nginxSpa,
   "location = /desarrollo-seguro",
 );
-const developmentSecurityIndexLocation = readLocationBlock(
-  nginxSpa,
-  "location = /desarrollo-seguro/",
-);
-assert.match(
-  developmentSecurityRedirectLocation,
-  /absolute_redirect off;/,
-  "the canonical prototype redirect must not expose the internal HTTP port",
-);
-assert.match(
-  developmentSecurityIndexLocation,
-  /try_files \/desarrollo-seguro\/index\.html =404;/,
-  "the prototype directory URL must serve its static index explicitly",
-);
-assert.match(
-  developmentSecurityLocation,
-  /try_files \$uri =404;/,
-  "prototype subpaths must not fall through to the SPA shell",
-);
-assert.doesNotMatch(
-  developmentSecurityLocation,
-  /app\.html/,
-  "unknown prototype resources must stay 404 instead of serving the app",
-);
-assert.match(
-  dockerfile,
-  /COPY --from=web-build \/workspace\/prototype \/usr\/share\/nginx\/html\/desarrollo-seguro/,
-  "only the static prototype directory must be copied to its public web prefix",
-);
+const externalRedirect = /return 308 https:\/\/desarrolloseguro\.org\/;/;
+for (const location of [legacyPrototypeRootLocation, legacyPrototypeLocation]) {
+  assert.match(location, /add_header Allow "GET, HEAD" always;/);
+  assert.match(
+    location,
+    /if \(\$request_method !~ \^\(GET\|HEAD\)\$\) \{ return 405; \}[\s\S]*?return 308 https:\/\/desarrolloseguro\.org\/;/,
+    "legacy redirects must reject methods with bodies before returning 308",
+  );
+  assert.match(location, externalRedirect);
+}
+assert.doesNotMatch(dockerfile, /COPY --from=web-build \/workspace\/prototype/);
 
 process.stdout.write("Container security policy guards passed.\n");

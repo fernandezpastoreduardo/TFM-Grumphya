@@ -169,7 +169,7 @@ describe("SectionPage", () => {
         Promise.resolve(
           Response.json({
             id: "DS-GRUMPHYA-2026-001",
-            issuer: "Desarrollo Seguro",
+            issuer: "Grumphya · revisión interna",
             application: "Grumphya",
             authorizedDomains: ["grumphya.com"],
             status: "demonstration",
@@ -189,14 +189,20 @@ describe("SectionPage", () => {
 
     const seal = screen
       .getByRole("contentinfo")
-      .querySelector("a[href^='/desarrollo-seguro/']");
-    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/#sello");
+      .querySelector("a[href='https://desarrolloseguro.org/']");
+    expect(seal).toHaveAttribute("href", "https://desarrolloseguro.org/");
     expect(seal).toHaveAccessibleName(
       /consultando el estado del sello.*conocer la propuesta/i,
     );
     expect(
-      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
-    ).toHaveAttribute("src", "/assets/desarrollo-seguro/sello-s4.webp");
+      await screen.findByText(
+        /Demostración académica · Sin certificación oficial/i,
+      ),
+    ).toBeVisible();
+    expect(seal?.querySelector("img")).toHaveAttribute(
+      "src",
+      "/assets/desarrolloseguro.org/icon.svg",
+    );
     expect(seal).toHaveTextContent("Demostración académica");
   });
 
@@ -207,7 +213,7 @@ describe("SectionPage", () => {
         Promise.resolve(
           Response.json({
             id: "DS-GRUMPHYA-2026-001",
-            issuer: "Desarrollo Seguro",
+            issuer: "Grumphya · revisión interna",
             application: "Grumphya",
             authorizedDomains: ["grumphya.com"],
             status: "demonstration",
@@ -228,7 +234,9 @@ describe("SectionPage", () => {
     );
 
     expect(
-      await screen.findByRole("article", { name: /ficha de verificación/i }),
+      await screen.findByRole("article", {
+        name: /ficha de revisión interna/i,
+      }),
     ).toBeVisible();
     unmount();
     render(<SectionPage path="/acreditaciones/DS-NO-EXISTE" />);

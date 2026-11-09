@@ -95,7 +95,7 @@ describe("Home", () => {
     );
   });
 
-  it("links to the secure-development prototype from the home footer", async () => {
+  it("links to the independent site from the home footer", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) =>
@@ -103,7 +103,7 @@ describe("Home", () => {
           ? Promise.resolve(
               Response.json({
                 id: "DS-GRUMPHYA-2026-001",
-                issuer: "Desarrollo Seguro",
+                issuer: "Grumphya · revisión interna",
                 application: "Grumphya",
                 authorizedDomains: ["grumphya.com"],
                 status: "demonstration",
@@ -124,20 +124,20 @@ describe("Home", () => {
 
     const seal = screen
       .getByRole("contentinfo")
-      .querySelector("a[href^='/desarrollo-seguro/']");
-    expect(seal).toHaveAttribute("href", "/desarrollo-seguro/#sello");
-    const sealImage = await screen.findByAltText(
-      "Sello ilustrado de Desarrollo Seguro",
-    );
-    expect(sealImage).toHaveAttribute(
+      .querySelector("a[href='https://desarrolloseguro.org/']");
+    expect(seal).toHaveAttribute("href", "https://desarrolloseguro.org/");
+    expect(
+      await screen.findByText(
+        /Demostración académica · Sin certificación oficial/i,
+      ),
+    ).toBeVisible();
+    expect(seal?.querySelector("img")).toHaveAttribute(
       "src",
-      "/assets/desarrollo-seguro/sello-s4.webp",
+      "/assets/desarrolloseguro.org/icon.svg",
     );
-    expect(sealImage).toHaveAttribute("width", "128");
-    expect(sealImage).toHaveAttribute("height", "128");
     expect(seal).toHaveTextContent("Demostración académica");
     expect(seal).toHaveAccessibleName(
-      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
+      /desarrolloseguro\.org.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
     );
   });
 

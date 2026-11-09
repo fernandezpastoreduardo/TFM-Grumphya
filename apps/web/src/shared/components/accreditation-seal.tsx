@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  DEVELOPMENT_SECURITY_PROTOTYPE_URL,
+  EXTERNAL_ACCREDITATION_SITE_URL,
   getAccreditation,
   isSealDisplayAllowed,
 } from "../accreditation-verification";
@@ -42,27 +42,23 @@ export function AccreditationSeal() {
   }, []);
 
   return (
-    <a className="accreditation-seal" href={DEVELOPMENT_SECURITY_PROTOTYPE_URL}>
+    <a className="accreditation-seal" href={EXTERNAL_ACCREDITATION_SITE_URL}>
       {status === "demonstration" && (
-        <picture>
-          <source
-            media="(max-width: 767px)"
-            srcSet="/assets/desarrollo-seguro/sello-s4-mobile.webp 84w"
-            sizes="42px"
-            type="image/webp"
-          />
-          <img
-            src="/assets/desarrollo-seguro/sello-s4.webp"
-            width="128"
-            height="128"
-            alt="Sello ilustrado de Desarrollo Seguro"
-            loading="lazy"
-            decoding="async"
-          />
-        </picture>
+        <img
+          src="/assets/desarrolloseguro.org/icon.svg"
+          width="128"
+          height="128"
+          alt=""
+          aria-hidden="true"
+          loading="lazy"
+          decoding="async"
+        />
       )}
-      <span className="accreditation-seal-caption">
-        {SEAL_CAPTIONS[status]}
+      <span className="accreditation-seal-copy">
+        <span className="accreditation-seal-site">desarrolloseguro.org</span>
+        <span className="accreditation-seal-caption">
+          {SEAL_CAPTIONS[status]}
+        </span>
       </span>
     </a>
   );

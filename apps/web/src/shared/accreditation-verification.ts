@@ -1,6 +1,6 @@
 export const ACCREDITATION_ID = "DS-GRUMPHYA-2026-001";
 
-export const DEVELOPMENT_SECURITY_PROTOTYPE_URL = "/desarrollo-seguro/#sello";
+export const EXTERNAL_ACCREDITATION_SITE_URL = "https://desarrolloseguro.org/";
 
 // Server-backed verification remains the source of truth for the public record.
 export const ACCREDITATION_VERIFICATION_URL = `/acreditaciones/${ACCREDITATION_ID}`;
@@ -78,7 +78,7 @@ function isRecord(value: unknown): value is AccreditationRecord {
   const record = value as Record<string, unknown>;
   return (
     record.id === ACCREDITATION_ID &&
-    record.issuer === "Desarrollo Seguro" &&
+    record.issuer === "Grumphya · revisión interna" &&
     record.application === "Grumphya" &&
     Array.isArray(record.authorizedDomains) &&
     record.authorizedDomains.length > 0 &&

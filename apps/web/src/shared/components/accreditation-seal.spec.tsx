@@ -9,7 +9,7 @@ import { AccreditationSeal } from "./accreditation-seal";
 
 const RECORD: AccreditationRecord = {
   id: "DS-GRUMPHYA-2026-001",
-  issuer: "Desarrollo Seguro",
+  issuer: "Grumphya · revisión interna",
   application: "Grumphya",
   authorizedDomains: ["grumphya.com"],
   status: "demonstration",
@@ -38,7 +38,7 @@ describe("AccreditationSeal", () => {
     expect(isSealDisplayAllowed(RECORD, "evil.example", true)).toBe(false);
   });
 
-  it("does not show the certified image until the server confirms the demonstration", async () => {
+  it("does not show the neutral icon until the server confirms the demonstration", async () => {
     let resolveResponse: ((response: Response) => void) | undefined;
     const response = new Promise<Response>((resolve) => {
       resolveResponse = resolve;
@@ -51,20 +51,26 @@ describe("AccreditationSeal", () => {
     const link = screen.getByRole("link", {
       name: /consultando el estado del sello.*conocer la propuesta/i,
     });
-    expect(link).toHaveAttribute("href", "/desarrollo-seguro/#sello");
+    expect(link).toHaveAttribute("href", "https://desarrolloseguro.org/");
     expect(link).toHaveTextContent("Consultando el estado del sello");
     expect(
-      screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
+      document.querySelector(".accreditation-seal img"),
     ).not.toBeInTheDocument();
 
     resolveResponse?.(Response.json(RECORD));
 
     expect(
-      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
+      await screen.findByText(
+        /Demostración académica · Sin certificación oficial/i,
+      ),
     ).toBeVisible();
+    expect(document.querySelector(".accreditation-seal img")).toHaveAttribute(
+      "src",
+      "/assets/desarrolloseguro.org/icon.svg",
+    );
     expect(link).toHaveTextContent("Sin certificación oficial");
     expect(link).toHaveAccessibleName(
-      /sello ilustrado de desarrollo seguro.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
+      /desarrolloseguro\.org.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
     );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/accreditations/DS-GRUMPHYA-2026-001",
@@ -73,7 +79,7 @@ describe("AccreditationSeal", () => {
   });
 
   it.each(["suspended", "revoked", "expired", "unknown"])(
-    "removes the certified image for %s",
+    "removes the neutral icon for %s",
     async (status) => {
       vi.stubGlobal(
         "fetch",
@@ -86,11 +92,11 @@ describe("AccreditationSeal", () => {
         await screen.findByText(/sello no verificable o sin vigencia/i),
       ).toBeVisible();
       expect(
-        screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
+        document.querySelector(".accreditation-seal img"),
       ).not.toBeInTheDocument();
       expect(screen.getByRole("link")).toHaveAttribute(
         "href",
-        "/desarrollo-seguro/#sello",
+        "https://desarrolloseguro.org/",
       );
     },
   );
@@ -104,7 +110,9 @@ describe("AccreditationSeal", () => {
 
     const firstView = render(<AccreditationSeal />);
     expect(
-      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
+      await screen.findByText(
+        /Demostración académica · Sin certificación oficial/i,
+      ),
     ).toBeVisible();
     firstView.unmount();
 
@@ -113,12 +121,12 @@ describe("AccreditationSeal", () => {
       await screen.findByText(/sello no verificable o sin vigencia/i),
     ).toBeVisible();
     expect(
-      screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
+      document.querySelector(".accreditation-seal img"),
     ).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("does not show the image for an unauthorized domain", async () => {
+  it("does not show the icon for an unauthorized domain", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -134,7 +142,7 @@ describe("AccreditationSeal", () => {
       await screen.findByText(/sello no verificable o sin vigencia/i),
     ).toBeVisible();
     expect(
-      screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
+      document.querySelector(".accreditation-seal img"),
     ).not.toBeInTheDocument();
   });
 
@@ -147,7 +155,7 @@ describe("AccreditationSeal", () => {
       await screen.findByText(/sello no verificable o sin vigencia/i),
     ).toBeVisible();
     expect(
-      screen.queryByAltText("Sello ilustrado de Desarrollo Seguro"),
+      document.querySelector(".accreditation-seal img"),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("link")).toHaveAccessibleName(
       /sello no verificable o sin vigencia.*conocer la propuesta/i,
@@ -167,11 +175,13 @@ describe("AccreditationSeal", () => {
 
     expect(
       await screen.findByRole("article", {
-        name: "Ficha de verificación de Desarrollo Seguro",
+        name: "Ficha de revisión interna de Grumphya",
       }),
     ).toBeVisible();
     expect(
-      await screen.findByAltText("Sello ilustrado de Desarrollo Seguro"),
+      await screen.findByText(
+        /Demostración académica · Sin certificación oficial/i,
+      ),
     ).toBeVisible();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

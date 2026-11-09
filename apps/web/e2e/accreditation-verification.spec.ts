@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 const VERIFICATION_URL = "/acreditaciones/DS-GRUMPHYA-2026-001";
+const EXTERNAL_SITE_URL = "https://desarrolloseguro.org/";
+const LEGACY_PROTOTYPE_URL = "/desarrollo-seguro";
+const SEAL_NAME = /desarrolloseguro\.org.*conocer la propuesta/i;
 const ACADEMIC_RECORD = {
   id: "DS-GRUMPHYA-2026-001",
-  issuer: "Desarrollo Seguro",
+  issuer: "Grumphya · revisión interna",
   application: "Grumphya",
   authorizedDomains: ["grumphya.com"],
   status: "demonstration",
@@ -26,7 +29,7 @@ const ACADEMIC_RECORD = {
     "Demostración académica, sin certificación oficial ni auditoría independiente.",
 };
 
-test("opens the secure-development prototype from the home footer and links to verification", async ({
+test("links the home seal to the independent site and keeps the local verification record", async ({
   page,
 }) => {
   await page.route("**/api/accreditations/**", (route) =>
@@ -34,61 +37,14 @@ test("opens the secure-development prototype from the home footer and links to v
   );
   await page.goto("/");
 
-  const link = page.getByRole("link", {
-    name: /sello ilustrado de desarrollo seguro/i,
-  });
+  const link = page.getByRole("link", { name: SEAL_NAME });
   await expect(link).toBeVisible();
-  await link.scrollIntoViewIfNeeded();
+  await expect(link).toHaveAttribute("href", EXTERNAL_SITE_URL);
   await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 128);
-  await link.click();
 
-  await expect(page).toHaveURL(/\/desarrollo-seguro\/#sello$/);
-  await expect(page.locator("#sello")).toBeInViewport();
-  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
-    "href",
-    "/assets/desarrollo-seguro/logo-l4.webp",
-  );
-  await expect(page.locator(".academic-note")).toContainText(
-    /prototipo académico[\s\S]*sin certificación[\s\S]*oficial/i,
-  );
+  await page.goto(VERIFICATION_URL);
   await expect(
-    page.getByRole("heading", { name: /buenas prácticas/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /grumphya como cliente/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /sello comprobable/i }),
-  ).toBeVisible();
-  const themeSwitch = page.getByRole("checkbox", { name: "Modo oscuro" });
-  const themeSwitchLabel = page.locator(".theme-toggle");
-  await themeSwitchLabel.click();
-  await expect(themeSwitch).toBeChecked();
-  await expect(page.locator("body")).toHaveCSS(
-    "background-color",
-    "rgb(11, 23, 40)",
-  );
-  await themeSwitchLabel.click();
-  await expect(themeSwitch).not.toBeChecked();
-
-  await expect(page.locator(".company-mark")).toHaveJSProperty(
-    "naturalWidth",
-    640,
-  );
-  await expect(page.locator(".seal-preview img")).toHaveJSProperty(
-    "naturalWidth",
-    128,
-  );
-
-  const verificationLink = page.getByRole("link", {
-    name: /comprobar el sello|ver ficha pública/i,
-  });
-  await expect(verificationLink).toHaveAttribute("href", VERIFICATION_URL);
-  await verificationLink.click();
-
-  await expect(page).toHaveURL(new RegExp(`${VERIFICATION_URL}$`));
-  await expect(
-    page.getByRole("heading", { name: "Ficha pública de verificación" }),
+    page.getByRole("heading", { name: "Ficha pública de revisión interna" }),
   ).toBeVisible();
   await expect(page.getByText("grumphya.com")).toBeVisible();
   await expect(page.getByText("Privacidad orientada al RGPD")).toBeVisible();
@@ -105,16 +61,9 @@ test("keeps the seal and verification within mobile width", async ({
     route.fulfill({ json: ACADEMIC_RECORD }),
   );
   await page.goto("/precios");
-  const link = page.getByRole("link", {
-    name: /sello ilustrado de desarrollo seguro/i,
-  });
+  const link = page.getByRole("link", { name: SEAL_NAME });
   await expect(link).toBeVisible();
-  await link.click();
-  await expect(page).toHaveURL(/\/desarrollo-seguro\/#sello$/);
-  await expect(page.locator("#sello")).toBeInViewport();
-  await expect(page.locator(".academic-note")).toContainText(
-    /prototipo académico[\s\S]*sin certificación[\s\S]*oficial/i,
-  );
+  await expect(link).toHaveAttribute("href", EXTERNAL_SITE_URL);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(320);
@@ -147,86 +96,16 @@ test("keeps verification text readable on dark backgrounds in dark mode", async 
   await expect(assuranceCard).toHaveCSS("color", "rgb(243, 255, 243)");
 });
 
-test("secure-development prototype uses local-only interactions without cookies", async ({
-  page,
-  context,
-  baseURL,
-}) => {
-  if (!baseURL) throw new Error("Playwright baseURL is required");
-  const appOrigin = new URL(baseURL).origin;
-  const externalRequests: string[] = [];
-  page.on("request", (request) => {
-    if (new URL(request.url()).origin !== appOrigin) {
-      externalRequests.push(request.url());
-    }
-  });
-  await page.goto("/desarrollo-seguro/");
-  await expect(
-    page.getByRole("heading", { name: /desarrollo seguro/i }),
-  ).toBeVisible();
-
-  expect(externalRequests).toEqual([]);
-  expect(await context.cookies()).toEqual([]);
-  await expect(
-    page.locator('script[src="/desarrollo-seguro/prototype.js"]'),
-  ).toHaveCount(1);
-  await expect(page.locator("form")).toHaveCount(0);
-  await expect(
-    page.locator('meta[http-equiv="Content-Security-Policy"]'),
-  ).toHaveAttribute("content", /script-src 'self'/);
-  const domainInput = page.getByRole("textbox", {
-    name: "Dominio",
-    exact: true,
-  });
-  await domainInput.fill("grumphya.com");
-  await domainInput.press("Enter");
-  await expect(
-    page.getByRole("heading", { name: /grumphya · grumphya.com/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(/faltan mediciones representativas de LCP/i),
-  ).toBeVisible();
-
-  await domainInput.fill("ejemplo.es");
-  await page.getByRole("button", { name: /ver ficha/i }).click();
-  await expect(
-    page.getByRole("heading", { name: /ficha simulada · ejemplo.es/i }),
-  ).toBeVisible();
-  await expect(page.getByText(/no se ha visitado ni analizado/i)).toBeVisible();
-
-  await expect(
-    page.getByRole("heading", { name: /¿cómo funciona\?/i }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: /profesionales técnicos, no con comerciales/i,
-    }),
-  ).toBeVisible();
-  await expect(page.getByText(/2% del beneficio neto/i)).toBeVisible();
-
-  await page.getByLabel("Nombre").fill("Persona de prueba");
-  await page.getByLabel("Correo electrónico").fill("demo@example.es");
-  await page
-    .getByLabel("¿En qué podemos orientarte?")
-    .fill("Consulta de demostración");
-  await page.getByRole("button", { name: /probar el formulario/i }).click();
-  await expect(page.getByRole("status")).toContainText(
-    /no se ha enviado ni almacenado/i,
-  );
-  expect(await context.cookies()).toEqual([]);
-  expect(externalRequests).toEqual([]);
-});
-
-test("returns 404 for unknown secure-development prototype subpaths", async ({
+test("redirects old prototype URLs to the independent domain", async ({
   request,
 }) => {
-  const canonicalResponse = await request.get("/desarrollo-seguro", {
-    maxRedirects: 0,
-  });
-  expect(canonicalResponse.status()).toBe(308);
-  expect(canonicalResponse.headers().location).toBe("/desarrollo-seguro/");
-
-  const response = await request.get("/desarrollo-seguro/no-existe");
-
-  expect(response.status()).toBe(404);
+  for (const path of [
+    LEGACY_PROTOTYPE_URL,
+    `${LEGACY_PROTOTYPE_URL}/`,
+    `${LEGACY_PROTOTYPE_URL}/no-existe`,
+  ]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    expect(response.status()).toBe(308);
+    expect(response.headers().location).toBe(EXTERNAL_SITE_URL);
+  }
 });

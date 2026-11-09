@@ -34,10 +34,20 @@
   overflow-wrap: anywhere;
 }
 
-.accreditation-logo {
-  display: block;
-  width: min(100%, 220px);
-  height: auto;
+.accreditation-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: clamp(1.2rem, 4vw, 2rem);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.accreditation-brand img {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 auto;
 }
 
 .accreditation-status {

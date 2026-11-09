@@ -24,9 +24,9 @@ const loadPricingPage = () =>
 const SECTION_PAGES: Record<string, SectionPageDefinition> = {
   [ACCREDITATION_VERIFICATION_URL]: {
     meta: {
-      title: "Ficha pública de verificación",
+      title: "Ficha pública de revisión interna",
       intro:
-        "Consulta el registro y comprueba qué dominio figura para esta demostración académica.",
+        "Consulta la ficha de Grumphya y comprueba qué dominio figura para esta demostración académica.",
       theme: "calm",
     },
     load: () =>

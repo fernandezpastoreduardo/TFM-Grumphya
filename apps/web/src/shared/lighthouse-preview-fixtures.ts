@@ -12,7 +12,7 @@ export const LIGHTHOUSE_ANONYMOUS_USAGE_RESPONSE: AnonymousUsage = {
 // Public record shape needed by the shared seal during isolated preview audits.
 export const LIGHTHOUSE_ACCREDITATION_RESPONSE: AccreditationRecord = {
   id: ACCREDITATION_ID,
-  issuer: "Desarrollo Seguro",
+  issuer: "Grumphya · revisión interna",
   application: "Grumphya",
   authorizedDomains: ["grumphya.com"],
   status: "demonstration",

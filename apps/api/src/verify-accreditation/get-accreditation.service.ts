@@ -33,7 +33,7 @@ const ACCREDITATION_ID_PATTERN = /^DS-[A-Z0-9]+-\d{4}-\d{3}$/u;
 const PROTOTYPE_RECORDS: readonly AccreditationRecord[] = [
   {
     id: "DS-GRUMPHYA-2026-001",
-    issuer: "Desarrollo Seguro",
+    issuer: "Grumphya · revisión interna",
     application: "Grumphya",
     authorizedDomains: ["grumphya.com"],
     status: "demonstration",

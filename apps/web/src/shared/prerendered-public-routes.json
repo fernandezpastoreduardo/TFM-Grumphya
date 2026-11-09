@@ -79,6 +79,6 @@
     "developmentStyles": [
       "/src/features/accreditation-verification/accreditation-verification.scss"
     ],
-    "requiredCopy": ["Ficha pública de verificación"]
+    "requiredCopy": ["Ficha pública de revisión interna"]
   }
 ]

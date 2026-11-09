@@ -327,7 +327,6 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
     "/assets/grumphya/audience-rounded.webp",
     "/assets/grumphya/stage-curtain-v2.webp",
     "/assets/grumphya/cookie-kick.webp",
-    "/assets/desarrollo-seguro/sello-s4-mobile.webp",
   ];
   for (const assetPath of webpAssets) {
     const response = await page.request.get(assetPath);
@@ -335,6 +334,11 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
     expect(response.headers()["content-type"]).toContain("image/webp");
     expect(await assetHasTransparentPixels(page, assetPath)).toBe(true);
   }
+  const sealIcon = await page.request.get(
+    "/assets/desarrolloseguro.org/icon.svg",
+  );
+  expect(sealIcon.ok()).toBe(true);
+  expect(sealIcon.headers()["content-type"]).toContain("image/svg+xml");
 
   const crossedArmsDimensions = await page.evaluate(async () => {
     const image = new Image();

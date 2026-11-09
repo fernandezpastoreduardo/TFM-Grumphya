@@ -49,7 +49,7 @@ export function AccreditationVerification() {
   }, []);
 
   if (state.kind === "loading") {
-    return <p role="status">Consultando el registro de Desarrollo Seguro…</p>;
+    return <p role="status">Consultando la ficha interna de Grumphya…</p>;
   }
   if (state.kind === "error") {
     return (
@@ -64,16 +64,19 @@ export function AccreditationVerification() {
   return (
     <article
       className="accreditation-verification"
-      aria-label="Ficha de verificación de Desarrollo Seguro"
+      aria-label="Ficha de revisión interna de Grumphya"
     >
-      <img
-        className="accreditation-logo"
-        src="/assets/desarrollo-seguro/logo-l4.webp"
-        width="640"
-        height="585"
-        alt="Logotipo de Desarrollo Seguro"
-        decoding="async"
-      />
+      <div className="accreditation-brand">
+        <img
+          src="/assets/desarrolloseguro.org/icon.svg"
+          width="128"
+          height="128"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+        />
+        <span>Grumphya · revisión interna</span>
+      </div>
       <p className="accreditation-status">{STATUS_LABELS[record.status]}</p>
       <p className="accreditation-intro">
         Esta ficha resume una revisión técnica interna del proyecto. Cada medida
@@ -81,7 +84,7 @@ export function AccreditationVerification() {
       </p>
       <dl className="accreditation-facts">
         <div>
-          <dt>Entidad emisora</dt>
+          <dt>Responsable de la ficha</dt>
           <dd>{record.issuer}</dd>
         </div>
         <div>

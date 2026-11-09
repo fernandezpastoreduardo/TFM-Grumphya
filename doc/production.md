@@ -23,20 +23,13 @@ bundles JavaScript y CSS con nombre versionado
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 404 en vez de la página SPA. `/robots.txt` se sirve como archivo estático.
-El directorio raíz `prototype/` se copia desde la etapa `web-build` a
-`/usr/share/nginx/html/desarrollo-seguro/` en la imagen `web-production`.
-Nginx redirige `/desarrollo-seguro` con una cabecera `Location` relativa a la
-URL canónica con barra final (`/desarrollo-seguro/`), sin filtrar el esquema,
-host o puerto interno del contenedor, y sirve allí explícitamente su
-`index.html` estático;
-los recursos bajo esa ruta se sirven como archivos exactos y los inexistentes
-devuelven 404, sin caer en el HTML de la SPA. La página y sus recursos usan
-`Cache-Control: no-cache`. Caddy aplica también las cabeceras de seguridad
-globales, incluida la CSP aplicada y la CSP en modo `Report-Only`. No requiere
-un proceso ni una API propios. La URL es pública aunque el único enlace interno
-de Grumphya a ella sea el sello del footer. La ficha
+Nginx devuelve `308` desde las rutas heredadas `/desarrollo-seguro` y
+`/desarrollo-seguro/*` hacia `https://desarrolloseguro.org/`. La imagen web ya no
+incluye el prototipo estático: el sitio independiente tiene su propio repositorio
+y despliegue. El sello del footer carga su ilustración desde los recursos locales
+de Grumphya y enlaza al dominio externo. La ficha demostrativa local
 `/acreditaciones/DS-GRUMPHYA-2026-001` continúa siendo una ruta de la SPA y
-consulta el endpoint de acreditaciones de la API.
+consulta el endpoint de acreditaciones de la API de Grumphya.
 El healthcheck del servicio web solicita `/` por HTTPS directamente a Nginx,
 valida la CA interna y el nombre `web`, y comprueba así la portada además de
 que el proceso responda. Permite 30 segundos de arranque inicial antes de

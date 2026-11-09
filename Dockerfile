@@ -77,7 +77,6 @@ RUN apk upgrade --no-cache \
   && nginx -t \
   && rm -rf /run/secrets/web_tls.key /run/secrets/web_tls.crt
 COPY --from=web-build /workspace/apps/web/dist /usr/share/nginx/html
-COPY --from=web-build /workspace/prototype /usr/share/nginx/html/desarrollo-seguro
 EXPOSE 8443
 
 FROM pnpm-base AS production-dependencies

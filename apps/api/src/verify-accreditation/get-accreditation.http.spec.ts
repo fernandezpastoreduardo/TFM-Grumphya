@@ -44,7 +44,7 @@ describe("GET /api/accreditations/:id", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(body).toMatchObject({
       id: ACCREDITATION_ID,
-      issuer: "Desarrollo Seguro",
+      issuer: "Grumphya · revisión interna",
       application: "Grumphya",
       authorizedDomains: ["grumphya.com"],
       status: "demonstration",
