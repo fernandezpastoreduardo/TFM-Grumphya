@@ -26,6 +26,7 @@ readonly BACKEND_PROXY_IP="10.241.${NETWORK_SLOT}.254"
 readonly HTTP_PORT=$((18000 + NETWORK_SLOT))
 readonly HTTPS_PORT=$((40000 + NETWORK_SLOT))
 readonly TEMP_ROOT=$(mktemp -d)
+trap 'rm -rf -- "$TEMP_ROOT"' EXIT
 readonly COMPOSE_FILE="$TEMP_ROOT/compose.production.yaml"
 readonly OVERRIDE_FILE="$TEMP_ROOT/compose.ci.yaml"
 readonly ENV_FILE="$TEMP_ROOT/.env.production"
@@ -119,8 +120,29 @@ compose=(
 if [[ $MODE == --validate-only ]]; then
   trap 'rm -rf -- "$TEMP_ROOT"' EXIT
   "${compose[@]}" config --quiet
+  mkdir -m 700 "$TEMP_ROOT/sites"
+  cp "$REPO_ROOT/docker/additional-sites/desarrolloseguro.caddy.example" \
+    "$TEMP_ROOT/sites/desarrolloseguro.caddy"
+  GRUMPHYA_ADDITIONAL_SITES_DIR="$TEMP_ROOT/sites" \
+    "${compose[@]}" --file "$REPO_ROOT/docker/additional-sites.compose.yaml.example" \
+    config --format json | node -e '
+      const assert = require("node:assert/strict");
+      let input = "";
+      process.stdin.setEncoding("utf8");
+      process.stdin.on("data", (chunk) => { input += chunk; });
+      process.stdin.on("end", () => {
+        const services = JSON.parse(input).services;
+        assert.ok(services.proxy.networks["development-security-ingress"]);
+        assert.ok(services.proxy.networks.edge);
+        assert.ok(services.proxy.networks.backend);
+        for (const name of ["api", "db", "web", "migrate"]) {
+          assert.equal(services[name].networks["development-security-ingress"], undefined);
+        }
+        assert.equal(JSON.stringify(services).includes("development-security-edge"), false);
+      });
+    '
   rm -rf -- "$TEMP_ROOT"
-  printf 'Production Compose configuration is valid with isolated test volumes.\n'
+  printf 'Base and optional production Compose configurations are valid with isolated test volumes.\n'
   exit 0
 fi
 
@@ -129,6 +151,8 @@ if ! docker info >/dev/null; then
   printf 'Docker daemon is unavailable; production Compose smoke cannot run.\n' >&2
   exit 1
 fi
+bash "$REPO_ROOT/scripts/test-caddy-additional-sites.sh" \
+  "grumphya-proxy:$DEPLOY_SHA" "$TEMP_ROOT/.secrets/internal_tls_ca.crt"
 started=0
 
 cleanup() {

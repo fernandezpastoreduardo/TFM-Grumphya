@@ -5,6 +5,10 @@ import { runInNewContext } from "node:vm";
 const DEPENDABOT_PATH = ".github/dependabot.yml";
 const CADDY_DOCKERFILE_PATH = "docker/Caddy.Dockerfile";
 const CADDYFILE_PATH = "docker/Caddyfile";
+const ADDITIONAL_SITES_COMPOSE_PATH =
+  "docker/additional-sites.compose.yaml.example";
+const DEVELOPMENT_SECURITY_SITE_PATH =
+  "docker/additional-sites/desarrolloseguro.caddy.example";
 const DOCKERFILE_PATH = "Dockerfile";
 const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
@@ -25,6 +29,8 @@ const [
   dependabot,
   caddyDockerfile,
   caddyfile,
+  additionalSitesCompose,
+  developmentSecuritySite,
   dockerfile,
   compose,
   workflow,
@@ -39,6 +45,8 @@ const [
   readFile(DEPENDABOT_PATH, "utf8"),
   readFile(CADDY_DOCKERFILE_PATH, "utf8"),
   readFile(CADDYFILE_PATH, "utf8"),
+  readFile(ADDITIONAL_SITES_COMPOSE_PATH, "utf8"),
+  readFile(DEVELOPMENT_SECURITY_SITE_PATH, "utf8"),
   readFile(DOCKERFILE_PATH, "utf8"),
   readFile(COMPOSE_PATH, "utf8"),
   readFile(WORKFLOW_PATH, "utf8"),
@@ -137,6 +145,44 @@ assert.match(
   /reverse_proxy https:\/\/web:8443[\s\S]*?tls_trust_pool file \/run\/secrets\/internal_tls_ca\.crt/,
   "Caddy must verify the web upstream certificate against the internal CA",
 );
+assert.match(caddyfile, /^import \/etc\/caddy\/sites-enabled\/\*\.caddy$/m);
+assert.match(developmentSecuritySite, /^desarrolloseguro\.org \{$/m);
+assert.match(developmentSecuritySite, /^www\.desarrolloseguro\.org \{$/m);
+assert.match(
+  developmentSecuritySite,
+  /^\s*reverse_proxy development-security-web:8080$/m,
+);
+assert.match(
+  developmentSecuritySite,
+  /^\s*redir https:\/\/desarrolloseguro\.org\{uri\} permanent$/m,
+);
+assert.match(developmentSecuritySite, /^\s*encode zstd gzip$/m);
+assert.match(developmentSecuritySite, /^\s*protocols tls1\.2 tls1\.3$/m);
+assert.match(
+  developmentSecuritySite,
+  /Strict-Transport-Security "max-age=31536000; includeSubDomains"/,
+);
+assert.doesNotMatch(
+  developmentSecuritySite,
+  /development-security-edge|development-security-api|postgres|\blog\s*\{/,
+);
+assert.match(additionalSitesCompose, /target: \/etc\/caddy\/sites-enabled/);
+assert.match(additionalSitesCompose, /read_only: true/);
+assert.match(additionalSitesCompose, /create_host_path: false/);
+assert.match(
+  additionalSitesCompose,
+  /development-security-ingress:[\s\S]*external: true/,
+);
+assert.doesNotMatch(
+  additionalSitesCompose,
+  /development-security-edge|^  (api|db|web):/m,
+);
+assert.match(vpsDeployHelper, /readonly HELPER_VERSION=3/);
+assert.match(
+  vpsDeployHelper,
+  /docker network inspect --format '\{\{\.Internal\}\}'/,
+);
+assert.match(workflow, /if \[\[ "\$helper_version" != 3 \]\]/);
 assert.match(
   caddyfile,
   /Strict-Transport-Security "max-age=31536000; includeSubDomains"/,

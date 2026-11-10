@@ -1,0 +1,16 @@
+services:
+  proxy:
+    volumes:
+      - type: bind
+        source: ${GRUMPHYA_ADDITIONAL_SITES_DIR:?Define the stable additional sites directory}
+        target: /etc/caddy/sites-enabled
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      development-security-ingress: {}
+
+networks:
+  development-security-ingress:
+    external: true
+    name: development-security-ingress

@@ -105,13 +105,18 @@ if [[ $1 == inspect ]]; then
       ;;
   esac
 fi
+if [[ $1 == network && ${2:-} == inspect ]]; then
+  [[ -n ${MOCK_INGRESS_INTERNAL:-} ]] || exit 1
+  printf '%s\n' "$MOCK_INGRESS_INTERNAL"
+  exit 0
+fi
 if [[ $1 == compose ]]; then
   file=''
   action=''
   previous=''
   while (($#)); do
     case $1 in
-      --file) shift; file=${1:-} ;;
+      --file) shift; [[ -n $file ]] || file=${1:-} ;;
       config|up|run|stop) action=$1 ;;
     esac
     shift
@@ -172,7 +177,7 @@ MV_STUB
   export GRUMPHYA_ROOT="$TEST_ROOT"
   export GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy"
   export GRUMPHYA_TESTING=1
-  unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_AI_SMOKE_SHA FAIL_CURRENT_STATE_MOVE_ONCE || true
+  unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_AI_SMOKE_SHA FAIL_CURRENT_STATE_MOVE_ONCE MOCK_INGRESS_INTERNAL || true
 }
 
 cleanup_fixture() {
@@ -246,6 +251,12 @@ ALTER TABLE baseline ADD COLUMN note text;'
   assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after deploy'
   assert_eq "$(cat "$TEST_ROOT/state/previous")" "$OLD_SHA" 'previous state after deploy'
   assert_contains "$DOCKER_LOG" '--no-build --wait'
+  if grep -Fq 'additional-sites.compose.yaml' "$DOCKER_LOG"; then
+    fail 'default deployment loaded optional Caddy sites'
+  fi
+  if grep -Fq 'network inspect' "$DOCKER_LOG"; then
+    fail 'default deployment depended on the external ingress network'
+  fi
   assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$NEW_SHA/compose.production.yaml run --rm --no-deps -T api sh /workspace/docker/api-entrypoint.sh node apps/api/dist/infrastructure/ai/production-ai-smoke.js"
   assert_contains "$DOCKER_LOG" "image inspect grumphya-api:$NEW_SHA"
   assert_contains "$DOCKER_LOG" "image inspect grumphya-api:$OLD_SHA"
@@ -257,6 +268,43 @@ ALTER TABLE baseline ADD COLUMN note text;'
   if grep -Eq '(^| )down( |$)|-v|--volumes|volume prune' "$DOCKER_LOG"; then
     fail 'deploy used a volume-destructive command'
   fi
+  cleanup_fixture
+}
+
+test_optional_caddy_sites_survive_new_release() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  mkdir -p "$TEST_ROOT/integrations/sites"
+  cp "$SCRIPT_DIR/../docker/additional-sites.compose.yaml.example" \
+    "$TEST_ROOT/integrations/compose.yaml"
+  cp "$SCRIPT_DIR/../docker/additional-sites/desarrolloseguro.caddy.example" \
+    "$TEST_ROOT/integrations/sites/desarrolloseguro.caddy"
+  export MOCK_INGRESS_INTERNAL=true
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  run_deploy "$NEW_SHA" >/dev/null || fail 'optional Caddy sites deployment failed'
+  assert_contains "$DOCKER_LOG" 'network inspect --format {{.Internal}} development-security-ingress'
+  assert_contains "$DOCKER_LOG" "--file $TEST_ROOT/releases/$NEW_SHA/compose.production.yaml --file $TEST_ROOT/integrations/compose.yaml up -d --no-build --wait"
+  [[ -f $TEST_ROOT/integrations/sites/desarrolloseguro.caddy ]] ||
+    fail 'the stable Caddy site was removed with the old release'
+  cleanup_fixture
+}
+
+test_missing_ingress_keeps_default_deployment() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  mkdir -p "$TEST_ROOT/integrations/sites"
+  cp "$SCRIPT_DIR/../docker/additional-sites.compose.yaml.example" \
+    "$TEST_ROOT/integrations/compose.yaml"
+  cp "$SCRIPT_DIR/../docker/additional-sites/desarrolloseguro.caddy.example" \
+    "$TEST_ROOT/integrations/sites/desarrolloseguro.caddy"
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  run_deploy "$NEW_SHA" >/dev/null 2>&1 || fail 'missing ingress blocked Grumphya deployment'
+  if grep -Fq -- "--file $TEST_ROOT/integrations/compose.yaml" "$DOCKER_LOG"; then
+    fail 'missing ingress still loaded the optional Compose file'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'release state without ingress'
   cleanup_fixture
 }
 
@@ -593,7 +641,7 @@ test_gateway_accepts_only_allowlisted_commands() {
   status_output=$(SSH_ORIGINAL_COMMAND=status "$DEPLOY_HELPER" gateway)
   assert_eq "$status_output" none 'gateway status command'
   status_output=$(SSH_ORIGINAL_COMMAND=helper-version "$DEPLOY_HELPER" gateway)
-  assert_eq "$status_output" 2 'gateway helper version command'
+  assert_eq "$status_output" 3 'gateway helper version command'
   for command in \
     'status extra' \
     'rollback --volumes' \
@@ -610,6 +658,8 @@ test_gateway_accepts_only_allowlisted_commands() {
 
 for test_case in \
   test_deploy_ok \
+  test_optional_caddy_sites_survive_new_release \
+  test_missing_ingress_keeps_default_deployment \
   test_all_time_ranking_migration_is_rollback_compatible \
   test_ai_cached_input_migration_is_rollback_compatible \
   test_approved_illuminado_repricing_migration_is_rollback_compatible \

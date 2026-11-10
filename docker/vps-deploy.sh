@@ -20,7 +20,7 @@ readonly EXPECTED_SECRETS=(
 )
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
-readonly HELPER_VERSION=2
+readonly HELPER_VERSION=3
 readonly DEFAULT_ROOT=/opt/grumphya
 readonly MIN_FREE_BYTES_DEFAULT=536870912
 
@@ -35,6 +35,8 @@ STATE_DIR="$ROOT/state"
 RELEASES_DIR="$ROOT/releases"
 SECRETS_DIR="$ROOT/.secrets"
 ENV_FILE="$ROOT/.env.production"
+ADDITIONAL_SITES_DIR="$ROOT/integrations/sites"
+ADDITIONAL_COMPOSE_FILE="$ROOT/integrations/compose.yaml"
 LOCK_FD=9
 DEPLOY_TEMP_DIR=''
 ROLLOUT_IN_PROGRESS=0
@@ -171,12 +173,24 @@ check_current_release() {
 }
 
 compose_for() {
-  local dir=$1
+  local dir=$1 ingress_internal=''
+  local -a compose_files=(--file "$dir/compose.production.yaml")
   shift
-  GRUMPHYA_SECRETS_DIR="$SECRETS_DIR" docker compose --project-name grumphya \
+  if [[ -f $ADDITIONAL_COMPOSE_FILE && -d $ADDITIONAL_SITES_DIR ]]; then
+    ingress_internal=$(docker network inspect --format '{{.Internal}}' \
+      development-security-ingress 2>/dev/null) || ingress_internal=''
+    if [[ $ingress_internal == true ]]; then
+      compose_files+=(--file "$ADDITIONAL_COMPOSE_FILE")
+    else
+      log 'optional Caddy sites disabled: development-security-ingress is absent or not internal'
+    fi
+  fi
+  GRUMPHYA_SECRETS_DIR="$SECRETS_DIR" \
+    GRUMPHYA_ADDITIONAL_SITES_DIR="$ADDITIONAL_SITES_DIR" \
+    docker compose --project-name grumphya \
     --env-file "$ENV_FILE" \
     --env-file "$dir/release.env" \
-    --file "$dir/compose.production.yaml" "$@"
+    "${compose_files[@]}" "$@"
 }
 
 free_bytes() {
