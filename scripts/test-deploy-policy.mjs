@@ -47,8 +47,8 @@ assert.equal(
 );
 assert.match(
   vpsDeployHelper,
-  /GRUMPHYA_SECRETS_DIR="\$SECRETS_DIR" docker compose/,
-  "VPS Compose operations must resolve secret mounts from the persistent VPS directory",
+  /GRUMPHYA_SECRETS_DIR="\$SECRETS_DIR"\s*\\\s*GRUMPHYA_ADDITIONAL_SITES_DIR="\$ADDITIONAL_SITES_DIR"\s*\\\s*docker compose/,
+  "VPS Compose operations must resolve secret and optional site mounts from persistent VPS directories",
 );
 assert.match(
   productionComposeSmoke,
