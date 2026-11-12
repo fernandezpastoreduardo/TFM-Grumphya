@@ -10,7 +10,7 @@ const MODEL_NAME = "gpt-5.4-mini";
 const IDEA_TEXT = "Una app para coordinar voluntarios en el barrio";
 const TIME_SENSITIVE_PROMISE_IDEA =
   "El servicio promete mostrar resultados actuales a sus usuarios.";
-const POLICY_VERSION = "grumphya-concept-v10";
+const POLICY_VERSION = "grumphya-concept-v11";
 const OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses";
 const MODEL_DECISION = {
   status: "IDEA_INSUFICIENTE",

@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import {
   InvalidModelDecisionError,
+  MAX_CONCEPTUAL_SCORE,
   renderHeadline,
   renderMessage,
   renderReviewMessage,
@@ -33,14 +34,14 @@ export type EvaluationProcessResponse = {
   failedCriteria?: string[];
 };
 
-const POLICY_VERSION = "grumphya-concept-v10";
+const POLICY_VERSION = "grumphya-concept-v11";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_SEMANTIC_RETRIES = 1;
 const RETRYABLE_VISIBLE_MESSAGE_VALIDATION = "visible_message";
 const RETRYABLE_DECISION_FIELDS_VALIDATION = "decision_fields";
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
-const CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR = 10;
+const MAX_VISIBLE_SCORE = 10;
 const VISIBLE_SCORE_DECIMAL_SCALE = 100;
 const REJECTION_SCORE_THRESHOLD = 15;
 const MIN_CLEAR_SCORE = 7;
@@ -110,7 +111,7 @@ function getEvaluationTimeoutMs(): number {
   return DEFAULT_EVALUATION_TIMEOUT_MS;
 }
 
-function getAverageConceptualScore(decision: ModelDecision): number | null {
+function getAverageVisibleScore(decision: ModelDecision): number | null {
   const scoredCriteria = decision.evaluated.filter(
     (criterion) => criterion.state === "PUNTUADO",
   );
@@ -120,10 +121,14 @@ function getAverageConceptualScore(decision: ModelDecision): number | null {
     (total, criterion) => total + criterion.score,
     0,
   );
+  return toVisibleScore(totalScore / scoredCriteria.length);
+}
+
+function toVisibleScore(conceptualScore: number): number {
   return (
     Math.round(
-      (totalScore * VISIBLE_SCORE_DECIMAL_SCALE) /
-        (scoredCriteria.length * CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR),
+      (conceptualScore * MAX_VISIBLE_SCORE * VISIBLE_SCORE_DECIMAL_SCALE) /
+        MAX_CONCEPTUAL_SCORE,
     ) / VISIBLE_SCORE_DECIMAL_SCALE
   );
 }
@@ -131,7 +136,7 @@ function getAverageConceptualScore(decision: ModelDecision): number | null {
 function getPublicScore(decision: ModelDecision): number | null {
   if (decision.status === "IDEA_INSUFICIENTE") return null;
   if (decision.status === "SIN_BLOQUEO_EVIDENTE") {
-    return getAverageConceptualScore(decision);
+    return getAverageVisibleScore(decision);
   }
 
   const rejectingCriterion = decision.evaluated.find(
@@ -142,7 +147,7 @@ function getPublicScore(decision: ModelDecision): number | null {
   if (rejectingCriterion?.state !== "PUNTUADO") {
     throw new InvalidModelDecisionError();
   }
-  return rejectingCriterion.score / CONCEPTUAL_SCORE_TO_VISIBLE_DIVISOR;
+  return toVisibleScore(rejectingCriterion.score);
 }
 
 function getReviewHeadline(tone: "soft" | "hard"): string {

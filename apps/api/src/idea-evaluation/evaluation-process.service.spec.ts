@@ -23,7 +23,7 @@ const LOW_VALUE_METRIC_BASIS =
   "contar cuántas veces alguien se ata los cordones";
 const GENERIC_TRAINING_LOG_IDEA =
   "Una app que sirva para registrar entrenamientos";
-const POLICY_VERSION = "grumphya-concept-v10";
+const POLICY_VERSION = "grumphya-concept-v11";
 const NEUTRAL_MESSAGE =
   "La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.";
 const REJECTION_MESSAGE =
@@ -37,7 +37,7 @@ const HARD_REJECTION_MESSAGE_PREFIX =
   "La propuesta se ha pegado un buen batacazo justo en lo esencial: ";
 const EXPECTED_NEUTRAL_RESULT = {
   status: "SIN_BLOQUEO_EVIDENTE",
-  score: 7.13,
+  score: 9.03,
   headline: "La idea pasa este primer repaso, con confeti prudente.",
   message: `${HARD_CLEAR_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
 };
@@ -237,7 +237,7 @@ describe("EvaluationProcessService", () => {
       service.evaluate({ ideaText: REJECTED_IDEA, tone: "soft" }),
     ).resolves.toEqual({
       status: "RECHAZADA",
-      score: 1.3,
+      score: 1.65,
       headline: "Esta idea necesita un cambio de rumbo.",
       message: `${SOFT_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
@@ -315,7 +315,7 @@ describe("EvaluationProcessService", () => {
 
     await expect(
       service.evaluate({ ideaText: LOW_VALUE_METRIC_IDEA, tone: "hard" }),
-    ).resolves.toMatchObject({ status: "RECHAZADA", score: 1 });
+    ).resolves.toMatchObject({ status: "RECHAZADA", score: 1.27 });
   });
 
   it("returns a confidently identified existing product example", async () => {
@@ -338,7 +338,7 @@ describe("EvaluationProcessService", () => {
       service.evaluate({ ideaText: REJECTED_IDEA, tone: "hard" }),
     ).resolves.toEqual({
       status: "RECHAZADA",
-      score: 1.3,
+      score: 1.65,
       headline: "Esta idea necesita un cambio de rumbo.",
       message: `${HARD_REJECTION_MESSAGE_PREFIX}${REJECTION_MESSAGE}`,
       safeTitle: "Riesgo de privacidad sin mitigaciones",
@@ -442,10 +442,10 @@ describe("EvaluationProcessService", () => {
       });
 
       expect(result).toEqual({
-        status: "REQUIERE_REVISION",
-        score: 6.77,
-        headline: "La idea aún necesita más trabajo.",
-        message: `Con cariño, esta idea todavía necesita trabajo: ${NEUTRAL_MESSAGE}`,
+        status: "SIN_BLOQUEO_EVIDENTE",
+        score: 8.57,
+        headline: "La idea pasa este primer repaso, con confeti prudente.",
+        message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
       });
       expect(fake.calls).toHaveLength(1);
       expect(fake.calls[0]).toMatchObject({
@@ -510,7 +510,7 @@ describe("EvaluationProcessService", () => {
 
     expect(result).toEqual({
       status: "SIN_BLOQUEO_EVIDENTE",
-      score: 7.13,
+      score: 9.03,
       headline: "La idea pasa este primer repaso, con confeti prudente.",
       message: `${SOFT_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
     });
@@ -547,7 +547,7 @@ describe("EvaluationProcessService", () => {
       ...createCompleteDecision(),
       evaluated: createCompleteDecision().evaluated.map((criterion) =>
         criterion.state === "PUNTUADO"
-          ? { ...criterion, score: 70 }
+          ? { ...criterion, score: criterion.id === "C10" ? 56 : 55 }
           : criterion,
       ),
     };
@@ -563,6 +563,30 @@ describe("EvaluationProcessService", () => {
       headline: "La idea pasa este primer repaso, con confeti prudente.",
       message: `${HARD_CLEAR_MESSAGE_PREFIX}${NEUTRAL_MESSAGE}`,
     });
+  });
+
+  it("maps the conceptual ceiling of 79 to a visible 10 out of 10", async () => {
+    const decision = createCompleteDecision();
+    decision.evaluated = decision.evaluated.map((criterion) =>
+      criterion.state === "PUNTUADO" ? { ...criterion, score: 79 } : criterion,
+    );
+    const service = new EvaluationProcessService(createPort(decision));
+
+    await expect(
+      service.evaluate({ ideaText: VALID_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({ status: "SIN_BLOQUEO_EVIDENTE", score: 10 });
+  });
+
+  it("requires review when the normalized score is below 7 out of 10", async () => {
+    const decision = createCompleteDecision();
+    decision.evaluated = decision.evaluated.map((criterion) =>
+      criterion.state === "PUNTUADO" ? { ...criterion, score: 55 } : criterion,
+    );
+    const service = new EvaluationProcessService(createPort(decision));
+
+    await expect(
+      service.evaluate({ ideaText: VALID_IDEA, tone: "hard" }),
+    ).resolves.toMatchObject({ status: "REQUIERE_REVISION", score: 6.96 });
   });
 
   it("retries once when the generated visible message fails its copy contract", async () => {

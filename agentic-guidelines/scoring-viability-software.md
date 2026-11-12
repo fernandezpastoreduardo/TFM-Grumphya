@@ -1,6 +1,6 @@
 # grumphya — Filtro conceptual de ideas y scoring con revisión completa
 
-**Versión:** 3.5 — 3 de noviembre de 2026
+**Versión:** 3.6 — 12 de noviembre de 2026
 **Entrada de la evaluación:** una idea escrita en un textarea, breve o muy breve.
 **Objetivo:** detectar errores de bulto y devolver un score de 0 a 10 con dos decimales, un titular con personalidad y una explicación concreta de los aspectos mediocres y el defecto decisivo.
 **Sustituye:** el sistema de evaluación exhaustiva de la versión 1.0.
@@ -9,7 +9,7 @@
 
 Esta revisión incorpora los cuatro requisitos: entrada conceptual, integración como feature, evaluación de todos los criterios aunque haya suspensos y especificación implementable mediante TDD, adaptándose al repositorio real.
 
-**Estado de implementación (3 de noviembre de 2026):** la rúbrica `grumphya-concept-v10` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea, las instrucciones de política y el tono limitado al copy visible; genera un titular nuevo para cada resultado. El servidor valida el titular y usa un fallback seguro si no cumple las reglas; el tono no puede cambiar el veredicto ni la puntuación. Si C10 es el primer veto (`stop_at: C10`), la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
+**Estado de implementación (12 de noviembre de 2026):** la rúbrica `grumphya-concept-v11` está integrada en `evaluationProcess`, con adaptador opcional a OpenAI Responses API y validación de la salida en el backend. En runtime, el proveedor recibe la idea, las instrucciones de política y el tono limitado al copy visible; genera un titular nuevo para cada resultado. El servidor valida el titular y usa un fallback seguro si no cumple las reglas; el tono no puede cambiar el veredicto ni la puntuación. Si C10 es el primer veto (`stop_at: C10`), la respuesta puede incluir el nombre de un producto conocido con coincidencia de funciones esenciales, solo si el modelo lo reconoce con alta confianza; no se consulta la web ni se afirma que siga disponible hoy. Es contexto orientativo, no prueba de mercado y no altera nota ni veredicto. El acceso al proveedor requiere configuración del servidor (`EVALUATION_PROVIDER=openai` y `OPENAI_API_KEY`); sin ella el endpoint responde `503`. La sección 12 conserva el plan TDD y sus decisiones de alcance, no una lista del trabajo que sigue pendiente. La configuración local está descrita en [`doc/development.md`](../doc/development.md).
 
 **Orden de lectura para Luna:** resumen y alcance (secciones 1–3), rúbrica (4), contrato (8), prompt (9) y plan TDD (12). La sección 12 fija las decisiones de implementación; los ejemplos conceptuales de la sección 10 no sustituyen sus pruebas deterministas.
 
@@ -93,23 +93,24 @@ Una idea de una línea puede ser evaluable. «Una app para guardar recetas y cre
 
 ## 3. Scoring conceptual
 
-Se mantiene la escala 0–100 por aspecto, pero cambia lo que representa:
+Cada aspecto recibe una puntuación conceptual asignable de 0 a 79. Los valores
+de 80 a 100 quedan reservados porque una idea escrita no permite justificarlos.
 
 **El score expresa la solidez conceptual estimable de un aspecto con lo escrito, incluida la diferenciación descrita, no la viabilidad completa ni una probabilidad de éxito.**
 
 ### 3.1 Escala operativa
 
-| Score conceptual por aspecto (escala interna 0–100) | Interpretación                                                       |
-| --------------------------------------------------: | -------------------------------------------------------------------- |
-|                                                   0 | Contradicción absoluta en el mecanismo definido                      |
-|                                                   5 | Núcleo necesariamente dañino, invasivo o explotador según el texto   |
-|                                                  10 | Fallo estructural claro que invalida el planteamiento descrito       |
-|                                               15–34 | Debilidad conceptual severa; no cumple por sí sola el umbral de veto |
-|                                               35–54 | Planteamiento frágil con objeciones materiales                       |
-|                                               55–69 | Mecanismo plausible, con reservas conceptuales                       |
-|                                               70–79 | Buena coherencia conceptual en ese aspecto                           |
-|                                              80–100 | No asignar: la entrada no permite justificar esa solidez             |
-|                                              `null` | No es posible puntuarlo, no aplica o no se ha llegado a analizar     |
+| Score conceptual por aspecto | Interpretación                                                       |
+| ---------------------------: | -------------------------------------------------------------------- |
+|                            0 | Contradicción absoluta en el mecanismo definido                      |
+|                            5 | Núcleo necesariamente dañino, invasivo o explotador según el texto   |
+|                           10 | Fallo estructural claro que invalida el planteamiento descrito       |
+|                        15–34 | Debilidad conceptual severa; no cumple por sí sola el umbral de veto |
+|                        35–54 | Planteamiento frágil con objeciones materiales                       |
+|                        55–69 | Mecanismo plausible, con reservas conceptuales                       |
+|                        70–79 | Buena coherencia conceptual en ese aspecto                           |
+|                       80–100 | No asignar: la entrada no permite justificar esa solidez             |
+|                       `null` | No es posible puntuarlo, no aplica o no se ha llegado a analizar     |
 
 El techo 79 es una **decisión conservadora de producto**, no un límite científico. La puntuación expresa solidez conceptual estimable, no originalidad ni viabilidad real.
 
@@ -153,15 +154,17 @@ No sustituir `null` por 50, 100 o 0. Los criterios posteriores a un rechazo **no
 ### 3.4 Score visible de la evaluación
 
 El resultado de una evaluación completada muestra un score global de `0` a
-`10`, con dos decimales en la interfaz española (`1,30/10`). En `RECHAZADA`,
+`10`, con dos decimales en la interfaz española (`1,65/10`). En `RECHAZADA`,
 este score es el de la primera dimensión que suspende, convertido desde la
-escala conceptual de `0–100` dividiendo entre 10; por ejemplo, un `13`
-conceptual se presenta como `1,30/10`. No se promedian criterios para un
+escala conceptual de `0–79` multiplicando por `10/79` y redondeando a dos
+decimales; por ejemplo, un `13` conceptual se presenta como `1,65/10`. No se promedian criterios para un
 rechazo. Se evalúan los diez criterios y se informa de todos los que suspenden.
 
 En evaluaciones sin veto, el score es la media aritmética de los criterios
-`PUNTUADO` visitados, convertida a escala 0–10 dividiendo entre 10 y redondeada
-a dos decimales. C10 debe ser `PUNTUADO`, por lo que una idea funcional nunca
+`PUNTUADO` visitados, convertida a escala 0–10 multiplicando por `10/79`
+y redondeada a dos decimales. Así, `79` equivale a `10/10`, `55` a `6,96/10`
+y `56` a `7,09/10`. El estado público se decide con la misma nota redondeada
+que se muestra a la persona usuaria. C10 debe ser `PUNTUADO`, por lo que una idea funcional nunca
 termina sin nota. `INDETERMINADO` y `NO_APLICA` no entran en la media.
 Una media inferior a 7/10 produce `REQUIERE_REVISION`: evita presentar una
 idea con debilidades extendidas como aprobada solo porque ningún defecto aislado
@@ -400,9 +403,10 @@ El resultado visible incluye `headline`, `score` y `message`; el resto permite e
 }
 ```
 
-El backend deriva el score público de rechazo de la nota de `stop_at` dividida
-entre 10 y lo incluye en la respuesta pública, por ejemplo `1.3` en JSON,
-formateado como `1,30/10` en la interfaz. La serialización JSON no preserva
+El backend deriva el score público de rechazo multiplicando la nota de `stop_at`
+por `10/79` y redondeando a dos decimales. Lo incluye en la respuesta pública,
+por ejemplo `1.27` para una nota conceptual de `10` en JSON,
+formateado como `1,27/10` en la interfaz. La serialización JSON no preserva
 ceros finales; la UI debe fijar dos decimales.
 
 `basis` es un fragmento breve del textarea que sostiene el veto. Para consecuencias necesarias, el fragmento recoge la condición de entrada que las origina. No constituye una explicación larga ni una cadena de razonamiento.
@@ -417,8 +421,8 @@ No guardar este fragmento ni la idea en telemetría general por defecto. Los reg
 - En `RECHAZADA`, se devuelven los diez criterios y C10 queda puntuado. `stop_at` es el primer criterio, en orden, con score <15; los suspensos posteriores permanecen en `evaluated`.
 - Fragmento `basis` no vacío y presente en la entrada para un rechazo.
 - El código de rechazo pertenece al criterio señalado.
-- En `SIN_BLOQUEO_EVIDENTE`, se han visitado los diez criterios, C10 tiene score ≥15, ningún criterio puntuado tiene score <15 y la media pública alcanza 7/10. `REQUIERE_REVISION` no es un estado del modelo: el servidor lo proyecta cuando una salida válida `SIN_BLOQUEO_EVIDENTE` queda por debajo de ese umbral.
-- En ambos resultados sin veto, el score público es la media de los criterios `PUNTUADO` dividida entre 10 y redondeada a dos decimales; si no hay puntuados, es `null`.
+- En una decisión interna `SIN_BLOQUEO_EVIDENTE`, se han visitado los diez criterios, C10 tiene score ≥15 y ningún criterio puntuado tiene score <15. El servidor calcula y redondea la media pública: si queda por debajo de 7/10, proyecta `REQUIERE_REVISION`; en caso contrario conserva `SIN_BLOQUEO_EVIDENTE`. `REQUIERE_REVISION` no es un estado del modelo.
+- En ambos resultados sin veto, el score público es la media de los criterios `PUNTUADO` multiplicada por `10/79` y redondeada a dos decimales; si no hay puntuados, es `null`.
 - En `IDEA_INSUFICIENTE`, no hay puntuaciones ni criterio de parada y el score público es `null`.
 - En estados sin rechazo, `stop_at`, `reason_code` y `basis` son `null`.
 - El mensaje base cumple los límites de la sección 7; si hay rechazo, resume todos los criterios suspensos y sus consecuencias sin inventar causas.
@@ -601,7 +605,7 @@ Probar también:
 - Entrada demasiado larga: validación previa, sin truncamiento silencioso.
 - Timeout, JSON inválido o puerto sin proveedor: error del servicio, no rechazo conceptual ni resultado fake en runtime.
 
-Estos son casos sintéticos del corpus de regresión. La implementación actual usa `grumphya-concept-v10`; el benchmark requiere una ejecución separada para medir el comportamiento del modelo, porque las pruebas deterministas no acreditan la calidad semántica de cada juicio.
+Estos son casos sintéticos del corpus de regresión. La implementación actual usa `grumphya-concept-v11`; el benchmark requiere una ejecución separada para medir el comportamiento del modelo, porque las pruebas deterministas no acreditan la calidad semántica de cada juicio.
 
 ## 11. Qué se conserva y qué se retira
 
@@ -707,7 +711,7 @@ interface ModelDecision {
 
 interface EvaluationResponse {
   status: DecisionStatus;
-  score: number | null; // Sin bloqueo: media de puntuados / 10; insuficiente: null.
+  score: number | null; // Sin veto: media de puntuados × 10/79; insuficiente: null.
   headline: string; // Titular de Grumphya generado según estado y tono.
   message: string; // Hallazgos y defecto decisivo; texto plano validado.
   existingProductExample?: string; // Contexto opcional cuando stop_at=C10 y hay coincidencia funcional conocida.
@@ -737,13 +741,13 @@ Si ya existe un resultado externo con otra estructura, adaptar en el borde del b
 | Entrada vacía              | Error de validación sin llamada LLM; no simular un veredicto                                                                                                                                                                                                             |
 | Texto breve/vago no vacío  | Los casos deterministas de texto muy breve se responden antes de similitud; otras entradas ordinarias válidas las interpreta el modelo, que puede devolver IDEA_INSUFICIENTE                                                                                             |
 | Ruta HTTP                  | Reutilizar `POST /api/evaluation-process` y el campo existente `ideaText`; añadir `tone` sin cambiar el prefijo                                                                                                                                                          |
-| Política                   | Constante versionada `grumphya-concept-v10`; no modificable desde el textarea                                                                                                                                                                                            |
+| Política                   | Constante versionada `grumphya-concept-v11`; no modificable desde el textarea                                                                                                                                                                                            |
 | Herramientas del proveedor | Desactivadas para esta llamada                                                                                                                                                                                                                                           |
 | Payload del proveedor      | Idea + instrucciones/política + tono limitado al copy visible; no incluye historial                                                                                                                                                                                      |
 | Salida                     | OpenAI Responses API con esquema JSON estricto, validación semántica local y máximo de 6.000 tokens de salida                                                                                                                                                            |
 | Timeout                    | `EVALUATION_TIMEOUT_MS`: 120.000 ms por defecto y máximo; al vencer se aborta la señal si el adaptador la soporta                                                                                                                                                        |
 | Reintentos de evaluación   | 0 por defecto; no lanzar otra evaluación para arreglar JSON                                                                                                                                                                                                              |
-| Score visible              | Rechazo: nota de veto / 10; sin bloqueo: media de puntuados / 10, dos decimales; insuficiente: `null`                                                                                                                                                                    |
+| Score visible              | Rechazo: nota de veto × 10/79; sin veto: media de puntuados × 10/79, redondeada a dos decimales; insuficiente: `null`                                                                                                                                                    |
 | Respuesta de éxito         | Status, score, headline y message; `safeTitle` solo en rechazos; `existingProductExample` opcional cuando `stop_at=C10` y se conoce una coincidencia funcional; no expone basis, notas por criterio ni datos internos                                                    |
 | Error de proveedor         | 503 y código estable según el convenio del proyecto                                                                                                                                                                                                                      |
 | Timeout                    | 504 y código estable según el convenio del proyecto                                                                                                                                                                                                                      |
@@ -823,7 +827,7 @@ El fake devuelve resultados prefabricados: aquí se prueba el **software**, no l
 | V08 | IDs saltados, repetidos o desordenados                  | Rechaza la salida                                                                                        |
 | V09 | Score string, fracción, <0, >79 o null en PUNTUADO      | Rechaza la salida                                                                                        |
 | V10 | Número en INDETERMINADO/NO_APLICA                       | Rechaza la salida                                                                                        |
-| V11 | SIN_BLOQUEO_EVIDENTE con diez criterios y C10 puntuado  | Valida el recorrido; score = media de criterios PUNTUADO / 10, redondeada a dos decimales                |
+| V11 | SIN_BLOQUEO_EVIDENTE con diez criterios y C10 puntuado  | Valida el recorrido; score = media de criterios PUNTUADO × 10/79, redondeada a dos decimales             |
 | V12 | SIN_BLOQUEO_EVIDENTE sin C10 puntuado o con veto        | Rechaza la salida                                                                                        |
 | V13 | IDEA_INSUFICIENTE con filas o campos de veto            | Rechaza la salida                                                                                        |
 | V14 | basis no presente en idea o reason_code de otro ID      | Rechaza la salida                                                                                        |
@@ -837,7 +841,7 @@ El fake devuelve resultados prefabricados: aquí se prueba el **software**, no l
 | V22 | Respuesta pública                                       | Incluye status, score, headline y message; excluye basis, notas por criterio, secretos y errores del SDK |
 | V23 | UI envía dos clics mientras loading                     | Una solicitud desde ese formulario, botón deshabilitado                                                  |
 | V24 | UI recibe resultado o error                             | Renderiza texto, nunca HTML arbitrario; permite nuevo envío tras terminar                                |
-| V25 | Rechazo con nota conceptual 13                          | Respuesta numérica 1.3, presentada en UI como `1,30/10`                                                  |
+| V25 | Rechazo con nota conceptual 13                          | Respuesta numérica 1.65, presentada en UI como `1,65/10`                                                 |
 
 V21 comprueba aislamiento del payload; un fake no demuestra resistencia semántica del LLM a una inyección. V06 comprueba que no se acepta un recorrido posterior declarado; no demuestra cuándo dejó de razonar el modelo.
 

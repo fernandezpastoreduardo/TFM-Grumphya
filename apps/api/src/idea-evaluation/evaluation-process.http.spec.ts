@@ -5,6 +5,7 @@ import { NestFactory } from "@nestjs/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppModule } from "../app.module";
 import { EVALUATION_PORT, type EvaluationPort } from "./evaluation-port";
+import type { ModelDecision } from "./evaluation-decision";
 import { EvaluationProcessController } from "./evaluation-process.controller";
 import { EvaluationProcessService } from "./evaluation-process.service";
 import { EvaluationTestingModule } from "./evaluation-testing.module";
@@ -46,7 +47,10 @@ const PREVIOUS_ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 const AUTHENTICATED_USER_ID = "123e4567-e89b-42d3-a456-426614174000";
 const ACCESS_TOKEN_SECRET = "plan-quota-http-test-secret-32-bytes-minimum";
 
-function createAuthenticatedQuotaModule(planUsage: PlanUsageService) {
+function createAuthenticatedQuotaModule(
+  planUsage: PlanUsageService,
+  goodIdeas = { saveGoodIdea: async () => true },
+) {
   @Module({
     controllers: [EvaluationProcessController],
     providers: [
@@ -98,7 +102,7 @@ function createAuthenticatedQuotaModule(planUsage: PlanUsageService) {
             repository,
             evaluation,
             undefined,
-            { saveGoodIdea: async () => true },
+            goodIdeas,
             quota,
           ),
         inject: [
@@ -276,8 +280,12 @@ describe("evaluation process HTTP endpoint", () => {
       commit: vi.fn().mockResolvedValue(undefined),
       release: vi.fn().mockResolvedValue(undefined),
     };
+    const goodIdeas = { saveGoodIdea: vi.fn().mockResolvedValue(true) };
     const application = await startHttpApplication(
-      createAuthenticatedQuotaModule(planUsage as unknown as PlanUsageService),
+      createAuthenticatedQuotaModule(
+        planUsage as unknown as PlanUsageService,
+        goodIdeas,
+      ),
     );
 
     try {
@@ -296,7 +304,10 @@ describe("evaluation process HTTP endpoint", () => {
 
       const body: unknown = await response.json();
       expect(response.status, JSON.stringify(body)).toBe(201);
-      expect(body).toMatchObject({ status: "evaluated" });
+      expect(body).toMatchObject({
+        status: "evaluated",
+        result: { status: "SIN_BLOQUEO_EVIDENTE", score: 8.57 },
+      });
       expect(JSON.stringify(body)).not.toContain(VALID_IDEA);
       expect(planUsage.reserveIfPlanActive).toHaveBeenCalledWith(
         AUTHENTICATED_USER_ID,
@@ -304,6 +315,73 @@ describe("evaluation process HTTP endpoint", () => {
         expect.stringMatching(/^[a-f0-9]{64}$/u),
         expect.stringMatching(/^[a-f0-9]{64}$/u),
       );
+      expect(planUsage.commit).toHaveBeenCalledOnce();
+      expect(goodIdeas.saveGoodIdea).toHaveBeenCalledOnce();
+      expect(goodIdeas.saveGoodIdea).toHaveBeenCalledWith(
+        AUTHENTICATED_USER_ID,
+        VALID_IDEA,
+        expect.stringMatching(/^[a-f0-9]{64}$/u),
+        expect.stringMatching(/^[a-f0-9]{64}$/u),
+      );
+    } finally {
+      await application.close();
+      if (PREVIOUS_ACCESS_TOKEN_SECRET === undefined)
+        delete process.env.ACCESS_TOKEN_SECRET;
+      else process.env.ACCESS_TOKEN_SECRET = PREVIOUS_ACCESS_TOKEN_SECRET;
+    }
+  });
+
+  it("does not persist an authenticated idea whose normalized score requires review", async () => {
+    process.env.ACCESS_TOKEN_SECRET = ACCESS_TOKEN_SECRET;
+    const planUsage = {
+      reserveIfPlanActive: vi
+        .fn()
+        .mockResolvedValue({ state: "reserved" as const }),
+      commit: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn().mockResolvedValue(undefined),
+    };
+    const goodIdeas = { saveGoodIdea: vi.fn().mockResolvedValue(true) };
+    const application = await startHttpApplication(
+      createAuthenticatedQuotaModule(
+        planUsage as unknown as PlanUsageService,
+        goodIdeas,
+      ),
+    );
+
+    try {
+      const fake = application.get(FakeEvaluationPort);
+      const originalEvaluate = fake.evaluate.bind(fake);
+      vi.spyOn(fake, "evaluate").mockImplementation(async (input) => {
+        const decision = (await originalEvaluate(input)) as ModelDecision;
+        return {
+          ...decision,
+          evaluated: decision.evaluated.map((criterion) =>
+            criterion.state === "PUNTUADO"
+              ? { ...criterion, score: 55 }
+              : criterion,
+          ),
+        };
+      });
+
+      const response = await fetch(
+        new URL(EVALUATION_PATH, await application.getUrl()),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": "d54e74e8-4d23-46d4-9944-0b39bcda0914",
+            Authorization: `Bearer ${issueAccessToken(AUTHENTICATED_USER_ID).token}`,
+          },
+          body: JSON.stringify({ ideaText: VALID_IDEA, tone: "soft" }),
+        },
+      );
+
+      expect(response.status).toBe(201);
+      expect(await response.json()).toMatchObject({
+        status: "evaluated",
+        result: { status: "REQUIERE_REVISION", score: 6.96 },
+      });
+      expect(goodIdeas.saveGoodIdea).not.toHaveBeenCalled();
       expect(planUsage.commit).toHaveBeenCalledOnce();
     } finally {
       await application.close();
@@ -326,11 +404,11 @@ describe("evaluation process HTTP endpoint", () => {
       expect(await response.json()).toEqual({
         status: "evaluated",
         result: {
-          status: "REQUIERE_REVISION",
-          score: 6.77,
-          headline: "La idea aún necesita más trabajo.",
+          status: "SIN_BLOQUEO_EVIDENTE",
+          score: 8.57,
+          headline: "La idea pasa este primer repaso, con confeti prudente.",
           message:
-            "Con cariño, esta idea todavía necesita trabajo: La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.",
+            "¡Qué ilusión poder acompañarte con todo el cariño! La idea concreta ofrece una utilidad reconocible para quien necesita organizar este trabajo. Sin embargo, la descripción no explica cómo se comprueba que el resultado sea correcto ni cómo se distingue de otras opciones. Conviene validar primero esa diferencia y la confianza en el material final.",
         },
       });
     } finally {
