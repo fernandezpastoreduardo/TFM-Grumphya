@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import React from "react";
 import { prerenderToNodeStream } from "react-dom/static";
+import { addPublicSeoMetadata } from "../src/shared/public-seo.mjs";
 
 const DIST_DIRECTORY = path.resolve("dist");
 const SSR_BUILD_DIRECTORY = path.resolve(".prerender-ssr");
@@ -28,7 +29,13 @@ try {
     indexHtml.includes(ROOT_ELEMENT),
     "App root is missing from index.html",
   );
-  await writeFile(path.join(DIST_DIRECTORY, "app.html"), indexHtml);
+  await writeFile(
+    path.join(DIST_DIRECTORY, "app.html"),
+    indexHtml.replace(
+      "</head>",
+      '    <meta name="robots" content="noindex" />\n  </head>',
+    ),
+  );
 
   for (const route of routes) {
     const render = await prerenderToNodeStream(
@@ -72,7 +79,7 @@ try {
         return `<link rel="preload" as="image" href="${href}" fetchpriority="high"${mediaAttribute} />`;
       })
       .join("");
-    const html = indexHtml
+    const html = addPublicSeoMetadata(indexHtml, route)
       .replace("</head>", `${imagePreloads}${stylesheets}</head>`)
       .replace(ROOT_ELEMENT, `<div id="root">${renderedRoot}</div>`);
     const outputPath =

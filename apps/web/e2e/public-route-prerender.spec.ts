@@ -1,4 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const publicRoutes = JSON.parse(
+  readFileSync(
+    new URL("../src/shared/prerendered-public-routes.json", import.meta.url),
+    "utf8",
+  ),
+) as Array<{ path: string; seo: { title: string; description: string } }>;
 
 const PRICING_ROUTE = "/precios";
 const PRICING_HERO = "Once usos. Sí, once.";
@@ -30,6 +38,44 @@ test("serves all public section content in its initial HTML", async ({
       `${path} should include its page heading`,
     ).toContain(heading);
   }
+});
+
+test("publishes route-specific canonical and social metadata", async ({
+  request,
+}) => {
+  const imageUrl =
+    "https://grumphya.com/assets/grumphya/home-grumpy-judge.webp";
+  for (const route of publicRoutes) {
+    const html = await (await request.get(route.path)).text();
+    const canonicalUrl = `https://grumphya.com${route.path}`;
+    expect(html.match(/rel="canonical"/g), route.path).toHaveLength(1);
+    expect(html).toContain(`<link rel="canonical" href="${canonicalUrl}"`);
+    expect(html).toContain(`<title>${route.seo.title}</title>`);
+    expect(html).toContain(
+      `<meta name="description" content="${route.seo.description}"`,
+    );
+    expect(html).toContain(`<meta property="og:url" content="${canonicalUrl}"`);
+    expect(html).toContain(
+      `<meta property="og:title" content="${route.seo.title}"`,
+    );
+    expect(html).toContain(`<meta property="og:image" content="${imageUrl}"`);
+    expect(html).toContain('<meta property="og:type" content="website"');
+    expect(html).toContain('<meta name="twitter:card" content="summary"');
+  }
+  expect(
+    (await request.get("/assets/grumphya/home-grumpy-judge.webp")).ok(),
+  ).toBe(true);
+
+  const queriedHtml = await (
+    await request.get("/precios?utm_source=synthetic-test")
+  ).text();
+  expect(queriedHtml).toContain(
+    '<link rel="canonical" href="https://grumphya.com/precios"',
+  );
+  expect(queriedHtml).toContain(
+    '<meta property="og:url" content="https://grumphya.com/precios"',
+  );
+  expect(queriedHtml).not.toContain("utm_source=synthetic-test");
 });
 
 test("prerenders the roast conversation skeleton before client hydration", async ({
@@ -89,6 +135,8 @@ test("keeps session routes on the empty SPA shell", async ({ request }) => {
   expect(response.ok()).toBe(true);
   expect(html).toContain('<div id="root"></div>');
   expect(html).not.toContain("Antes de construirla,");
+  expect(html).not.toContain('rel="canonical"');
+  expect(html).not.toContain('property="og:url"');
 });
 
 test("serves the pricing page content in the initial HTML and hydrates it", async ({

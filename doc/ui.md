@@ -324,10 +324,17 @@ ni estados interactivos.
 
 ## SEO básico
 
-El HTML inicial incluye una descripción en español de Grumphya. `robots.txt`
-permite el rastreo general y excluye `/login`, `/crear-cuenta`, `/perfil` y
-`/panel-control`; estas reglas orientan a los rastreadores y no protegen esas
-rutas ni sustituyen la autenticación del servidor.
+El HTML inicial de cada ruta pública prerenderizada incluye un título y una
+descripción propios en español, una URL canónica absoluta de `grumphya.com` y
+metadatos Open Graph y Twitter para compartirla. Todas usan la misma imagen
+social local, `home-grumpy-judge.webp`, de 400 × 400 px. El HTML de reserva de
+las rutas privadas o desconocidas declara `noindex` y no incluye URL canónica
+ni metadatos sociales públicos. `robots.txt` permite el rastreo general y
+excluye `/login`, `/crear-cuenta`, `/perfil` y `/panel-control`. La exclusión de
+`/crear-cuenta` también abarca `/crear-cuenta/planes`: esa página tiene
+metadatos para compartir el enlace dentro del flujo de alta, pero no se
+pretende indexarla. Las reglas de `robots.txt` orientan a los rastreadores y no
+protegen esas rutas ni sustituyen la autenticación del servidor.
 
 Las fuentes variables Fredoka y Nunito Sans se sirven desde el propio proyecto;
 la página no conecta con Google Fonts. Las rutas ya se cargan de forma diferida.

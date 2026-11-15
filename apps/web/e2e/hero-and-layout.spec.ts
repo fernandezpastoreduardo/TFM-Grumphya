@@ -1,4 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
+const HOME_DESCRIPTION = (
+  JSON.parse(
+    readFileSync(
+      new URL("../src/shared/prerendered-public-routes.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Array<{ path: string; seo: { description: string } }>
+).find(({ path }) => path === "/")!.seo.description;
 
 const DESKTOP_VIEWPORT = { width: 1200, height: 1000 };
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
@@ -292,7 +302,7 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
   await expect(page.locator(".home-page")).toBeVisible();
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     "content",
-    "Grumphya evalúa ideas de apps con mirada crítica, detecta riesgos y te ayuda a decidir qué merece la pena desarrollar.",
+    HOME_DESCRIPTION,
   );
   const curtainPreload = page.locator(
     'link[rel="preload"][as="image"][href="/assets/grumphya/stage-curtain-v2.webp"]',

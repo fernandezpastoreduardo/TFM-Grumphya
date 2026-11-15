@@ -5,6 +5,7 @@ import { prerenderToNodeStream } from "react-dom/static";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import prerenderedPublicRoutes from "./src/shared/prerendered-public-routes.json";
+import { addPublicSeoMetadata } from "./src/shared/public-seo.mjs";
 import { createLighthousePreviewMiddleware } from "./src/shared/lighthouse-preview-middleware";
 
 const API_PROXY_TARGET =
@@ -72,8 +73,12 @@ const publicRoutePrerenderPlugin: Plugin = {
             return `<link rel="preload" as="image" href="${href}" fetchpriority="high"${mediaAttribute} />`;
           })
           .join("");
-        const html = (
-          await server.transformIndexHtml(request.url ?? route.path, sourceHtml)
+        const html = addPublicSeoMetadata(
+          await server.transformIndexHtml(
+            request.url ?? route.path,
+            sourceHtml,
+          ),
+          route,
         )
           .replace("</head>", `${imagePreloads}${stylesheetLinks}</head>`)
           .replace(ROOT_ELEMENT, `<div id="root">${markup}</div>`);

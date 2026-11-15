@@ -1,6 +1,10 @@
 [
   {
     "path": "/",
+    "seo": {
+      "title": "Grumphya — evalúa tu idea de app",
+      "description": "Evalúa tu idea de app con una mirada crítica. Descubre riesgos, recibe una valoración explicada y decide qué merece la pena desarrollar."
+    },
     "manifestEntry": "src/views/home.tsx",
     "developmentStyles": ["/src/views/home.scss"],
     "requiredCopy": ["Antes de construirla,"],
@@ -8,30 +12,50 @@
   },
   {
     "path": "/lo-peor-de-lo-peor",
+    "seo": {
+      "title": "El muro de la vergüenza | Grumphya",
+      "description": "Descubre las ideas de apps rechazadas que más se repiten, con títulos seguros y recuentos semanales."
+    },
     "manifestEntry": "src/features/worst-ideas/worst-ideas.tsx",
     "developmentStyles": ["/src/features/worst-ideas/worst-ideas.scss"],
     "requiredCopy": ["El muro de la vergüenza"]
   },
   {
     "path": "/descargate",
+    "seo": {
+      "title": "Descárgate a gusto | Grumphya",
+      "description": "Prueba el roast de Grumphya y recibe una respuesta irónica a tu idea, con límites de uso claros."
+    },
     "manifestEntry": "src/features/roast/roast.tsx",
     "developmentStyles": ["/src/features/roast/roast.scss"],
     "requiredCopy": ["Descárgate a gusto"]
   },
   {
     "path": "/humanos-notables",
+    "seo": {
+      "title": "Humanos notables | Grumphya",
+      "description": "Conoce el ranking de alias de usuarios con ideas distintas aprobadas en Grumphya."
+    },
     "manifestEntry": "src/features/notable-humans/notable-humans.tsx",
     "developmentStyles": ["/src/features/notable-humans/notable-humans.scss"],
     "requiredCopy": ["Humanos notables"]
   },
   {
     "path": "/buenas-practicas",
+    "seo": {
+      "title": "Buenas prácticas para ideas de apps | Grumphya",
+      "description": "Empieza por el problema y mejora tu idea de app con las buenas prácticas de Grumphya."
+    },
     "manifestEntry": "src/features/good-practices/good-practices.tsx",
     "developmentStyles": ["/src/features/good-practices/good-practices.scss"],
     "requiredCopy": ["Primero el problema."]
   },
   {
     "path": "/precios",
+    "seo": {
+      "title": "Planes y precios | Grumphya",
+      "description": "Consulta los planes de Grumphya, sus usos y las condiciones de activación disponibles."
+    },
     "manifestEntry": "src/features/pricing/pricing.tsx",
     "developmentStyles": ["/src/features/pricing/pricing.scss"],
     "requiredCopy": [
@@ -43,6 +67,10 @@
   },
   {
     "path": "/crear-cuenta/planes",
+    "seo": {
+      "title": "Elige un plan para crear tu cuenta | Grumphya",
+      "description": "Compara los planes disponibles antes de crear tu cuenta de Grumphya."
+    },
     "manifestEntry": "src/features/pricing/pricing.tsx",
     "developmentStyles": ["/src/features/pricing/pricing.scss"],
     "requiredCopy": [
@@ -54,12 +82,20 @@
   },
   {
     "path": "/contacto",
+    "seo": {
+      "title": "Contacto | Grumphya",
+      "description": "Contacta con el equipo de Grumphya para consultas sobre el servicio y tus ideas de apps."
+    },
     "manifestEntry": "src/features/contact/contact.tsx",
     "developmentStyles": ["/src/features/contact/contact.scss"],
     "requiredCopy": ["¿Necesitas decirlo en voz alta?"]
   },
   {
     "path": "/politica-de-privacidad",
+    "seo": {
+      "title": "Política de privacidad | Grumphya",
+      "description": "Consulta cómo trata Grumphya los datos personales y qué derechos puedes ejercer."
+    },
     "manifestEntry": "src/features/register-with-plan/privacy-policy.tsx",
     "developmentStyles": [
       "/src/shared/styles/account.scss",
@@ -69,12 +105,20 @@
   },
   {
     "path": "/terminos-y-condiciones",
+    "seo": {
+      "title": "Términos y condiciones | Grumphya",
+      "description": "Lee las condiciones de uso de Grumphya y los términos de sus planes."
+    },
     "manifestEntry": "src/features/register-with-plan/terms-and-conditions.tsx",
     "developmentStyles": ["/src/shared/styles/account.scss"],
     "requiredCopy": ["Términos y condiciones"]
   },
   {
     "path": "/acreditaciones/DS-GRUMPHYA-2026-001",
+    "seo": {
+      "title": "Acreditación DS-GRUMPHYA-2026-001 | Grumphya",
+      "description": "Consulta la ficha pública de revisión interna de la acreditación DS-GRUMPHYA-2026-001."
+    },
     "manifestEntry": "src/features/accreditation-verification/accreditation-verification.tsx",
     "developmentStyles": [
       "/src/features/accreditation-verification/accreditation-verification.scss"
