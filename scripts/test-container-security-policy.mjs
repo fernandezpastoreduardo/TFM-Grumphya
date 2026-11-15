@@ -513,6 +513,27 @@ assert.doesNotMatch(
 
 const htmlEntryLocation = readLocationBlock(nginxSpa, "location = /index.html");
 assert.match(
+  nginxSpa,
+  /\bserver_tokens off;/,
+  "Nginx must not disclose its version",
+);
+const wwwSiteStart = caddyfile.indexOf("www.{$DOMAIN} {");
+const additionalSitesStart = caddyfile.indexOf(
+  "import /etc/caddy/sites-enabled/*.caddy",
+  wwwSiteStart,
+);
+assert.ok(wwwSiteStart > 0 && additionalSitesStart > wwwSiteStart);
+for (const site of [
+  caddyfile.slice(0, wwwSiteStart),
+  caddyfile.slice(wwwSiteStart, additionalSitesStart),
+]) {
+  assert.match(
+    site,
+    /^\s*(?:header\s+)?-Server\s*$/m,
+    "both Caddy hosts must remove the Server header",
+  );
+}
+assert.match(
   htmlEntryLocation,
   /add_header Cache-Control "no-cache" always;/,
   "the HTML entry point must revalidate so deployments can update clients",

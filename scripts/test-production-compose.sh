@@ -289,10 +289,13 @@ assert_proxy_ports
 curl --insecure --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 2 \
   --dump-header "$TEMP_ROOT/public-headers.txt" \
   "https://localhost:$HTTPS_PORT/" -o "$TEMP_ROOT/home.html"
-node - "$TEMP_ROOT/public-headers.txt" <<'NODE'
+node - "$TEMP_ROOT/public-headers.txt" "$TEMP_ROOT/home.html" <<'NODE'
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const responseHeaders = readFileSync(process.argv[2], "utf8");
+const homeHtml = readFileSync(process.argv[3], "utf8");
+assert.doesNotMatch(responseHeaders, /^server:/im, "the public response must not disclose its server");
+assert.match(homeHtml, /<link rel="canonical" href="https:\/\/grumphya\.com\/"/);
 assert.match(
   responseHeaders,
   /^content-type:\s*text\/html(?:\s*;[^\r\n]*)?\s*$/im,
@@ -410,6 +413,8 @@ const { readFileSync } = require("node:fs");
 const accountHtml = readFileSync(process.argv[2], "utf8");
 assert.match(accountHtml, /<div id="root"><\/div>/);
 assert.doesNotMatch(accountHtml, /Antes de construirla,/);
+assert.match(accountHtml, /<meta name="robots" content="noindex"/);
+assert.doesNotMatch(accountHtml, /rel="canonical"|property="og:url"/);
 NODE
 curl --insecure --fail --silent --show-error \
   "https://localhost:$HTTPS_PORT/build.json" -o "$TEMP_ROOT/build.json"

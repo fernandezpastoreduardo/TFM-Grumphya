@@ -41,6 +41,49 @@ el recorrido público local.
 
 La red interna confía en el proxy Caddy por su dirección privada fija. Express usa `TRUST_PROXY=172.31.0.254/32`, la IP de Caddy en la red `backend`; Caddy determina la dirección remota del socket y la API no está expuesta a Internet. Si cambias las subredes o la IP de Caddy en Compose, actualiza esta allowlist. No configures `trust proxy=true` ni confíes en cabeceras reenviadas desde clientes.
 
+## Metadatos públicos y correo
+
+El prerender de las rutas públicas asigna a cada página un título, descripción,
+URL canónica absoluta de `https://grumphya.com` y etiquetas Open Graph/Twitter.
+La portada y cada ruta pública usan su propia URL sin parámetros de consulta.
+La imagen social compartida es el recurso local
+`/assets/grumphya/home-grumpy-judge.webp`, de 400 × 400 px. El HTML de reserva
+`app.html` para rutas privadas o desconocidas declara `noindex` y no publica
+una URL canónica ni metadatos sociales públicos. El mapa de metadatos vive en
+`apps/web/src/shared/prerendered-public-routes.json`; el mismo generador se usa
+en desarrollo y en la build de producción. `/crear-cuenta/planes` tiene
+metadatos para compartir el enlace durante el alta, aunque `robots.txt`
+excluye `/crear-cuenta` y no se pretende indexar esa página. Tras publicar,
+comprueba el HTML inicial de varias rutas, la imagen social y que Nginx/Caddy
+no envíen la versión del servidor, incluido el redirect de `www`.
+
+El DNS autoritativo del correo se administra en IONOS, fuera del VPS y de este
+repositorio. Si la política DMARC vigente es `p=none`, antes de cambiarla
+verifica en informes agregados que todos los emisores legítimos (incluido el
+SMTP de la aplicación) pasan SPF o DKIM **alineados** con `grumphya.com`;
+después avanza a `p=quarantine` y finalmente a `p=reject` cuando los informes
+no muestren rechazos legítimos. Comprueba el tipo de registro de
+`_dmarc.grumphya.com` con `dig CNAME _dmarc.grumphya.com` y
+`dig TXT _dmarc.grumphya.com`. Si es un CNAME a IONOS, sustitúyelo por un TXT
+propio al fijar la política; no pueden coexistir en el mismo nombre. Comprueba
+la propagación y valida un mensaje real recibido antes de endurecer más la
+política. Un acceso root al VPS no modifica ese DNS autoritativo.
+
+Comprobación pública del 15 de noviembre de 2026: `grumphya.com` apuntaba a
+`31.70.130.181`, cuyo PTR era `ip31-70-130-181.pbiaas.com` y resolvía de
+vuelta a esa IP; SPF publicaba `include:_spf-eu.ionos.com` con `~all`, los
+selectores DKIM `s1-ionos` y `s2-ionos` resolvían a claves mediante CNAME, y
+el CNAME DMARC apuntaba a `dmarc.ionos.es`, que publicaba `p=none`. La
+configuración leída en el VPS entrega el correo de la aplicación a
+`smtp.ionos.es:587` y usa una dirección `From` de `grumphya.com`; los DNS por
+sí solos no prueban qué servidor efectúa la entrega final. Envía un correo real
+desde la aplicación a un buzón de prueba y comprueba en `Received` la IP
+que lo entregó, el PTR de **esa IP** (`dig -x <IP>`),
+`Authentication-Results` (SPF, DKIM y DMARC) y la alineación con el dominio
+visible en `From`. Al usar el relay SMTP de IONOS, el PTR relevante es el de
+la IP de salida del relay, no el del VPS. No cambies el PTR del VPS por esta
+alerta sin evidencia de que sea el emisor final.
+
 ## Transporte y límites del cifrado
 
 Caddy termina HTTPS para el navegador y enruta `/api/*` al mismo origen seguro. Obtiene y renueva el certificado público automáticamente, redirige HTTP a HTTPS y limita TLS explícitamente a las versiones 1.2 y 1.3. La respuesta HTTPS incluye HSTS (`max-age=31536000; includeSubDomains`). Para verificar el borde desplegado, comprueba el certificado y las cabeceras en `https://<dominio>` y que `http://<dominio>` redirija a HTTPS; no uses esas comprobaciones como prueba de los tramos internos.
