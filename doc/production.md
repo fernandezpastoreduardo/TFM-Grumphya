@@ -69,9 +69,14 @@ propio al fijar la política; no pueden coexistir en el mismo nombre. Comprueba
 la propagación y valida un mensaje real recibido antes de endurecer más la
 política. Un acceso root al VPS no modifica ese DNS autoritativo.
 
-Comprobación pública del 15 de noviembre de 2026: `grumphya.com` apuntaba a
-`31.70.130.181`, cuyo PTR era `ip31-70-130-181.pbiaas.com` y resolvía de
-vuelta a esa IP; SPF publicaba `include:_spf-eu.ionos.com` con `~all`, los
+Comprobación del 15 de noviembre de 2026: `grumphya.com` apuntaba a
+`31.70.130.181`. El panel de IONOS mostraba el DNS inverso personalizado sin
+asignar, aunque la IP ya tenía el PTR genérico
+`ip31-70-130-181.pbiaas.com`. Se asignó `grumphya.com` como PTR en el panel;
+el DNS autoritativo de IONOS y los resolutores públicos 1.1.1.1 y 8.8.8.8
+devolvieron `grumphya.com`, cuyo registro A apunta de vuelta a esa IP. Las
+cachés DNS pueden mantener temporalmente el PTR anterior. SPF publicaba
+`include:_spf-eu.ionos.com` con `~all`, los
 selectores DKIM `s1-ionos` y `s2-ionos` resolvían a claves mediante CNAME, y
 el CNAME DMARC apuntaba a `dmarc.ionos.es`, que publicaba `p=none`. La
 configuración leída en el VPS entrega el correo de la aplicación a
@@ -80,9 +85,9 @@ sí solos no prueban qué servidor efectúa la entrega final. Envía un correo r
 desde la aplicación a un buzón de prueba y comprueba en `Received` la IP
 que lo entregó, el PTR de **esa IP** (`dig -x <IP>`),
 `Authentication-Results` (SPF, DKIM y DMARC) y la alineación con el dominio
-visible en `From`. Al usar el relay SMTP de IONOS, el PTR relevante es el de
-la IP de salida del relay, no el del VPS. No cambies el PTR del VPS por esta
-alerta sin evidencia de que sea el emisor final.
+visible en `From`. Al usar el relay SMTP de IONOS, el PTR relevante para la
+entrega de esos mensajes es el de la IP de salida del relay, no el del VPS;
+el cambio del PTR del VPS no demuestra por sí solo una mejora de entregabilidad.
 
 ## Transporte y límites del cifrado
 
