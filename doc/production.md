@@ -58,11 +58,11 @@ comprueba el HTML inicial de varias rutas, la imagen social y que Nginx/Caddy
 no envíen la versión del servidor, incluido el redirect de `www`.
 
 El DNS autoritativo del correo se administra en IONOS, fuera del VPS y de este
-repositorio. Si la política DMARC vigente es `p=none`, antes de cambiarla
-verifica en informes agregados que todos los emisores legítimos (incluido el
-SMTP de la aplicación) pasan SPF o DKIM **alineados** con `grumphya.com`;
-después avanza a `p=quarantine` y finalmente a `p=reject` cuando los informes
-no muestren rechazos legítimos. Comprueba el tipo de registro de
+repositorio. Al salir de `p=none`, configura informes agregados y avanza
+gradualmente a `p=quarantine`. Antes de aplicar la política a todo el correo
+o pasar a `p=reject`, comprueba en esos informes que los emisores legítimos
+(incluido el SMTP de la aplicación) pasan SPF o DKIM **alineados** con
+`grumphya.com`. Comprueba el tipo de registro de
 `_dmarc.grumphya.com` con `dig CNAME _dmarc.grumphya.com` y
 `dig TXT _dmarc.grumphya.com`. Si es un CNAME a IONOS, sustitúyelo por un TXT
 propio al fijar la política; no pueden coexistir en el mismo nombre. Comprueba
@@ -96,8 +96,18 @@ TLS 1.3. Gmail informó `spf=pass` para el remitente de sobre de
 `dmarc=pass` alineado con el `From` de `grumphya.com`. El PTR del relay apunta
 a `mout.kundenserver.de` y ese nombre resuelve de vuelta a la misma IP. Esta
 muestra acredita ese flujo, pero no confirma otros emisores legítimos ni el
-estado de todos los envíos posteriores; antes de imponer una política DMARC
-más estricta, revisa los emisores reales y sus informes agregados.
+estado de todos los envíos posteriores. Revisa sus informes agregados antes de
+ampliar la política.
+
+El 15 de noviembre de 2026 se sustituyó solo el CNAME de `_dmarc` por el TXT
+`v=DMARC1; p=quarantine; pct=10; rua=mailto:contacto@grumphya.com`. IONOS
+confirmó el cambio y el TXT apareció tanto en un servidor autoritativo como
+en `1.1.1.1` y `8.8.8.8`; el CNAME anterior dejó de publicarse. SPF y los
+selectores DKIM siguieron presentes. Esta política pide poner en cuarentena
+una fracción del correo que no supere DMARC; los receptores pueden aplicar su
+propia política. Revisa los informes agregados recibidos en el buzón de
+contacto, identifica cualquier emisor legítimo que falle y corrige su
+autenticación antes de aumentar `pct` o pasar a `p=reject`.
 
 ## Transporte y límites del cifrado
 
