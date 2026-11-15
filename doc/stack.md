@@ -35,7 +35,7 @@ Las versiones efectivamente resueltas quedan fijadas en `pnpm-lock.yaml`. Consul
 - La versión estable `typescript-eslint` 8.71.1 declara soporte para TypeScript `>=4.8.4 <6.1.0`. El TypeScript 7 estable queda fuera de ese rango; la exclusión de Dependabot se mantiene hasta que el parser declare soporte y pase typecheck/lint en este repositorio. Véase la [matriz oficial de versiones](https://typescript-eslint.io/users/dependency-versions/).
 - El API usa `@types/node` `^26.6.5`, con Node 26 fijado como runtime de CI y de las imágenes. La actualización incluye también `.node-version` y el Dockerfile para que las declaraciones de tipos no avancen dejando el runtime atrás.
 - `minimatch` se fuerza a `11.0.1` mediante `pnpm-workspace.yaml` para corregir GHSA-g3hv-75wg-m249, que afectaba a la versión transitoria `10.2.6` de las herramientas ESLint. La versión parcheada pasó el lint, typecheck y las suites de API y web.
-- `@lhci/cli` se fija a `0.16.0` como dependencia de desarrollo de la web para generar informes Lighthouse sintéticos en CI. La auditoría encontró `basic-ftp` vulnerable en su árbol transitivo, por lo que `pnpm-workspace.yaml` fuerza la versión corregida `6.2.1` (GHSA-c475-qrg2-pj4r); se comprobó que `pnpm audit --audit-level moderate` no informa vulnerabilidades tras el override.
+- `@lhci/cli` se fija a `0.16.0` como dependencia de desarrollo de la web para generar informes Lighthouse sintéticos en CI. Una auditoría anterior encontró `basic-ftp` vulnerable en su árbol transitivo (GHSA-c475-qrg2-pj4r); `pnpm-workspace.yaml` fuerza ahora la versión corregida `6.2.4`. `pnpm ci:verify audit` terminó localmente sin vulnerabilidades conocidas en las auditorías general y de producción con esta versión.
 
 ## Procesos
 
