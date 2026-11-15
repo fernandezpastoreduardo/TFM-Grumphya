@@ -89,6 +89,16 @@ visible en `From`. Al usar el relay SMTP de IONOS, el PTR relevante para la
 entrega de esos mensajes es el de la IP de salida del relay, no el del VPS;
 el cambio del PTR del VPS no demuestra por sí solo una mejora de entregabilidad.
 
+Una muestra recibida por Gmail el 22 de octubre de 2026 desde la aplicación
+confirma que `212.227.126.130` (`mout.kundenserver.de`) entregó el mensaje con
+TLS 1.3. Gmail informó `spf=pass` para el remitente de sobre de
+`grumphya.com`, `dkim=pass` con `d=grumphya.com` y selector `s1-ionos`, y
+`dmarc=pass` alineado con el `From` de `grumphya.com`. El PTR del relay apunta
+a `mout.kundenserver.de` y ese nombre resuelve de vuelta a la misma IP. Esta
+muestra acredita ese flujo, pero no confirma otros emisores legítimos ni el
+estado de todos los envíos posteriores; antes de imponer una política DMARC
+más estricta, revisa los emisores reales y sus informes agregados.
+
 ## Transporte y límites del cifrado
 
 Caddy termina HTTPS para el navegador y enruta `/api/*` al mismo origen seguro. Obtiene y renueva el certificado público automáticamente, redirige HTTP a HTTPS y limita TLS explícitamente a las versiones 1.2 y 1.3. La respuesta HTTPS incluye HSTS (`max-age=31536000; includeSubDomains`). Para verificar el borde desplegado, comprueba el certificado y las cabeceras en `https://<dominio>` y que `http://<dominio>` redirija a HTTPS; no uses esas comprobaciones como prueba de los tramos internos.
