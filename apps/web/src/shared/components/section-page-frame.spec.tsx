@@ -1,4 +1,5 @@
-import { render } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SectionPageFrame } from "./section-page-frame";
 
@@ -98,5 +99,35 @@ describe("SectionPageFrame desktop mascot", () => {
     expect(desktopMascots).toHaveLength(1);
     expect(desktopMascots[0]).toHaveAttribute("role", "img");
     expect(desktopMascots[0]?.querySelector("img")).toBeNull();
+  });
+});
+
+describe("SectionPageFrame mobile navigation", () => {
+  it("marks the plan link current on the plan selection route and restores focus on Escape", async () => {
+    const user = userEvent.setup();
+    render(
+      <SectionPageFrame
+        page={{ title: "Planes", intro: "Elige un plan.", theme: "blue" }}
+        currentPath="/crear-cuenta/planes"
+      >
+        <p>Contenido de la sección</p>
+      </SectionPageFrame>,
+    );
+
+    const trigger = screen.getByRole("button", {
+      name: "Abrir menú de secciones",
+    });
+    await user.click(trigger);
+    const menu = screen.getByRole("dialog", { name: "Menú de navegación" });
+    expect(within(menu).getByRole("link", { name: "Planes" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.queryByRole("dialog", { name: "Menú de navegación" }),
+    ).toBeNull();
+    expect(trigger).toHaveFocus();
   });
 });
