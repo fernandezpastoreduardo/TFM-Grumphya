@@ -1,5 +1,6 @@
 import type { SimilarIdeaMatchResult } from "../../idea-evaluation/evaluation-process";
 import "../repeated-ideas.scss";
+import { CONTINUE_LABEL, TONE_MESSAGE } from "./SimilarIdeaNotice.constants";
 
 type SimilarIdeaNoticeProps = {
   match: SimilarIdeaMatchResult;
@@ -7,16 +8,6 @@ type SimilarIdeaNoticeProps = {
   isSubmitting: boolean;
   onContinue: () => void;
 };
-
-const CONTINUE_LABEL = {
-  IDLE: "Evaluar igualmente",
-  LOADING: "Preparando evaluación…",
-} as const;
-
-const TONE_MESSAGE = {
-  soft: "Esta idea ya se rechazó antes. Puede que cambiar la forma de contarla no cambie el problema de fondo.",
-  hard: "Esta idea ya se llevó un golpe y ha vuelto a por más. Parece que no es muy original... esfuérzate un poco más.",
-} as const;
 
 export function SimilarIdeaNotice({
   match,

@@ -1,5 +1,13 @@
 import type { RefObject } from "react";
 import { MAX_IDEA_LENGTH } from "../idea-input-rules";
+import {
+  CLEAR_IDEA_LABEL,
+  ERROR_ID,
+  HELP_ID,
+  IDEA_INPUT_HELP,
+  IDEA_INPUT_LABEL,
+  INPUT_ID,
+} from "./IdeaInput.constants";
 import { TranscriptUserIdea } from "../../transcript-user-idea/transcript-user-idea";
 import { useSpeechToTextSupport } from "../../../shared/hooks/use-speech-to-text-support";
 
@@ -10,14 +18,6 @@ type IdeaInputProps = {
   errorMessage?: string;
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
 };
-
-const IDEA_INPUT_LABEL = "1. Escribe o pega tu idea";
-const CLEAR_IDEA_LABEL = "Borrar idea";
-const IDEA_INPUT_HELP =
-  "Quién la usaría, qué le duele y qué haría la app. Lo básico, vamos.";
-const INPUT_ID = "idea-text";
-const HELP_ID = "idea-text-help";
-const ERROR_ID = "idea-text-error";
 
 export function IdeaInput({
   value,

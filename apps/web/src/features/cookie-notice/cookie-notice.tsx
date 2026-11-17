@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  COOKIE_NOTICE_COPY,
+  COOKIE_NOTICE_TITLE,
+  SUPPORTS_NATIVE_MODAL,
+} from "./cookie-notice.constants";
+import { closeCookieDialog } from "./cookie-notice.dialog";
+import {
+  hasAcknowledgedNotice,
+  recordNoticeAcknowledgement,
+} from "./cookie-notice.storage";
 import "./cookie-notice.scss";
-
-const COOKIE_NOTICE_TITLE = "Ni galletitas ni galletitos";
-const NOTICE_ACKNOWLEDGED_KEY = "grumphya.privacy-notice.acknowledged.v1";
-const COOKIE_NOTICE_COPY =
-  "Usamos solo cookies propias técnicas, las que sirven para que todo funcione como te mereces. Aquí NO se analiza ni vende ningún dato de nadie.";
-const SUPPORTS_NATIVE_MODAL =
-  typeof HTMLDialogElement !== "undefined" &&
-  typeof HTMLDialogElement.prototype.showModal === "function";
 
 export function CookieNotice({
   deferInitialStorage = false,
@@ -44,14 +46,14 @@ export function CookieNotice({
     firstButtonRef.current?.focus();
 
     return () => {
-      if (dialog.open) closeDialog(dialog);
+      if (dialog.open) closeCookieDialog(dialog);
     };
   }, [isOpen]);
 
   function closeNotice() {
     recordNoticeAcknowledgement();
     const dialog = dialogRef.current;
-    if (dialog?.open) closeDialog(dialog);
+    if (dialog?.open) closeCookieDialog(dialog);
     setIsOpen(false);
     previousFocusRef.current?.focus();
   }
@@ -129,28 +131,4 @@ export function CookieNotice({
   ) : (
     <div className="cookie-notice-backdrop">{noticeDialog}</div>
   );
-}
-
-function hasAcknowledgedNotice(): boolean {
-  try {
-    return window.localStorage.getItem(NOTICE_ACKNOWLEDGED_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function recordNoticeAcknowledgement(): void {
-  try {
-    window.localStorage.setItem(NOTICE_ACKNOWLEDGED_KEY, "true");
-  } catch {
-    // Storage can be unavailable in private browsing or restricted contexts.
-  }
-}
-
-function closeDialog(dialog: HTMLDialogElement) {
-  if (typeof dialog.close === "function") {
-    dialog.close();
-  } else {
-    dialog.removeAttribute("open");
-  }
 }

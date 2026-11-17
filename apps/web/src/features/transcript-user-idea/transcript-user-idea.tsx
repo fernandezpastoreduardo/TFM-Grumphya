@@ -6,31 +6,17 @@ import {
   type SpeechToTextSession,
 } from "../../shared/utils/speech-to-text";
 import { useSpeechToTextSupport } from "../../shared/hooks/use-speech-to-text-support";
+import {
+  DICTATE_LABEL,
+  ERROR_MESSAGES,
+  LISTENING_STATUS,
+  PREPARING_STATUS,
+} from "./transcript-user-idea.constants";
 
 type TranscriptUserIdeaProps = {
   onTranscript: (transcript: string) => void;
   isAvailable?: boolean;
 };
-
-const DICTATE_LABEL = {
-  IDLE: "Dictar idea",
-  LISTENING: "Parar dictado",
-} as const;
-const ERROR_MESSAGES: Record<SpeechToTextError, string> = {
-  unsupported:
-    "Este navegador no permite comprobar que el dictado se procese en el dispositivo. Puedes escribirla, qué remedio.",
-  "local-unavailable":
-    "El paquete de voz local en español no está disponible. No enviaremos el audio a otro servicio; puedes escribir la idea.",
-  "permission-denied":
-    "No hay permiso al micrófono. Puedes escribirla; no hace falta negociar con el navegador.",
-  "no-speech": "No he oído nada. Prueba otra vez o escribe la idea.",
-  failed:
-    "El dictado local ha fallado. Tu audio no se envía a otro servicio; puedes escribir sin dramas.",
-};
-const PREPARING_STATUS =
-  "Preparando el reconocimiento de voz local en español…";
-const LISTENING_STATUS =
-  "Escuchando en este dispositivo. Suelta la idea; luego podrás corregir la transcripción.";
 
 export function TranscriptUserIdea({
   onTranscript,

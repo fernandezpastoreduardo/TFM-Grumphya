@@ -3,22 +3,14 @@ import {
   LoadingSkeleton,
   SkeletonBlock,
 } from "../../../shared/components/loading-skeleton";
-
-const ERROR_MESSAGE = "No se ha podido cargar el ranking. Prueba de nuevo.";
-const EMPTY_MESSAGE =
-  "Todavía no hay usuarios en el ranking. A alguien le tocará estrenar el podio.";
-const WINNER_LABEL = "Ganador del ranking de roast";
-const RANKING_TABLE_LABEL = "Puestos del 2 al 10 del ranking de roast";
-
-export type RoastRankingState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "success"; ranking: RoastRankingItem[] };
-
-type RoastRankingProps = {
-  state: RoastRankingState;
-  onRetry: () => void;
-};
+import {
+  ROAST_RANKING_EMPTY_MESSAGE,
+  ROAST_RANKING_ERROR_MESSAGE,
+  ROAST_RANKING_TABLE_LABEL,
+  ROAST_RANKING_WINNER_LABEL,
+} from "./roast-ranking.constants";
+import type { RoastRankingProps } from "./roast-ranking.models";
+export type { RoastRankingState } from "./roast-ranking.models";
 
 export function RoastRanking({ state, onRetry }: RoastRankingProps) {
   return (
@@ -51,7 +43,7 @@ export function RoastRanking({ state, onRetry }: RoastRankingProps) {
       ) : null}
       {state.status === "error" ? (
         <div className="roast-ranking-message" role="alert">
-          <p>{ERROR_MESSAGE}</p>
+          <p>{ROAST_RANKING_ERROR_MESSAGE}</p>
           <button className="button-secondary" type="button" onClick={onRetry}>
             Volver a intentarlo
           </button>
@@ -66,13 +58,18 @@ function renderRanking(ranking: RoastRankingItem[]) {
   const topTen = ranking.slice(0, 10);
   const winner = topTen[0];
   if (!winner) {
-    return <p className="roast-ranking-message">{EMPTY_MESSAGE}</p>;
+    return (
+      <p className="roast-ranking-message">{ROAST_RANKING_EMPTY_MESSAGE}</p>
+    );
   }
   const otherUsers = topTen.slice(1);
 
   return (
     <>
-      <div className="roast-ranking-winner" aria-label={WINNER_LABEL}>
+      <div
+        className="roast-ranking-winner"
+        aria-label={ROAST_RANKING_WINNER_LABEL}
+      >
         {winner.avatarUrl ? (
           <img className="roast-ranking-avatar" src={winner.avatarUrl} alt="" />
         ) : null}
@@ -86,7 +83,10 @@ function renderRanking(ranking: RoastRankingItem[]) {
         </span>
       </div>
       {otherUsers.length > 0 ? (
-        <table className="roast-ranking-table" aria-label={RANKING_TABLE_LABEL}>
+        <table
+          className="roast-ranking-table"
+          aria-label={ROAST_RANKING_TABLE_LABEL}
+        >
           <caption>Puestos del 2 al 10</caption>
           <thead>
             <tr>

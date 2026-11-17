@@ -6,12 +6,17 @@ import {
 import "./get-user-idea.scss";
 import { IdeaInput } from "./components/IdeaInput";
 import { MAX_IDEA_LENGTH } from "./idea-input-rules";
-import type {
-  GetUserIdeaRequest,
-  IdeaTone,
-  InvalidIdeaTextReason,
-} from "./models";
+import type { GetUserIdeaRequest, IdeaTone } from "./models";
 import { validateIdeaText } from "./validate-idea-text";
+import {
+  BUTTON_LABEL,
+  DICTATION_SEPARATOR,
+  getValidationMessage,
+  NEXT_STEP_LABEL,
+  PREVIOUS_STEP_LABEL,
+  PUBLIC_RANKING_NOTICE,
+  TONE_OPTIONS,
+} from "./get-user-idea.constants";
 
 type GetUserIdeaProps = {
   onSubmit: (request: GetUserIdeaRequest) => void;
@@ -24,42 +29,6 @@ type GetUserIdeaProps = {
   unlimitedAttempts?: boolean;
   error?: string;
 };
-
-const TONE_OPTIONS: { tone: IdeaTone; label: string; description: string }[] = [
-  {
-    tone: "soft",
-    label: "Tengo la piel fina",
-    description: "Con corazones, confeti y muchísimo cariño.",
-  },
-  {
-    tone: "hard",
-    label: "Dame tu mejor golpe",
-    description: "Sin azúcar: critico la idea, nunca a quien la propone.",
-  },
-];
-const EMPTY_IDEA_MESSAGE =
-  "Hay aire. Mucho aire. Escribe la idea y lo intentamos de nuevo.";
-const LONG_IDEA_MESSAGE = `Son más de ${MAX_IDEA_LENGTH} caracteres y aún no aterriza. Recorta el rodeo.`;
-const DICTATION_SEPARATOR = " ";
-const INVALID_IDEA_MESSAGE =
-  "Eso no parece texto utilizable. Prueba a escribirlo otra vez.";
-const BUTTON_LABEL = {
-  IDLE: "Evaluar idea",
-  LOADING: "Evaluando…",
-} as const;
-const NEXT_STEP_LABEL = "Adelante";
-const PREVIOUS_STEP_LABEL = "Cambiar idea";
-const PUBLIC_RANKING_NOTICE =
-  "Si rechazamos tu idea, podemos mostrar un título filtrado y su número de recepciones en «Peores ideas». El filtro no garantiza anonimato. Consulta la";
-const VALIDATION_MESSAGES: Record<InvalidIdeaTextReason, string> = {
-  not_text: INVALID_IDEA_MESSAGE,
-  empty: EMPTY_IDEA_MESSAGE,
-  too_long: LONG_IDEA_MESSAGE,
-};
-
-function getValidationMessage(reason: InvalidIdeaTextReason): string {
-  return VALIDATION_MESSAGES[reason];
-}
 
 export function GetUserIdea({
   onSubmit,
