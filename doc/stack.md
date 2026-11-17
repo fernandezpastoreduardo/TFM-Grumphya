@@ -19,10 +19,10 @@
 | node-postgres (`pg`) | Cliente PostgreSQL para Node       | 8.23.1                                           |
 | Vitest               | Pruebas unitarias                  | 4.1.12                                           |
 | Testing Library      | Pruebas de UI orientadas a usuario | React 16.3.3, user-event 14.6.7                  |
-| jsdom                | Entorno DOM para pruebas web       | 30.1.3                                           |
-| ESLint               | Análisis estático                  | 10.13.0 + typescript-eslint 8.71.1               |
-| Prettier             | Formato consistente                | 3.9.9                                            |
-| Playwright           | E2E navegador                      | `@playwright/test` 1.64.1, Chromium 156.0.8078.4 |
+| jsdom                | Entorno DOM para pruebas web       | 31.0.1                                           |
+| ESLint               | Análisis estático                  | 10.15.0 + typescript-eslint 8.71.1               |
+| Prettier             | Formato consistente                | 3.10.1                                           |
+| Playwright           | E2E navegador                      | `@playwright/test` 1.65.1, Chromium 159.0.8154.6 |
 | Husky                | Hooks locales de Git               | 9.1.7                                            |
 
 Las versiones efectivamente resueltas quedan fijadas en `pnpm-lock.yaml`. Consulta `package.json` de cada workspace para rangos declarados.
