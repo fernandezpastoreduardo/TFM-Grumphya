@@ -80,6 +80,18 @@ Ejemplos vigentes:
   la API; los archivos admin-dashboard.validation.*.ts validan cada bloque del
   contrato, y tabs/ contiene la presentación de cada sección.
 
+## Composición de páginas de sección
+
+`apps/web/src/views/section-page.tsx` selecciona los metadatos de la ruta y
+compone el marco común. `section-page-content.tsx` carga de forma diferida el
+contenido de esa ruta. Las definiciones de `views/section-pages/` agrupan el
+título, la introducción, el tema, la mascota y el import de cada sección;
+`section-page-definitions.ts` reúne esas definiciones en el registro de rutas.
+Esta carpeta pertenece a la composición de páginas y no contiene la lógica de
+negocio de cada feature. El marco está en `shared/components/` porque lo usan
+varias secciones; cada funcionalidad sigue en su propio directorio de
+`features/`.
+
 ## Lista de revisión humana
 
 Antes de aprobar un cambio, comprueba:

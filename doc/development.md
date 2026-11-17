@@ -204,8 +204,10 @@ La app web usa Sass/SCSS en tiempo de compilación. Vite procesa `.scss` y activ
 la división de CSS para separar los estilos asociados a cada importación
 dinámica. `main.tsx` carga solo la base global; Home, el marco de secciones y
 cada funcionalidad importan su hoja SCSS junto a su código. `App` carga Home o
-la página de sección de forma diferida, y `SectionPage` carga únicamente la
-funcionalidad de la ruta actual.
+la página de sección de forma diferida. `section-page.tsx` compone el marco;
+`section-page-content.tsx` carga solo la funcionalidad de la ruta actual. Las
+definiciones de ruta están separadas por sección en
+`apps/web/src/views/section-pages/`.
 
 Ubica los estilos según su alcance: una funcionalidad en su propio directorio;
 los estilos realmente usados por dos o más funcionalidades en `shared/`.

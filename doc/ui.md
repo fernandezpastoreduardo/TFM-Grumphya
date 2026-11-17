@@ -551,6 +551,8 @@ en [`error-pages.md`](error-pages.md).
 
 - Composición Home, copy del hero y menú: `apps/web/src/views/home.tsx`.
 - Marco común, hero y menú de secciones: `apps/web/src/shared/components/section-page-frame.tsx`.
+- Metadatos e imports por sección: `apps/web/src/views/section-pages/`; selección
+  del marco en `section-page.tsx` y carga diferida en `section-page-content.tsx`.
 - Tipografía y estilos base: `apps/web/src/shared/styles/base.scss`.
 - Composición y adaptación de Home: `apps/web/src/views/home.scss`.
 - Marco y navegación de secciones: `apps/web/src/shared/components/section-page-frame.scss`.
