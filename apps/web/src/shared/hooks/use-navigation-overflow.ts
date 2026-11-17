@@ -2,9 +2,12 @@ import { useEffect, useState, type RefObject } from "react";
 
 const NAVIGATION_OVERFLOW_TOLERANCE_PX = 1;
 
-function getCssWidth(value: string) {
+function getCssWidth(value: string, fallbackValue = "") {
   const width = Number.parseFloat(value);
-  return Number.isFinite(width) ? width : 0;
+  if (Number.isFinite(width)) return width;
+
+  const fallbackWidth = Number.parseFloat(fallbackValue);
+  return Number.isFinite(fallbackWidth) ? fallbackWidth : 0;
 }
 
 function getRequiredHeaderWidth(
@@ -16,6 +19,7 @@ function getRequiredHeaderWidth(
   )?.parentElement;
   const navigationGap = getCssWidth(
     window.getComputedStyle(navigation).columnGap,
+    navigation.style.columnGap,
   );
   const intrinsicNavigationWidth =
     Array.from(navigation.children).reduce(
@@ -28,6 +32,7 @@ function getRequiredHeaderWidth(
   );
   const containerGap = getCssWidth(
     window.getComputedStyle(container).columnGap,
+    container.style.columnGap,
   );
   const siblingWidth = projectedHeaderChildren
     .filter((child) => child !== navigation)
