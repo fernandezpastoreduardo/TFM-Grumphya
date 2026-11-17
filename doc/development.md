@@ -209,6 +209,10 @@ la página de sección de forma diferida. `section-page.tsx` compone el marco;
 definiciones de ruta están separadas por sección en
 `apps/web/src/views/section-pages/`.
 
+La navegación común de Home y del marco de secciones vive en
+`shared/components/site-header.tsx`, con sus enlaces centralizados en
+`shared/navigation/site-navigation.constants.ts`.
+
 Ubica los estilos según su alcance: una funcionalidad en su propio directorio;
 los estilos realmente usados por dos o más funcionalidades en `shared/`.
 Prefiere `.module.scss` para estilos encapsulados de componentes nuevos o ya

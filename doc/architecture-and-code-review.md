@@ -92,6 +92,15 @@ negocio de cada feature. El marco está en `shared/components/` porque lo usan
 varias secciones; cada funcionalidad sigue en su propio directorio de
 `features/`.
 
+La cabecera y la navegación se comparten entre Home y las páginas de sección.
+`site-header.tsx` compone la variante visual, `site-navigation.tsx` renderiza
+los enlaces de escritorio y móvil, y `site-navigation.constants.ts` define los
+enlaces públicos y la entrada condicionada del panel administrativo. Home y
+`SectionPageFrame` conservan sus estados de tema, sesión y menú; pasan esos
+datos a la cabecera compartida. El control de desbordamiento vive en
+`use-navigation-overflow.ts`. Esta colocación en `shared/` responde al uso real
+en Home y en las páginas de sección.
+
 ## Lista de revisión humana
 
 Antes de aprobar un cambio, comprueba:

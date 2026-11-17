@@ -549,10 +549,19 @@ en [`error-pages.md`](error-pages.md).
 
 ## Código fuente principal
 
-- Composición Home, copy del hero y menú: `apps/web/src/views/home.tsx`.
-- Marco común, hero y menú de secciones: `apps/web/src/shared/components/section-page-frame.tsx`.
+- Composición Home y copy del hero: `apps/web/src/views/home.tsx`.
+- Cabecera, navegación, menú móvil y selector de tema compartidos:
+  `apps/web/src/shared/components/site-header.tsx` y sus componentes
+  `site-navigation.tsx`, `site-mobile-menu-trigger.tsx` y
+  `site-theme-toggle.tsx`.
+- Rutas y etiquetas comunes de navegación:
+  `apps/web/src/shared/navigation/site-navigation.constants.ts`.
+- Marco común, hero y pie de las secciones:
+  `apps/web/src/shared/components/section-page-frame.tsx`.
 - Metadatos e imports por sección: `apps/web/src/views/section-pages/`; selección
   del marco en `section-page.tsx` y carga diferida en `section-page-content.tsx`.
 - Tipografía y estilos base: `apps/web/src/shared/styles/base.scss`.
 - Composición y adaptación de Home: `apps/web/src/views/home.scss`.
-- Marco y navegación de secciones: `apps/web/src/shared/components/section-page-frame.scss`.
+- Estilos del marco de secciones: `apps/web/src/shared/components/section-page-frame.scss`.
+- Estilos compartidos del menú móvil y controles de navegación:
+  `apps/web/src/shared/components/mobile-navigation.scss`.
