@@ -94,7 +94,7 @@ Los volúmenes conservan la base y los avatares; `down -v` los elimina. Para cam
 
 ### SonarQube Community Build local (opcional)
 
-SonarQube se ejecuta como infraestructura separada de la aplicación. Requiere Docker y configurar sus propios archivos `.env.sonarqube` y `.env.sonarqube.token`; el dashboard se abre mediante un puente local temporal. Consulta la [guía de instalación, dashboard y análisis](doc/sonarqube.md). Tras configurar el servidor, `pnpm sonar:verify` analiza el código local y exige el Quality Gate.
+SonarQube se ejecuta como infraestructura separada de la aplicación. Requiere Docker y configurar sus propios archivos `.secrets/sonarqube_settings` y `.secrets/sonarqube_token`; el dashboard se abre mediante un puente local temporal. Consulta la [guía de instalación, dashboard y análisis](doc/sonarqube.md). Tras configurar el servidor, `pnpm sonar:verify` analiza el código local y exige el Quality Gate.
 
 [`doc/README.md`](doc/README.md) reúne las demás guías de pruebas, operación y despliegue.
 

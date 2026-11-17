@@ -8,7 +8,6 @@ coverage/
 # Environment files may contain credentials. Keep every variant out of Git.
 .env
 .env.*
-!.env.sonarqube.example
 .secrets/*
 !.secrets/*.example
 example.env

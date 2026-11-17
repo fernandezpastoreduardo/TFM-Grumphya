@@ -1,0 +1,2 @@
+# Copy to .secrets/sonarqube_settings, replace with a long random value, and chmod 600.
+SONAR_DB_PASSWORD=replace-with-a-long-random-password

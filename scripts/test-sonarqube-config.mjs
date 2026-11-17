@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 
 const COMPOSE_PATH = "compose.sonarqube.yaml";
@@ -12,6 +13,40 @@ const analysisScript = await readFile(ANALYSIS_SCRIPT_PATH, "utf8");
 const pushHook = await readFile(PUSH_HOOK_PATH, "utf8");
 const workflow = await readFile(".github/workflows/ci.yml", "utf8");
 const packageJson = JSON.parse(await readFile(PACKAGE_PATH, "utf8"));
+for (const name of ["sonarqube_settings", "sonarqube_token"]) {
+  const secretPath = `.secrets/${name}`;
+  const examplePath = `${secretPath}.example`;
+  const ignoredSecret = spawnSync("git", [
+    "check-ignore",
+    "--quiet",
+    "--no-index",
+    secretPath,
+  ]);
+  const ignoredExample = spawnSync("git", [
+    "check-ignore",
+    "--quiet",
+    "--no-index",
+    examplePath,
+  ]);
+  const trackedSecret = spawnSync("git", [
+    "ls-files",
+    "--error-unmatch",
+    "--",
+    secretPath,
+  ]);
+  assert.equal(ignoredSecret.status, 0, `${secretPath} must be ignored by Git`);
+  assert.equal(
+    trackedSecret.status,
+    1,
+    `${secretPath} must not be tracked by Git`,
+  );
+  assert.equal(
+    ignoredExample.status,
+    1,
+    `${examplePath} must remain trackable`,
+  );
+  await readFile(examplePath, "utf8");
+}
 const databaseSection = compose.match(
   /^  database:\n([\s\S]*?)(?=^  sonarqube:)/m,
 )?.[1];
@@ -39,7 +74,8 @@ assert.match(analysisScript, /sonar\.qualitygate\.wait=true/);
 assert.match(analysisScript, /sonar\.qualitygate\.timeout=300/);
 assert.match(analysisScript, /^set -Eeuo pipefail$/m);
 assert.match(analysisScript, /umask 077/);
-assert.match(analysisScript, /SONAR_TOKEN_FILE=\.env\.sonarqube\.token/);
+assert.match(analysisScript, /SONAR_ENV_FILE=\.secrets\/sonarqube_settings/);
+assert.match(analysisScript, /SONAR_TOKEN_FILE=\.secrets\/sonarqube_token/);
 assert.match(analysisScript, /grep -Eq '\^SONAR_TOKEN=\[\^\[:space:\]#\].\*'/);
 assert.match(analysisScript, /-f "\$required_file" \|\| -L "\$required_file"/);
 assert.match(analysisScript, /8#\$file_mode & 077/);

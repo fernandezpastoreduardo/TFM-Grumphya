@@ -5,8 +5,8 @@ umask 077
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT"
 
-SONAR_ENV_FILE=.env.sonarqube
-SONAR_TOKEN_FILE=.env.sonarqube.token
+SONAR_ENV_FILE=.secrets/sonarqube_settings
+SONAR_TOKEN_FILE=.secrets/sonarqube_token
 SONAR_NETWORK=grumphya-sonarqube_sonar-private
 SONAR_SCANNER_IMAGE=sonarsource/sonar-scanner-cli:12.1.0.3233_8.0.1
 POSTGRES_IMAGE=pgvector/pgvector:0.8.7-pg17
@@ -28,7 +28,7 @@ for required_file in "$SONAR_ENV_FILE" "$SONAR_TOKEN_FILE"; do
   fi
 done
 if ! grep -Eq '^SONAR_TOKEN=[^[:space:]#].*' "$SONAR_TOKEN_FILE"; then
-  echo "SONAR_TOKEN is missing from .env.sonarqube.token." >&2
+  echo "SONAR_TOKEN is missing from .secrets/sonarqube_token." >&2
   exit 1
 fi
 

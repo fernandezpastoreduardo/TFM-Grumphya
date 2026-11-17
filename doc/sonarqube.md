@@ -8,23 +8,40 @@ SonarQube es una herramienta de análisis interna para el código de Grumphya. S
 - Node.js y pnpm según las versiones fijadas en `.node-version` y `package.json`.
 - Memoria y límites de kernel compatibles con Elasticsearch incluido en SonarQube; antes del primer arranque, verifica `vm.max_map_count` según la [documentación oficial de SonarSource](https://docs.sonarsource.com/sonarqube-server/latest/server-installation/pre-installation/linux/).
 
-Desde el directorio del proyecto en la estación administrada que alojará SonarQube, prepara un secreto aleatorio para la base de datos y arranca los servicios:
+Si ya configuraste SonarQube con `.env.sonarqube` y
+`.env.sonarqube.token`, mueve esos dos archivos reales a
+`.secrets/sonarqube_settings` y `.secrets/sonarqube_token` antes de ejecutar
+`pnpm sonar:verify`. Comprueba primero que los destinos no existan y conserva
+los permisos `600`; no copies las plantillas sobre credenciales existentes ni
+recrees los volúmenes para este cambio de ruta.
+
+Para una instalación nueva, desde el directorio del proyecto en la estación
+administrada, prepara un secreto aleatorio para la base de datos y arranca los
+servicios:
 
 ```sh
-cp .env.sonarqube.example .env.sonarqube
+cp .secrets/sonarqube_settings.example .secrets/sonarqube_settings
 # Sustituye el valor de ejemplo por un secreto largo y aleatorio.
-chmod 600 .env.sonarqube
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml config --quiet
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml up -d
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml ps
+chmod 600 .secrets/sonarqube_settings
+docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml config --quiet
+docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml up -d
+docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml ps
 ```
 
-En el primer inicio, SonarQube usa las credenciales predeterminadas `admin/admin`. Abre el dashboard con el puente temporal descrito más abajo, cambia esa contraseña inmediatamente y guarda la nueva en un gestor seguro antes de habilitar acceso a otras personas o crear tokens. Crea un token de análisis de proyecto para `grumphya` y guárdalo en `.env.sonarqube.token` con el formato `SONAR_TOKEN=valor`, permisos de análisis únicamente y permisos de archivo `600`. Ese fichero está excluido de Git; no pegues el token en comandos, argumentos ni documentación.
+En el primer inicio, SonarQube usa las credenciales predeterminadas `admin/admin`. Abre el dashboard con el puente temporal descrito más abajo, cambia esa contraseña inmediatamente y guarda la nueva en un gestor seguro antes de habilitar acceso a otras personas o crear tokens. Prepara `.secrets/sonarqube_token` a partir de su plantilla, crea un token de análisis de proyecto para `grumphya` y guárdalo con el formato `SONAR_TOKEN=valor`, permisos de análisis únicamente y permisos de archivo `600`:
+
+```sh
+cp .secrets/sonarqube_token.example .secrets/sonarqube_token
+# Sustituye el valor de ejemplo por el token recién creado.
+chmod 600 .secrets/sonarqube_token
+```
+
+Ambos ficheros reales están excluidos de Git; no pegues el token en comandos, argumentos ni documentación.
 
 La base de datos `sonarqube` es independiente de PostgreSQL de producción. Los volúmenes Compose conservan datos, extensiones y registros. No borres volúmenes al detener el servicio. Para detenerlo sin eliminar datos:
 
 ```sh
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml stop
+docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml stop
 ```
 
 Para volver a iniciarlo usa `up -d`. No ejecutes `down -v` salvo que se haya aprobado expresamente eliminar permanentemente el historial y la configuración del servidor.
@@ -68,18 +85,18 @@ Se puede repetir la comprobación de estado, red, puertos y variables sin mostra
 ```sh
 docker --version
 docker compose version
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml ps
-SONAR_CONTAINER=$(docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml ps -q sonarqube)
+docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml ps
+SONAR_CONTAINER=$(docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml ps -q sonarqube)
 docker inspect --format '{{json .NetworkSettings.Networks}}' "$SONAR_CONTAINER"
 docker inspect --format '{{json .NetworkSettings.Ports}}' "$SONAR_CONTAINER"
-docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml exec -T sonarqube \
+docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml exec -T sonarqube \
   sh -c 'printf "telemetry=%s updatecenter=%s\\n" "$SONAR_TELEMETRY_ENABLE" "$SONAR_UPDATECENTER_ACTIVATE"'
 ```
 
 La última salida esperada es `telemetry=false updatecenter=false`; la inspección de puertos debe mostrar que no hay binding de host. Para repetir la prueba de egress, usa el `curl` ya instalado en el contenedor SonarQube. El comando silencia la salida de curl e imprime solo `reachable` o `blocked`:
 
 ```sh
-if docker compose --env-file .env.sonarqube -f compose.sonarqube.yaml exec -T sonarqube \
+if docker compose --env-file .secrets/sonarqube_settings -f compose.sonarqube.yaml exec -T sonarqube \
   sh -c 'curl --silent --output /dev/null --connect-timeout 5 --max-time 10 https://example.com/' \
   2>/dev/null; then
   printf 'reachable\n'
@@ -100,7 +117,7 @@ Arranca SonarQube y ejecuta:
 pnpm sonar:verify
 ```
 
-El comando inicia un PostgreSQL temporal de pruebas, genera LCOV para ambas aplicaciones y ejecuta el SonarScanner oficial `sonarsource/sonar-scanner-cli:12.1.0.3233_8.0.1` conectado únicamente a la red Docker interna de SonarQube. El token se lee desde `.env.sonarqube.token` y se pasa al contenedor como variable de entorno; no se imprime ni se incluye en argumentos. El escáner solo monta el código de las aplicaciones en lectura y el fichero de configuración. No usa SonarQube Cloud ni envía el análisis a servicios externos. Un Quality Gate fallido, scanner o servidor no disponible, timeout o LCOV ausente devuelve error.
+El comando inicia un PostgreSQL temporal de pruebas, genera LCOV para ambas aplicaciones y ejecuta el SonarScanner oficial `sonarsource/sonar-scanner-cli:12.1.0.3233_8.0.1` conectado únicamente a la red Docker interna de SonarQube. El token se lee desde `.secrets/sonarqube_token` y se pasa al contenedor como variable de entorno; no se imprime ni se incluye en argumentos. El escáner solo monta el código de las aplicaciones en lectura y el fichero de configuración. No usa SonarQube Cloud ni envía el análisis a servicios externos. Un Quality Gate fallido, scanner o servidor no disponible, timeout o LCOV ausente devuelve error.
 
 En cada checkout, ejecuta `pnpm install --frozen-lockfile`; el script `prepare` instala Husky y configura sus hooks Git locales. Comprueba que `git config --local --get core.hooksPath` devuelve `.husky/_`. El hook Husky [.husky/pre-push](../.husky/pre-push) ejecuta `pnpm sonar:verify` y E2E cuando el destino del push es `refs/heads/main`; el fallo de cualquiera detiene el `git push` normal. También comprueba que el SHA enviado sea `HEAD`, que el árbol esté limpio, que la punta remota anterior de `main` esté disponible localmente y que el candidato descienda de ella. Si falta esa referencia, actualiza `origin/main` y reintenta. Para SonarQube, el hook pasa el SHA remoto anterior como línea base; el análisis crea un bundle Git temporal con esa referencia y el candidato, y elimina el bundle al finalizar. Así la referencia `main` del análisis no se mueve junto al commit que se está publicando. Los análisis bajo demanda usan la rama local `main` como referencia. Los pushes a otras ramas conservan el chequeo del registro de migraciones.
 
