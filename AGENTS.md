@@ -555,6 +555,20 @@ These standards ensure **first-try success** with lint and tests, maintain code 
 - Pedidos como «arregla CI», «haz push» o «verifica el cambio» no autorizan por sí solos a consumir minutos de GitHub Actions. Validar los cambios localmente e informar de lo que queda pendiente en Actions.
 - Antes de publicar, comprobar si el push disparará Actions automáticamente. Si lo hará y el usuario no ha autorizado explícitamente ese gasto, solicitar esa autorización antes del push.
 
+## Evidencia y fechas
+
+- No inferir nunca la fecha de hoy ni usarla como dato de trabajo por el mero
+  contexto del sistema o del modelo. Si la fecha importa, comprobarla con una
+  fuente verificable del entorno o pedirla explícitamente.
+- No completar lagunas con suposiciones probabilísticas cuando una decisión
+  dependa de un hecho comprobable. Buscar primero evidencias en el repositorio,
+  la configuración, los artefactos generados o el entorno; si no bastan,
+  formular una pregunta concreta y registrar qué dato falta.
+- En revisiones de rendimiento, separar siempre observaciones medibles,
+  hipótesis y decisiones. Priorizar el camino crítico real, el peso de los
+  recursos, el coste de JavaScript, la latencia de red y el trabajo de render
+  antes de aceptar una conclusión basada solo en una puntuación agregada.
+
 ## Persistent workflow aliases
 
 ### `dotese`
