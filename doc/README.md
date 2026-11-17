@@ -19,9 +19,12 @@
 - [Desarrollo local](development.md): requisitos, configuración y comandos habituales.
 - [Stack instalado](stack.md): versiones fijadas y decisiones de actualización.
 - [Dirección e implementación de la UI](ui.md): decisiones visuales vigentes y referencias de diseño.
+- [Arquitectura y revisión humana](architecture-and-code-review.md): SOLID,
+  responsabilidad única, alcance de las features y organización de tipos,
+  constantes, datos, validación y presentación.
 - [Evaluación de IA, seguridad y observabilidad](ai-evaluation-and-observability.md): benchmark y métricas operativas.
 - [Línea base de calidad y cobertura](quality-baseline.md): mediciones de calidad registradas.
-- [Complejidad ciclomática](cyclomatic-complexity-plan.md): línea base actual, focos de riesgo y plan de refactorización.
+- [Complejidad ciclomática](cyclomatic-complexity-plan.md): línea base histórica, resultados de la primera ronda y plan de refactorización.
 - [Verificación de infraestructura](verification.md): comprobaciones de una sesión fechada; es un registro histórico, no el resultado más reciente garantizado.
 
 ### Administrar y operar

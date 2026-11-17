@@ -1,6 +1,6 @@
 # Complejidad ciclomática: línea base y plan de mejora
 
-Medición inicial del 7 de noviembre de 2026 sobre `f4ce50f` (`feat/containerization-ci-cd`). Es una línea base para priorizar refactorizaciones, no un fallo de las puertas actuales de CI. La medición inicial se hizo antes de cambiar código de producción.
+Medición inicial del 7 de noviembre de 2026 sobre `f4ce50f` (`feat/containerization-ci-cd`). Es una línea base histórica para priorizar refactorizaciones, no un fallo de las puertas actuales de CI. La medición inicial se hizo antes de cambiar código de producción. Las cifras y rutas de las tablas históricas no se sustituyen por estimaciones: para el estado actual se vuelve a ejecutar `pnpm complexity:report` y se consulta [Arquitectura y revisión humana](architecture-and-code-review.md).
 
 ## Método y alcance
 
@@ -24,19 +24,25 @@ La mediana es 2 y el percentil 90 es 7. La cobertura global de ramas de esta cor
 
 ## Focos examinados
 
-| Función y ubicación                                                                                                                            | Complejidad | Ramas cubiertas en el archivo | Motivo para priorizar                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------: | ----------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Callback de `createSecurityMiddleware` en [`security.middleware.ts`](../apps/api/src/security/security.middleware.ts)                          |         100 |                        94,6 % | Combina cabeceras, origen, tipo de contenido, clasificación de rutas, límites y desafío de acceso. Un cambio de orden puede debilitar controles. |
-| `isDashboardData` en [`admin-dashboard.tsx`](../apps/web/src/features/admin-dashboard/admin-dashboard.tsx)                                     |          43 |                        93,0 % | Valida un contrato grande con una cadena booleana; su complejidad refleja en gran parte validación estructural.                                  |
-| `Roast` en [`roast.tsx`](../apps/web/src/features/roast/roast.tsx)                                                                             |          39 |                        90,6 % | Mezcla estado de cuota, ranking, diálogos y presentación.                                                                                        |
-| `Home` en [`home.tsx`](../apps/web/src/views/home.tsx)                                                                                         |          37 |                        79,2 % | Orquesta evaluación, reintentos, cuota y UI dentro de una vista de composición.                                                                  |
-| `parseSubmissionResponse` en [`evaluation-process.ts`](../apps/web/src/features/idea-evaluation/evaluation-process.ts)                         |          30 |                        91,7 % | Valida tres variantes del DTO y sus campos condicionales.                                                                                        |
-| `isEvaluationProcessResponse` y `checkAndSubmit` en [`idea-submission.service.ts`](../apps/api/src/idea-evaluation/idea-submission.service.ts) |     28 y 27 |                        77,2 % | La primera valida respuestas cacheadas; la segunda coordina similitud, idempotencia, reserva y liberación de cuota.                              |
-| `submitRoast` en [`RoastInput.tsx`](../apps/web/src/features/roast/components/RoastInput.tsx)                                                  |          27 |                        87,0 % | Combina envío, autenticación, errores, cuota y estado del formulario.                                                                            |
+| Función y ubicación                                                                                                                            | Complejidad | Ramas cubiertas en el archivo | Motivo para priorizar                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------: | ----------------------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Callback de `createSecurityMiddleware` en [`security.middleware.ts`](../apps/api/src/security/security.middleware.ts)                          |         100 |                        94,6 % | Combina cabeceras, origen, tipo de contenido, clasificación de rutas, límites y desafío de acceso. Un cambio de orden puede debilitar controles.                       |
+| `isDashboardData` en el antiguo `admin-dashboard.tsx`                                                                                          |          43 |                        93,0 % | Valida un contrato grande con una cadena booleana; su complejidad refleja en gran parte validación estructural.                                                        |
+| `Roast` en [`roast.tsx`](../apps/web/src/features/roast/roast.tsx)                                                                             |          39 |                        90,6 % | Mezcla estado de cuota, ranking, diálogos y presentación.                                                                                                              |
+| `Home` en [`home.tsx`](../apps/web/src/views/home.tsx)                                                                                         |          37 |                        79,2 % | Orquesta evaluación, reintentos, cuota y UI dentro de una vista de composición.                                                                                        |
+| `parseSubmissionResponse` en el antiguo `evaluation-process.ts`                                                                                |          30 |                        91,7 % | Valida tres variantes del DTO y sus campos condicionales.                                                                                                              |
+| `isEvaluationProcessResponse` y `checkAndSubmit` en [`idea-submission.service.ts`](../apps/api/src/idea-evaluation/idea-submission.service.ts) |     28 y 27 |                        77,2 % | La primera valida respuestas cacheadas; la segunda coordina similitud, idempotencia, reserva y liberación de cuota.                                                    |
+| `submitRoast` en el antiguo `RoastInput.tsx`                                                                                                   |          27 |                        87,0 % | Medición histórica: combinaba envío, autenticación, errores, cuota y estado del formulario. El flujo actual está en `use-roast-input.ts` y el servicio del componente. |
 
-La mayor concentración de funciones por encima de 10 está en `idea-evaluation` de la API (11), `admin-dashboard` web (9) y `evaluation-decision.ts` de la API (9 de esas 11). La cobertura alta del middleware y del panel permite refactorizar con una red de seguridad; la cobertura menor del envío de ideas y de `Home` pide primero pruebas de comportamiento específicas.
+En aquel corte, la mayor concentración de funciones por encima de 10 estaba en `idea-evaluation` de la API (11), `admin-dashboard` web (9) y `evaluation-decision.ts` de la API (9 de esas 11). La cobertura alta del middleware y del panel permitía refactorizar con una red de seguridad; la cobertura menor del envío de ideas y de `Home` pedía primero pruebas de comportamiento específicas.
 
-## Plan ordenado
+Las ubicaciones de la tabla corresponden al corte medido. En el código actual,
+`isDashboardData` está en `admin-dashboard.validation.dashboard.ts`,
+`parseSubmissionResponse` en `evaluation.validation.ts` y `submitRoast` en
+`components/use-roast-input.ts`. Los valores de complejidad y cobertura de la
+tabla no describen esas implementaciones nuevas.
+
+## Plan de la primera ronda
 
 ### 1. Registrar la métrica y proteger las rutas sensibles
 

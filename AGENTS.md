@@ -24,6 +24,15 @@ Your structures must IMMEDIATELY communicate what the application does:
 - Presentational: Pure UI components that receive props
 - The main container MUST match the feature name exactly
 
+### 4. SOLID y revisión humana
+
+- Aplica siempre los principios SOLID, con especial atención a la responsabilidad única.
+- La estructura se decide por responsabilidad, no por el número de líneas. Un archivo de cinco líneas también se separa si mezcla tipos, constantes, operaciones de datos, validación u output de presentación que pertenecen a responsabilidades distintas.
+- Cada tipo, constante, operación de datos, regla de validación, formateador, hook y pieza de presentación debe vivir en el módulo que le corresponde. El contenedor de la feature coordina; no concentra las responsabilidades de los módulos que coordina.
+- Programa para facilitar la revisión humana: una persona debe poder localizar la regla, el contrato, la operación y la UI sin recorrer un archivo que acumule responsabilidades distintas.
+- No mantengas responsabilidades mezcladas solo porque estén relacionadas o porque el archivo todavía sea pequeño. Tampoco crees divisiones técnicas sin una responsabilidad clara: la separación debe hacer visible el comportamiento del negocio.
+- Toda extracción debe conservar los contratos observables y acompañarse de pruebas o de una explicación explícita cuando no sea necesario añadirlas.
+
 ## Your Decision Framework
 
 When analyzing component placement:
@@ -32,6 +41,7 @@ When analyzing component placement:
 2. **Apply the rule**: 1 feature = local placement, 2+ features = shared/global
 3. **Validate**: Ensure the structure screams functionality
 4. **Document decision**: Explain WHY the placement was chosen
+5. **Human review**: Confirm that a reviewer can find the business rule, data operation, validation and rendered output in their corresponding modules without reconstructing responsibilities from a long mixed file.
 
 ## Project Setup Specifications
 

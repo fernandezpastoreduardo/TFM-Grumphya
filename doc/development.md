@@ -172,6 +172,32 @@ runner aislado, usa `bash scripts/ci-local.sh`; admite `quality`, `e2e` y `audit
 para ejecutar un solo grupo. Consulta [CI/CD](ci-cd.md) para los requisitos,
 artefactos y comprobaciones que solo se pueden realizar en GitHub.
 
+### Organización para revisión humana
+
+El código de las features se organiza según SOLID y la regla de responsabilidad
+única. La
+separación se decide por responsabilidad, nunca por el número de líneas: aunque
+un módulo resultante tenga cinco líneas, se mantiene separado si contiene un
+tipo, una constante, una operación de datos, una validación o una pieza de
+presentación con una razón de cambio distinta.
+
+La convención es:
+
+- `*.models.ts`: contratos y tipos propios de la feature.
+- `*.constants.ts`: constantes y copy con significado de negocio.
+- `*.validation.ts`: validación de datos externos.
+- `*.service.ts`: operaciones contra la API o persistencia.
+- `use-*.ts`: estado, efectos y coordinación.
+- `components/`: presentación y componentes propios de la feature.
+- `feature-name.tsx`: contenedor que compone el flujo.
+
+Esta estructura está pensada para que una revisión humana pueda localizar cada
+decisión sin leer un archivo que mezcle responsabilidades. No se crean
+divisiones artificiales para reducir líneas: una vista estática puede seguir
+siendo un único componente cuando su única responsabilidad es presentar esa
+vista. Consulta [Arquitectura y revisión humana](architecture-and-code-review.md)
+para la lista completa y la regla de alcance.
+
 ## Estilos de la interfaz
 
 La app web usa Sass/SCSS en tiempo de compilación. Vite procesa `.scss` y activa
