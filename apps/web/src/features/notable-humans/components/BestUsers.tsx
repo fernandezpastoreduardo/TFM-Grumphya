@@ -1,28 +1,15 @@
-import {
-  MAX_BEST_USERS,
-  type BestUserItem,
-} from "../services/get-best-list-best-users";
+import { MAX_BEST_USERS } from "../services/get-best-list-best-users";
 import {
   LoadingSkeleton,
   SkeletonBlock,
 } from "../../../shared/components/loading-skeleton";
-
-const ERROR_MESSAGE =
-  "No se ha podido cargar la clasificación. Prueba de nuevo.";
-const EMPTY_MESSAGE =
-  "Aún no hay humanos notables. Alguien tendrá que inaugurar la lista.";
-const USERS_LIST_LABEL = "Usuarios con más ideas aprobadas";
-
-export type BestUsersState =
-  | { status: "loading" }
-  | { status: "error" }
-  | { status: "empty" }
-  | { status: "success"; users: BestUserItem[] };
-
-type BestUsersProps = {
-  state: BestUsersState;
-  onRetry: () => void;
-};
+import {
+  BEST_USERS_EMPTY_MESSAGE,
+  BEST_USERS_ERROR_MESSAGE,
+  BEST_USERS_LIST_LABEL,
+} from "./BestUsers.constants";
+import type { BestUsersProps } from "./BestUsers.models";
+export type { BestUsersState } from "./BestUsers.models";
 
 export function BestUsers({ state, onRetry }: BestUsersProps) {
   if (state.status === "loading") {
@@ -46,7 +33,7 @@ export function BestUsers({ state, onRetry }: BestUsersProps) {
   if (state.status === "error") {
     return (
       <div className="ranking-message" role="alert">
-        <p>{ERROR_MESSAGE}</p>
+        <p>{BEST_USERS_ERROR_MESSAGE}</p>
         <button className="button-secondary" type="button" onClick={onRetry}>
           Volver a intentarlo
         </button>
@@ -56,14 +43,14 @@ export function BestUsers({ state, onRetry }: BestUsersProps) {
   if (state.status === "empty") {
     return (
       <p className="ranking-message" role="status">
-        {EMPTY_MESSAGE}
+        {BEST_USERS_EMPTY_MESSAGE}
       </p>
     );
   }
 
   const users = state.users.slice(0, 10);
   return (
-    <ol className="humans-ranking" aria-label={USERS_LIST_LABEL}>
+    <ol className="humans-ranking" aria-label={BEST_USERS_LIST_LABEL}>
       {users.map((user, index) => (
         <li
           key={user.username}

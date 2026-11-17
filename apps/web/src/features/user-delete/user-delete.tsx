@@ -1,28 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { clearAccessToken } from "../../infrastructure/auth/session";
 import {
-  authenticatedFetch,
-  clearAccessToken,
-} from "../../infrastructure/auth/session";
+  BUTTON_TEXT,
+  DELETE_ERROR,
+  SESSION_REQUIRED_ERROR,
+} from "./user-delete.constants";
+import { deleteAccount as deleteUserAccount } from "./user-delete.service";
+import {
+  closeDeleteDialog,
+  getConfirmButtonText,
+  openDeleteDialog,
+} from "./user-delete.utils";
 import "./user-delete.scss";
-
-const DELETE_ERROR =
-  "No se ha podido completar la baja. Tu cuenta sigue activa; inténtalo de nuevo.";
-const SESSION_REQUIRED_ERROR =
-  "Tu sesión ya no está activa. Entra en tu cuenta para continuar.";
-const BUTTON_TEXT = {
-  TRIGGER: "Darme de baja y BORRAR MI CUENTA",
-  CANCEL: "Cancelar",
-  CONFIRM: "Confirmo que quiero darme de baja",
-  DELETING: "Eliminando tu cuenta…",
-} as const;
-
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
 
 export function UserDelete({ onDeleted }: { onDeleted?: () => void } = {}) {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,31 +23,24 @@ export function UserDelete({ onDeleted }: { onDeleted?: () => void } = {}) {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || !isOpen) return;
-    if (!dialog.open) openDialog(dialog);
+    if (!dialog.open) openDeleteDialog(dialog);
     cancelButtonRef.current?.focus();
   }, [isOpen]);
 
   function closeDialog() {
     if (isDeleting) return;
-    if (dialogRef.current) closeNativeDialog(dialogRef.current);
+    if (dialogRef.current) closeDeleteDialog(dialogRef.current);
     setIsOpen(false);
     setError("");
   }
 
-  async function deleteAccount() {
+  async function handleDeleteAccount() {
     setIsDeleting(true);
     setError("");
     try {
-      const response = await authenticatedFetch("/api/account", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const result: unknown = await readJson(response);
-      if (!response.ok || !isDeletedResult(result)) {
-        setError(
-          response.status === 401 ? SESSION_REQUIRED_ERROR : DELETE_ERROR,
-        );
+      const result = await deleteUserAccount();
+      if (!result.deleted) {
+        setError(result.status === 401 ? SESSION_REQUIRED_ERROR : DELETE_ERROR);
         return;
       }
       clearAccessToken();
@@ -126,7 +108,7 @@ export function UserDelete({ onDeleted }: { onDeleted?: () => void } = {}) {
               className="profile-delete-confirm"
               type="button"
               disabled={isDeleting}
-              onClick={() => void deleteAccount()}
+              onClick={() => void handleDeleteAccount()}
             >
               {getConfirmButtonText(isDeleting)}
             </button>
@@ -135,28 +117,4 @@ export function UserDelete({ onDeleted }: { onDeleted?: () => void } = {}) {
       ) : null}
     </section>
   );
-}
-
-function isDeletedResult(value: unknown): value is { deleted: true } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "deleted" in value &&
-    value.deleted === true
-  );
-}
-
-function getConfirmButtonText(isDeleting: boolean): string {
-  if (isDeleting) return BUTTON_TEXT.DELETING;
-  return BUTTON_TEXT.CONFIRM;
-}
-
-function openDialog(dialog: HTMLDialogElement): void {
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-}
-
-function closeNativeDialog(dialog: HTMLDialogElement): void {
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
 }

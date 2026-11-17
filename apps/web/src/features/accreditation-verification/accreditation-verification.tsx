@@ -1,52 +1,10 @@
-import { useEffect, useState } from "react";
-import {
-  getAccreditation,
-  type AccreditationRecord,
-  type AccreditationStatus,
-} from "../../shared/accreditation-verification";
+import { STATUS_LABELS } from "./accreditation-verification.constants";
+import { formatAccreditationDate } from "./accreditation-verification.formatters";
+import { useAccreditationVerification } from "./use-accreditation-verification";
 import "./accreditation-verification.scss";
 
-type VerificationState =
-  | { kind: "loading" }
-  | { kind: "success"; record: AccreditationRecord }
-  | { kind: "error" };
-
-const STATUS_LABELS: Record<AccreditationStatus, string> = {
-  demonstration: "Prototipo académico",
-  suspended: "Suspendida",
-  revoked: "Revocada",
-  expired: "Caducada",
-  unknown: "Estado desconocido",
-};
-
-function formatDate(value: string | null): string {
-  if (value === null) return "No definida";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "No definida";
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Madrid",
-  }).format(date);
-}
-
 export function AccreditationVerification() {
-  const [state, setState] = useState<VerificationState>({ kind: "loading" });
-
-  useEffect(() => {
-    let active = true;
-    getAccreditation()
-      .then((record) => {
-        if (active) setState({ kind: "success", record });
-      })
-      .catch(() => {
-        if (active) setState({ kind: "error" });
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const state = useAccreditationVerification();
 
   if (state.kind === "loading") {
     return <p role="status">Consultando la ficha interna de Grumphya…</p>;
@@ -97,11 +55,11 @@ export function AccreditationVerification() {
         </div>
         <div>
           <dt>Fecha de expedición de la ficha</dt>
-          <dd>{formatDate(record.issuedAt)}</dd>
+          <dd>{formatAccreditationDate(record.issuedAt)}</dd>
         </div>
         <div>
           <dt>Última validación técnica interna</dt>
-          <dd>{formatDate(record.validatedAt)}</dd>
+          <dd>{formatAccreditationDate(record.validatedAt)}</dd>
         </div>
         <div>
           <dt>Método de validación</dt>
@@ -109,7 +67,7 @@ export function AccreditationVerification() {
         </div>
         <div>
           <dt>Fecha de caducidad</dt>
-          <dd>{formatDate(record.expiresAt)}</dd>
+          <dd>{formatAccreditationDate(record.expiresAt)}</dd>
         </div>
       </dl>
       <section aria-labelledby="accreditation-domains-title">

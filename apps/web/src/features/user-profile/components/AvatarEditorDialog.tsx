@@ -2,30 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { usePersistentTheme } from "../../../shared/hooks/use-persistent-theme";
-
-const CROP_VIEWPORT_SIZE = 240;
-const PREVIEW_SIZE = 104;
-const AVATAR_OUTPUT_SIZE = 128;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
-const ZOOM_STEP = 0.05;
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const IMAGE_VALIDATION_ERROR =
-  "Elige una imagen JPG, PNG o WebP de hasta 5 MB.";
-const CROP_ERROR =
-  "No se ha podido preparar el recorte. Prueba con otra imagen.";
-
-type AvatarEditorDialogProps = {
-  avatarUrl: string | null | undefined;
-  username: string;
-  uploading: boolean;
-  uploadError: string;
-  onClose: () => void;
-  onUpload: (file: File) => Promise<boolean>;
-};
-
-type DragPoint = { x: number; y: number };
+import type {
+  AvatarEditorDialogProps,
+  DragPoint,
+} from "./avatar-editor.models";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  CROP_ERROR,
+  CROP_VIEWPORT_SIZE,
+  IMAGE_VALIDATION_ERROR,
+  MAX_UPLOAD_BYTES,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  PREVIEW_SIZE,
+  ZOOM_STEP,
+  clampOffset,
+  createCroppedAvatar,
+  getImageScale,
+  getPanLimit,
+} from "./avatar-editor.utils";
 
 export function AvatarEditorDialog({
   avatarUrl,
@@ -347,99 +342,4 @@ export function AvatarEditorDialog({
     </div>,
     document.body,
   );
-}
-
-function getImageScale(
-  imageSize: { width: number; height: number },
-  zoom: number,
-): number {
-  if (!imageSize.width || !imageSize.height) return 0;
-  return (
-    (CROP_VIEWPORT_SIZE / Math.min(imageSize.width, imageSize.height)) * zoom
-  );
-}
-
-function clampOffset(
-  offset: DragPoint,
-  imageSize: { width: number; height: number },
-  zoom: number,
-): DragPoint {
-  const scale = getImageScale(imageSize, zoom);
-  const horizontalLimit = Math.max(
-    0,
-    (imageSize.width * scale - CROP_VIEWPORT_SIZE) / 2,
-  );
-  const verticalLimit = Math.max(
-    0,
-    (imageSize.height * scale - CROP_VIEWPORT_SIZE) / 2,
-  );
-  return {
-    x: Math.min(horizontalLimit, Math.max(-horizontalLimit, offset.x)),
-    y: Math.min(verticalLimit, Math.max(-verticalLimit, offset.y)),
-  };
-}
-
-function getPanLimit(
-  imageSize: { width: number; height: number },
-  zoom: number,
-  axis: "x" | "y",
-): number {
-  const scale = getImageScale(imageSize, zoom);
-  const dimension = axis === "x" ? imageSize.width : imageSize.height;
-  return Math.max(0, (dimension * scale - CROP_VIEWPORT_SIZE) / 2);
-}
-
-async function createCroppedAvatar(
-  image: HTMLImageElement,
-  zoom: number,
-  offset: DragPoint,
-): Promise<File> {
-  const scale = getImageScale(
-    { width: image.naturalWidth, height: image.naturalHeight },
-    zoom,
-  );
-  const sourceSize = CROP_VIEWPORT_SIZE / scale;
-  const sourceX = clampCropStart(
-    (image.naturalWidth - sourceSize) / 2 - offset.x / scale,
-    image.naturalWidth,
-    sourceSize,
-  );
-  const sourceY = clampCropStart(
-    (image.naturalHeight - sourceSize) / 2 - offset.y / scale,
-    image.naturalHeight,
-    sourceSize,
-  );
-  const canvas = document.createElement("canvas");
-  canvas.width = AVATAR_OUTPUT_SIZE;
-  canvas.height = AVATAR_OUTPUT_SIZE;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Avatar canvas unavailable.");
-  context.drawImage(
-    image,
-    sourceX,
-    sourceY,
-    sourceSize,
-    sourceSize,
-    0,
-    0,
-    AVATAR_OUTPUT_SIZE,
-    AVATAR_OUTPUT_SIZE,
-  );
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (result) =>
-        result ? resolve(result) : reject(new Error("Crop failed.")),
-      "image/jpeg",
-      0.92,
-    );
-  });
-  return new File([blob], "avatar-recortado.jpg", { type: "image/jpeg" });
-}
-
-function clampCropStart(
-  start: number,
-  dimension: number,
-  size: number,
-): number {
-  return Math.min(dimension - size, Math.max(0, start));
 }

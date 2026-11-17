@@ -1,15 +1,10 @@
 import { useEffect, useRef, type SyntheticEvent } from "react";
+import {
+  SIMULATION_DURATION_MS,
+  SIMULATION_NOTICE,
+} from "./payment-simulation.constants";
+import type { PaymentSimulationDialogProps } from "./payment-simulation.models";
 import styles from "./PaymentSimulationDialog.module.scss";
-
-const SIMULATION_DURATION_MS = 5_000;
-const SIMULATION_NOTICE =
-  "¿Parece que estoy haciéndo algo, eh? Pues efectivamente, no estoy haciendo nada, el pago es simulado y no se te cobrará nada.";
-
-type PaymentSimulationDialogProps = {
-  open: boolean;
-  onComplete: () => void;
-  heading?: string;
-};
 
 export function PaymentSimulationDialog({
   open,

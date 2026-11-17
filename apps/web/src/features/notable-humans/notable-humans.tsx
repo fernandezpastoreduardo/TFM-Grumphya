@@ -1,29 +1,9 @@
-import { useEffect, useState } from "react";
-import { BestUsers, type BestUsersState } from "./components/BestUsers";
-import { getBestListBestUsers } from "./services/get-best-list-best-users";
+import { BestUsers } from "./components/BestUsers";
+import { useBestUsers } from "./use-best-users";
 import "./notable-humans.scss";
 
 export function NotableHumans() {
-  const [state, setState] = useState<BestUsersState>({ status: "loading" });
-  const [revision, setRevision] = useState(0);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({ status: "loading" });
-    getBestListBestUsers(controller.signal)
-      .then((users) => {
-        if (users.length === 0) {
-          setState({ status: "empty" });
-          return;
-        }
-        setState({ status: "success", users });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ status: "error" });
-      });
-
-    return () => controller.abort();
-  }, [revision]);
+  const { state, retry } = useBestUsers();
 
   return (
     <div className="humans-layout">
@@ -43,10 +23,7 @@ export function NotableHumans() {
             ✦
           </span>
         </div>
-        <BestUsers
-          state={state}
-          onRetry={() => setRevision((value) => value + 1)}
-        />
+        <BestUsers state={state} onRetry={retry} />
         <p className="privacy-footnote">
           Tus ideas aprobadas siguen siendo privadas. En esta clasificación solo
           mostramos alias y número de aprobaciones.

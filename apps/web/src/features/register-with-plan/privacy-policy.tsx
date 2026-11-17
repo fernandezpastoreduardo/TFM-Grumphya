@@ -1,12 +1,6 @@
 import "../../shared/styles/account.scss";
 import "./privacy-policy.scss";
-
-const RIGHTS = [
-  "Acceso, rectificación y supresión de tus datos.",
-  "Oposición y limitación del tratamiento, cuando procedan.",
-  "Portabilidad de los datos que hayas facilitado, en los supuestos previstos por la normativa.",
-  "Retirar un consentimiento en cualquier momento, si un tratamiento se basa en él. La retirada no afecta a lo tratado antes.",
-];
+import { PRIVACY_RIGHTS } from "./privacy-policy.constants";
 
 export function PrivacyPolicy() {
   return (
@@ -370,7 +364,7 @@ export function PrivacyPolicy() {
           su caso, ejercer los derechos previstos en la normativa:
         </p>
         <ul>
-          {RIGHTS.map((right) => (
+          {PRIVACY_RIGHTS.map((right) => (
             <li key={right}>{right}</li>
           ))}
         </ul>
