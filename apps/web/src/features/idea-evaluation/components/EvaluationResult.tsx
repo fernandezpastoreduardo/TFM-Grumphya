@@ -1,32 +1,12 @@
+import { getPublicExistingProductExample } from "../evaluation-process";
 import {
-  getPublicExistingProductExample,
-  type EvaluationProcessResult,
-} from "../evaluation-process";
+  EVALUATION_STATUS_LABELS,
+  EXISTING_PRODUCT_EXAMPLE_LABEL,
+  FAILED_CRITERIA_TITLE,
+} from "./evaluation-result.constants";
+import { formatPublicScore } from "./evaluation-result.formatters";
+import type { EvaluationResultProps } from "./evaluation-result.models";
 import "../idea-evaluation.scss";
-
-type EvaluationResultProps = {
-  result: EvaluationProcessResult;
-};
-
-const STATUS_LABELS: Record<EvaluationProcessResult["status"], string> = {
-  RECHAZADA: "Fuera de juego",
-  REQUIERE_REVISION: "Necesita más trabajo",
-  SIN_BLOQUEO_EVIDENTE: "Sigue en pie, por ahora",
-  IDEA_INSUFICIENTE: "Falta la idea",
-};
-const SPANISH_SCORE_FORMAT = new Intl.NumberFormat("es-ES", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const NO_SCORE_LABEL = "Sin puntuación";
-const EXISTING_PRODUCT_EXAMPLE_LABEL =
-  "Ejemplo conocido con funciones similares:";
-const FAILED_CRITERIA_TITLE = "Puntos que hacen suspender la idea";
-
-function formatPublicScore(score: number | null): string {
-  if (score === null) return NO_SCORE_LABEL;
-  return `${SPANISH_SCORE_FORMAT.format(score)}/10`;
-}
 
 export function EvaluationResult({ result }: EvaluationResultProps) {
   const existingProductExample = getPublicExistingProductExample(
@@ -40,7 +20,7 @@ export function EvaluationResult({ result }: EvaluationResultProps) {
     >
       <div className="evaluation-result-topline">
         <p className="evaluation-result-status">
-          {STATUS_LABELS[result.status]}
+          {EVALUATION_STATUS_LABELS[result.status]}
         </p>
         <p className="evaluation-result-score">
           {formatPublicScore(result.score)}

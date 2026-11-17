@@ -1,25 +1,10 @@
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import {
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from "react";
+  LOADING_STAGE_INTERVAL_MS,
+  LOADING_STAGES,
+} from "./evaluation-dialog.constants";
+import type { EvaluationDialogProps } from "./evaluation-dialog.models";
 import styles from "./EvaluationDialog.module.scss";
-
-const LOADING_STAGE_INTERVAL_MS = 2_800;
-const LOADING_STAGES = [
-  "Descartando graciosillos…",
-  "Consultando si a alguien más se le ha ocurrido tu idea…",
-  "Evaluando tu idea con el DEBIDO respeto…",
-] as const;
-
-type EvaluationDialogProps = {
-  open: boolean;
-  isEvaluating: boolean;
-  onClose: () => void;
-  children: ReactNode;
-};
 
 export function EvaluationDialog({
   open,
