@@ -556,6 +556,9 @@ const aiSmokeStart = workflow.indexOf(
   "- name: Verify OpenAI idea evaluation and roast before release",
 );
 const saveImagesStart = workflow.indexOf("- name: Save scanned release images");
+const attestationStart = workflow.indexOf(
+  "- name: Generate and sign the production release attestation",
+);
 const aiSmokeEnd = workflow.indexOf("      - name:", aiSmokeStart + 1);
 assert.ok(aiSmokeStart >= 0, "OpenAI production smoke step must exist");
 const aiSmokeStep = workflow.slice(
@@ -601,6 +604,31 @@ assert.ok(
   aiSmokeStart > imageScanStart && aiSmokeStart < saveImagesStart,
   "OpenAI smoke must pass after image scanning and before release packaging",
 );
+assert.ok(
+  attestationStart > aiSmokeStart && attestationStart < saveImagesStart,
+  "release attestation must be generated after smoke tests and before packaging",
+);
+const attestationEnd = workflow.indexOf("      - name:", attestationStart + 1);
+const attestationStep = workflow.slice(
+  attestationStart,
+  attestationEnd === -1 ? undefined : attestationEnd,
+);
+assert.match(
+  attestationStep,
+  /AUDIT_RELEASE_SIGNING_KEY: \$\{\{ secrets\.AUDIT_RELEASE_SIGNING_KEY \}\}/,
+  "release attestation signing key must be scoped to the attestation step",
+);
+assert.match(
+  attestationStep,
+  /docker image inspect[\s\S]*?create-release-manifest\.mjs[\s\S]*?createPrivateKey[\s\S]*?sign\(null, manifest, key\)/,
+  "attestation must bind the signature to the scanned image digests",
+);
+for (const guard of REQUIRED_DEPLOY_GUARDS) {
+  assert.ok(
+    attestationStep.includes(guard),
+    `release attestation step missing deploy guard: ${guard}`,
+  );
+}
 
 const assembleBundleStart = workflow.indexOf(
   "- name: Assemble production release bundle",
@@ -633,6 +661,11 @@ for (const imageName of [
 assert.ok(
   assembleBundleStep.includes(`DEPLOY_SHA=${shaTag}`),
   "release metadata must be bound to the same commit SHA as scanned images",
+);
+assert.match(
+  assembleBundleStep,
+  /release-manifest\.json release-manifest\.sig/,
+  "the signed release attestation must travel with the deployment bundle",
 );
 for (const [stepName, step] of [
   ["image save", saveImagesStep],

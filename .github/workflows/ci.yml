@@ -307,6 +307,10 @@ jobs:
           for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
             cat "$scan_dir/${image%%:*}.log"
           done
+          mkdir -p release
+          cat > release/security-results.json <<'EOF'
+          {"trivy":{"status":"passed","severity":["HIGH","CRITICAL"],"ignoreUnfixed":true},"highRiskCount":0,"criticalRiskCount":0}
+          EOF
           exit "$scan_status"
       - name: Verify OpenAI idea evaluation and roast before release
         if: >-
@@ -332,6 +336,52 @@ jobs:
             apps/api/dist/infrastructure/ai/production-ai-smoke.js
       - name: Smoke test the scanned production images with isolated Compose resources
         run: bash scripts/test-production-compose.sh "${{ github.sha }}"
+      - name: Generate and sign the production release attestation
+        if: >-
+          success() &&
+          github.event_name == 'workflow_dispatch' &&
+          github.actor == 'fernandezpastoreduardo' &&
+          github.triggering_actor == 'fernandezpastoreduardo' &&
+          github.ref == 'refs/heads/main' &&
+          inputs.approve_production_deploy == true &&
+          needs.quality-and-e2e.result == 'success' &&
+          needs.e2e.result == 'success' &&
+          needs.dependency-audit.result == 'success' &&
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        env:
+          AUDIT_RELEASE_SIGNING_KEY: ${{ secrets.AUDIT_RELEASE_SIGNING_KEY }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          : "${AUDIT_RELEASE_SIGNING_KEY:?Create the AUDIT_RELEASE_SIGNING_KEY Actions secret before enabling production audit evidence}"
+          test -s release/security-results.json
+          pnpm list --prod --recursive --json --depth Infinity > release/dependency-inventory.json
+          api_digest=$(docker image inspect --format '{{.Id}}' "grumphya-api:${GITHUB_SHA}")
+          web_digest=$(docker image inspect --format '{{.Id}}' "grumphya-web:${GITHUB_SHA}")
+          database_digest=$(docker image inspect --format '{{.Id}}' "grumphya-database:${GITHUB_SHA}")
+          proxy_digest=$(docker image inspect --format '{{.Id}}' "grumphya-proxy:${GITHUB_SHA}")
+          node scripts/create-release-manifest.mjs \
+            release/release-manifest.json \
+            release/dependency-inventory.json \
+            release/security-results.json \
+            "${GITHUB_SHA}" \
+            "${api_digest}" \
+            "${web_digest}" \
+            "${database_digest}" \
+            "${proxy_digest}"
+          signing_key="$RUNNER_TEMP/grumphya-audit-signing-key.pem"
+          printf '%s\n' "$AUDIT_RELEASE_SIGNING_KEY" > "$signing_key"
+          chmod 600 "$signing_key"
+          node --input-type=module - "$signing_key" <<'NODE'
+          import { readFile, writeFile } from "node:fs/promises";
+          import { sign, createPrivateKey } from "node:crypto";
+          const [keyPath] = process.argv.slice(2);
+          const key = createPrivateKey(await readFile(keyPath));
+          const manifest = await readFile("release/release-manifest.json");
+          const signature = sign(null, manifest, key).toString("base64url");
+          await writeFile("release/release-manifest.sig", signature, { mode: 0o600 });
+          NODE
+          rm -f "$signing_key"
       - name: Save scanned release images
         if: >-
           success() &&
@@ -381,7 +431,7 @@ jobs:
           DATABASE_IMAGE=grumphya-database:${{ github.sha }}
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
           EOF
-          tar -C release -czf release-bundle.tar.gz compose.production.yaml docker migrations images.tar release.env
+          tar -C release -czf release-bundle.tar.gz compose.production.yaml docker migrations images.tar release.env release-manifest.json release-manifest.sig
           du -h release-bundle.tar.gz
       - name: Preflight production deployment
         id: production-preflight
@@ -431,8 +481,8 @@ jobs:
             echo '::error::The VPS deployment helper is outdated or unreachable. Recover administrative SSH access and install the reviewed helper before retrying.'
             exit 1
           fi
-          if [[ "$helper_version" != 3 ]]; then
-            echo "::error::The VPS deployment helper is version $helper_version; version 3 is required. Recover administrative SSH access and install the reviewed helper before retrying."
+          if [[ "$helper_version" != 4 ]]; then
+            echo "::error::The VPS deployment helper is version $helper_version; version 4 is required. Recover administrative SSH access and install the reviewed helper before retrying."
             exit 1
           fi
           echo "Checking VPS capacity and current release before transferring $release_bytes bytes."

@@ -98,6 +98,7 @@ COPY --chown=node:node apps/api/migrations /workspace/apps/api/migrations
 COPY --chown=node:node docker/api-entrypoint.sh /workspace/docker/api-entrypoint.sh
 COPY --chown=node:node docker/database-entrypoint.sh /workspace/docker/database-entrypoint.sh
 COPY --chown=node:node docker/admin-provision-entrypoint.sh /workspace/docker/admin-provision-entrypoint.sh
+COPY --chown=node:node scripts/verify-release-manifest.mjs /workspace/scripts/verify-release-manifest.mjs
 
 RUN mkdir -p /workspace/var/avatars \
   && chown -R node:node /workspace/var \

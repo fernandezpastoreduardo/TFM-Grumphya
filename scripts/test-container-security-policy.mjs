@@ -177,12 +177,12 @@ assert.doesNotMatch(
   additionalSitesCompose,
   /development-security-edge|^  (api|db|web):/m,
 );
-assert.match(vpsDeployHelper, /readonly HELPER_VERSION=3/);
+assert.match(vpsDeployHelper, /readonly HELPER_VERSION=4/);
 assert.match(
   vpsDeployHelper,
   /docker network inspect --format '\{\{\.Internal\}\}'/,
 );
-assert.match(workflow, /if \[\[ "\$helper_version" != 3 \]\]/);
+assert.match(workflow, /if \[\[ "\$helper_version" != 4 \]\]/);
 assert.match(
   caddyfile,
   /Strict-Transport-Security "max-age=31536000; includeSubDomains"/,

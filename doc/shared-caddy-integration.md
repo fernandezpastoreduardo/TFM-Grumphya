@@ -20,8 +20,8 @@ web o PostgreSQL de Grumphya.
 Esta preparación requiere root y debe realizarse **antes de la primera release
 que use el nuevo helper**. El helper activo de la versión anterior no puede
 aplicar la integración durante el proceso que instala su sucesor. El workflow
-de producción exige la versión 3 y falla antes de transferir el bundle si aún
-está instalada la versión 2. Estos comandos son una guía operativa; no se
+de producción exige la versión 4 y falla antes de transferir el bundle si aún
+está instalada una versión anterior. Estos comandos son una guía operativa; no se
 ejecutan al modificar este repositorio.
 
 1. Verifica que `development-security-ingress` existe, es `bridge` con
@@ -37,7 +37,7 @@ ejecutan al modificar este repositorio.
    /usr/local/sbin/grumphya-deploy helper-version
    ```
 
-   El último comando debe devolver `3`. No copies estos archivos a una ruta
+   El último comando debe devolver `4`. No copies estos archivos a una ruta
    de release ni cambies `.env.production`, secretos o volúmenes. El fragmento
    Caddy solo define `desarrolloseguro.org` y `www.desarrolloseguro.org`: el
    primero envía tráfico HTTP a `development-security-web:8080` y el segundo

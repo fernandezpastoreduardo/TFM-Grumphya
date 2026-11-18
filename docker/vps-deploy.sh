@@ -20,7 +20,7 @@ readonly EXPECTED_SECRETS=(
 )
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
-readonly HELPER_VERSION=3
+readonly HELPER_VERSION=4
 readonly DEFAULT_ROOT=/opt/grumphya
 readonly MIN_FREE_BYTES_DEFAULT=536870912
 
@@ -229,7 +229,7 @@ validate_bundle_listing() {
     [[ -n $entry ]] || die 'bundle contains an empty path'
     case "$entry" in
       /*|../*|*/../*|*/..|..|./*|*/./*) die 'bundle contains an unsafe path' ;;
-      compose.production.yaml|release.env|images.tar|docker|docker/*|migrations|migrations/*) ;;
+      compose.production.yaml|release.env|images.tar|release-manifest.json|release-manifest.sig|docker|docker/*|migrations|migrations/*) ;;
       *) die 'bundle contains an unexpected path' ;;
     esac
   done < "$listing"
@@ -238,6 +238,47 @@ validate_bundle_listing() {
   grep -Eq '^([.]/)?images.tar$' "$listing" || die 'bundle is missing container images'
   grep -Eq '^([.]/)?docker/Caddyfile$' "$listing" || die 'bundle is missing the Caddy configuration'
   grep -Eq '^([.]/)?migrations/?$|^([.]/)?migrations/' "$listing" || die 'bundle is missing migrations'
+}
+
+read_grumphya_setting() {
+  local setting_name=$1 line
+  [[ -r $SECRETS_DIR/grumphya_env ]] || return 0
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line == "$setting_name="* ]] || continue
+    printf '%s' "${line#*=}"
+    return 0
+  done < "$SECRETS_DIR/grumphya_env"
+}
+
+audit_integration_enabled() {
+  [[ $(read_grumphya_setting AUDIT_ENABLED) == true ]]
+}
+
+validate_audit_attestation() {
+  local dir=$1 sha=$2 manifest="$1/release-manifest.json" signature="$1/release-manifest.sig"
+  local public_key temporary_key
+  audit_integration_enabled || return 0
+  [[ -f $manifest && ! -L $manifest ]] || die 'audit integration is enabled but the release manifest is missing'
+  [[ -f $signature && ! -L $signature ]] || die 'audit integration is enabled but the release signature is missing'
+  public_key=$(read_grumphya_setting AUDIT_RELEASE_MANIFEST_PUBLIC_KEY)
+  [[ -n $public_key ]] || die 'audit integration is enabled but its manifest public key is missing'
+  public_key=${public_key//\\n/$'\n'}
+  grep -Fq '"environment":"production"' "$manifest" || die 'release attestation is not for production'
+  grep -Fq "\"deploymentSha\":\"$sha\"" "$manifest" || die 'release attestation SHA does not match the requested release'
+  temporary_key=$(mktemp "$ROOT/incoming/audit-key.XXXXXXXX")
+  chmod 600 "$temporary_key"
+  printf '%s\n' "$public_key" > "$temporary_key"
+  if ! docker run --rm --network none --entrypoint node \
+    --volume "$dir:/audit:ro" \
+    --volume "$temporary_key:/audit/public-key.pem:ro" \
+    "grumphya-api:$sha" \
+    /workspace/scripts/verify-release-manifest.mjs \
+    /audit/release-manifest.json /audit/release-manifest.sig \
+    /audit/public-key.pem "$sha" >/dev/null 2>&1; then
+    rm -f "$temporary_key"
+    die 'release attestation signature verification failed'
+  fi
+  rm -f "$temporary_key"
 }
 
 validate_release_env() {
@@ -515,6 +556,7 @@ deploy() {
   log "loading scanned release images for $sha"
   load_release_images "$candidate_dir" "$sha"
   log "scanned release images loaded for $sha"
+  validate_audit_attestation "$candidate_dir" "$sha"
   mv "$candidate_dir" "$release_path"
   candidate_dir=$release_path
   install_release_helper "$release_path/docker/vps-deploy.sh"

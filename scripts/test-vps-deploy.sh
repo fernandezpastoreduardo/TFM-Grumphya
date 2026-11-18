@@ -641,7 +641,7 @@ test_gateway_accepts_only_allowlisted_commands() {
   status_output=$(SSH_ORIGINAL_COMMAND=status "$DEPLOY_HELPER" gateway)
   assert_eq "$status_output" none 'gateway status command'
   status_output=$(SSH_ORIGINAL_COMMAND=helper-version "$DEPLOY_HELPER" gateway)
-  assert_eq "$status_output" 3 'gateway helper version command'
+  assert_eq "$status_output" 4 'gateway helper version command'
   for command in \
     'status extra' \
     'rollback --volumes' \
