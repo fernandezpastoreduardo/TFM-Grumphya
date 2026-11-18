@@ -56,6 +56,7 @@ import { CspReportController } from "./security/csp-report.controller";
 import { VerifyAccreditationModule } from "./verify-accreditation/verify-accreditation.module";
 import { AnonymousAnalyticsController } from "./anonymous-analytics/anonymous-analytics.controller";
 import { AnonymousAnalyticsService } from "./anonymous-analytics/anonymous-analytics.service";
+import { AuditModule } from "./audit/audit.module";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
 function createRoastReplyProvider(
@@ -168,6 +169,7 @@ function createIdeaSubmissionService(
     PasswordResetModule,
     AdminDashboardModule,
     VerifyAccreditationModule,
+    AuditModule,
   ],
   controllers: [
     HealthController,

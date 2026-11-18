@@ -35,6 +35,7 @@
 - [CI/CD y seguridad de la imagen](ci-cd.md): flujos automatizados y controles de publicación.
 - [SonarQube Community Build privado](sonarqube.md): operación, Quality Gate y análisis local bajo demanda o antes de publicar `main`.
 - [Enlace a desarrolloseguro.org](desarrolloseguro.org.md): integración con el proyecto y dominio independientes.
+- [Integración de auditoría](audit-integration.md): contrato de evidencias de solo lectura, identidad técnica y atestación de releases.
 - [Caddy compartido con Desarrollo Seguro](shared-caddy-integration.md): instalación, validación y reversión de los sitios adicionales y su red.
 
 ### Revisar privacidad y seguridad

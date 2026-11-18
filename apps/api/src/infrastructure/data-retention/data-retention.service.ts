@@ -110,6 +110,20 @@ const EXPIRED_DATA_DELETIONS = [
      WHERE report.commit_sha=due.commit_sha AND report.page_code=due.page_code
        AND report.device_class=due.device_class`,
   `WITH due AS (
+     SELECT ctid FROM audit.evidence
+     WHERE created_at <= now() - interval '30 days'
+     ORDER BY created_at LIMIT ${DELETE_BATCH_SIZE}
+     FOR UPDATE SKIP LOCKED
+   ) DELETE FROM audit.evidence AS evidence USING due
+     WHERE evidence.ctid=due.ctid`,
+  `WITH due AS (
+     SELECT deployment_sha FROM audit.release_attestations
+     WHERE created_at <= now() - interval '30 days'
+     ORDER BY created_at LIMIT ${DELETE_BATCH_SIZE}
+     FOR UPDATE SKIP LOCKED
+   ) DELETE FROM audit.release_attestations AS attestation USING due
+     WHERE attestation.deployment_sha=due.deployment_sha`,
+  `WITH due AS (
      SELECT user_id, idempotency_hash FROM account_roast_message_events
      WHERE created_at <= now() - interval '12 months'
      ORDER BY created_at LIMIT ${DELETE_BATCH_SIZE} FOR UPDATE SKIP LOCKED

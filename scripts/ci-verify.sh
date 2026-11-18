@@ -11,6 +11,8 @@ if [[ "$MODE" == quality ]]; then
   pnpm --filter @grumphya/api exec tsx scripts/prepare-test-database.ts
   export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage"
   pnpm quality:check
+  node scripts/test-audit-contract.mjs
+  node scripts/test-release-manifest.mjs
   node scripts/test-deploy-policy.mjs
   node apps/web/scripts/test-summarize-lighthouse.mjs
   node scripts/test-deploy-workflow.mjs

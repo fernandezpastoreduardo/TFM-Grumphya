@@ -80,6 +80,7 @@ EOF
 cat > "$TEMP_ROOT/.secrets/grumphya_env" <<'EOF'
 ACCESS_TOKEN_SECRET=ci-fake-access-token-secret-never-use-in-production-0000000000000000
 ANONYMOUS_IP_HMAC_SECRET=ci-fake-anonymous-ip-secret-never-use-in-production-0000000000000000
+AUDIT_ENABLED=false
 EOF
 cat > "$TEMP_ROOT/.secrets/database_settings" <<'EOF'
 PGDATABASE=grumphya_ci
