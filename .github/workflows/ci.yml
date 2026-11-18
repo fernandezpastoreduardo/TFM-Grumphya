@@ -347,7 +347,8 @@ jobs:
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
-          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
+          vars.AUDIT_ENABLED == 'true'
         env:
           AUDIT_RELEASE_SIGNING_KEY: ${{ secrets.AUDIT_RELEASE_SIGNING_KEY }}
         shell: bash
@@ -416,6 +417,8 @@ jobs:
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
+        env:
+          AUDIT_ENABLED: ${{ vars.AUDIT_ENABLED }}
         run: |
           set -euo pipefail
           echo "Assembling release metadata and deployment bundle for $GITHUB_SHA."
@@ -431,7 +434,15 @@ jobs:
           DATABASE_IMAGE=grumphya-database:${{ github.sha }}
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
           EOF
-          tar -C release -czf release-bundle.tar.gz compose.production.yaml docker migrations images.tar release.env release-manifest.json release-manifest.sig
+          bundle_files=(compose.production.yaml docker migrations images.tar release.env)
+          if [[ "${AUDIT_ENABLED:-false}" == "true" ]]; then
+            test -s release/release-manifest.json
+            test -s release/release-manifest.sig
+            bundle_files+=(release-manifest.json release-manifest.sig)
+          else
+            echo "Audit disabled; omitting the optional release attestation from the bundle."
+          fi
+          tar -C release -czf release-bundle.tar.gz "${bundle_files[@]}"
           du -h release-bundle.tar.gz
       - name: Preflight production deployment
         id: production-preflight

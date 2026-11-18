@@ -629,6 +629,10 @@ for (const guard of REQUIRED_DEPLOY_GUARDS) {
     `release attestation step missing deploy guard: ${guard}`,
   );
 }
+assert.ok(
+  attestationStep.includes("vars.AUDIT_ENABLED == 'true'"),
+  "release attestation must remain opt-in while audit evidence is disabled",
+);
 
 const assembleBundleStart = workflow.indexOf(
   "- name: Assemble production release bundle",
@@ -664,8 +668,18 @@ assert.ok(
 );
 assert.match(
   assembleBundleStep,
-  /release-manifest\.json release-manifest\.sig/,
-  "the signed release attestation must travel with the deployment bundle",
+  /AUDIT_ENABLED: \$\{\{ vars\.AUDIT_ENABLED \}\}/,
+  "bundle assembly must read the repository audit toggle",
+);
+assert.match(
+  assembleBundleStep,
+  /bundle_files=\(compose\.production\.yaml docker migrations images\.tar release\.env\)/,
+  "the base deployment bundle must not depend on audit evidence",
+);
+assert.match(
+  assembleBundleStep,
+  /if \[\[ "\$\{AUDIT_ENABLED:-false\}" == "true" \]\]; then[\s\S]*?test -s release\/release-manifest\.json[\s\S]*?test -s release\/release-manifest\.sig[\s\S]*?bundle_files\+=\(release-manifest\.json release-manifest\.sig\)/,
+  "the signed release attestation must be packaged only when audit is enabled",
 );
 for (const [stepName, step] of [
   ["image save", saveImagesStep],
