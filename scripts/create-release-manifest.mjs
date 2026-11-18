@@ -45,7 +45,7 @@ const dependencyInventoryDigest = createHash("sha256")
   .update(inventoryText)
   .digest("hex");
 const manifest = {
-  schemaVersion: "ds-audit-v1",
+  schemaVersion: "beta-d-0.2",
   environment: "production",
   observedAt: observedAt.toISOString(),
   validUntil: validUntil.toISOString(),
@@ -67,4 +67,15 @@ const manifest = {
   },
 };
 
-await writeFile(outputPath, JSON.stringify(manifest), { mode: 0o600 });
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+await writeFile(outputPath, stableJson(manifest), { mode: 0o600 });

@@ -12,12 +12,12 @@ function request(
 describe("AuditController", () => {
   it("reads an allowed resource without rendering HTML", async () => {
     const service = {
-      read: vi.fn().mockResolvedValue({ schemaVersion: "ds-audit-v1" }),
+      read: vi.fn().mockResolvedValue({ schemaVersion: "beta-d-0.2" }),
     };
     const controller = new AuditController(service as never);
 
     await expect(controller.read(request("GET", "quality"))).resolves.toEqual({
-      schemaVersion: "ds-audit-v1",
+      schemaVersion: "beta-d-0.2",
     });
     expect(service.read).toHaveBeenCalledWith("quality");
   });

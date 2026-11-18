@@ -1,9 +1,16 @@
 # Integración de evidencias con DesarrolloSeguro
 
-Esta integración es optativa y de solo lectura para Grumphya. No cambia los
+Esta integración es optativa y las rutas públicas de Grumphya son de solo lectura. No cambia los
 flujos de usuarios, las tablas funcionales, los datos de ideas ni la red de
 DesarrolloSeguro. Si no se configura `AUDIT_ENABLED=true`, Grumphya se inicia
 como siempre y las rutas de auditoría responden `404`.
+
+El contrato implementado es `beta-d-0.2`. La identidad preparada por
+DesarrolloSeguro usa el `kid` `ds-auditor-2026`. La huella SHA-256 del fichero
+PEM público recibido es
+`b131af991d5056e26e12fe27df33e149f48e46209d5a4f848944ac5255703bc5`; la
+huella se documenta solo para verificar el material recibido y no sustituye la
+entrega por un canal seguro.
 
 ## Contrato HTTP
 
@@ -24,11 +31,11 @@ Caddy las reescribe internamente a `/api/audit/<recurso>`. El prefijo interno
 publica directamente y nunca cae en la SPA. Métodos no permitidos, recursos
 desconocidos y query strings reciben `405`, `404` y `400` respectivamente.
 
-La respuesta válida usa la envolvente `ds-audit-v1`:
+La respuesta válida usa la envolvente `beta-d-0.2`:
 
 ```json
 {
-  "schemaVersion": "ds-audit-v1",
+  "schemaVersion": "beta-d-0.2",
   "observedAt": "2026-11-18T20:00:00.000Z",
   "validUntil": "2026-11-19T20:00:00.000Z",
   "items": []
@@ -57,11 +64,13 @@ La clave pública de DesarrolloSeguro se configura en Grumphya mediante
 registrar el token. La rotación consiste en publicar el nuevo `kid`, validar
 que el lector lo usa y retirar el anterior.
 
-La denegación de red es por defecto. `AUDIT_ALLOWED_NETWORKS` debe contener las
-redes o IP de origen de DesarrolloSeguro en CIDR (por ejemplo,
-`10.20.30.0/24`); si está vacío, todas las rutas permanecen cerradas. No se
-conectan redes Docker de los dos proyectos. Los tokens, claims completos y
-payloads sensibles no se escriben en logs, cookies, URL ni respuestas de error.
+La denegación de red es por defecto. `AUDIT_ALLOWED_NETWORKS` debe contener la
+IP o CIDR que el proxy observe realmente, no una red Docker supuesta. La red
+de egress propuesta por DesarrolloSeguro (`172.20.0.0/16`) todavía no se ha
+confirmado como origen observado por el proxy; por eso el valor permanece
+pendiente y la auditoría sigue apagada. No se conectan redes Docker de los dos
+proyectos. Los tokens, claims completos y payloads sensibles no se escriben en
+logs, cookies, URL ni respuestas de error.
 
 ## Evidencia y atestación
 
@@ -72,10 +81,28 @@ La migración `039_audit_evidence` crea el esquema independiente `audit` con:
 
 La API comprueba `observedAt`, `validUntil`, una antigüedad máxima de 24 horas
 y un límite de respuesta de 64 KiB. La evidencia caducada o ausente devuelve
-`503`. El servicio de retención elimina ambas tablas después de 30 días.
-Debe provisionarse fuera de la aplicación un rol de escritura para el job y un
-rol de solo lectura para la API; el esquema no reutiliza las tablas de usuarios
-ni de ideas.
+`503`. La atestación exige el SHA de la release desplegada, cuatro digests
+`sha256` y una firma Ed25519 válida. El esquema no reutiliza las tablas de
+usuarios ni de ideas.
+
+La aplicación no ejecuta borrados de auditoría con su conexión normal. La
+retención se ejecuta aparte mediante `scripts/retire-audit-evidence.sh`, que
+usa TLS y un rol limitado a `DELETE` sobre las dos tablas de auditoría. Los
+roles se preparan con `scripts/provision-audit-roles.sh` después de aplicar la
+migración 039:
+
+| Rol             | Permisos en `audit`                             | Uso                                        |
+| --------------- | ----------------------------------------------- | ------------------------------------------ |
+| API de Grumphya | `SELECT` en `evidence` y `release_attestations` | Lectura pública autenticada                |
+| Ingesta         | `INSERT, UPDATE` en ambas tablas                | Canal de evidencias, pendiente del handoff |
+| Retención       | `DELETE` en ambas tablas                        | Ventana de 30 días                         |
+| Propietario     | `NOLOGIN`, propietario del esquema/tablas       | Administración controlada                  |
+
+Ambos scripts exigen `PGSSLMODE=verify-full`, una CA confiable y no imprimen
+contraseñas. El canal de ingesta aún no se habilita: falta que Desarrollo
+Seguro publique el path, envolvente de escritura, firma de evidencia,
+certificado/hostname TLS y reglas de reintento. Las rutas `GET` existentes no
+se convierten en un canal de escritura ni aceptan redes compartidas.
 
 El manifiesto de release debe ser generado por CI a partir de los digests de
 las imágenes realmente desplegadas, del inventario de dependencias de esas
@@ -97,19 +124,24 @@ opt-in; el modo normal de Grumphya no depende de la integración.
 
 1. Provisiona las dos claves públicas y los roles de base de datos fuera del
    repositorio. Añade las variables anteriores al secreto `grumphya_env` con
-   permisos `600`.
+   permisos `600`. La clave pública de atestación generada para Grumphya se
+   verifica con la huella DER
+   `0f7301d6b6c8d147437007ba7a69867b8f49dbfec2c913fd2a376a104cbe07d9`; la
+   privada existe únicamente como secreto de GitHub Actions
+   `AUDIT_RELEASE_SIGNING_KEY`.
    En el secreto de producción, `AUDIT_RELEASE_MANIFEST_PUBLIC_KEY` debe ser la
    clave en PEM con saltos representados como `\\n`; `AUDIT_RELEASE_SIGNING_KEY`
    solo existe en GitHub Actions y nunca se copia al VPS.
-2. Define `AUDIT_ENABLED=true`, la ACL y al menos un `kid` permitido. Reinicia
-   la release de Grumphya; sin esos valores el resto de la aplicación no se
-   ve afectado y las rutas siguen cerradas.
+2. Mantén `AUDIT_ENABLED=false` hasta que Desarrollo Seguro entregue el canal
+   de ingesta y se confirme la IP/CIDR observada. Con la auditoría desactivada
+   el resto de la aplicación no se ve afectado y las rutas siguen cerradas.
 3. Ejecuta `node scripts/test-audit-contract.mjs`, las pruebas unitarias de
    `apps/api/src/audit/` y el smoke de producción. El preflight debe comprobar
    una petición autenticada, una petición con scope incorrecto, una ACL no
    autorizada, una firma inválida, evidencia caducada y que no se devuelve HTML
    ni una redirección.
-4. Actualiza el lector de DesarrolloSeguro para enviar el JWT, validar la
+4. Solo después de completar esos prerrequisitos, configura `AUDIT_ENABLED=true`
+   y reinicia la release. Actualiza el lector de DesarrolloSeguro para enviar el JWT, validar la
    envolvente, `validUntil`, la firma, la cardinalidad y el enum real de
    privilegios antes de puntuar.
 
@@ -120,3 +152,22 @@ ACL del secreto. No hace falta modificar datos funcionales ni conectar otra
 red; Caddy conserva las rutas normales de Grumphya. Para revertir una release,
 se conserva la atestación de la release anterior junto con su evidencia hasta
 que venza la retención, sin reactivar una firma o `kid` revocados.
+
+## Estado de la preparación
+
+La implementación local queda preparada pero opt-in: `AUDIT_ENABLED=false`,
+`AUDIT_ALLOWED_NETWORKS` sigue pendiente de la IP/CIDR que observe el proxy y
+el canal TLS de ingesta no está publicado. No se ha activado ninguna ruta ni
+se ha lanzado un despliegue por este cambio.
+
+Las verificaciones ejecutadas sin consumir minutos de GitHub Actions fueron:
+
+- `node scripts/test-audit-contract.mjs`;
+- `node scripts/test-release-manifest.mjs`;
+- `pnpm --filter @grumphya/api exec vitest run src/audit` (23 tests);
+- `pnpm test` (1038 tests pasados, 25 omitidos);
+- `pnpm lint`, `pnpm typecheck`, `pnpm build` y `pnpm format:check`.
+
+La suite completa de tests se ejecutó con permiso local únicamente para sus
+listeners HTTP. No se conectó al VPS, no se reiniciaron contenedores y no se
+ejecutó GitHub Actions.

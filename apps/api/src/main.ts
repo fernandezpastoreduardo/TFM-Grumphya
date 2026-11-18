@@ -5,11 +5,13 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { createSecurityMiddleware } from "./security/security.middleware";
 import { LoginAbuseProtection } from "./security/login-abuse-protection.service";
+import { assertAuditRuntimeConfiguration } from "./audit/audit-technical-auth";
 
 const ACCESS_TOKEN_SECRET_MIN_BYTES = 32;
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === "production";
+  assertAuditRuntimeConfiguration();
   const httpsOptions = isProduction
     ? {
         cert: readRequiredTlsFile("API_TLS_CERT_FILE"),

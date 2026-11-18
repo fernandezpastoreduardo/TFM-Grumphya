@@ -37,11 +37,16 @@ function repository(
 
 function manifest() {
   return {
-    schemaVersion: "ds-audit-v1",
+    schemaVersion: "beta-d-0.2",
     environment: "production",
     deployment: {
       deploymentSha: "a".repeat(40),
-      images: { api: "sha256:api" },
+      images: {
+        api: "sha256:" + "a".repeat(64),
+        web: "sha256:" + "b".repeat(64),
+        database: "sha256:" + "c".repeat(64),
+        proxy: "sha256:" + "d".repeat(64),
+      },
     },
     dependencies: {
       packageCount: 10,
@@ -59,6 +64,7 @@ function signedManifest(value: Record<string, unknown>): string {
 
 afterEach(() => {
   delete process.env.AUDIT_RELEASE_MANIFEST_PUBLIC_KEY;
+  delete process.env.DEPLOY_SHA;
 });
 
 describe("AuditService", () => {
@@ -66,7 +72,7 @@ describe("AuditService", () => {
     const service = new AuditService(repository(), () => NOW);
 
     await expect(service.read("quality")).resolves.toEqual({
-      schemaVersion: "ds-audit-v1",
+      schemaVersion: "beta-d-0.2",
       observedAt: OBSERVED_AT.toISOString(),
       validUntil: VALID_UNTIL.toISOString(),
       items: [{ metric: "performance", value: 0.9 }],
@@ -94,6 +100,7 @@ describe("AuditService", () => {
   it("requires a valid Ed25519 release attestation for deployment data", async () => {
     const value = manifest();
     process.env.AUDIT_RELEASE_MANIFEST_PUBLIC_KEY = PUBLIC_KEY;
+    process.env.DEPLOY_SHA = "a".repeat(40);
     const service = new AuditService(
       repository({
         findLatestReleaseAttestation: async () => ({
@@ -107,7 +114,7 @@ describe("AuditService", () => {
     );
 
     await expect(service.read("deployment")).resolves.toMatchObject({
-      schemaVersion: "ds-audit-v1",
+      schemaVersion: "beta-d-0.2",
       items: [value.deployment],
     });
     await expect(service.read("dependencies")).resolves.toMatchObject({
@@ -118,6 +125,7 @@ describe("AuditService", () => {
   it("rejects an invalid release signature", async () => {
     const value = manifest();
     process.env.AUDIT_RELEASE_MANIFEST_PUBLIC_KEY = PUBLIC_KEY;
+    process.env.DEPLOY_SHA = "a".repeat(40);
     const service = new AuditService(
       repository({
         findLatestReleaseAttestation: async () => ({

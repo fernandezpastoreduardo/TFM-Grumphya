@@ -15,6 +15,7 @@ import {
 
 const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_QUERY_TIME_MS = 5_000;
+const IMAGE_NAMES = ["api", "web", "database", "proxy"] as const;
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -84,6 +85,32 @@ function envelope(
   return result;
 }
 
+function isProductionManifest(manifest: Record<string, unknown>): boolean {
+  const deployment = manifest.deployment;
+  if (!deployment || typeof deployment !== "object") return false;
+  const deploymentRecord = deployment as Record<string, unknown>;
+  const deploymentSha = deploymentRecord.deploymentSha;
+  const images = deploymentRecord.images;
+  if (
+    typeof deploymentSha !== "string" ||
+    !/^[0-9a-f]{40}$/u.test(deploymentSha) ||
+    !images ||
+    typeof images !== "object"
+  ) {
+    return false;
+  }
+  const imageRecord = images as Record<string, unknown>;
+  return (
+    IMAGE_NAMES.every(
+      (name) =>
+        typeof imageRecord[name] === "string" &&
+        /^sha256:[0-9a-f]{64}$/u.test(imageRecord[name] as string),
+    ) &&
+    Object.keys(imageRecord).length === IMAGE_NAMES.length &&
+    deploymentSha === process.env.DEPLOY_SHA
+  );
+}
+
 function signedManifestIsValid(
   attestation: ReleaseAttestationRecord,
   now: Date,
@@ -102,8 +129,7 @@ function signedManifestIsValid(
       ) &&
       attestation.manifest.schemaVersion === AUDIT_SCHEMA_VERSION &&
       attestation.manifest.environment === "production" &&
-      typeof attestation.manifest.deployment === "object" &&
-      attestation.manifest.deployment !== null &&
+      isProductionManifest(attestation.manifest) &&
       typeof attestation.manifest.dependencies === "object" &&
       attestation.manifest.dependencies !== null &&
       attestation.validUntil.getTime() > now.getTime()

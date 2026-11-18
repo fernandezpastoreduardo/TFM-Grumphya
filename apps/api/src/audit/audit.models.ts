@@ -1,4 +1,4 @@
-export const AUDIT_SCHEMA_VERSION = "ds-audit-v1" as const;
+export const AUDIT_SCHEMA_VERSION = "beta-d-0.2" as const;
 export const AUDIT_RESOURCES = [
   "infrastructure",
   "deployment",

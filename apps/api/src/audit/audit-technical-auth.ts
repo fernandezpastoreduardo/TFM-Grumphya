@@ -3,11 +3,15 @@ import type { Request, Response } from "express";
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { auditError } from "./audit-errors";
-import type { AuditResource } from "./audit.models";
+import { AUDIT_RESOURCES, type AuditResource } from "./audit.models";
 
 const BEARER_PREFIX = "Bearer ";
 const MAX_TOKEN_LIFETIME_SECONDS = 300;
 const DEFAULT_CLOCK_SKEW_SECONDS = 30;
+const REQUIRED_ISSUER = "desarrolloseguro-audit";
+const REQUIRED_AUDIENCE = "grumphya-audit";
+const REQUIRED_ENVIRONMENT = "production";
+const REQUIRED_DOMAIN = "grumphya.com";
 const IPV4_PATTERN = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u;
 const CIDR_PATTERN = /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d|[12]\d|3[0-2])$/u;
 
@@ -62,13 +66,10 @@ export function readAuditAuthConfig(
   return {
     enabled: environment.AUDIT_ENABLED === "true",
     identityActive: environment.AUDIT_TECHNICAL_IDENTITY_ACTIVE !== "false",
-    issuer: environment.AUDIT_TECHNICAL_AUTH_ISSUER ?? "desarrolloseguro-audit",
-    audience: environment.AUDIT_TECHNICAL_AUTH_AUDIENCE ?? "grumphya-audit",
-    environment: environment.AUDIT_TECHNICAL_AUTH_ENVIRONMENT ?? "production",
-    domain:
-      environment.AUDIT_TECHNICAL_AUTH_DOMAIN ??
-      environment.DOMAIN ??
-      "grumphya.com",
+    issuer: REQUIRED_ISSUER,
+    audience: REQUIRED_AUDIENCE,
+    environment: REQUIRED_ENVIRONMENT,
+    domain: REQUIRED_DOMAIN,
     publicKeyPem,
     allowedNetworks: (environment.AUDIT_ALLOWED_NETWORKS ?? "")
       .split(",")
@@ -97,6 +98,53 @@ function readPublicKey(environment: NodeJS.ProcessEnv): string | undefined {
     return readFileSync(file, "utf8");
   } catch {
     return undefined;
+  }
+}
+
+function readManifestPublicKey(
+  environment: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  const inline = environment.AUDIT_RELEASE_MANIFEST_PUBLIC_KEY?.trim();
+  if (inline) return inline.replace(/\\n/gu, "\n");
+  const file = environment.AUDIT_RELEASE_MANIFEST_PUBLIC_KEY_FILE?.trim();
+  if (!file) return undefined;
+  try {
+    return readFileSync(file, "utf8");
+  } catch {
+    return undefined;
+  }
+}
+
+function isEd25519PublicKey(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    return createPublicKey(value).asymmetricKeyType === "ed25519";
+  } catch {
+    return false;
+  }
+}
+
+function isValidNetwork(value: string): boolean {
+  const match = CIDR_PATTERN.exec(value);
+  return match !== null && ipv4ToNumber(match[1]) !== undefined;
+}
+
+export function assertAuditRuntimeConfiguration(
+  environment: NodeJS.ProcessEnv = process.env,
+): void {
+  const config = readAuditAuthConfig(environment);
+  const manifestPublicKey = readManifestPublicKey(environment);
+  if (!config.enabled) return;
+  if (
+    !isEd25519PublicKey(config.publicKeyPem) ||
+    config.allowedKids.length === 0 ||
+    config.allowedNetworks.length === 0 ||
+    config.allowedNetworks.some((network) => !isValidNetwork(network)) ||
+    !isEd25519PublicKey(manifestPublicKey)
+  ) {
+    throw new Error(
+      "AUDIT_ENABLED requires both public keys, an allowed kid and an allowed network.",
+    );
   }
 }
 
@@ -149,8 +197,21 @@ function numberClaim(value: unknown): number | undefined {
 
 function readScopes(value: unknown): Set<string> | undefined {
   if (typeof value !== "string") return undefined;
-  const scopes = new Set(value.split(/\s+/u).filter(Boolean));
-  return scopes.size > 0 ? scopes : undefined;
+  const values = value.split(/\s+/u).filter(Boolean);
+  const scopes = new Set(values);
+  return values.length > 0 && scopes.size === values.length
+    ? scopes
+    : undefined;
+}
+
+function scopesAreAllowlisted(scopes: Set<string>): boolean {
+  return [...scopes].every((scope) => {
+    const resource = scope.slice("audit:".length);
+    return (
+      scope.startsWith("audit:") &&
+      AUDIT_RESOURCES.includes(resource as AuditResource)
+    );
+  });
 }
 
 function ipv4ToNumber(value: string): number | undefined {
@@ -198,7 +259,7 @@ export function verifyTechnicalJwt(
     throw auditError(403, "insufficient_scope", "Identidad técnica no activa.");
   }
   const parsed = parseToken(token);
-  if (!parsed || parsed.header.alg !== "EdDSA") {
+  if (!parsed || parsed.header.alg !== "EdDSA" || parsed.header.typ !== "JWT") {
     throw auditError(401, "invalid_identity", "Identidad técnica no válida.");
   }
   let publicKey;
@@ -245,6 +306,7 @@ export function verifyTechnicalJwt(
     audience !== config.audience ||
     environment !== config.environment ||
     domain !== config.domain ||
+    !scopesAreAllowlisted(scopes) ||
     !scopes.has(requiredScope(resource)) ||
     config.allowedKids.length === 0 ||
     !config.allowedKids.includes(headerKid) ||
@@ -316,6 +378,13 @@ export class AuditTechnicalAuthGuard implements CanActivate {
         403,
         "insufficient_scope",
         "Red de auditoría no autorizada.",
+      );
+    }
+    if (request.header("cookie")) {
+      throw auditError(
+        401,
+        "invalid_identity",
+        "Las cookies no son válidas para la identidad técnica.",
       );
     }
     const identity = verifyTechnicalJwt(readBearer(request), resource, config);

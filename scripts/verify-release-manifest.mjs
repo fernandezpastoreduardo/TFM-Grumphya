@@ -41,7 +41,7 @@ try {
     );
   const valid =
     verify(null, Buffer.from(stableJson(manifest)), publicKey, signature) &&
-    manifest.schemaVersion === "ds-audit-v1" &&
+    manifest.schemaVersion === "beta-d-0.2" &&
     manifest.environment === "production" &&
     manifest.deployment?.deploymentSha === expectedSha &&
     hasImageDigests &&

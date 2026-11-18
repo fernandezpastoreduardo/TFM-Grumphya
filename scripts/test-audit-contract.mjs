@@ -15,6 +15,22 @@ const retention = await readFile(
   "apps/api/src/infrastructure/data-retention/data-retention.service.ts",
   "utf8",
 );
+const roleProvisioning = await readFile(
+  "scripts/provision-audit-roles.sh",
+  "utf8",
+);
+const auditRetention = await readFile(
+  "scripts/retire-audit-evidence.sh",
+  "utf8",
+);
+const optionalCompose = await readFile(
+  "docker/additional-sites.compose.yaml.example",
+  "utf8",
+);
+const productionComposeSmoke = await readFile(
+  "scripts/test-production-compose.sh",
+  "utf8",
+);
 
 const auditPaths = [
   "/audit/infrastructure",
@@ -56,12 +72,24 @@ for (const name of [
 }
 assert.match(migrationRegistry, /039_audit_evidence/);
 assert.match(migration, /CREATE SCHEMA IF NOT EXISTS audit/);
+assert.doesNotMatch(retention, /DELETE FROM audit\./i);
+assert.match(roleProvisioning, /PGSSLMODE.*verify-full/);
 assert.match(
-  retention,
-  /DELETE FROM audit\.evidence[\s\S]*?interval '30 days'/i,
+  roleProvisioning,
+  /GRANT SELECT ON TABLE audit\.evidence, audit\.release_attestations TO/,
 );
 assert.match(
-  retention,
-  /SELECT deployment_sha FROM audit\.release_attestations[\s\S]*?interval '30 days'/i,
+  roleProvisioning,
+  /GRANT INSERT, UPDATE ON TABLE audit\.evidence, audit\.release_attestations TO/,
 );
+assert.match(
+  roleProvisioning,
+  /GRANT DELETE ON TABLE audit\.evidence, audit\.release_attestations TO/,
+);
+assert.match(auditRetention, /DELETE FROM audit\.evidence/);
+assert.match(auditRetention, /DELETE FROM audit\.release_attestations/);
+assert.match(auditRetention, /interval '30 days'/);
+assert.match(auditRetention, /PGSSLMODE.*verify-full/);
+assert.doesNotMatch(optionalCompose, /development-security-edge/);
+assert.match(productionComposeSmoke, /AUDIT_ENABLED=false/);
 console.log("Audit contract configuration validated.");
