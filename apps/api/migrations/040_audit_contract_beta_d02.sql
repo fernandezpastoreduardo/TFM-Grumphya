@@ -1,4 +1,5 @@
 -- deployment-rollback-compatible: true
+-- deployment-schema-change: replace-audit-resource-check
 ALTER TABLE audit.evidence
   ADD COLUMN IF NOT EXISTS environment text NOT NULL DEFAULT 'production',
   ADD COLUMN IF NOT EXISTS deployment_digest text NOT NULL DEFAULT ('sha256:' || repeat('0', 64)),

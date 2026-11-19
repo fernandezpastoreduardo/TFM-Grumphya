@@ -356,6 +356,24 @@ is_approved_application_error_context_redaction_migration() {
   [[ $normalized_sql == "$expected_sql" ]]
 }
 
+is_approved_audit_contract_migration() {
+  local name=$1 content=$2 without_allowed_drop allowed_drop_count
+  local marker='-- deployment-schema-change: replace-audit-resource-check'
+  local allowed_drop='ALTER TABLE audit.evidence DROP CONSTRAINT IF EXISTS evidence_resource_check;'
+
+  [[ $name == '040_audit_contract_beta_d02.sql' ]] || return 1
+  grep -Fq -- "$marker" <<< "$content" || return 1
+  allowed_drop_count=$(grep -Fxc -- "$allowed_drop" <<< "$content")
+  [[ $allowed_drop_count == 1 ]] || return 1
+
+  without_allowed_drop=$(sed "\\|^${allowed_drop}$|d" <<< "$content")
+  if grep -Eiq '(^|[^[:alnum:]_])(DROP|TRUNCATE|DELETE|UPDATE)([^[:alnum:]_]|$)' <<< "$without_allowed_drop" ||
+    grep -Eiq 'ALTER[[:space:]]+TABLE[^;]*(RENAME|TYPE|SET[[:space:]]+NOT[[:space:]]+NULL|DROP)' <<< "$without_allowed_drop"; then
+    return 1
+  fi
+  return 0
+}
+
 migrations_compatible() {
   local previous_dir=$1 candidate_dir=$2 file name old_content new_content
   local marker='-- deployment-rollback-compatible: true'
@@ -388,7 +406,8 @@ migrations_compatible() {
     fi
     if [[ $new_content =~ $destructive || $new_content =~ $alter_destructive ]]; then
       if is_approved_illuminado_repricing_migration "$name" "$new_content" ||
-        is_approved_application_error_context_redaction_migration "$name" "$new_content"; then
+        is_approved_application_error_context_redaction_migration "$name" "$new_content" ||
+        is_approved_audit_contract_migration "$name" "$new_content"; then
         continue
       fi
       log "migration compatibility blocked: new migration $name contains a destructive operation"

@@ -392,6 +392,33 @@ DROP TABLE users;" '036_redact_application_error_context.sql'
   cleanup_fixture
 }
 
+test_audit_contract_migration_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" "$(<"$SCRIPT_DIR/../apps/api/migrations/040_audit_contract_beta_d02.sql")" \
+    '040_audit_contract_beta_d02.sql'
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'the audit contract constraint replacement was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after compatible audit contract migration'
+  cleanup_fixture
+}
+
+test_audit_contract_migration_rejects_extra_destructive_sql() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  local migration_content
+  migration_content=$(<"$SCRIPT_DIR/../apps/api/migrations/040_audit_contract_beta_d02.sql")
+  make_bundle "$NEW_SHA" "$migration_content
+DROP TABLE users;" '040_audit_contract_beta_d02.sql'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'the audit contract allowlist accepted extra destructive SQL'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after rejected audit contract migration'
+  cleanup_fixture
+}
+
 test_illuminado_repricing_migration_rejects_extra_destructive_sql() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -665,6 +692,8 @@ for test_case in \
   test_approved_illuminado_repricing_migration_is_rollback_compatible \
   test_application_error_context_redaction_is_rollback_compatible \
   test_application_error_context_redaction_rejects_extra_destructive_sql \
+  test_audit_contract_migration_is_rollback_compatible \
+  test_audit_contract_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_allowlist_requires_exact_migration_name \
   test_failed_compose_restores_previous \
