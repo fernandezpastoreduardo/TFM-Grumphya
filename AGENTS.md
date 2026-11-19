@@ -382,6 +382,20 @@ aria-label={`Ver evaluación de ${ideaTitle}`}
 
 Antes de ejecutar una suite, comprueba en sus tests y configuración si levanta un servidor HTTP en `127.0.0.1` u otra interfaz local. Las suites HTTP de la API necesitan permiso para abrir sockets: ejecútalas desde el principio con acceso local (`require_escalated`), en vez de lanzarlas primero en el entorno aislado y repetirlas después de `listen EPERM`. Las pruebas que no abren listeners pueden ejecutarse en el entorno aislado. Si aparece `listen EPERM`, trátalo como una limitación del entorno y vuelve a ejecutar con acceso local antes de valorar el resultado como fallo del código.
 
+#### Checkout enlazado y Docker
+
+- Este proyecto se ejecuta en un worktree enlazado. Las operaciones que escriben el
+  índice o referencias Git (`git add`, `git commit`, `git reset`, `git merge` y
+  `git push`) deben solicitar `require_escalated` desde el primer intento cuando el
+  sandbox no pueda escribir `.git/worktrees/...`; no repetir antes el mismo comando
+  en el entorno aislado.
+- Las pruebas que construyen o arrancan Compose necesitan acceso al daemon Docker.
+  Ejecuta desde el principio con `require_escalated` cualquier comando que use
+  `docker`, `docker compose` o `scripts/test-production-compose.sh`; no pruebes
+  primero desde el sandbox si el socket Docker está fuera de sus permisos.
+- La elevación solo amplía el acceso al índice Git o al daemon local requerido. No
+  autoriza conexiones al VPS, despliegues ni workflows de GitHub Actions por sí sola.
+
 ```bash
 # 1. Tests deben pasar 100%
 pnpm test

@@ -31,6 +31,12 @@ Este preflight no consume minutos de GitHub Actions, no toca el VPS y mantiene
 puede afectar al navegador o al runtime E2E; deja registrada la decisión y las
 puertas que sí se ejecutaron.
 
+Este checkout usa un worktree enlazado y el sandbox puede no tener permisos para su
+índice Git o para el socket de Docker. Cuando un comando vaya a escribir `.git` o a
+usar Docker, ejecútalo desde el primer intento con el acceso elevado de la terminal;
+no repitas antes la misma operación fallida en el sandbox. Esa elevación solo cubre
+el índice Git y el daemon Docker locales, no concede acceso al VPS ni inicia Actions.
+
 `pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y secretos HMAC de IP y access token aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
 
 ## Arranque

@@ -141,6 +141,13 @@ y se registra esa decisión junto con las comprobaciones ejecutadas. Las variabl
 secretos, permisos del repositorio y comportamiento exclusivo de GitHub siguen
 requiriendo una revisión explícita de Actions después de esta puerta local.
 
+En el checkout enlazado, ejecuta desde el primer intento con acceso elevado los
+comandos que escriban el índice Git o usen Docker (`git add`, `git commit`, `git push`,
+`docker compose` y el preflight de Compose). Así se evita confundir una denegación del
+sandbox sobre `.git/worktrees/...` o `docker.sock` con un bug del proyecto. La
+elevación solo afecta al índice Git y al daemon Docker locales; no toca el VPS ni
+consume Actions.
+
 La construcción, el escaneo Trivy y el smoke de las imágenes finales se ejecutan aparte del runner para que el socket Docker no entre en el contenedor de la aplicación:
 
 ```sh
