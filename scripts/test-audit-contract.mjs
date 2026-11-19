@@ -36,6 +36,14 @@ const productionComposeSmoke = await readFile(
   "utf8",
 );
 const auditSmoke = await readFile("scripts/smoke-audit-contract.mjs", "utf8");
+const rejectionSmoke = await readFile(
+  "scripts/smoke-audit-rejection.mjs",
+  "utf8",
+);
+const technicalAuth = await readFile(
+  "apps/api/src/audit/audit-technical-auth.ts",
+  "utf8",
+);
 
 const auditPaths = [
   "/audit/infrastructure",
@@ -111,4 +119,10 @@ assert.match(auditSmoke, /infrastructure/);
 assert.match(auditSmoke, /dependencies/);
 assert.match(auditSmoke, /redirect: "manual"/);
 assert.match(auditSmoke, /64 \* 1024/);
+assert.match(rejectionSmoke, /redirect: "manual"/);
+assert.match(rejectionSmoke, /AUDIT_REJECTION_SMOKE/);
+assert.doesNotMatch(rejectionSmoke, /console\.log\([^)]*invalidToken/);
+assert.match(technicalAuth, /AUDIT_REQUEST_REJECTED/);
+assert.match(technicalAuth, /requestRoute/);
+assert.match(technicalAuth, /readHeaderKid/);
 console.log("Audit contract configuration validated.");

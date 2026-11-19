@@ -1,5 +1,6 @@
 import { generateKeyPairSync, sign } from "node:crypto";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { Logger } from "@nestjs/common";
 import {
   AuditTechnicalAuthGuard,
   assertAuditRuntimeConfiguration,
@@ -200,5 +201,44 @@ describe("technical audit JWT", () => {
     } as never;
 
     expect(() => guard.canActivate(context)).toThrow(/cookies/i);
+  });
+
+  it("logs only safe fields for a rejected egress request", () => {
+    configure({ AUDIT_ALLOWED_NETWORKS: "31.70.130.181/32" });
+    const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => {
+      return undefined;
+    });
+    const guard = new AuditTechnicalAuthGuard();
+    const request = {
+      params: { resource: "quality" },
+      path: "/audit/quality?token=must-not-log",
+      ip: "31.70.130.181",
+      socket: { remoteAddress: "31.70.130.181" },
+      body: { secret: "must-not-log" },
+      header: (name: string) =>
+        name === "authorization"
+          ? `Bearer ${token().slice(0, -3)}bad`
+          : undefined,
+    };
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({ setHeader: () => undefined }),
+      }),
+    } as never;
+
+    expect(() => guard.canActivate(context)).toThrow(/identidad/i);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const event = JSON.parse(String(warn.mock.calls[0]?.[0]));
+    expect(event).toEqual({
+      event: "AUDIT_REQUEST_REJECTED",
+      code: "invalid_identity",
+      ip: "31.70.130.181",
+      route: "/audit/quality",
+      kid: "ds-auditor-2026",
+    });
+    expect(JSON.stringify(event)).not.toContain("must-not-log");
+    warn.mockRestore();
   });
 });

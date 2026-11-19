@@ -11,8 +11,11 @@ export type AuditErrorCode =
   | "evidence_unavailable";
 
 export class AuditHttpException extends HttpException {
+  readonly code: AuditErrorCode;
+
   constructor(status: HttpStatus, code: AuditErrorCode, message: string) {
     super({ code, message }, status);
+    this.code = code;
   }
 }
 

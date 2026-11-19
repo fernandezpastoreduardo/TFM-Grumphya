@@ -95,13 +95,11 @@ de identidades vigentes; `AUDIT_TECHNICAL_AUTH_REVOKED_KIDS` y
 denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
-Desarrollo Seguro ha observado `31.70.130.181/32` como IP de salida y
-`172.20.0.0/16` como red interna. En la comprobación operativa no se pudo
-observar todavía una petición de auditoría desde ese origen: el contenedor
-actual no resolvió `grumphya.com` y no tiene una ruta de salida utilizable. Por
-eso `AUDIT_ALLOWED_NETWORKS` sigue sin instalarse; no se acepta esa IP por
-suposición. Debe añadirse solo después de confirmar el origen que Caddy vea
-realmente. La auditoría permanece apagada y el proxy nunca se conecta a
+Desarrollo Seguro ha confirmado desde su bridge real que Caddy observa
+`31.70.130.181/32` como IP de salida; `172.20.0.0/16` es su red interna y el
+tráfico sale mediante MASQUERADE. El VPS tiene ahora
+`AUDIT_ALLOWED_NETWORKS=31.70.130.181/32`. Cualquier otro origen queda
+rechazado y la auditoría sigue apagada. El proxy nunca se conecta a
 `development-security-edge` para este contrato.
 
 ## Evidencia interna y atestación
@@ -174,10 +172,26 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `Content-Type: application/json`, la envolvente exacta, la firma
    presente, el `kid`, el `scope`, la cardinalidad y el límite de 64 KiB.
 
-4. Antes de cualquier activación debe estar cerrada la ACL observada. La
-   clave pública JWT y su huella, la clave pública de atestación y su `kid`,
-   los roles PostgreSQL y las pruebas de permisos ya están cerrados. Solo
-   entonces se puede cambiar a `AUDIT_ENABLED=true` en una release aprobada.
+   Desde la bridge de Desarrollo Seguro se puede comprobar el rechazo seguro
+   mientras la auditoría siga apagada:
+
+   ```bash
+   AUDIT_BASE_URL=https://grumphya.com \
+   AUDIT_REJECTION_STATUS=404 \
+   AUDIT_REJECTION_CODE=resource_not_allowed \
+   node scripts/smoke-audit-rejection.mjs
+   ```
+
+   En un entorno habilitado, la misma prueba usa `401` e
+   `invalid_identity`. El guard registra únicamente `code`, `ip`, `route` y
+   `kid` bajo el evento `AUDIT_REQUEST_REJECTED`; nunca registra el token, las
+   cookies ni el cuerpo.
+
+4. Antes de cualquier activación deben pasar el smoke autenticado y la prueba
+   operativa de rechazo desde `31.70.130.181/32`. La clave pública JWT y su
+   huella, la ACL, la clave pública de atestación y su `kid`, los roles
+   PostgreSQL y las pruebas de permisos ya están cerrados. Solo entonces se
+   puede cambiar a `AUDIT_ENABLED=true` en una release aprobada.
 5. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL y conserva
    las rutas normales. No hace falta reiniciar ni modificar datos funcionales.
 

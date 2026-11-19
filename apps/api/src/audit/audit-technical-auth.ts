@@ -1,8 +1,13 @@
-import { CanActivate, Injectable, type ExecutionContext } from "@nestjs/common";
+import {
+  CanActivate,
+  Injectable,
+  Logger,
+  type ExecutionContext,
+} from "@nestjs/common";
 import type { Request, Response } from "express";
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { auditError } from "./audit-errors";
+import { AuditHttpException, auditError } from "./audit-errors";
 import { AUDIT_RESOURCES, type AuditResource } from "./audit.models";
 
 const BEARER_PREFIX = "Bearer ";
@@ -368,42 +373,86 @@ function requestAddress(request: Request): string {
 
 @Injectable()
 export class AuditTechnicalAuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuditTechnicalAuthGuard.name);
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuditRequest>();
     const response = context.switchToHttp().getResponse<Response>();
-    const resource = request.params.resource as AuditResource | undefined;
-    if (!resource) {
-      throw auditError(
-        404,
-        "resource_not_allowed",
-        "Recurso de auditoría no permitido.",
+    try {
+      const resource = request.params.resource as AuditResource | undefined;
+      if (!resource) {
+        throw auditError(
+          404,
+          "resource_not_allowed",
+          "Recurso de auditoría no permitido.",
+        );
+      }
+      const config = readAuditAuthConfig();
+      if (!config.enabled) {
+        throw auditError(
+          404,
+          "resource_not_allowed",
+          "Recurso de auditoría no disponible.",
+        );
+      }
+      if (!isAllowedNetwork(requestAddress(request), config.allowedNetworks)) {
+        throw auditError(
+          403,
+          "insufficient_scope",
+          "Red de auditoría no autorizada.",
+        );
+      }
+      if (request.header("cookie")) {
+        throw auditError(
+          401,
+          "invalid_identity",
+          "Las cookies no son válidas para la identidad técnica.",
+        );
+      }
+      const identity = verifyTechnicalJwt(
+        readBearer(request),
+        resource,
+        config,
       );
+      request.auditTechnicalIdentity = identity;
+      response.setHeader("Cache-Control", "no-store");
+      return true;
+    } catch (error) {
+      if (error instanceof AuditHttpException) {
+        const kid = readHeaderKid(request);
+        this.logger.warn(
+          JSON.stringify({
+            event: "AUDIT_REQUEST_REJECTED",
+            code: error.code,
+            ip: requestAddress(request) || "unknown",
+            route: requestRoute(request),
+            ...(kid ? { kid } : {}),
+          }),
+        );
+      }
+      throw error;
     }
-    const config = readAuditAuthConfig();
-    if (!config.enabled) {
-      throw auditError(
-        404,
-        "resource_not_allowed",
-        "Recurso de auditoría no disponible.",
-      );
-    }
-    if (!isAllowedNetwork(requestAddress(request), config.allowedNetworks)) {
-      throw auditError(
-        403,
-        "insufficient_scope",
-        "Red de auditoría no autorizada.",
-      );
-    }
-    if (request.header("cookie")) {
-      throw auditError(
-        401,
-        "invalid_identity",
-        "Las cookies no son válidas para la identidad técnica.",
-      );
-    }
-    const identity = verifyTechnicalJwt(readBearer(request), resource, config);
-    request.auditTechnicalIdentity = identity;
-    response.setHeader("Cache-Control", "no-store");
-    return true;
+  }
+}
+
+function requestRoute(request: Request): string {
+  const rawRoute = request.path || request.url || request.originalUrl || "/";
+  return rawRoute.split("?", 1)[0].slice(0, 200);
+}
+
+function readHeaderKid(request: Request): string | undefined {
+  const authorization = request.header("authorization");
+  if (!authorization?.startsWith(BEARER_PREFIX)) return undefined;
+  const encodedHeader = authorization.slice(BEARER_PREFIX.length).split(".")[0];
+  if (!encodedHeader) return undefined;
+  try {
+    const header = JSON.parse(
+      Buffer.from(encodedHeader, "base64url").toString("utf8"),
+    ) as { kid?: unknown };
+    return typeof header.kid === "string" && header.kid.length <= 100
+      ? header.kid
+      : undefined;
+  } catch {
+    return undefined;
   }
 }
