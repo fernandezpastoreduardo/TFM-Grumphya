@@ -21,6 +21,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     httpsOptions,
   });
+  app.getHttpAdapter().getInstance().disable("x-powered-by");
   const webOrigin = process.env.WEB_ORIGIN;
   if (
     process.env.NODE_ENV === "production" &&

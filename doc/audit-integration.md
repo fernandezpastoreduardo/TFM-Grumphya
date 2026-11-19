@@ -2,9 +2,17 @@
 
 Esta integración es optativa y permanece cerrada mientras
 `AUDIT_ENABLED=false`. No modifica los flujos de usuarios, los datos
-funcionales, la red Docker ni las tablas de ideas. Si falta la configuración o
-la evidencia, las rutas de auditoría responden con un rechazo JSON y el resto
-de Grumphya funciona igual.
+funcionales, la red Docker ni las tablas de ideas. Con la opción apagada, las
+rutas de auditoría rechazan la consulta en JSON y el resto de Grumphya sigue
+operativo. Si se activa sin claves o ACL válidas, la API no arranca; si falta
+evidencia válida tras el arranque, la consulta autenticada devuelve
+`503 evidence_unavailable`.
+
+Estado observado en el VPS el 19 de noviembre de 2026: `AUDIT_ENABLED=true`,
+`AUDIT_ALLOWED_NETWORKS=172.30.0.1/32`, API recreada y saludable, y el proxy
+conserva su conexión a `development-security-ingress`. Estas comprobaciones no
+acreditan por sí solas la respuesta autenticada de las siete rutas ni el
+contenido de sus evidencias; verifica ambos con el smoke indicado abajo.
 
 El perfil implementado es `beta-d-0.2`. La primera identidad de Desarrollo
 Seguro usa el JWT `kid=ds-auditor-2026`. La PEM pública recibida se verificó
@@ -96,11 +104,22 @@ de identidades vigentes; `AUDIT_TECHNICAL_AUTH_REVOKED_KIDS` y
 denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
-Desarrollo Seguro ha confirmado desde su bridge real que Caddy observa
-`31.70.130.181/32` como IP de salida; `172.20.0.0/16` es su red interna y el
-tráfico sale mediante MASQUERADE. El VPS tiene ahora
-`AUDIT_ALLOWED_NETWORKS=31.70.130.181/32`. Cualquier otro origen queda
-rechazado y la auditoría sigue apagada. El proxy nunca se conecta a
+La IP pública `31.70.130.181` fue la salida externa observada en una prueba
+anterior; no es la dirección que Caddy ve al volver desde el bridge de
+Desarrollo Seguro al dominio público del mismo VPS. Ese recorrido hace
+hairpin NAT y Caddy observa `172.30.0.1`, puerta de enlace de la red `edge` de
+Grumphya. Por ello, la ACL instalada es
+`AUDIT_ALLOWED_NETWORKS=172.30.0.1/32`. `172.20.0.0/16` pertenece a la red
+interna de Desarrollo Seguro y no se añade a la ACL. El gateway de `edge` es
+un origen compartido: otros recorridos hairpin del host podrían presentar la
+misma IP. Por tanto, la ACL no identifica exclusivamente a Desarrollo Seguro.
+La verificación del JWT Ed25519, su `kid` permitido, el `scope`, el TTL máximo
+de cinco minutos y los límites de peticiones siguen siendo barreras
+independientes. Una separación más fuerte requeriría una salida de red
+dedicada o identidad autenticada en el transporte; no se aplica en esta beta.
+Cualquier otra dirección que llegue al guard queda rechazada. Si cambia la
+topología o el recorrido, vuelve a medir la IP que ve la API antes de cambiar
+la ACL; no amplíes el CIDR por suposición. El proxy nunca se conecta a
 `development-security-edge` para este contrato.
 
 ## Evidencia interna y atestación
@@ -189,8 +208,10 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `ds-auditor-2026`, `EVALUATION_PROVIDER` y `OPENAI_MODEL`. El archivo no
    debe contener credenciales de la API, OpenAI, SMTP ni la clave privada de
    atestación.
-3. Mantén `AUDIT_ENABLED=false`. La ausencia de la extensión, de la red o de
-   las claves deja el despliegue habitual operativo.
+3. Para preparar una instalación nueva, mantén `AUDIT_ENABLED=false` hasta
+   completar las comprobaciones de identidad, red y evidencia. El VPS descrito
+   arriba ya está habilitado; no cambies su estado solo para repetir la
+   preparación.
 4. Ejecuta las pruebas locales y el preflight. Tras disponer de un entorno
    habilitado, el smoke reproducible de las siete rutas es:
 
@@ -204,29 +225,33 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `Content-Type: application/json`, la envolvente exacta, la firma
    presente, el `kid`, el `scope`, la cardinalidad y el límite de 64 KiB.
 
-   Desde la bridge de Desarrollo Seguro se puede comprobar el rechazo seguro
-   mientras la auditoría siga apagada:
+   Desde el bridge de Desarrollo Seguro, comprueba el rechazo de un JWT
+   inválido contra la instancia actualmente habilitada:
 
    ```bash
    AUDIT_BASE_URL=https://grumphya.com \
-   AUDIT_REJECTION_STATUS=404 \
-   AUDIT_REJECTION_CODE=resource_not_allowed \
+   AUDIT_REJECTION_STATUS=401 \
+   AUDIT_REJECTION_CODE=invalid_identity \
    node scripts/smoke-audit-rejection.mjs
    ```
 
-   En un entorno habilitado, la misma prueba usa `401` e
-   `invalid_identity`. El guard registra únicamente `code`, `ip`, `route` y
+   En un entorno apagado, la misma prueba espera `404` y
+   `resource_not_allowed`; desde una red fuera de la ACL, la instancia
+   habilitada devuelve `403` e `insufficient_scope` antes de validar el JWT.
+   El guard registra únicamente `code`, `ip`, `route` y
    `kid` bajo el evento `AUDIT_REQUEST_REJECTED`; nunca registra el token, las
    cookies ni el cuerpo.
 
-5. Antes de cualquier activación deben pasar el smoke autenticado y la prueba
-   operativa de rechazo desde `31.70.130.181/32`. La clave pública JWT y su
+5. Antes de activar otra instancia deben pasar el smoke autenticado y la prueba
+   operativa de rechazo desde el origen hairpin observado, `172.30.0.1/32`,
+   o desde la IP que esa instancia vea realmente. La clave pública JWT y su
    huella, la ACL, la clave pública de atestación y su `kid`, los roles
    PostgreSQL, la persistencia de las siete evidencias y las pruebas de
    permisos ya deben estar cerrados. Solo entonces se puede cambiar a
    `AUDIT_ENABLED=true` en una release aprobada.
-6. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL y conserva
-   las rutas normales. No hace falta reiniciar ni modificar datos funcionales.
+6. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL, recrea la API
+   para que cargue la nueva configuración y comprueba su salud y las rutas
+   normales. No hace falta modificar datos funcionales.
 
 Para detectar rápidamente fallos de montaje de secretos, TLS, migraciones y
 permisos antes de publicar una release, usa el preflight aislado (no ejecuta

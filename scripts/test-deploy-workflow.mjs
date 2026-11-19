@@ -91,6 +91,14 @@ async function runScenario({
 try {
   await mkdir(binDirectory);
   await mkdir(runnerTemp);
+  await mkdir(join(tempRoot, "scripts"));
+  await writeFile(
+    join(tempRoot, "scripts/smoke-public-certification.sh"),
+    "#!/bin/bash\nexit 0\n",
+    {
+      mode: 0o755,
+    },
+  );
   await writeFile(join(tempRoot, "release-bundle.tar.gz"), bundle);
   await writeMock("stat", ['printf "%s\\n" "$RELEASE_BYTES"']);
   await writeMock("sha256sum", ['printf "%s  %s\\n" "$RELEASE_SHA256" "$1"']);

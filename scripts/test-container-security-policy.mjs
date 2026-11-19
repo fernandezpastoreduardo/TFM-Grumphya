@@ -15,6 +15,7 @@ const NGINX_SPA_PATH = "docker/nginx-spa.conf";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const PREFLIGHT_PATH = "scripts/ci-preflight.sh";
 const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
+const PUBLIC_CERTIFICATION_SMOKE_PATH = "scripts/smoke-public-certification.sh";
 const VPS_DEPLOY_HELPER_PATH = "docker/vps-deploy.sh";
 const INTERNAL_TLS_SCRIPT_PATH = "scripts/generate-internal-tls.sh";
 const POSTGRES_HBA_PATH = "docker/postgres-pg_hba.conf";
@@ -38,6 +39,7 @@ const [
   preflight,
   nginxSpa,
   productionComposeSmoke,
+  publicCertificationSmoke,
   migrationFiles,
   internalTlsScript,
   postgresHba,
@@ -54,6 +56,7 @@ const [
   readFile(PREFLIGHT_PATH, "utf8"),
   readFile(NGINX_SPA_PATH, "utf8"),
   readFile(PRODUCTION_COMPOSE_SMOKE_PATH, "utf8"),
+  readFile(PUBLIC_CERTIFICATION_SMOKE_PATH, "utf8"),
   readdir(MIGRATIONS_DIRECTORY),
   readFile(INTERNAL_TLS_SCRIPT_PATH, "utf8"),
   readFile(POSTGRES_HBA_PATH, "utf8"),
@@ -306,6 +309,11 @@ assert.match(
   /httpsOptions[\s\S]*readRequiredTlsFile\("API_TLS_CERT_FILE"\)/,
 );
 assert.match(
+  apiMain,
+  /getHttpAdapter\(\)\.getInstance\(\)\.disable\("x-powered-by"\)/,
+  "the API must not disclose its Express framework through x-powered-by",
+);
+assert.match(
   postgresPool,
   /rejectUnauthorized:\s*true[\s\S]*ca:\s*readFileSync\(caFile\)/,
 );
@@ -336,6 +344,31 @@ assert.ok(
     .slice(smokeStepStart, packageStepStart)
     .includes('bash scripts/test-production-compose.sh "${{ github.sha }}"'),
   "the production Compose smoke must use the exact scanned revision",
+);
+assert.match(
+  publicCertificationSmoke,
+  /https:\/\/\$DOMAIN\/api\/health/,
+  "the public certification smoke must verify the health endpoint",
+);
+assert.match(
+  publicCertificationSmoke,
+  /assert_tls_accepted tls1_2[\s\S]*assert_tls_accepted tls1_3[\s\S]*assert_tls_rejected tls1[\s\S]*assert_tls_rejected tls1_1/,
+  "the public certification smoke must cover accepted and rejected TLS versions",
+);
+assert.match(
+  publicCertificationSmoke,
+  /set-cookie/,
+  "the public certification smoke must reject cookies on the initial response",
+);
+const deployVerificationStart = workflow.indexOf(
+  "- name: Deploy and verify, rolling back on failed public health checks",
+);
+assert.ok(deployVerificationStart >= 0);
+const deployVerification = workflow.slice(deployVerificationStart);
+assert.ok(
+  deployVerification.split("bash scripts/smoke-public-certification.sh")
+    .length >= 3,
+  "deploy verification and rollback verification must run the public certification smoke",
 );
 const qualityJobStart = workflow.indexOf("  quality-and-e2e:");
 const e2eJobStart = workflow.indexOf("\n  e2e:", qualityJobStart);

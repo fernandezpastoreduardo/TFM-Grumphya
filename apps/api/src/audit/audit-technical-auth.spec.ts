@@ -182,6 +182,38 @@ describe("technical audit JWT", () => {
     expect(() => guard.canActivate(context)).toThrow(/red.*no autorizada/i);
   });
 
+  it("authorises the proxy-observed hairpin address instead of the bridge socket address", () => {
+    const observedAddress = "198.51.100.23";
+    configure({ AUDIT_ALLOWED_NETWORKS: `${observedAddress}/32` });
+    const now = Math.floor(Date.now() / 1_000);
+    const request = {
+      params: { resource: "quality" },
+      ip: observedAddress,
+      socket: { remoteAddress: "172.20.0.4" },
+      header: (name: string) =>
+        name === "authorization"
+          ? `Bearer ${token({ iat: now, exp: now + 240 })}`
+          : undefined,
+    };
+    const response = { setHeader: vi.fn() };
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => response,
+      }),
+    } as never;
+
+    expect(new AuditTechnicalAuthGuard().canActivate(context)).toBe(true);
+    expect(request).toHaveProperty(
+      "auditTechnicalIdentity.kid",
+      "ds-auditor-2026",
+    );
+    expect(response.setHeader).toHaveBeenCalledWith(
+      "Cache-Control",
+      "no-store",
+    );
+  });
+
   it("rejects cookies even when the bearer identity is valid", () => {
     configure();
     const guard = new AuditTechnicalAuthGuard();
