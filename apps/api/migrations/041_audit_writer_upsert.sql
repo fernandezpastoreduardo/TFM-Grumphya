@@ -17,7 +17,7 @@ SECURITY DEFINER
 SET search_path = audit, pg_catalog
 AS $function$
 BEGIN
-  UPDATE audit.evidence
+  update audit.evidence
   SET observed_at = p_observed_at,
       valid_until = p_valid_until,
       environment = p_environment,
@@ -53,7 +53,7 @@ BEGIN
         p_attestation
       );
     EXCEPTION WHEN unique_violation THEN
-      UPDATE audit.evidence
+      update audit.evidence
       SET observed_at = p_observed_at,
           valid_until = p_valid_until,
           environment = p_environment,

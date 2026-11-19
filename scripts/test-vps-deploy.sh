@@ -657,6 +657,19 @@ DELETE FROM baseline;'
   cleanup_fixture
 }
 
+test_lowercase_destructive_migration_is_blocked() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+delete from baseline;'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'lowercase destructive migration was accepted'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after lowercase destructive migration'
+  cleanup_fixture
+}
+
 test_changed_old_migration_is_blocked() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -735,6 +748,7 @@ for test_case in \
   test_all_internal_tls_secrets_are_required \
   test_internal_tls_secrets_reject_symlinks_and_broad_permissions \
   test_destructive_migration_is_blocked \
+  test_lowercase_destructive_migration_is_blocked \
   test_changed_old_migration_is_blocked \
   test_bootstrap_snapshots_running_images_without_recreating \
   test_gateway_accepts_only_allowlisted_commands; do

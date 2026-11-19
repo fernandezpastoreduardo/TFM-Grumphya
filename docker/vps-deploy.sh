@@ -385,7 +385,7 @@ is_approved_audit_contract_migration() {
 is_approved_audit_writer_migration() {
   local name=$1 content=$2 expected_hash actual_hash
   local marker='-- deployment-schema-change: add-audit-writer-upsert'
-  expected_hash='f59b2bc176dc41dedb16d7aad29c6d88c885231473acab02190909ae97b5f2de'
+  expected_hash='5badbebbd75eb3fd53f8aaba7a5f3613826a7606a4a13664e3147783c3bd9d0f'
 
   [[ $name == '041_audit_writer_upsert.sql' ]] || return 1
   grep -Fq -- "$marker" <<< "$content" || return 1
@@ -394,7 +394,7 @@ is_approved_audit_writer_migration() {
 }
 
 migrations_compatible() {
-  local previous_dir=$1 candidate_dir=$2 file name old_content new_content
+  local previous_dir=$1 candidate_dir=$2 file name old_content new_content normalized_content
   local marker='-- deployment-rollback-compatible: true'
   local destructive='(^|[^[:alnum:]_])(DROP|TRUNCATE|DELETE|UPDATE)([^[:alnum:]_]|$)'
   local alter_destructive='ALTER[[:space:]]+TABLE[^;]*(DROP|RENAME|TYPE|SET[[:space:]]+NOT[[:space:]]+NULL)'
@@ -419,11 +419,12 @@ migrations_compatible() {
     name=${file##*/}
     [[ -f $previous_dir/migrations/$name ]] && continue
     new_content=$(<"$file")
+    normalized_content=$(printf '%s' "$new_content" | tr '[:lower:]' '[:upper:]')
     if ! grep -Fq -- "$marker" <<< "$new_content"; then
       log "migration compatibility blocked: new migration $name lacks the compatibility marker"
       return 1
     fi
-    if [[ $new_content =~ $destructive || $new_content =~ $alter_destructive ]]; then
+    if [[ $normalized_content =~ $destructive || $normalized_content =~ $alter_destructive ]]; then
       if is_approved_illuminado_repricing_migration "$name" "$new_content" ||
         is_approved_application_error_context_redaction_migration "$name" "$new_content" ||
         is_approved_audit_contract_migration "$name" "$new_content" ||
