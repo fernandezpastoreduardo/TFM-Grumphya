@@ -378,7 +378,29 @@ jobs:
           import { sign, createPrivateKey } from "node:crypto";
           const [keyPath] = process.argv.slice(2);
           const key = createPrivateKey(await readFile(keyPath));
-          const manifest = await readFile("release/release-manifest.json");
+          const stableJson = (value) => {
+            if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+            if (value !== null && typeof value === "object") {
+              return `{${Object.entries(value)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+                .join(",")}}`;
+            }
+            return JSON.stringify(value) ?? "null";
+          };
+          const manifestPath = "release/release-manifest.json";
+          const manifestValue = JSON.parse(await readFile(manifestPath, "utf8"));
+          for (const envelope of Object.values(manifestValue.audit?.envelopes ?? {})) {
+            const unsigned = { ...envelope };
+            delete unsigned.attestation;
+            envelope.attestation.signature = sign(
+              null,
+              Buffer.from(stableJson(unsigned)),
+              key,
+            ).toString("base64url");
+          }
+          await writeFile(manifestPath, stableJson(manifestValue), { mode: 0o600 });
+          const manifest = await readFile(manifestPath);
           const signature = sign(null, manifest, key).toString("base64url");
           await writeFile("release/release-manifest.sig", signature, { mode: 0o600 });
           NODE

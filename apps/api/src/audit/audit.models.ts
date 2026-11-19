@@ -6,28 +6,48 @@ export const AUDIT_RESOURCES = [
   "auth",
   "quality",
   "privacy",
+  "ai",
 ] as const;
 
 export type AuditResource = (typeof AUDIT_RESOURCES)[number];
 export type AuditScope = `audit:${AuditResource}`;
+export const AUDIT_ENVIRONMENT = "production" as const;
+export const AUDIT_ATTESTATION_ALGORITHM = "EdDSA" as const;
+export const AUDIT_RELEASE_ATTESTATION_KID = "grumphya-release-2026" as const;
+
+export type AuditAttestation = {
+  alg: typeof AUDIT_ATTESTATION_ALGORITHM;
+  kid: string;
+  signature: string;
+};
 
 export type AuditEnvelope = {
-  schemaVersion: typeof AUDIT_SCHEMA_VERSION;
-  observedAt: string;
-  validUntil: string;
-  items: unknown[];
+  hostname: "grumphya.com";
+  environment: typeof AUDIT_ENVIRONMENT;
+  generatedAt: string;
+  expiresAt: string;
+  profile: typeof AUDIT_SCHEMA_VERSION;
+  scope: AuditScope;
+  evidence: unknown;
+  attestation: AuditAttestation;
+  kid: string;
 };
 
 export type AuditEvidenceRecord = {
   resource: AuditResource;
   observedAt: Date;
   validUntil: Date;
-  items: unknown[];
+  environment: string;
+  jwtKid: string;
+  cardinality: number;
+  evidence: unknown;
+  attestation: unknown;
 };
 
 export type ReleaseAttestationRecord = {
   manifest: Record<string, unknown>;
   signature: string;
+  kid: string;
   observedAt: Date;
   validUntil: Date;
 };

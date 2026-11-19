@@ -16,6 +16,7 @@ const ENVIRONMENT_KEYS = [
   "AUDIT_TECHNICAL_IDENTITY_ACTIVE",
   "AUDIT_TECHNICAL_AUTH_PUBLIC_KEY",
   "AUDIT_RELEASE_MANIFEST_PUBLIC_KEY",
+  "AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS",
   "AUDIT_ALLOWED_NETWORKS",
   "AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS",
   "AUDIT_TECHNICAL_AUTH_REVOKED_KIDS",
@@ -31,6 +32,7 @@ function token(
     aud: "grumphya-audit",
     environment: "production",
     domain: "grumphya.com",
+    hostname: "grumphya.com",
     scope: "audit:quality",
     iat: NOW,
     exp: NOW + 240,
@@ -62,6 +64,7 @@ function configure(overrides: NodeJS.ProcessEnv = {}): void {
   process.env.AUDIT_TECHNICAL_AUTH_PUBLIC_KEY = PUBLIC_KEY;
   process.env.AUDIT_ALLOWED_NETWORKS = "127.0.0.1/32";
   process.env.AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS = "ds-auditor-2026";
+  process.env.AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS = "grumphya-release-2026";
   for (const [key, value] of Object.entries(overrides)) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;

@@ -6,20 +6,39 @@ function request(
   resource: string,
   query: Record<string, string> = {},
 ) {
-  return { method, params: { resource }, query } as never;
+  return {
+    method,
+    params: { resource },
+    query,
+    auditTechnicalIdentity: {
+      issuer: "desarrolloseguro-audit",
+      audience: "grumphya-audit",
+      environment: "production",
+      domain: "grumphya.com",
+      hostname: "grumphya.com",
+      scopes: new Set([`audit:${resource}`]),
+      issuedAt: 1_800_000_000,
+      expiresAt: 1_800_000_240,
+      jti: "request-1",
+      kid: "ds-auditor-2026",
+    },
+  } as never;
 }
 
 describe("AuditController", () => {
   it("reads an allowed resource without rendering HTML", async () => {
     const service = {
-      read: vi.fn().mockResolvedValue({ schemaVersion: "beta-d-0.2" }),
+      read: vi.fn().mockResolvedValue({ profile: "beta-d-0.2" }),
     };
     const controller = new AuditController(service as never);
 
     await expect(controller.read(request("GET", "quality"))).resolves.toEqual({
-      schemaVersion: "beta-d-0.2",
+      profile: "beta-d-0.2",
     });
-    expect(service.read).toHaveBeenCalledWith("quality");
+    expect(service.read).toHaveBeenCalledWith(
+      "quality",
+      expect.objectContaining({ kid: "ds-auditor-2026" }),
+    );
   });
 
   it.each([

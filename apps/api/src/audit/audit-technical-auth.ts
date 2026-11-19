@@ -12,6 +12,7 @@ const REQUIRED_ISSUER = "desarrolloseguro-audit";
 const REQUIRED_AUDIENCE = "grumphya-audit";
 const REQUIRED_ENVIRONMENT = "production";
 const REQUIRED_DOMAIN = "grumphya.com";
+const REQUIRED_HOSTNAME = "grumphya.com";
 const IPV4_PATTERN = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u;
 const CIDR_PATTERN = /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d|[12]\d|3[0-2])$/u;
 
@@ -20,6 +21,7 @@ export type AuditTechnicalIdentity = {
   audience: string;
   environment: string;
   domain: string;
+  hostname: string;
   scopes: Set<string>;
   issuedAt: number;
   expiresAt: number;
@@ -37,6 +39,7 @@ type JwtClaims = {
   aud?: unknown;
   environment?: unknown;
   domain?: unknown;
+  hostname?: unknown;
   scope?: unknown;
   iat?: unknown;
   exp?: unknown;
@@ -51,11 +54,13 @@ type AuditAuthConfig = {
   audience: string;
   environment: string;
   domain: string;
+  hostname: string;
   publicKeyPem?: string;
   allowedNetworks: string[];
   allowedKids: string[];
   revokedKids: string[];
   revokedJtis: string[];
+  manifestAllowedKids: string[];
   clockSkewSeconds: number;
 };
 
@@ -70,6 +75,7 @@ export function readAuditAuthConfig(
     audience: REQUIRED_AUDIENCE,
     environment: REQUIRED_ENVIRONMENT,
     domain: REQUIRED_DOMAIN,
+    hostname: REQUIRED_HOSTNAME,
     publicKeyPem,
     allowedNetworks: (environment.AUDIT_ALLOWED_NETWORKS ?? "")
       .split(",")
@@ -78,6 +84,9 @@ export function readAuditAuthConfig(
     allowedKids: readList(environment.AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS),
     revokedKids: readList(environment.AUDIT_TECHNICAL_AUTH_REVOKED_KIDS),
     revokedJtis: readList(environment.AUDIT_TECHNICAL_AUTH_REVOKED_JTIS),
+    manifestAllowedKids: readList(
+      environment.AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS,
+    ),
     clockSkewSeconds: parseClockSkew(environment.AUDIT_CLOCK_SKEW_SECONDS),
   };
 }
@@ -138,6 +147,7 @@ export function assertAuditRuntimeConfiguration(
   if (
     !isEd25519PublicKey(config.publicKeyPem) ||
     config.allowedKids.length === 0 ||
+    config.manifestAllowedKids.length === 0 ||
     config.allowedNetworks.length === 0 ||
     config.allowedNetworks.some((network) => !isValidNetwork(network)) ||
     !isEd25519PublicKey(manifestPublicKey)
@@ -279,6 +289,7 @@ export function verifyTechnicalJwt(
   const audience = stringClaim(parsed.claims.aud);
   const environment = stringClaim(parsed.claims.environment);
   const domain = stringClaim(parsed.claims.domain);
+  const hostname = stringClaim(parsed.claims.hostname);
   const scopes = readScopes(parsed.claims.scope);
   const issuedAt = numberClaim(parsed.claims.iat);
   const expiresAt = numberClaim(parsed.claims.exp);
@@ -290,6 +301,7 @@ export function verifyTechnicalJwt(
     !audience ||
     !environment ||
     !domain ||
+    !hostname ||
     !scopes ||
     issuedAt === undefined ||
     expiresAt === undefined ||
@@ -306,6 +318,7 @@ export function verifyTechnicalJwt(
     audience !== config.audience ||
     environment !== config.environment ||
     domain !== config.domain ||
+    hostname !== config.hostname ||
     !scopesAreAllowlisted(scopes) ||
     !scopes.has(requiredScope(resource)) ||
     config.allowedKids.length === 0 ||
@@ -328,6 +341,7 @@ export function verifyTechnicalJwt(
     audience,
     environment,
     domain,
+    hostname,
     scopes,
     issuedAt,
     expiresAt,

@@ -4,18 +4,38 @@ import { readFileSync } from "node:fs";
 import { auditError } from "./audit-errors";
 import { assertAuditResponseSize } from "./audit-request-policy";
 import {
-  AUDIT_EVIDENCE_REPOSITORY,
+  AUDIT_ATTESTATION_ALGORITHM,
   AUDIT_CLOCK,
+  AUDIT_ENVIRONMENT,
+  AUDIT_EVIDENCE_REPOSITORY,
   AUDIT_SCHEMA_VERSION,
+  type AuditAttestation,
   type AuditEnvelope,
+  type AuditEvidenceRecord,
   type AuditEvidenceRepository,
   type AuditResource,
   type ReleaseAttestationRecord,
 } from "./audit.models";
+import type { AuditTechnicalIdentity } from "./audit-technical-auth";
 
 const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_QUERY_TIME_MS = 5_000;
+const REQUIRED_HOSTNAME = "grumphya.com" as const;
+const RELEASE_ATTESTATION_KID = "grumphya-release-2026" as const;
 const IMAGE_NAMES = ["api", "web", "database", "proxy"] as const;
+const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/u;
+const ATTESTATION_KEYS = ["alg", "kid", "signature"] as const;
+const ENVELOPE_KEYS = [
+  "hostname",
+  "environment",
+  "generatedAt",
+  "expiresAt",
+  "profile",
+  "scope",
+  "evidence",
+  "attestation",
+  "kid",
+] as const;
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -42,18 +62,25 @@ function readManifestPublicKey(
   }
 }
 
-function toIso(value: Date): string {
-  return value.toISOString();
+function readAllowedManifestKids(
+  environment: NodeJS.ProcessEnv = process.env,
+): string[] {
+  return (environment.AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 function validateFreshness(
-  observedAt: Date,
-  validUntil: Date,
+  generatedAt: Date,
+  expiresAt: Date,
   now: Date,
 ): void {
   if (
-    validUntil.getTime() <= now.getTime() ||
-    observedAt.getTime() > now.getTime() + 30_000
+    !Number.isFinite(generatedAt.getTime()) ||
+    !Number.isFinite(expiresAt.getTime()) ||
+    expiresAt.getTime() <= now.getTime() ||
+    generatedAt.getTime() > now.getTime() + 30_000
   ) {
     throw auditError(
       503,
@@ -61,7 +88,7 @@ function validateFreshness(
       "La evidencia de auditoría ha caducado.",
     );
   }
-  if (now.getTime() - observedAt.getTime() > MAX_EVIDENCE_AGE_MS) {
+  if (now.getTime() - generatedAt.getTime() > MAX_EVIDENCE_AGE_MS) {
     throw auditError(
       503,
       "evidence_unavailable",
@@ -70,24 +97,227 @@ function validateFreshness(
   }
 }
 
-function envelope(
-  observedAt: Date,
-  validUntil: Date,
-  items: unknown[],
-): AuditEnvelope {
-  const result: AuditEnvelope = {
-    schemaVersion: AUDIT_SCHEMA_VERSION,
-    observedAt: toIso(observedAt),
-    validUntil: toIso(validUntil),
-    items,
+function readAttestation(value: unknown): AuditAttestation | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).length !== ATTESTATION_KEYS.length ||
+    !ATTESTATION_KEYS.every((key) => key in record) ||
+    record.alg !== AUDIT_ATTESTATION_ALGORITHM ||
+    typeof record.kid !== "string" ||
+    record.kid.length === 0 ||
+    typeof record.signature !== "string" ||
+    record.signature.length === 0
+  ) {
+    return undefined;
+  }
+  return {
+    alg: AUDIT_ATTESTATION_ALGORITHM,
+    kid: record.kid,
+    signature: record.signature,
   };
+}
+
+function validateEvidenceContent(value: unknown): boolean {
+  if (typeof value === "string") {
+    return (
+      value.length <= 2048 &&
+      !/<[^>]+>/u.test(value) &&
+      !/https?:\/\//u.test(value)
+    );
+  }
+  if (Array.isArray(value)) {
+    return value.length <= 1 && value.every(validateEvidenceContent);
+  }
+  if (value === null || typeof value !== "object") return true;
+  return Object.entries(value as Record<string, unknown>).every(
+    ([key, child]) =>
+      !/(cookie|token|password|authorization|email|url|html|script|trace|sbom|^packages?$|^package[_-](list|inventory)$)/iu.test(
+        key,
+      ) && validateEvidenceContent(child),
+  );
+}
+
+function verifyEnvelopeAttestation(
+  unsigned: Omit<AuditEnvelope, "attestation">,
+  attestation: AuditAttestation,
+): boolean {
+  const publicKeyPem = readManifestPublicKey();
+  const allowedKids = readAllowedManifestKids();
+  if (!publicKeyPem || !allowedKids.includes(attestation.kid)) return false;
+  try {
+    const publicKey = createPublicKey(publicKeyPem);
+    return verify(
+      null,
+      Buffer.from(stableJson(unsigned)),
+      publicKey,
+      Buffer.from(attestation.signature, "base64url"),
+    );
+  } catch {
+    return false;
+  }
+}
+
+function unsignedEnvelope(
+  resource: AuditResource,
+  evidence: unknown,
+  generatedAt: Date,
+  expiresAt: Date,
+  jwtKid: string,
+): Omit<AuditEnvelope, "attestation"> {
+  return {
+    hostname: REQUIRED_HOSTNAME,
+    environment: AUDIT_ENVIRONMENT,
+    generatedAt: generatedAt.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+    profile: AUDIT_SCHEMA_VERSION,
+    scope: `audit:${resource}`,
+    evidence,
+    kid: jwtKid,
+  };
+}
+
+function assertCardinality(value: unknown, cardinality: number): void {
+  if (
+    cardinality !== 1 ||
+    (Array.isArray(value) && value.length > 1) ||
+    !validateEvidenceContent(value)
+  ) {
+    throw auditError(
+      503,
+      "evidence_unavailable",
+      "La evidencia de auditoría no cumple el contrato.",
+    );
+  }
+}
+
+function buildEnvelope(
+  value: AuditEvidenceRecord,
+  resource: AuditResource,
+  identity: AuditTechnicalIdentity,
+  now: Date,
+): AuditEnvelope {
+  validateFreshness(value.observedAt, value.validUntil, now);
+  if (
+    value.resource !== resource ||
+    value.environment !== AUDIT_ENVIRONMENT ||
+    value.jwtKid !== identity.kid
+  ) {
+    throw auditError(
+      503,
+      "evidence_unavailable",
+      "La evidencia de auditoría no está vinculada a la identidad solicitante.",
+    );
+  }
+  assertCardinality(value.evidence, value.cardinality);
+  const attestation = readAttestation(value.attestation);
+  if (!attestation) {
+    throw auditError(
+      503,
+      "evidence_unavailable",
+      "La atestación de auditoría no es válida.",
+    );
+  }
+  const unsigned = unsignedEnvelope(
+    resource,
+    value.evidence,
+    value.observedAt,
+    value.validUntil,
+    identity.kid,
+  );
+  if (!verifyEnvelopeAttestation(unsigned, attestation)) {
+    throw auditError(
+      503,
+      "evidence_unavailable",
+      "La atestación de auditoría no es válida.",
+    );
+  }
+  const result: AuditEnvelope = { ...unsigned, attestation };
   assertAuditResponseSize(result);
   return result;
 }
 
+function parseStoredEnvelope(
+  value: unknown,
+  resource: AuditResource,
+): AuditEnvelope | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  if (
+    Object.keys(record).length !== ENVELOPE_KEYS.length ||
+    !ENVELOPE_KEYS.every((key) => key in record) ||
+    record.hostname !== REQUIRED_HOSTNAME ||
+    record.environment !== AUDIT_ENVIRONMENT ||
+    record.profile !== AUDIT_SCHEMA_VERSION ||
+    record.scope !== `audit:${resource}` ||
+    typeof record.generatedAt !== "string" ||
+    typeof record.expiresAt !== "string" ||
+    typeof record.kid !== "string" ||
+    record.kid.length === 0 ||
+    !validateEvidenceContent(record.evidence)
+  ) {
+    return undefined;
+  }
+  const attestation = readAttestation(record.attestation);
+  if (!attestation) return undefined;
+  return {
+    hostname: REQUIRED_HOSTNAME,
+    environment: AUDIT_ENVIRONMENT,
+    generatedAt: record.generatedAt,
+    expiresAt: record.expiresAt,
+    profile: AUDIT_SCHEMA_VERSION,
+    scope: `audit:${resource}`,
+    evidence: record.evidence,
+    attestation,
+    kid: record.kid,
+  };
+}
+
+function validateStoredEnvelope(
+  stored: AuditEnvelope,
+  resource: AuditResource,
+  identity: AuditTechnicalIdentity,
+  now: Date,
+): AuditEnvelope {
+  if (stored.kid !== identity.kid) {
+    throw auditError(
+      503,
+      "evidence_unavailable",
+      "La evidencia de auditoría no está vinculada a la identidad activa.",
+    );
+  }
+  const generatedAt = new Date(stored.generatedAt);
+  const expiresAt = new Date(stored.expiresAt);
+  validateFreshness(generatedAt, expiresAt, now);
+  const unsigned = unsignedEnvelope(
+    resource,
+    stored.evidence,
+    generatedAt,
+    expiresAt,
+    identity.kid,
+  );
+  if (!verifyEnvelopeAttestation(unsigned, stored.attestation)) {
+    throw auditError(
+      503,
+      "evidence_unavailable",
+      "La atestación de auditoría no es válida.",
+    );
+  }
+  assertAuditResponseSize(stored);
+  return stored;
+}
+
 function isProductionManifest(manifest: Record<string, unknown>): boolean {
   const deployment = manifest.deployment;
-  if (!deployment || typeof deployment !== "object") return false;
+  const deploymentDigest = manifest.deploymentDigest;
+  if (
+    !deployment ||
+    typeof deployment !== "object" ||
+    typeof deploymentDigest !== "string" ||
+    !DIGEST_PATTERN.test(deploymentDigest)
+  ) {
+    return false;
+  }
   const deploymentRecord = deployment as Record<string, unknown>;
   const deploymentSha = deploymentRecord.deploymentSha;
   const images = deploymentRecord.images;
@@ -104,11 +334,22 @@ function isProductionManifest(manifest: Record<string, unknown>): boolean {
     IMAGE_NAMES.every(
       (name) =>
         typeof imageRecord[name] === "string" &&
-        /^sha256:[0-9a-f]{64}$/u.test(imageRecord[name] as string),
+        DIGEST_PATTERN.test(imageRecord[name] as string),
     ) &&
     Object.keys(imageRecord).length === IMAGE_NAMES.length &&
     deploymentSha === process.env.DEPLOY_SHA
   );
+}
+
+function manifestEnvelope(
+  manifest: Record<string, unknown>,
+  resource: AuditResource,
+): unknown {
+  const audit = manifest.audit;
+  if (!audit || typeof audit !== "object") return undefined;
+  const envelopes = (audit as Record<string, unknown>).envelopes;
+  if (!envelopes || typeof envelopes !== "object") return undefined;
+  return (envelopes as Record<string, unknown>)[resource];
 }
 
 function signedManifestIsValid(
@@ -116,22 +357,55 @@ function signedManifestIsValid(
   now: Date,
 ): boolean {
   const publicKeyPem = readManifestPublicKey();
-  if (!publicKeyPem) return false;
+  const allowedKids = readAllowedManifestKids();
+  if (
+    !publicKeyPem ||
+    !allowedKids.includes(attestation.kid) ||
+    attestation.kid !== RELEASE_ATTESTATION_KID
+  ) {
+    return false;
+  }
   try {
     const publicKey = createPublicKey(publicKeyPem);
-    const signature = Buffer.from(attestation.signature, "base64url");
+    const signatureValid = verify(
+      null,
+      Buffer.from(stableJson(attestation.manifest)),
+      publicKey,
+      Buffer.from(attestation.signature, "base64url"),
+    );
+    const envelopesValid = (["deployment", "dependencies"] as const).every(
+      (resource) => {
+        const envelope = parseStoredEnvelope(
+          manifestEnvelope(attestation.manifest, resource),
+          resource,
+        );
+        return (
+          envelope !== undefined &&
+          envelope.attestation.kid === attestation.kid &&
+          verifyEnvelopeAttestation(
+            {
+              hostname: envelope.hostname,
+              environment: envelope.environment,
+              generatedAt: envelope.generatedAt,
+              expiresAt: envelope.expiresAt,
+              profile: envelope.profile,
+              scope: envelope.scope,
+              evidence: envelope.evidence,
+              kid: envelope.kid,
+            },
+            envelope.attestation,
+          )
+        );
+      },
+    );
     return (
-      verify(
-        null,
-        Buffer.from(stableJson(attestation.manifest)),
-        publicKey,
-        signature,
-      ) &&
+      signatureValid &&
       attestation.manifest.schemaVersion === AUDIT_SCHEMA_VERSION &&
-      attestation.manifest.environment === "production" &&
+      attestation.manifest.environment === AUDIT_ENVIRONMENT &&
       isProductionManifest(attestation.manifest) &&
       typeof attestation.manifest.dependencies === "object" &&
       attestation.manifest.dependencies !== null &&
+      envelopesValid &&
       attestation.validUntil.getTime() > now.getTime()
     );
   } catch {
@@ -148,10 +422,13 @@ export class AuditService {
     private readonly clock: () => Date = () => new Date(),
   ) {}
 
-  async read(resource: AuditResource): Promise<AuditEnvelope> {
+  async read(
+    resource: AuditResource,
+    identity: AuditTechnicalIdentity,
+  ): Promise<AuditEnvelope> {
     const now = this.clock();
     if (resource === "deployment" || resource === "dependencies") {
-      return this.readAttested(resource, now);
+      return this.readAttested(resource, identity, now);
     }
     const record = await this.withTimeout(
       this.repository.findLatestEvidence(resource),
@@ -163,12 +440,12 @@ export class AuditService {
         "La evidencia de auditoría no está disponible.",
       );
     }
-    validateFreshness(record.observedAt, record.validUntil, now);
-    return envelope(record.observedAt, record.validUntil, record.items);
+    return buildEnvelope(record, resource, identity, now);
   }
 
   private async readAttested(
     resource: "deployment" | "dependencies",
+    identity: AuditTechnicalIdentity,
     now: Date,
   ): Promise<AuditEnvelope> {
     const attestation = await this.withTimeout(
@@ -181,9 +458,18 @@ export class AuditService {
         "La atestación de release no está disponible.",
       );
     }
-    validateFreshness(attestation.observedAt, attestation.validUntil, now);
-    const item = attestation.manifest[resource];
-    return envelope(attestation.observedAt, attestation.validUntil, [item]);
+    const envelope = parseStoredEnvelope(
+      manifestEnvelope(attestation.manifest, resource),
+      resource,
+    );
+    if (!envelope) {
+      throw auditError(
+        503,
+        "evidence_unavailable",
+        "La evidencia de release no está disponible.",
+      );
+    }
+    return validateStoredEnvelope(envelope, resource, identity, now);
   }
 
   private async withTimeout<T>(promise: Promise<T>): Promise<T> {

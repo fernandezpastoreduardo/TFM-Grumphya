@@ -116,6 +116,10 @@ const MIGRATIONS = [
     "038_admin_lighthouse_quality.sql",
   ),
   defineMigration("039_audit_evidence", "039_audit_evidence.sql"),
+  defineMigration(
+    "040_audit_contract_beta_d02",
+    "040_audit_contract_beta_d02.sql",
+  ),
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 
 const [, , manifestPath, signaturePath, publicKeyPath, expectedSha] =
   process.argv;
+const RELEASE_ATTESTATION_KID = "grumphya-release-2026";
+const AUDIT_JWT_KID = "ds-auditor-2026";
 if (
   !manifestPath ||
   !signaturePath ||
@@ -39,12 +41,41 @@ try {
     Object.values(imageDigests).every((value) =>
       /^sha256:[0-9a-f]{64}$/u.test(value),
     );
+  const hasAuditEnvelopes = ["deployment", "dependencies"].every((resource) => {
+    const envelope = manifest.audit?.envelopes?.[resource];
+    if (!envelope) return false;
+    const { attestation, ...unsigned } = envelope;
+    if (
+      envelope.hostname !== "grumphya.com" ||
+      envelope.environment !== "production" ||
+      envelope.profile !== "beta-d-0.2" ||
+      envelope.scope !== `audit:${resource}` ||
+      envelope.kid !== AUDIT_JWT_KID ||
+      !Number.isFinite(Date.parse(envelope.generatedAt)) ||
+      !Number.isFinite(Date.parse(envelope.expiresAt)) ||
+      Date.parse(envelope.expiresAt) <= Date.parse(envelope.generatedAt) ||
+      attestation?.alg !== "EdDSA" ||
+      attestation.kid !== RELEASE_ATTESTATION_KID ||
+      typeof attestation.signature !== "string" ||
+      !attestation.signature
+    ) {
+      return false;
+    }
+    return verify(
+      null,
+      Buffer.from(stableJson(unsigned)),
+      publicKey,
+      Buffer.from(attestation.signature, "base64url"),
+    );
+  });
   const valid =
     verify(null, Buffer.from(stableJson(manifest)), publicKey, signature) &&
     manifest.schemaVersion === "beta-d-0.2" &&
     manifest.environment === "production" &&
     manifest.deployment?.deploymentSha === expectedSha &&
+    /^sha256:[0-9a-f]{64}$/u.test(manifest.deploymentDigest ?? "") &&
     hasImageDigests &&
+    hasAuditEnvelopes &&
     typeof manifest.dependencies?.dependencyInventoryDigest === "string" &&
     /^[0-9a-f]{64}$/u.test(manifest.dependencies.dependencyInventoryDigest) &&
     Number.isFinite(observedAt) &&

@@ -10,12 +10,17 @@ type EvidenceRow = {
   resource: AuditResource;
   observed_at: Date;
   valid_until: Date;
-  items: unknown;
+  environment: string;
+  cardinality: number;
+  jwt_kid: string;
+  evidence: unknown;
+  attestation: unknown;
 };
 
 type AttestationRow = {
   manifest: unknown;
   signature: string;
+  kid: string;
   observed_at: Date;
   valid_until: Date;
 };
@@ -27,7 +32,8 @@ export class PostgresAuditEvidenceRepository implements AuditEvidenceRepository 
     resource: AuditResource,
   ): Promise<AuditEvidenceRecord | null> {
     const result = await this.pool.query<EvidenceRow>(
-      `SELECT resource, observed_at, valid_until, items
+      `SELECT resource, observed_at, valid_until, environment,
+              cardinality, jwt_kid, items AS evidence, attestation
        FROM audit.evidence
        WHERE resource = $1
        ORDER BY observed_at DESC
@@ -35,18 +41,22 @@ export class PostgresAuditEvidenceRepository implements AuditEvidenceRepository 
       [resource],
     );
     const row = result.rows[0];
-    if (!row || !Array.isArray(row.items)) return null;
+    if (!row) return null;
     return {
       resource: row.resource,
       observedAt: row.observed_at,
       validUntil: row.valid_until,
-      items: row.items,
+      environment: row.environment,
+      cardinality: row.cardinality,
+      jwtKid: row.jwt_kid,
+      evidence: row.evidence,
+      attestation: row.attestation,
     };
   }
 
   async findLatestReleaseAttestation(): Promise<ReleaseAttestationRecord | null> {
     const result = await this.pool.query<AttestationRow>(
-      `SELECT manifest, signature, observed_at, valid_until
+      `SELECT manifest, signature, kid, observed_at, valid_until
        FROM audit.release_attestations
        WHERE environment = 'production'
        ORDER BY observed_at DESC
@@ -58,6 +68,7 @@ export class PostgresAuditEvidenceRepository implements AuditEvidenceRepository 
     return {
       manifest: row.manifest as Record<string, unknown>,
       signature: row.signature,
+      kid: row.kid,
       observedAt: row.observed_at,
       validUntil: row.valid_until,
     };

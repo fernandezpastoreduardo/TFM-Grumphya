@@ -11,6 +11,10 @@ const migration = await readFile(
   "apps/api/migrations/039_audit_evidence.sql",
   "utf8",
 );
+const contractMigration = await readFile(
+  "apps/api/migrations/040_audit_contract_beta_d02.sql",
+  "utf8",
+);
 const retention = await readFile(
   "apps/api/src/infrastructure/data-retention/data-retention.service.ts",
   "utf8",
@@ -31,6 +35,7 @@ const productionComposeSmoke = await readFile(
   "scripts/test-production-compose.sh",
   "utf8",
 );
+const auditSmoke = await readFile("scripts/smoke-audit-contract.mjs", "utf8");
 
 const auditPaths = [
   "/audit/infrastructure",
@@ -39,6 +44,7 @@ const auditPaths = [
   "/audit/auth",
   "/audit/quality",
   "/audit/privacy",
+  "/audit/ai",
 ];
 for (const path of auditPaths)
   assert.match(caddy, new RegExp(path.replaceAll("/", "\\/")));
@@ -67,11 +73,18 @@ for (const name of [
   "AUDIT_TECHNICAL_AUTH_REVOKED_JTIS",
   "AUDIT_ALLOWED_NETWORKS",
   "AUDIT_RELEASE_MANIFEST_PUBLIC_KEY",
+  "AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS",
 ]) {
   assert.match(entrypoint, new RegExp(name));
 }
 assert.match(migrationRegistry, /039_audit_evidence/);
+assert.match(migrationRegistry, /040_audit_contract_beta_d02/);
 assert.match(migration, /CREATE SCHEMA IF NOT EXISTS audit/);
+assert.match(contractMigration, /'ai'/);
+assert.match(contractMigration, /attestation jsonb/);
+assert.match(contractMigration, /jwt_kid text/);
+assert.match(auditBlock, /not method GET/);
+assert.doesNotMatch(auditBlock, /POST|PUT|PATCH/);
 assert.doesNotMatch(retention, /DELETE FROM audit\./i);
 assert.match(roleProvisioning, /PGSSLMODE.*verify-full/);
 assert.match(
@@ -82,6 +95,8 @@ assert.match(
   roleProvisioning,
   /GRANT INSERT, UPDATE ON TABLE audit\.evidence, audit\.release_attestations TO/,
 );
+assert.match(roleProvisioning, /AUDIT_WRITER_ROLE/);
+assert.doesNotMatch(roleProvisioning, /AUDIT_INGEST_ROLE/);
 assert.match(
   roleProvisioning,
   /GRANT DELETE ON TABLE audit\.evidence, audit\.release_attestations TO/,
@@ -92,4 +107,8 @@ assert.match(auditRetention, /interval '30 days'/);
 assert.match(auditRetention, /PGSSLMODE.*verify-full/);
 assert.doesNotMatch(optionalCompose, /development-security-edge/);
 assert.match(productionComposeSmoke, /AUDIT_ENABLED=false/);
+assert.match(auditSmoke, /infrastructure/);
+assert.match(auditSmoke, /dependencies/);
+assert.match(auditSmoke, /redirect: "manual"/);
+assert.match(auditSmoke, /64 \* 1024/);
 console.log("Audit contract configuration validated.");

@@ -1,5 +1,5 @@
 import { All, Controller, Req, UseGuards } from "@nestjs/common";
-import type { Request } from "express";
+import type { AuditRequest } from "./audit-technical-auth";
 import { auditError } from "./audit-errors";
 import { AuditTechnicalAuthGuard } from "./audit-technical-auth";
 import { AuditRequestPolicyGuard } from "./audit-request-policy";
@@ -12,7 +12,7 @@ export class AuditController {
   constructor(private readonly service: AuditService) {}
 
   @All(":resource")
-  read(@Req() request: Request) {
+  read(@Req() request: AuditRequest) {
     if (request.method !== "GET") {
       throw auditError(405, "method_not_allowed", "Solo se permite GET.");
     }
@@ -31,6 +31,9 @@ export class AuditController {
         "Recurso de auditoría no permitido.",
       );
     }
-    return this.service.read(resource);
+    if (!request.auditTechnicalIdentity) {
+      throw auditError(401, "invalid_identity", "Falta la identidad técnica.");
+    }
+    return this.service.read(resource, request.auditTechnicalIdentity);
   }
 }

@@ -8,7 +8,7 @@
 		header Content-Type application/json
 		respond `{"code":"resource_not_allowed","message":"Recurso no permitido."}` 404
 	}
-	@audit path /audit/infrastructure /audit/deployment /audit/dependencies /audit/auth /audit/quality /audit/privacy
+	@audit path /audit/infrastructure /audit/deployment /audit/dependencies /audit/auth /audit/quality /audit/privacy /audit/ai
 	handle @audit {
 		@auditQuery expression `{http.request.uri.query} != ""`
 		header @auditQuery Content-Type application/json
