@@ -28,6 +28,27 @@ Valorar un segundo factor para el inicio de sesión, con recuperación segura y 
 
 ## Verificaciones pendientes de producción
 
+### Warning de Lighthouse en CI
+
+**Estado:** pendiente de diagnóstico.
+
+La ejecución de Lighthouse en CI muestra tres avisos que conviene resolver o
+clasificar antes de considerar el job completamente limpio:
+
+- No está configurado el token de GitHub (`GitHub token not set`).
+- Vite avisa de incompatibilidades previstas con `configLoader: 'native'`:
+  falta el atributo de importación JSON y hay imports sin extensión en
+  `vite.config.ts` y en los módulos de fixtures y middleware de Lighthouse.
+- El healthcheck termina pasando, pero el proceso informa de un timeout al
+  esperar el servidor en `127.0.0.1:4173`, aunque `vite preview` anuncia esa
+  dirección.
+
+Revisar si el token es necesario para el flujo actual, actualizar los imports
+al formato que soporte el cargador nativo cuando proceda y hacer que el
+patrón de readiness del job coincida con la salida real del servidor. No
+silenciar el aviso con `VITE_CONFIG_NATIVE_IGNORE_WARNING` sin documentar
+antes por qué se acepta.
+
 ### Confirmar qué versión está publicada
 
 La [incidencia del VPS](../doc/incident-vps-access-and-deployment-2026-10.md) registra una publicación del 28 de octubre de 2026 para `a9fb172`; es una referencia histórica, no una confirmación de la versión actual. La publicación se inicia manualmente desde GitHub Actions, con confirmación y autorización. Confirmar el SHA que está sirviendo producción y decidir si se publica una versión posterior. Tras cualquier publicación, comprobar HTTPS, persistencia y los recorridos principales. La corrección del enlace de recuperación (`8c68af4`) ya estaba incluida en `a9fb172`; probarla en producción con una nueva solicitud de restablecimiento, sin compartir el enlace ni el token.
