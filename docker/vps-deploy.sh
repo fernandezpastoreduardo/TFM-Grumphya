@@ -292,6 +292,7 @@ validate_audit_attestation() {
     /workspace/scripts/verify-release-manifest.mjs \
     /audit/release-manifest.json /audit/release-manifest.sig \
     /audit/public-key.pem "$sha" >/dev/null 2>&1; then
+    log "release attestation inputs: manifest=$(sha256sum \"$temporary_dir/release-manifest.json\" | awk '{print \$1}') signature=$(sha256sum \"$temporary_dir/release-manifest.sig\" | awk '{print \$1}') public_key=$(sha256sum \"$temporary_dir/public-key.pem\" | awk '{print \$1}')"
     rm -rf "$temporary_dir"
     die 'release attestation signature verification failed'
   fi
