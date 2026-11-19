@@ -380,10 +380,12 @@ jobs:
           signing_key="$RUNNER_TEMP/grumphya-audit-signing-key.pem"
           printf '%s\n' "$AUDIT_RELEASE_SIGNING_KEY" > "$signing_key"
           chmod 600 "$signing_key"
-          node --input-type=module - "$signing_key" <<'NODE'
+          node --input-type=module - "$signing_key" "${GITHUB_SHA}" <<'NODE'
           import { readFile, writeFile } from "node:fs/promises";
-          import { sign, createPrivateKey } from "node:crypto";
+          import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
+          import { spawnSync } from "node:child_process";
           const [keyPath] = process.argv.slice(2);
+          const [, , , deploymentSha] = process.argv;
           const key = createPrivateKey(await readFile(keyPath));
           const stableJson = (value) => {
             if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -410,8 +412,23 @@ jobs:
           const manifest = await readFile(manifestPath);
           const signature = sign(null, manifest, key).toString("base64url");
           await writeFile("release/release-manifest.sig", signature, { mode: 0o600 });
+          const publicKeyDer = createPublicKey(key).export({ type: "spki", format: "der" });
+          const fingerprint = createHash("sha256").update(publicKeyDer).digest("hex");
+          console.log(`Release attestation public key fingerprint: ${fingerprint}`);
+          const publicKeyPath = `${keyPath}.pub`;
+          await writeFile(publicKeyPath, createPublicKey(key).export({ type: "spki", format: "pem" }), { mode: 0o600 });
+          const verification = spawnSync(process.execPath, [
+            "scripts/verify-release-manifest.mjs",
+            manifestPath,
+            "release/release-manifest.sig",
+            publicKeyPath,
+            deploymentSha,
+          ], { encoding: "utf8" });
+          if (verification.status !== 0) {
+            throw new Error("release attestation self-verification failed");
+          }
           NODE
-          rm -f "$signing_key"
+          rm -f "$signing_key" "$signing_key.pub"
       - name: Save scanned release images
         if: >-
           success() &&
