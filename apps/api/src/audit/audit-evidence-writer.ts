@@ -271,6 +271,15 @@ export function assertNoDuplicateReleaseAttestation(rowCount: number): void {
   }
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "23505"
+  );
+}
+
 async function readSettings(path: string): Promise<Record<string, string>> {
   const text = await readFile(path, "utf8");
   const settings: Record<string, string> = {};
@@ -326,40 +335,32 @@ async function main(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const insertedAttestation = await client.query(
-      `INSERT INTO audit.release_attestations
-        (deployment_sha, environment, manifest, signature, kid, observed_at, valid_until)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)
-       ON CONFLICT (deployment_sha) DO NOTHING
-       RETURNING deployment_sha`,
-      [
-        release.deploymentSha,
-        AUDIT_ENVIRONMENT,
-        JSON.stringify(release.manifest),
-        release.signature,
-        RELEASE_ATTESTATION_KID,
-        release.observedAt,
-        release.validUntil,
-      ],
-    );
-    if ((insertedAttestation.rowCount ?? 0) === 0) {
-      assertNoDuplicateReleaseAttestation(1);
+    try {
+      await client.query(
+        `INSERT INTO audit.release_attestations
+          (deployment_sha, environment, manifest, signature, kid, observed_at, valid_until)
+         VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
+        [
+          release.deploymentSha,
+          AUDIT_ENVIRONMENT,
+          JSON.stringify(release.manifest),
+          release.signature,
+          RELEASE_ATTESTATION_KID,
+          release.observedAt,
+          release.validUntil,
+        ],
+      );
+    } catch (error: unknown) {
+      if (isUniqueViolation(error)) {
+        assertNoDuplicateReleaseAttestation(1);
+      }
+      throw error;
     }
     for (const row of buildAuditEvidenceRows(release)) {
       await client.query(
-        `INSERT INTO audit.evidence
-          (resource, observed_at, valid_until, environment, deployment_digest,
-           cardinality, jwt_kid, items, attestation)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
-         ON CONFLICT (resource) DO UPDATE SET
-           observed_at = EXCLUDED.observed_at,
-           valid_until = EXCLUDED.valid_until,
-           environment = EXCLUDED.environment,
-           deployment_digest = EXCLUDED.deployment_digest,
-           cardinality = EXCLUDED.cardinality,
-           jwt_kid = EXCLUDED.jwt_kid,
-           items = EXCLUDED.items,
-           attestation = EXCLUDED.attestation`,
+        `SELECT audit.upsert_evidence(
+          $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb
+        )`,
         [
           row.resource,
           row.observedAt,

@@ -6,7 +6,7 @@ readonly REPO_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
 
 usage() {
-  printf 'Usage: %s <40-character-deploy-sha> [--validate-only]\n' "$0" >&2
+  printf 'Usage: %s <40-character-deploy-sha> [--validate-only|--audit-only]\n' "$0" >&2
   exit 2
 }
 
@@ -14,7 +14,7 @@ usage() {
 readonly DEPLOY_SHA=$1
 MODE=${2:-run}
 [[ $DEPLOY_SHA =~ $SHA_PATTERN ]] || usage
-[[ $MODE == run || $MODE == --validate-only ]] || usage
+[[ $MODE == run || $MODE == --validate-only || $MODE == --audit-only ]] || usage
 
 readonly STACK_ID="grumphya-ci-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-$$"
 readonly STACK_CHECKSUM=$(printf '%s' "$STACK_ID" | cksum | awk '{print $1}')
@@ -157,13 +157,82 @@ if [[ $MODE == --validate-only ]]; then
   exit 0
 fi
 
+readonly AUDIT_MANIFEST_FILE="$TEMP_ROOT/release-manifest.json"
+readonly AUDIT_SIGNATURE_FILE="$TEMP_ROOT/release-manifest.sig"
+cat > "$TEMP_ROOT/dependency-inventory.json" <<'EOF'
+{"name":"audit-integration-fixture","version":"0.0.0","dependencies":{}}
+EOF
+cat > "$TEMP_ROOT/security-results.json" <<'EOF'
+{"trivy":{"status":"passed"},"highRiskCount":0,"criticalRiskCount":0}
+EOF
+node "$REPO_ROOT/scripts/create-release-manifest.mjs" \
+  "$AUDIT_MANIFEST_FILE" \
+  "$TEMP_ROOT/dependency-inventory.json" \
+  "$TEMP_ROOT/security-results.json" \
+  "$DEPLOY_SHA" \
+  sha256:0000000000000000000000000000000000000000000000000000000000000001 \
+  sha256:0000000000000000000000000000000000000000000000000000000000000002 \
+  sha256:0000000000000000000000000000000000000000000000000000000000000003 \
+  sha256:0000000000000000000000000000000000000000000000000000000000000004
+node --input-type=module - "$AUDIT_MANIFEST_FILE" "$AUDIT_SIGNATURE_FILE" \
+  "$TEMP_ROOT/audit-attestation-private.pem" "$TEMP_ROOT/audit-attestation-public.pem" <<'NODE'
+import { readFile, writeFile } from "node:fs/promises";
+import { generateKeyPairSync, sign } from "node:crypto";
+
+const [manifestPath, signaturePath, privatePath, publicPath] = process.argv.slice(2);
+const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+await writeFile(privatePath, privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });
+await writeFile(publicPath, publicKey.export({ type: "spki", format: "pem" }), { mode: 0o644 });
+const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const stableJson = (value) => {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+};
+for (const envelope of Object.values(manifest.audit.envelopes)) {
+  const unsigned = { ...envelope };
+  delete unsigned.attestation;
+  envelope.attestation.signature = sign(
+    null,
+    Buffer.from(stableJson(unsigned)),
+    privateKey,
+  ).toString("base64url");
+}
+await writeFile(manifestPath, stableJson(manifest), { mode: 0o600 });
+await writeFile(signaturePath, sign(null, await readFile(manifestPath), privateKey).toString("base64url"), { mode: 0o600 });
+NODE
+
+audit_public_key_escaped=$(awk 'BEGIN { ORS="" } { gsub(/\r/, ""); printf "%s\\n", $0 }' \
+  "$TEMP_ROOT/audit-attestation-public.pem")
+cat > "$TEMP_ROOT/.secrets/audit_writer_settings" <<EOF
+PGDATABASE=grumphya_ci
+PGUSER=grumphya_audit_writer
+PGPASSWORD=ci-fake-audit-writer-password
+AUDIT_RELEASE_MANIFEST_PUBLIC_KEY=$audit_public_key_escaped
+AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS=grumphya-release-2026
+AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS=ds-auditor-2026
+EVALUATION_PROVIDER=openai
+OPENAI_MODEL=gpt-5.4-mini
+EOF
+cat >> "$ENV_FILE" <<EOF
+AUDIT_MANIFEST_FILE=$AUDIT_MANIFEST_FILE
+AUDIT_MANIFEST_SIGNATURE_FILE=$AUDIT_SIGNATURE_FILE
+EOF
+
 if ! docker info >/dev/null; then
   rm -rf -- "$TEMP_ROOT"
   printf 'Docker daemon is unavailable; production Compose smoke cannot run.\n' >&2
   exit 1
 fi
-bash "$REPO_ROOT/scripts/test-caddy-additional-sites.sh" \
-  "grumphya-proxy:$DEPLOY_SHA" "$TEMP_ROOT/.secrets/internal_tls_ca.crt"
+if [[ $MODE != --audit-only ]]; then
+  bash "$REPO_ROOT/scripts/test-caddy-additional-sites.sh" \
+    "grumphya-proxy:$DEPLOY_SHA" "$TEMP_ROOT/.secrets/internal_tls_ca.crt"
+fi
 started=0
 
 cleanup() {
@@ -222,7 +291,12 @@ trap on_error ERR
 started=1
 
 "${compose[@]}" config --quiet
-"${compose[@]}" up --detach --pull never --no-build --wait --wait-timeout 180
+compose_services=(db migrate api web proxy)
+if [[ $MODE == --audit-only ]]; then
+  compose_services=(db migrate api)
+fi
+"${compose[@]}" up --detach --pull never --no-build --wait --wait-timeout 180 \
+  "${compose_services[@]}"
 "${compose[@]}" exec --no-TTY api node -e '
   const { Client } = require("./apps/api/node_modules/pg");
   const client = new Client({
@@ -243,6 +317,7 @@ started=1
   });
 '
 
+if [[ $MODE != --audit-only ]]; then
 assert_not_published() {
   local service=$1 container_id ports
   container_id=$("${compose[@]}" ps --quiet "$service")
@@ -463,10 +538,69 @@ NODE
   'SELECT marker FROM ci_persistence_probe') == compose-smoke ]]
 [[ $("${compose[@]}" exec --no-TTY --user node api cat \
   "/workspace/var/avatars/$STACK_ID.txt") == avatar-smoke ]]
+fi
 
-curl --insecure --fail --silent --show-error \
-  "https://localhost:$HTTPS_PORT/api/health" -o "$TEMP_ROOT/health-after-recreate.json"
-node - "$DEPLOY_SHA" "$TEMP_ROOT/health-after-recreate.json" <<'NODE'
+"${compose[@]}" exec --no-TTY db psql -U postgres -d grumphya_ci <<'SQL'
+CREATE ROLE grumphya_audit_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE grumphya_audit_writer LOGIN PASSWORD 'ci-fake-audit-writer-password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE grumphya_audit_retention LOGIN PASSWORD 'ci-fake-audit-retention-password' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+ALTER SCHEMA audit OWNER TO grumphya_audit_owner;
+ALTER TABLE audit.evidence OWNER TO grumphya_audit_owner;
+ALTER TABLE audit.release_attestations OWNER TO grumphya_audit_owner;
+ALTER FUNCTION audit.upsert_evidence(text, timestamptz, timestamptz, text, text, integer, text, jsonb, jsonb) OWNER TO grumphya_audit_owner;
+REVOKE ALL ON SCHEMA audit FROM PUBLIC;
+REVOKE ALL ON TABLE audit.evidence, audit.release_attestations FROM PUBLIC, grumphya_runtime, grumphya_audit_writer, grumphya_audit_retention;
+REVOKE ALL ON FUNCTION audit.upsert_evidence(text, timestamptz, timestamptz, text, text, integer, text, jsonb, jsonb) FROM PUBLIC, grumphya_runtime, grumphya_audit_retention;
+GRANT USAGE ON SCHEMA audit TO grumphya_runtime, grumphya_audit_writer, grumphya_audit_retention;
+GRANT SELECT ON TABLE audit.evidence, audit.release_attestations TO grumphya_runtime;
+GRANT INSERT, UPDATE ON TABLE audit.evidence, audit.release_attestations TO grumphya_audit_writer;
+GRANT EXECUTE ON FUNCTION audit.upsert_evidence(text, timestamptz, timestamptz, text, text, integer, text, jsonb, jsonb) TO grumphya_audit_writer;
+GRANT DELETE ON TABLE audit.evidence, audit.release_attestations TO grumphya_audit_retention;
+SQL
+
+writer_log="$TEMP_ROOT/audit-writer.log"
+if ! "${compose[@]}" --profile audit-evidence run --rm --no-deps audit-writer >"$writer_log"; then
+  printf 'Audit writer integration failed on the first run.\n' >&2
+  cat "$writer_log" >&2
+  exit 1
+fi
+if "${compose[@]}" --profile audit-evidence run --rm --no-deps audit-writer \
+  >"$TEMP_ROOT/audit-writer-duplicate.log" 2>&1; then
+  printf 'Audit writer integration accepted a duplicate release attestation.\n' >&2
+  exit 1
+fi
+grep -Fq 'Duplicate audit release attestation.' "$TEMP_ROOT/audit-writer-duplicate.log"
+
+"${compose[@]}" exec --no-TTY api sh -c \
+  'set -eu
+   while IFS= read -r setting || [ -n "$setting" ]; do
+     case "$setting" in
+       PGDATABASE=*) export PGDATABASE=${setting#*=} ;;
+       PGUSER=*) export PGUSER=${setting#*=} ;;
+       GRUMPHYA_DB_PASSWORD=*) export PGPASSWORD=${setting#*=} ;;
+     esac
+   done < /run/secrets/database_settings
+   PGSSL_MODE=verify-full PGSSL_CA_FILE=/run/secrets/internal_tls_ca.crt \
+     node --input-type=module' <<'NODE'
+import { createPostgresPool } from "./apps/api/dist/infrastructure/database/postgres-pool.js";
+const pool = createPostgresPool();
+const result = await pool.query("SELECT count(*)::int AS count FROM audit.evidence");
+if (result.rows[0].count !== 5) process.exit(1);
+await pool.end();
+NODE
+[[ $("${compose[@]}" exec --no-TTY db psql -U postgres -d grumphya_ci -Atc \
+  "SELECT count(*) FROM audit.release_attestations") == 1 ]]
+[[ $("${compose[@]}" exec --no-TTY db psql -U postgres -d grumphya_ci -Atc \
+  "SELECT has_table_privilege('grumphya_audit_writer', 'audit.evidence', 'SELECT')") == f ]]
+[[ $("${compose[@]}" exec --no-TTY db psql -U postgres -d grumphya_ci -Atc \
+  "SELECT has_table_privilege('grumphya_runtime', 'audit.evidence', 'SELECT')") == t ]]
+[[ $("${compose[@]}" exec --no-TTY db psql -U postgres -d grumphya_ci -Atc \
+  "SELECT has_function_privilege('grumphya_audit_writer', 'audit.upsert_evidence(text,timestamptz,timestamptz,text,text,integer,text,jsonb,jsonb)', 'EXECUTE')") == t ]]
+
+if [[ $MODE != --audit-only ]]; then
+  curl --insecure --fail --silent --show-error \
+    "https://localhost:$HTTPS_PORT/api/health" -o "$TEMP_ROOT/health-after-recreate.json"
+  node - "$DEPLOY_SHA" "$TEMP_ROOT/health-after-recreate.json" <<'NODE'
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const expectedRevision = process.argv[2];
@@ -474,5 +608,10 @@ const health = JSON.parse(readFileSync(process.argv[3], "utf8"));
 assert.equal(health.status, "ok");
 assert.equal(health.revision, expectedRevision);
 NODE
+fi
 
-printf 'Production Compose smoke passed: HTTPS proxy, SPA, API, pgvector, production mode, internal ports, and persistence after recreation.\n'
+if [[ $MODE == --audit-only ]]; then
+  printf 'Audit writer integration passed: TLS, root-only secret handoff, least-privilege roles, signed manifest, duplicate rejection, and API read access.\n'
+else
+  printf 'Production Compose smoke passed: HTTPS proxy, SPA, API, pgvector, production mode, internal ports, and persistence after recreation.\n'
+fi

@@ -85,14 +85,17 @@ END
 ALTER SCHEMA audit OWNER TO $owner_role;
 ALTER TABLE audit.evidence OWNER TO $owner_role;
 ALTER TABLE audit.release_attestations OWNER TO $owner_role;
+ALTER FUNCTION audit.upsert_evidence(text, timestamptz, timestamptz, text, text, integer, text, jsonb, jsonb) OWNER TO $owner_role;
 
 REVOKE ALL ON SCHEMA audit FROM PUBLIC;
 REVOKE ALL ON TABLE audit.evidence, audit.release_attestations FROM PUBLIC;
 REVOKE ALL ON TABLE audit.evidence, audit.release_attestations FROM $api_role, $writer_role, $retention_role;
+REVOKE ALL ON FUNCTION audit.upsert_evidence(text, timestamptz, timestamptz, text, text, integer, text, jsonb, jsonb) FROM PUBLIC, $api_role, $retention_role;
 
 GRANT USAGE ON SCHEMA audit TO $api_role, $writer_role, $retention_role;
 GRANT SELECT ON TABLE audit.evidence, audit.release_attestations TO $api_role;
 GRANT INSERT, UPDATE ON TABLE audit.evidence, audit.release_attestations TO $writer_role;
+GRANT EXECUTE ON FUNCTION audit.upsert_evidence(text, timestamptz, timestamptz, text, text, integer, text, jsonb, jsonb) TO $writer_role;
 GRANT DELETE ON TABLE audit.evidence, audit.release_attestations TO $retention_role;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE $owner_role IN SCHEMA audit REVOKE ALL ON TABLES FROM PUBLIC;

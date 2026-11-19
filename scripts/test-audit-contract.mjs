@@ -15,6 +15,10 @@ const contractMigration = await readFile(
   "apps/api/migrations/040_audit_contract_beta_d02.sql",
   "utf8",
 );
+const writerMigration = await readFile(
+  "apps/api/migrations/041_audit_writer_upsert.sql",
+  "utf8",
+);
 const retention = await readFile(
   "apps/api/src/infrastructure/data-retention/data-retention.service.ts",
   "utf8",
@@ -97,10 +101,17 @@ for (const name of [
 }
 assert.match(migrationRegistry, /039_audit_evidence/);
 assert.match(migrationRegistry, /040_audit_contract_beta_d02/);
+assert.match(migrationRegistry, /041_audit_writer_upsert/);
 assert.match(migration, /CREATE SCHEMA IF NOT EXISTS audit/);
 assert.match(contractMigration, /'ai'/);
 assert.match(contractMigration, /attestation jsonb/);
 assert.match(contractMigration, /jwt_kid text/);
+assert.match(writerMigration, /SECURITY DEFINER/);
+assert.match(
+  writerMigration,
+  /CREATE OR REPLACE FUNCTION audit\.upsert_evidence/,
+);
+assert.match(writerMigration, /REVOKE ALL ON FUNCTION audit\.upsert_evidence/);
 assert.match(auditBlock, /not method GET/);
 assert.doesNotMatch(auditBlock, /POST|PUT|PATCH/);
 assert.doesNotMatch(retention, /DELETE FROM audit\./i);
@@ -112,6 +123,10 @@ assert.match(
 assert.match(
   roleProvisioning,
   /GRANT INSERT, UPDATE ON TABLE audit\.evidence, audit\.release_attestations TO/,
+);
+assert.match(
+  roleProvisioning,
+  /GRANT EXECUTE ON FUNCTION audit\.upsert_evidence/,
 );
 assert.match(roleProvisioning, /AUDIT_WRITER_ROLE/);
 assert.doesNotMatch(roleProvisioning, /AUDIT_INGEST_ROLE/);
@@ -125,6 +140,21 @@ assert.match(auditRetention, /interval '30 days'/);
 assert.match(auditRetention, /PGSSLMODE.*verify-full/);
 assert.doesNotMatch(optionalCompose, /development-security-edge/);
 assert.match(productionComposeSmoke, /AUDIT_ENABLED=false/);
+assert.match(productionComposeSmoke, /--audit-only/);
+assert.match(productionComposeSmoke, /root-only secret handoff/);
+assert.match(productionComposeSmoke, /Duplicate audit release attestation/);
+assert.match(
+  productionComposeSmoke,
+  /has_table_privilege\('grumphya_audit_writer'/,
+);
+assert.match(
+  productionComposeSmoke,
+  /has_function_privilege\('grumphya_audit_writer'/,
+);
+assert.match(
+  productionComposeSmoke,
+  /AUDIT_MANIFEST_FILE=\$AUDIT_MANIFEST_FILE/,
+);
 assert.match(auditSmoke, /infrastructure/);
 assert.match(auditSmoke, /dependencies/);
 assert.match(auditSmoke, /redirect: "manual"/);
@@ -148,9 +178,11 @@ assert.match(
 );
 assert.match(writer, /verifyReleaseManifest/);
 assert.match(writer, /Duplicate audit release attestation/);
-assert.match(writer, /ON CONFLICT \(deployment_sha\) DO NOTHING/);
+assert.match(writer, /isUniqueViolation/);
+assert.match(writer, /23505/);
+assert.doesNotMatch(writer, /ON CONFLICT \(deployment_sha\)/);
 assert.doesNotMatch(writer, /SELECT 1 FROM audit\.release_attestations/);
-assert.match(writer, /ON CONFLICT \(resource\) DO UPDATE/);
+assert.match(writer, /audit\.upsert_evidence/);
 assert.match(writerEntrypoint, /PGSSL_MODE/);
 assert.match(writerEntrypoint, /AUDIT_WRITER_SETTINGS_FILE/);
 assert.match(writerEntrypoint, /setpriv --reuid=node/);
