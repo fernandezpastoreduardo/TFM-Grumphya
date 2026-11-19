@@ -401,7 +401,11 @@ for (const header of [
 }
 assert.match(responseHeaders, /^cross-origin-opener-policy:\s*same-origin\s*$/im);
 assert.match(responseHeaders, /^cross-origin-embedder-policy:\s*require-corp\s*$/im);
-assert.match(responseHeaders, /base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'/i);
+assert.match(
+  responseHeaders,
+  /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'.*style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self'/i,
+  "the blocking CSP must restrict document, script, style, image, font and connection sources",
+);
 const permissionsPolicy = responseHeaders.match(/^permissions-policy:\s*(.+)$/im)?.[1];
 assert.ok(permissionsPolicy, "voice dictation Permissions-Policy must be present");
 assert.match(permissionsPolicy, /microphone=\(self\)/);

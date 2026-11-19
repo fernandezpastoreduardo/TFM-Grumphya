@@ -78,8 +78,8 @@ assert_header "$https_headers" 'strict-transport-security' 'max-age=31536000; in
 assert_header "$https_headers" 'x-content-type-options' 'nosniff'
 assert_header "$https_headers" 'x-frame-options' 'DENY'
 assert_header "$https_headers" 'referrer-policy' 'strict-origin-when-cross-origin'
-grep -Eiq "^content-security-policy:.*base-uri 'self';.*object-src 'none';.*frame-ancestors 'none';.*form-action 'self'" "$https_headers" || {
-  printf 'CSP does not contain the required framing and document restrictions.\n' >&2
+grep -Eiq "^content-security-policy:.*default-src 'self';.*base-uri 'self';.*object-src 'none';.*frame-ancestors 'none';.*form-action 'self';.*script-src 'self'.*style-src 'self' 'unsafe-inline';.*img-src 'self' blob:;.*font-src 'self';.*connect-src 'self'" "$https_headers" || {
+  printf 'CSP does not contain the required resource and document restrictions.\n' >&2
   exit 1
 }
 ! grep -Eiq '^server:' "$https_headers" || {
