@@ -12,6 +12,15 @@ const ROUTES_CONFIG_PATH = path.resolve(
   "src/shared/prerendered-public-routes.json",
 );
 const ROOT_ELEMENT = '<div id="root"></div>';
+const CSP_NONCE_PLACEHOLDER =
+  "{{placeholder `http.request.header.X-Grumphya-CSP-Nonce`}}";
+
+function addCspNonceToExecutableScripts(html) {
+  return html.replace(
+    /<script(?![^>]*\bnonce=)(?=[^>]*(?:\bsrc=|\btype=["']module["']))/gi,
+    `<script nonce="${CSP_NONCE_PLACEHOLDER}"`,
+  );
+}
 
 try {
   const routes = JSON.parse(await readFile(ROUTES_CONFIG_PATH, "utf8"));
@@ -21,9 +30,8 @@ try {
   const manifest = JSON.parse(
     await readFile(path.join(DIST_DIRECTORY, ".vite", "manifest.json"), "utf8"),
   );
-  const indexHtml = await readFile(
-    path.join(DIST_DIRECTORY, "index.html"),
-    "utf8",
+  const indexHtml = addCspNonceToExecutableScripts(
+    await readFile(path.join(DIST_DIRECTORY, "index.html"), "utf8"),
   );
   assert.ok(
     indexHtml.includes(ROOT_ELEMENT),

@@ -12,6 +12,8 @@ const DEVELOPMENT_SECURITY_SITE_PATH =
 const DOCKERFILE_PATH = "Dockerfile";
 const COMPOSE_PATH = "compose.production.yaml";
 const NGINX_SPA_PATH = "docker/nginx-spa.conf";
+const WEB_INDEX_PATH = "apps/web/index.html";
+const WEB_PRERENDER_PATH = "apps/web/scripts/prerender-public-routes.mjs";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const PREFLIGHT_PATH = "scripts/ci-preflight.sh";
 const PRODUCTION_COMPOSE_SMOKE_PATH = "scripts/test-production-compose.sh";
@@ -38,6 +40,8 @@ const [
   workflow,
   preflight,
   nginxSpa,
+  webIndex,
+  webPrerender,
   productionComposeSmoke,
   publicCertificationSmoke,
   migrationFiles,
@@ -55,6 +59,8 @@ const [
   readFile(WORKFLOW_PATH, "utf8"),
   readFile(PREFLIGHT_PATH, "utf8"),
   readFile(NGINX_SPA_PATH, "utf8"),
+  readFile(WEB_INDEX_PATH, "utf8"),
+  readFile(WEB_PRERENDER_PATH, "utf8"),
   readFile(PRODUCTION_COMPOSE_SMOKE_PATH, "utf8"),
   readFile(PUBLIC_CERTIFICATION_SMOKE_PATH, "utf8"),
   readdir(MIGRATIONS_DIRECTORY),
@@ -161,6 +167,41 @@ assert.match(
   caddyfile,
   /reverse_proxy https:\/\/web:8443[\s\S]*?tls_trust_pool file \/run\/secrets\/internal_tls_ca\.crt/,
   "Caddy must verify the web upstream certificate against the internal CA",
+);
+assert.match(
+  caddyfile,
+  /request_header X-Grumphya-CSP-Nonce \{http\.request\.uuid\}/,
+  "Caddy must create a fresh CSP nonce request value",
+);
+assert.match(
+  caddyfile,
+  /templates\s*\{\s*mime text\/html\s*\}/,
+  "Caddy must inject the per-response nonce into HTML responses",
+);
+assert.match(
+  caddyfile,
+  /script-src 'nonce-\{http\.request\.header\.X-Grumphya-CSP-Nonce\}' 'strict-dynamic'/g,
+  "CSP must use the generated nonce and strict-dynamic",
+);
+assert.doesNotMatch(
+  caddyfile,
+  /script-src 'self'/,
+  "CSP must not rely on script-src self",
+);
+assert.match(
+  webIndex,
+  /<script nonce="\{\{placeholder `http\.request\.header\.X-Grumphya-CSP-Nonce`\}\}">/,
+  "the inline bootstrap script must carry the Caddy nonce placeholder",
+);
+assert.match(
+  webIndex,
+  /<script\s+nonce="\{\{placeholder `http\.request\.header\.X-Grumphya-CSP-Nonce`\}\}"\s+type="module"/,
+  "the application module script must carry the Caddy nonce placeholder",
+);
+assert.match(
+  webPrerender,
+  /addCspNonceToExecutableScripts[\s\S]*?CSP_NONCE_PLACEHOLDER/,
+  "the production prerender must restore the nonce on Vite-generated executable scripts",
 );
 assert.match(caddyfile, /^import \/etc\/caddy\/sites-enabled\/\*\.caddy$/m);
 assert.match(developmentSecuritySite, /^desarrolloseguro\.org \{$/m);

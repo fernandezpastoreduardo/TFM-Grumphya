@@ -32,7 +32,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>
+    <script nonce="{{placeholder `http.request.header.X-Grumphya-CSP-Nonce`}}">
       try {
         const savedTheme = window.localStorage.getItem("grumphya-theme");
         if (savedTheme === "light" || savedTheme === "dark") {
@@ -45,6 +45,10 @@
         // The default light theme remains available when browser storage is restricted.
       }
     </script>
-    <script type="module" src="/src/main.tsx"></script>
+    <script
+      nonce="{{placeholder `http.request.header.X-Grumphya-CSP-Nonce`}}"
+      type="module"
+      src="/src/main.tsx"
+    ></script>
   </body>
 </html>

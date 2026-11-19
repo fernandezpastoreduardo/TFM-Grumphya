@@ -403,8 +403,20 @@ assert.match(responseHeaders, /^cross-origin-opener-policy:\s*same-origin\s*$/im
 assert.match(responseHeaders, /^cross-origin-embedder-policy:\s*require-corp\s*$/im);
 assert.match(
   responseHeaders,
-  /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'.*style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self'/i,
-  "the blocking CSP must restrict document, script, style, image, font and connection sources",
+  /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'nonce-([^']+)' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self'/i,
+  "the blocking CSP must use a per-response nonce and restrict document, script, style, image, font and connection sources",
+);
+const cspNonce = responseHeaders.match(
+  /^content-security-policy:\s*.*script-src 'nonce-([^']+)' 'strict-dynamic'/im,
+)?.[1];
+assert.ok(cspNonce, "the blocking CSP nonce must be present");
+const scriptNonces = [
+  ...homeHtml.matchAll(/<script\b[^>]*\bnonce="([^"]+)"[^>]*>/gi),
+].map(([, nonce]) => nonce);
+assert.ok(scriptNonces.length >= 2, "the HTML must nonce every executable script");
+assert.ok(
+  scriptNonces.every((nonce) => nonce === cspNonce),
+  "every executable script must use the response CSP nonce",
 );
 const permissionsPolicy = responseHeaders.match(/^permissions-policy:\s*(.+)$/im)?.[1];
 assert.ok(permissionsPolicy, "voice dictation Permissions-Policy must be present");

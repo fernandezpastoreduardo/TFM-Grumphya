@@ -55,6 +55,7 @@ assert_tls_rejected() {
 }
 
 https_headers="$TEMP_ROOT/https.headers"
+https_second_headers="$TEMP_ROOT/https-second.headers"
 http_headers="$TEMP_ROOT/http.headers"
 www_headers="$TEMP_ROOT/www.headers"
 health_headers="$TEMP_ROOT/health.headers"
@@ -78,10 +79,40 @@ assert_header "$https_headers" 'strict-transport-security' 'max-age=31536000; in
 assert_header "$https_headers" 'x-content-type-options' 'nosniff'
 assert_header "$https_headers" 'x-frame-options' 'DENY'
 assert_header "$https_headers" 'referrer-policy' 'strict-origin-when-cross-origin'
-grep -Eiq "^content-security-policy:.*default-src 'self';.*base-uri 'self';.*object-src 'none';.*frame-ancestors 'none';.*form-action 'self';.*script-src 'self'.*style-src 'self' 'unsafe-inline';.*img-src 'self' blob:;.*font-src 'self';.*connect-src 'self'" "$https_headers" || {
-  printf 'CSP does not contain the required resource and document restrictions.\n' >&2
-  exit 1
+curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
+  --dump-header "$https_second_headers" --output "$TEMP_ROOT/home-second.html" \
+  "https://$DOMAIN/"
+node - "$https_headers" "$TEMP_ROOT/home.html" "$https_second_headers" "$TEMP_ROOT/home-second.html" <<'NODE'
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+
+function readResponse(headersPath, bodyPath) {
+  const headers = fs.readFileSync(headersPath, "utf8");
+  const body = fs.readFileSync(bodyPath, "utf8");
+  const csp = headers.match(/^content-security-policy:\s*(.+)$/im)?.[1];
+  assert.ok(csp, "the blocking CSP must be present");
+  assert.match(
+    csp,
+    /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'nonce-([^']+)' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self'/i,
+    "the blocking CSP must use a nonce and strict-dynamic without script-src self",
+  );
+  const nonce = csp.match(/script-src 'nonce-([^']+)' 'strict-dynamic'/i)?.[1];
+  assert.ok(nonce, "the blocking CSP nonce must be present");
+  const scriptNonces = [...body.matchAll(/<script\b[^>]*\bnonce="([^"]+)"[^>]*>/gi)].map(
+    ([, scriptNonce]) => scriptNonce,
+  );
+  assert.ok(scriptNonces.length >= 2, "the HTML must nonce every executable script");
+  assert.ok(
+    scriptNonces.every((scriptNonce) => scriptNonce === nonce),
+    "every executable script must use the response CSP nonce",
+  );
+  return nonce;
 }
+
+const firstNonce = readResponse(process.argv[2], process.argv[3]);
+const secondNonce = readResponse(process.argv[4], process.argv[5]);
+assert.notEqual(firstNonce, secondNonce, "the CSP nonce must rotate per response");
+NODE
 ! grep -Eiq '^server:' "$https_headers" || {
   printf 'HTTPS root must not disclose a server header.\n' >&2
   exit 1
