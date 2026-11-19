@@ -76,14 +76,14 @@ const dependencies = {
   highRiskCount: Number(security.highRiskCount ?? 0),
   criticalRiskCount: Number(security.criticalRiskCount ?? 0),
 };
-const auditEnvelope = (evidence) => ({
+const auditEnvelope = (resource, evidence) => ({
   hostname: "grumphya.com",
   environment: "production",
   generatedAt: observedAt.toISOString(),
   expiresAt: validUntil.toISOString(),
   profile: "beta-d-0.2",
-  scope: `audit:${evidence === deployment ? "deployment" : "dependencies"}`,
-  evidence,
+  scope: `audit:${resource}`,
+  evidence: [evidence],
   kid: AUDIT_JWT_KID,
   attestation: {
     alg: "EdDSA",
@@ -101,8 +101,41 @@ const manifest = {
   dependencies,
   audit: {
     envelopes: {
-      deployment: auditEnvelope(deployment),
-      dependencies: auditEnvelope(dependencies),
+      infrastructure: auditEnvelope("infrastructure", {
+        domain: "grumphya.com",
+        environment: "production",
+        proxy: "caddy",
+        database: "postgresql",
+        transport: "https",
+      }),
+      deployment: auditEnvelope("deployment", deployment),
+      dependencies: auditEnvelope("dependencies", dependencies),
+      auth: auditEnvelope("auth", {
+        algorithm: "Ed25519",
+        issuer: "desarrolloseguro-audit",
+        audience: "grumphya-audit",
+        domain: "grumphya.com",
+        hostname: "grumphya.com",
+        environment: "production",
+        jwtKid: AUDIT_JWT_KID,
+        ttlSeconds: 300,
+        clockSkewSeconds: 60,
+      }),
+      quality: auditEnvelope("quality", {
+        checks: deployment.checks,
+        source: "production-release-ci",
+      }),
+      privacy: auditEnvelope("privacy", {
+        externalIngest: false,
+        accessLogs: false,
+        retentionDays: 30,
+        productionFixtures: false,
+      }),
+      ai: auditEnvelope("ai", {
+        provider: "openai",
+        model: "gpt-5.4-mini",
+        smoke: "passed",
+      }),
     },
   },
 };

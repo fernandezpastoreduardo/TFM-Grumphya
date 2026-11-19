@@ -5,6 +5,15 @@ const [, , manifestPath, signaturePath, publicKeyPath, expectedSha] =
   process.argv;
 const RELEASE_ATTESTATION_KID = "grumphya-release-2026";
 const AUDIT_JWT_KID = "ds-auditor-2026";
+const AUDIT_RESOURCES = [
+  "infrastructure",
+  "deployment",
+  "dependencies",
+  "auth",
+  "quality",
+  "privacy",
+  "ai",
+];
 if (
   !manifestPath ||
   !signaturePath ||
@@ -41,7 +50,7 @@ try {
     Object.values(imageDigests).every((value) =>
       /^sha256:[0-9a-f]{64}$/u.test(value),
     );
-  const hasAuditEnvelopes = ["deployment", "dependencies"].every((resource) => {
+  const hasAuditEnvelopes = AUDIT_RESOURCES.every((resource) => {
     const envelope = manifest.audit?.envelopes?.[resource];
     if (!envelope) return false;
     const { attestation, ...unsigned } = envelope;
@@ -54,6 +63,8 @@ try {
       !Number.isFinite(Date.parse(envelope.generatedAt)) ||
       !Number.isFinite(Date.parse(envelope.expiresAt)) ||
       Date.parse(envelope.expiresAt) <= Date.parse(envelope.generatedAt) ||
+      !Array.isArray(envelope.evidence) ||
+      envelope.evidence.length !== 1 ||
       attestation?.alg !== "EdDSA" ||
       attestation.kid !== RELEASE_ATTESTATION_KID ||
       typeof attestation.signature !== "string" ||

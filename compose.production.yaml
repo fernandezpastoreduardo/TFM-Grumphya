@@ -69,6 +69,39 @@ services:
         condition: service_healthy
     networks: [backend]
 
+  audit-writer:
+    image: ${API_IMAGE:-grumphya-api:production}
+    profiles: ["audit-evidence"]
+    command:
+      [
+        "sh",
+        "/workspace/docker/audit-writer-entrypoint.sh",
+        "node",
+        "apps/api/dist/audit/audit-evidence-writer.js",
+      ]
+    restart: "no"
+    user: "0"
+    secrets:
+      - audit_writer_settings
+      - source: internal_tls_ca
+        target: internal_tls_ca.crt
+    volumes:
+      - ${AUDIT_MANIFEST_FILE:-/dev/null}:/workspace/release-manifest.json:ro
+      - ${AUDIT_MANIFEST_SIGNATURE_FILE:-/dev/null}:/workspace/release-manifest.sig:ro
+    environment:
+      NODE_ENV: production
+      AUDIT_MANIFEST_FILE: ${AUDIT_MANIFEST_FILE:-/dev/null}
+      AUDIT_MANIFEST_SIGNATURE_FILE: ${AUDIT_MANIFEST_SIGNATURE_FILE:-/dev/null}
+      PGSSL_MODE: verify-full
+      PGHOST: db
+      PGPORT: 5432
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    networks: [backend]
+
   api:
     image: ${API_IMAGE:-grumphya-api:production}
     build:
@@ -247,6 +280,8 @@ secrets:
     file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/database_settings
   postgres_admin_settings:
     file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/postgres_admin_settings
+  audit_writer_settings:
+    file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/audit_writer_settings
   openai_settings:
     file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/openai_settings
   openai_key:

@@ -36,7 +36,7 @@ new_fixture() {
   printf 'DOMAIN=example.invalid\n' > "$TEST_ROOT/.env.production"
   chmod 600 "$TEST_ROOT/.env.production"
   for secret in \
-    admin_settings database_settings grumphya_env mail_settings openai_key \
+    admin_settings audit_writer_settings database_settings grumphya_env mail_settings openai_key \
     openai_settings postgres_admin_settings "${INTERNAL_TLS_SECRETS[@]}"; do
     printf 'TEST_SECRET=placeholder\n' > "$TEST_ROOT/.secrets/$secret"
     chmod 600 "$TEST_ROOT/.secrets/$secret"

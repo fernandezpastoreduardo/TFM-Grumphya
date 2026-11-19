@@ -1,0 +1,396 @@
+import { createPublicKey, verify } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { createPostgresPool } from "../infrastructure/database/postgres-pool";
+import {
+  AUDIT_ATTESTATION_ALGORITHM,
+  AUDIT_ENVIRONMENT,
+  AUDIT_RESOURCES,
+  AUDIT_SCHEMA_VERSION,
+  type AuditResource,
+} from "./audit.models";
+
+const RELEASE_ATTESTATION_KID = "grumphya-release-2026" as const;
+const JWT_KID = "ds-auditor-2026" as const;
+const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/u;
+const SHA_PATTERN = /^[0-9a-f]{40}$/u;
+const PUBLIC_KEY_PATTERN = /BEGIN PUBLIC KEY/iu;
+
+export type ReleaseManifestEnvelope = {
+  hostname: "grumphya.com";
+  environment: typeof AUDIT_ENVIRONMENT;
+  generatedAt: string;
+  expiresAt: string;
+  profile: typeof AUDIT_SCHEMA_VERSION;
+  scope: `audit:${AuditResource}`;
+  evidence: unknown;
+  attestation: {
+    alg: typeof AUDIT_ATTESTATION_ALGORITHM;
+    kid: typeof RELEASE_ATTESTATION_KID;
+    signature: string;
+  };
+  kid: typeof JWT_KID;
+};
+
+export type VerifiedReleaseManifest = {
+  deploymentSha: string;
+  deploymentDigest: string;
+  observedAt: Date;
+  validUntil: Date;
+  manifest: Record<string, unknown>;
+  signature: string;
+  envelopes: Record<AuditResource, ReleaseManifestEnvelope>;
+};
+
+export function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function parseDate(value: unknown): Date | undefined {
+  if (typeof value !== "string") return undefined;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp) : undefined;
+}
+
+function verifySignature(
+  value: unknown,
+  signature: string,
+  publicKeyPem: string,
+): boolean {
+  try {
+    const publicKey = createPublicKey(publicKeyPem);
+    return (
+      publicKey.asymmetricKeyType === "ed25519" &&
+      verify(
+        null,
+        Buffer.from(stableJson(value)),
+        publicKey,
+        Buffer.from(signature, "base64url"),
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function readEnvelope(
+  value: unknown,
+  resource: AuditResource,
+  publicKeyPem: string,
+): ReleaseManifestEnvelope | undefined {
+  if (!isRecord(value)) return undefined;
+  const attestation = value.attestation;
+  if (!isRecord(attestation)) return undefined;
+  if (
+    value.hostname !== "grumphya.com" ||
+    value.environment !== AUDIT_ENVIRONMENT ||
+    value.profile !== AUDIT_SCHEMA_VERSION ||
+    value.scope !== `audit:${resource}` ||
+    value.kid !== JWT_KID ||
+    attestation.alg !== AUDIT_ATTESTATION_ALGORITHM ||
+    attestation.kid !== RELEASE_ATTESTATION_KID ||
+    typeof attestation.signature !== "string" ||
+    attestation.signature.length === 0 ||
+    !parseDate(value.generatedAt) ||
+    !parseDate(value.expiresAt)
+  ) {
+    return undefined;
+  }
+  const unsigned = { ...value };
+  delete unsigned.attestation;
+  if (!verifySignature(unsigned, attestation.signature, publicKeyPem)) {
+    return undefined;
+  }
+  return {
+    hostname: "grumphya.com",
+    environment: AUDIT_ENVIRONMENT,
+    generatedAt: value.generatedAt as string,
+    expiresAt: value.expiresAt as string,
+    profile: AUDIT_SCHEMA_VERSION,
+    scope: `audit:${resource}`,
+    evidence: value.evidence,
+    attestation: {
+      alg: AUDIT_ATTESTATION_ALGORITHM,
+      kid: RELEASE_ATTESTATION_KID,
+      signature: attestation.signature,
+    },
+    kid: JWT_KID,
+  };
+}
+
+function readRequiredRecord(
+  manifest: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = manifest[key];
+  return isRecord(value) ? value : undefined;
+}
+
+export function verifyReleaseManifest(
+  manifestText: string,
+  signature: string,
+  publicKeyPem: string,
+  now = new Date(),
+): VerifiedReleaseManifest {
+  if (!PUBLIC_KEY_PATTERN.test(publicKeyPem)) {
+    throw new Error("Audit manifest public key is not configured.");
+  }
+  const manifestValue: unknown = JSON.parse(manifestText);
+  if (!isRecord(manifestValue)) {
+    throw new Error("Audit release manifest must be an object.");
+  }
+  if (!verifySignature(manifestValue, signature, publicKeyPem)) {
+    throw new Error("Audit release manifest signature is invalid.");
+  }
+  if (
+    manifestValue.schemaVersion !== AUDIT_SCHEMA_VERSION ||
+    manifestValue.environment !== AUDIT_ENVIRONMENT
+  ) {
+    throw new Error("Audit release manifest has an unsupported contract.");
+  }
+  const deployment = readRequiredRecord(manifestValue, "deployment");
+  const deploymentSha = deployment?.deploymentSha;
+  const deploymentDigest = manifestValue.deploymentDigest;
+  const observedAt = parseDate(manifestValue.observedAt);
+  const validUntil = parseDate(manifestValue.validUntil);
+  if (
+    typeof deploymentSha !== "string" ||
+    !SHA_PATTERN.test(deploymentSha) ||
+    typeof deploymentDigest !== "string" ||
+    !DIGEST_PATTERN.test(deploymentDigest) ||
+    !observedAt ||
+    !validUntil
+  ) {
+    throw new Error("Audit release manifest dates or digest are invalid.");
+  }
+  if (
+    observedAt.getTime() > now.getTime() ||
+    validUntil.getTime() <= now.getTime()
+  ) {
+    throw new Error("Audit release manifest is expired.");
+  }
+  const imageValues = deployment
+    ? readRequiredRecord(deployment, "images")
+    : undefined;
+  if (
+    !imageValues ||
+    Object.keys(imageValues).length !== 4 ||
+    !Object.values(imageValues).every(
+      (value) => typeof value === "string" && DIGEST_PATTERN.test(value),
+    )
+  ) {
+    throw new Error("Audit release manifest image digests are invalid.");
+  }
+  const dependencies = readRequiredRecord(manifestValue, "dependencies");
+  if (
+    !dependencies ||
+    typeof dependencies.dependencyInventoryDigest !== "string" ||
+    !/^[0-9a-f]{64}$/u.test(dependencies.dependencyInventoryDigest)
+  ) {
+    throw new Error("Audit dependency inventory digest is invalid.");
+  }
+  const audit = readRequiredRecord(manifestValue, "audit");
+  const envelopeValues = readRequiredRecord(audit ?? {}, "envelopes");
+  const envelopes = {} as Record<AuditResource, ReleaseManifestEnvelope>;
+  for (const resource of AUDIT_RESOURCES) {
+    const envelope = readEnvelope(
+      envelopeValues?.[resource],
+      resource,
+      publicKeyPem,
+    );
+    if (!envelope) {
+      throw new Error(`Audit envelope is invalid for ${resource}.`);
+    }
+    const envelopeGeneratedAt = parseDate(envelope.generatedAt);
+    const envelopeExpiresAt = parseDate(envelope.expiresAt);
+    if (
+      !envelopeGeneratedAt ||
+      !envelopeExpiresAt ||
+      envelopeGeneratedAt.getTime() > now.getTime() ||
+      envelopeExpiresAt.getTime() <= now.getTime()
+    ) {
+      throw new Error(`Audit envelope is expired for ${resource}.`);
+    }
+    envelopes[resource] = envelope;
+  }
+  return {
+    deploymentSha,
+    deploymentDigest,
+    observedAt,
+    validUntil,
+    manifest: manifestValue,
+    signature,
+    envelopes,
+  };
+}
+
+export function buildAuditEvidenceRows(
+  release: VerifiedReleaseManifest,
+): Array<{
+  resource: AuditResource;
+  observedAt: Date;
+  validUntil: Date;
+  environment: typeof AUDIT_ENVIRONMENT;
+  deploymentDigest: string;
+  cardinality: 1;
+  jwtKid: typeof JWT_KID;
+  evidence: unknown;
+  attestation: ReleaseManifestEnvelope["attestation"];
+}> {
+  return AUDIT_RESOURCES.filter(
+    (resource) => resource !== "deployment" && resource !== "dependencies",
+  ).map((resource) => {
+    const envelope = release.envelopes[resource];
+    return {
+      resource,
+      observedAt: new Date(envelope.generatedAt),
+      validUntil: new Date(envelope.expiresAt),
+      environment: AUDIT_ENVIRONMENT,
+      deploymentDigest: release.deploymentDigest,
+      cardinality: 1,
+      jwtKid: JWT_KID,
+      evidence: envelope.evidence,
+      attestation: envelope.attestation,
+    };
+  });
+}
+
+export function assertNoDuplicateReleaseAttestation(rowCount: number): void {
+  if (rowCount > 0) {
+    throw new Error("Duplicate audit release attestation.");
+  }
+}
+
+async function readSettings(path: string): Promise<Record<string, string>> {
+  const text = await readFile(path, "utf8");
+  const settings: Record<string, string> = {};
+  for (const line of text.split(/\r?\n/u)) {
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const separator = line.indexOf("=");
+    settings[line.slice(0, separator)] = line.slice(separator + 1);
+  }
+  return settings;
+}
+
+function requiredSetting(
+  settings: Record<string, string>,
+  name: string,
+): string {
+  const value = settings[name]?.trim();
+  if (!value) throw new Error(`Missing audit writer setting: ${name}.`);
+  return value.replace(/\\n/gu, "\n");
+}
+
+async function main(): Promise<void> {
+  const manifestPath = process.env.AUDIT_MANIFEST_FILE;
+  const signaturePath = process.env.AUDIT_MANIFEST_SIGNATURE_FILE;
+  const settingsPath =
+    process.env.AUDIT_WRITER_SETTINGS_FILE ??
+    "/run/secrets/audit_writer_settings";
+  if (!manifestPath || !signaturePath) {
+    throw new Error("Audit manifest paths are not configured.");
+  }
+  const settings = await readSettings(settingsPath);
+  process.env.PGDATABASE = requiredSetting(settings, "PGDATABASE");
+  process.env.PGUSER = requiredSetting(settings, "PGUSER");
+  process.env.PGPASSWORD = requiredSetting(settings, "PGPASSWORD");
+  const publicKey = requiredSetting(
+    settings,
+    "AUDIT_RELEASE_MANIFEST_PUBLIC_KEY",
+  );
+  const allowedKids = requiredSetting(
+    settings,
+    "AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS",
+  )
+    .split(",")
+    .map((value) => value.trim());
+  if (!allowedKids.includes(RELEASE_ATTESTATION_KID)) {
+    throw new Error("Audit release attestation kid is not allowlisted.");
+  }
+  const release = verifyReleaseManifest(
+    await readFile(manifestPath, "utf8"),
+    (await readFile(signaturePath, "utf8")).trim(),
+    publicKey,
+  );
+  const pool = createPostgresPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const duplicate = await client.query(
+      "SELECT 1 FROM audit.release_attestations WHERE deployment_sha = $1",
+      [release.deploymentSha],
+    );
+    assertNoDuplicateReleaseAttestation(duplicate.rowCount ?? 0);
+    await client.query(
+      `INSERT INTO audit.release_attestations
+        (deployment_sha, environment, manifest, signature, kid, observed_at, valid_until)
+       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
+      [
+        release.deploymentSha,
+        AUDIT_ENVIRONMENT,
+        JSON.stringify(release.manifest),
+        release.signature,
+        RELEASE_ATTESTATION_KID,
+        release.observedAt,
+        release.validUntil,
+      ],
+    );
+    for (const row of buildAuditEvidenceRows(release)) {
+      await client.query(
+        `INSERT INTO audit.evidence
+          (resource, observed_at, valid_until, environment, deployment_digest,
+           cardinality, jwt_kid, items, attestation)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
+         ON CONFLICT (resource) DO UPDATE SET
+           observed_at = EXCLUDED.observed_at,
+           valid_until = EXCLUDED.valid_until,
+           environment = EXCLUDED.environment,
+           deployment_digest = EXCLUDED.deployment_digest,
+           cardinality = EXCLUDED.cardinality,
+           jwt_kid = EXCLUDED.jwt_kid,
+           items = EXCLUDED.items,
+           attestation = EXCLUDED.attestation`,
+        [
+          row.resource,
+          row.observedAt,
+          row.validUntil,
+          row.environment,
+          row.deploymentDigest,
+          row.cardinality,
+          row.jwtKid,
+          JSON.stringify(row.evidence),
+          JSON.stringify(row.attestation),
+        ],
+      );
+    }
+    await client.query("COMMIT");
+    process.stdout.write(
+      `Persisted audit evidence for ${release.deploymentSha} (${AUDIT_RESOURCES.length} resources).\n`,
+    );
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+if (process.argv[1]?.endsWith("audit-evidence-writer.js")) {
+  main().catch((error: unknown) => {
+    const message =
+      error instanceof Error ? error.message : "Audit writer failed.";
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  });
+}

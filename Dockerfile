@@ -97,6 +97,7 @@ COPY --from=build --chown=node:node /workspace/apps/api/dist /workspace/apps/api
 COPY --chown=node:node apps/api/migrations /workspace/apps/api/migrations
 COPY --chown=node:node docker/api-entrypoint.sh /workspace/docker/api-entrypoint.sh
 COPY --chown=node:node docker/database-entrypoint.sh /workspace/docker/database-entrypoint.sh
+COPY --chown=node:node docker/audit-writer-entrypoint.sh /workspace/docker/audit-writer-entrypoint.sh
 COPY --chown=node:node docker/admin-provision-entrypoint.sh /workspace/docker/admin-provision-entrypoint.sh
 COPY --chown=node:node scripts/verify-release-manifest.mjs /workspace/scripts/verify-release-manifest.mjs
 

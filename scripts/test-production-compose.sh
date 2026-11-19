@@ -90,6 +90,16 @@ EOF
 cat > "$TEMP_ROOT/.secrets/postgres_admin_settings" <<'EOF'
 POSTGRES_ADMIN_PASSWORD=ci-fake-postgres-admin-password
 EOF
+cat > "$TEMP_ROOT/.secrets/audit_writer_settings" <<'EOF'
+PGDATABASE=grumphya_ci
+PGUSER=grumphya_audit_writer
+PGPASSWORD=ci-fake-audit-writer-password
+AUDIT_RELEASE_MANIFEST_PUBLIC_KEY=ci-fake-public-key
+AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS=grumphya-release-2026
+AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS=ds-auditor-2026
+EVALUATION_PROVIDER=openai
+OPENAI_MODEL=gpt-5.4-mini
+EOF
 cat > "$TEMP_ROOT/.secrets/openai_settings" <<'EOF'
 EVALUATION_PROVIDER=openai
 OPENAI_MODEL=gpt-5.4-mini

@@ -55,7 +55,7 @@ La respuesta válida tiene exactamente esta envolvente:
   "expiresAt": "2026-11-20T20:00:00.000Z",
   "profile": "beta-d-0.2",
   "scope": "audit:quality",
-  "evidence": {},
+  "evidence": [{}],
   "attestation": {
     "alg": "EdDSA",
     "kid": "grumphya-release-2026",
@@ -65,7 +65,8 @@ La respuesta válida tiene exactamente esta envolvente:
 }
 ```
 
-`scope` coincide con el recurso solicitado. `kid` identifica el JWT que
+`scope` coincide con el recurso solicitado. `evidence` contiene exactamente un
+resultado. `kid` identifica el JWT que
 autorizó la lectura; el `kid` de `attestation` es independiente y pertenece
 a la release. Se devuelve como máximo un resultado por ruta y la respuesta
 completa ocupa menos de 64 KiB. No se sirven fixtures, semillas ni datos
@@ -110,6 +111,25 @@ en Beta D y no se expone ningún endpoint de escritura. El API solo recibe
 evidencias válidas con un rol dedicado; el proceso de retención usa otro rol
 con `DELETE` limitado. Ambos usan PostgreSQL de Grumphya por TLS y no
 comparten base de datos con Desarrollo Seguro.
+
+El servicio one-shot `audit-writer` se ejecuta desde el helper de despliegue
+después de que la migración y los healthchecks hayan terminado. Está en el
+perfil Compose `audit-evidence`, no se publica y solo se activa para persistir
+la release candidata. Lee `audit_writer_settings`, un secreto root-only que
+contiene exclusivamente la conexión del rol `grumphya_audit_writer`, las
+claves públicas de atestación y los identificadores de auditoría; no recibe la
+contraseña de la API, OpenAI, SMTP ni el rol de retención. Copia el manifiesto y
+la CA a un directorio temporal y baja el proceso a `node` antes de conectar a
+PostgreSQL.
+
+El escritor verifica la firma Ed25519 del manifiesto, los siete sobres, el
+`deploymentDigest`, las fechas y la cardinalidad antes de abrir la transacción.
+Rechaza una atestación de release duplicada por `deployment_sha`, inserta la
+atestación y actualiza de forma idempotente las cinco evidencias que no forman
+parte del sobre de release (`infrastructure`, `auth`, `quality`, `privacy` y
+`ai`). `deployment` y `dependencies` se sirven desde la atestación persistida
+del manifiesto. Un fallo revierte toda la transacción y aborta la release; no
+se marca como activa una versión sin evidencia firmada.
 
 La migración `039_audit_evidence` crea el esquema y la `040` añade el
 contrato Beta D, el recurso `ai`, el `jwt_kid`, la cardinalidad y la
@@ -157,9 +177,15 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
 1. Instala las claves públicas y variables en
    `/opt/grumphya/.secrets/grumphya_env` con permisos `600`. No copies
    claves privadas ni tokens a issues, commits o logs.
-2. Mantén `AUDIT_ENABLED=false`. La ausencia de la extensión, de la red o de
+2. Crea `/opt/grumphya/.secrets/audit_writer_settings` con propietario
+   `root:root`, modo `600`, el rol `grumphya_audit_writer`, su contraseña
+   rotada, la clave pública de atestación, `grumphya-release-2026`,
+   `ds-auditor-2026`, `EVALUATION_PROVIDER` y `OPENAI_MODEL`. El archivo no
+   debe contener credenciales de la API, OpenAI, SMTP ni la clave privada de
+   atestación.
+3. Mantén `AUDIT_ENABLED=false`. La ausencia de la extensión, de la red o de
    las claves deja el despliegue habitual operativo.
-3. Ejecuta las pruebas locales y el preflight. Tras disponer de un entorno
+4. Ejecuta las pruebas locales y el preflight. Tras disponer de un entorno
    habilitado, el smoke reproducible de las siete rutas es:
 
    ```bash
@@ -187,12 +213,13 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `kid` bajo el evento `AUDIT_REQUEST_REJECTED`; nunca registra el token, las
    cookies ni el cuerpo.
 
-4. Antes de cualquier activación deben pasar el smoke autenticado y la prueba
+5. Antes de cualquier activación deben pasar el smoke autenticado y la prueba
    operativa de rechazo desde `31.70.130.181/32`. La clave pública JWT y su
    huella, la ACL, la clave pública de atestación y su `kid`, los roles
-   PostgreSQL y las pruebas de permisos ya están cerrados. Solo entonces se
-   puede cambiar a `AUDIT_ENABLED=true` en una release aprobada.
-5. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL y conserva
+   PostgreSQL, la persistencia de las siete evidencias y las pruebas de
+   permisos ya deben estar cerrados. Solo entonces se puede cambiar a
+   `AUDIT_ENABLED=true` en una release aprobada.
+6. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL y conserva
    las rutas normales. No hace falta reiniciar ni modificar datos funcionales.
 
 Las pruebas de autorización cubren JWT inválido, scope incorrecto, expiración,

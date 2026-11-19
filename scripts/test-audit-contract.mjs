@@ -40,6 +40,16 @@ const rejectionSmoke = await readFile(
   "scripts/smoke-audit-rejection.mjs",
   "utf8",
 );
+const writer = await readFile(
+  "apps/api/src/audit/audit-evidence-writer.ts",
+  "utf8",
+);
+const writerEntrypoint = await readFile(
+  "docker/audit-writer-entrypoint.sh",
+  "utf8",
+);
+const productionCompose = await readFile("compose.production.yaml", "utf8");
+const deployHelper = await readFile("docker/vps-deploy.sh", "utf8");
 const technicalAuth = await readFile(
   "apps/api/src/audit/audit-technical-auth.ts",
   "utf8",
@@ -125,4 +135,14 @@ assert.doesNotMatch(rejectionSmoke, /console\.log\([^)]*invalidToken/);
 assert.match(technicalAuth, /AUDIT_REQUEST_REJECTED/);
 assert.match(technicalAuth, /requestRoute/);
 assert.match(technicalAuth, /readHeaderKid/);
+assert.match(productionCompose, /audit-writer:/);
+assert.match(productionCompose, /audit-evidence/);
+assert.match(productionCompose, /audit_writer_settings/);
+assert.match(writer, /verifyReleaseManifest/);
+assert.match(writer, /Duplicate audit release attestation/);
+assert.match(writer, /ON CONFLICT \(resource\) DO UPDATE/);
+assert.match(writerEntrypoint, /PGSSL_MODE/);
+assert.match(writerEntrypoint, /setpriv --reuid=node/);
+assert.match(deployHelper, /persisting signed audit evidence/);
+assert.match(deployHelper, /--profile audit-evidence run/);
 console.log("Audit contract configuration validated.");

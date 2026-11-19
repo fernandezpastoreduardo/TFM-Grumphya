@@ -347,14 +347,13 @@ jobs:
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
-          vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
-          vars.AUDIT_ENABLED == 'true'
+          vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
           AUDIT_RELEASE_SIGNING_KEY: ${{ secrets.AUDIT_RELEASE_SIGNING_KEY }}
         shell: bash
         run: |
           set -Eeuo pipefail
-          : "${AUDIT_RELEASE_SIGNING_KEY:?Create the AUDIT_RELEASE_SIGNING_KEY Actions secret before enabling production audit evidence}"
+          : "${AUDIT_RELEASE_SIGNING_KEY:?Create the AUDIT_RELEASE_SIGNING_KEY Actions secret before persisting production audit evidence}"
           test -s release/security-results.json
           pnpm list --prod --recursive --json --depth Infinity > release/dependency-inventory.json
           api_digest=$(docker image inspect --format '{{.Id}}' "grumphya-api:${GITHUB_SHA}")
@@ -456,13 +455,11 @@ jobs:
           DATABASE_IMAGE=grumphya-database:${{ github.sha }}
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
           EOF
-          bundle_files=(compose.production.yaml docker migrations images.tar release.env)
-          if [[ "${AUDIT_ENABLED:-false}" == "true" ]]; then
-            test -s release/release-manifest.json
-            test -s release/release-manifest.sig
-            bundle_files+=(release-manifest.json release-manifest.sig)
-          else
-            echo "Audit disabled; omitting the optional release attestation from the bundle."
+          test -s release/release-manifest.json
+          test -s release/release-manifest.sig
+          bundle_files=(compose.production.yaml docker migrations images.tar release.env release-manifest.json release-manifest.sig)
+          if [[ "${AUDIT_ENABLED:-false}" != "true" ]]; then
+            echo "Audit disabled; persisting signed evidence without exposing audit routes."
           fi
           tar -C release -czf release-bundle.tar.gz "${bundle_files[@]}"
           du -h release-bundle.tar.gz

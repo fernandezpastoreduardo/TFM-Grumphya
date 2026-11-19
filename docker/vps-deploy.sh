@@ -4,6 +4,7 @@ umask 077
 
 readonly EXPECTED_SECRETS=(
   admin_settings
+  audit_writer_settings
   api_tls.crt
   api_tls.key
   database_settings
@@ -174,8 +175,13 @@ check_current_release() {
 
 compose_for() {
   local dir=$1 ingress_internal=''
+  local audit_manifest_file=/dev/null audit_signature_file=/dev/null
   local -a compose_files=(--file "$dir/compose.production.yaml")
   shift
+  if [[ -f $dir/release-manifest.json && -f $dir/release-manifest.sig ]]; then
+    audit_manifest_file=$dir/release-manifest.json
+    audit_signature_file=$dir/release-manifest.sig
+  fi
   if [[ -f $ADDITIONAL_COMPOSE_FILE && -d $ADDITIONAL_SITES_DIR ]]; then
     ingress_internal=$(docker network inspect --format '{{.Internal}}' \
       development-security-ingress 2>/dev/null) || ingress_internal=''
@@ -185,7 +191,9 @@ compose_for() {
       log 'optional Caddy sites disabled: development-security-ingress is absent or not internal'
     fi
   fi
-  GRUMPHYA_SECRETS_DIR="$SECRETS_DIR" \
+  AUDIT_MANIFEST_FILE="$audit_manifest_file" \
+    AUDIT_MANIFEST_SIGNATURE_FILE="$audit_signature_file" \
+    GRUMPHYA_SECRETS_DIR="$SECRETS_DIR" \
     GRUMPHYA_ADDITIONAL_SITES_DIR="$ADDITIONAL_SITES_DIR" \
     docker compose --project-name grumphya \
     --env-file "$ENV_FILE" \
@@ -591,6 +599,9 @@ deploy() {
     compose_for "$candidate_dir" run --rm --no-deps -T api \
       sh /workspace/docker/api-entrypoint.sh node apps/api/dist/infrastructure/ai/production-ai-smoke.js >/dev/null ||
       die 'production AI provider smoke failed; restoring the previous release'
+    log 'persisting signed audit evidence with the internal writer'
+    compose_for "$candidate_dir" --profile audit-evidence run --rm --no-deps audit-writer >/dev/null ||
+      die 'signed audit evidence persistence failed; restoring the previous release'
     write_state current "$sha"
     clear_pending_state
     ROLLOUT_IN_PROGRESS=0
