@@ -326,15 +326,12 @@ async function main(): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const duplicate = await client.query(
-      "SELECT 1 FROM audit.release_attestations WHERE deployment_sha = $1",
-      [release.deploymentSha],
-    );
-    assertNoDuplicateReleaseAttestation(duplicate.rowCount ?? 0);
-    await client.query(
+    const insertedAttestation = await client.query(
       `INSERT INTO audit.release_attestations
         (deployment_sha, environment, manifest, signature, kid, observed_at, valid_until)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
+       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)
+       ON CONFLICT (deployment_sha) DO NOTHING
+       RETURNING deployment_sha`,
       [
         release.deploymentSha,
         AUDIT_ENVIRONMENT,
@@ -345,6 +342,9 @@ async function main(): Promise<void> {
         release.validUntil,
       ],
     );
+    if ((insertedAttestation.rowCount ?? 0) === 0) {
+      assertNoDuplicateReleaseAttestation(1);
+    }
     for (const row of buildAuditEvidenceRows(release)) {
       await client.query(
         `INSERT INTO audit.evidence

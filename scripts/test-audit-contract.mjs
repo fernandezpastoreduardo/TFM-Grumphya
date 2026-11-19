@@ -148,6 +148,8 @@ assert.match(
 );
 assert.match(writer, /verifyReleaseManifest/);
 assert.match(writer, /Duplicate audit release attestation/);
+assert.match(writer, /ON CONFLICT \(deployment_sha\) DO NOTHING/);
+assert.doesNotMatch(writer, /SELECT 1 FROM audit\.release_attestations/);
 assert.match(writer, /ON CONFLICT \(resource\) DO UPDATE/);
 assert.match(writerEntrypoint, /PGSSL_MODE/);
 assert.match(writerEntrypoint, /AUDIT_WRITER_SETTINGS_FILE/);
