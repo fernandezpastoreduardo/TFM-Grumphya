@@ -13,6 +13,15 @@ localmente como Ed25519 y su huella DER SPKI SHA-256 es
 La huella sirve para comparar el material instalado por un canal seguro; no
 sustituye esa verificación.
 
+El handoff operativo del 19 de noviembre de 2026 dejó instalada esta clave
+como `AUDIT_TECHNICAL_AUTH_PUBLIC_KEY` y `AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS`
+quedó limitado a `ds-auditor-2026`. La atestación usa el `kid`
+`grumphya-release-2026`; su pública instalada en el VPS tiene la huella DER
+SPKI SHA-256
+`71db3a2957a92fa118f70374d175205695f6638b33e4c7b7d81314801eae7c77`.
+La privada se guardó únicamente en el secreto de GitHub Actions
+`AUDIT_RELEASE_SIGNING_KEY`.
+
 ## Rutas de lectura
 
 Caddy permite únicamente estos siete recursos externos:
@@ -87,10 +96,13 @@ denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
 Desarrollo Seguro ha observado `31.70.130.181/32` como IP de salida y
-`172.20.0.0/16` como red interna. Grumphya aún debe comprobar desde Caddy que
-esa IP es la que ve realmente el proxy; hasta esa comprobación la ACL no se
-instala y la auditoría permanece apagada. No se conectan redes Docker de ambos
-proyectos y el proxy nunca se conecta a `development-security-edge`.
+`172.20.0.0/16` como red interna. En la comprobación operativa no se pudo
+observar todavía una petición de auditoría desde ese origen: el contenedor
+actual no resolvió `grumphya.com` y no tiene una ruta de salida utilizable. Por
+eso `AUDIT_ALLOWED_NETWORKS` sigue sin instalarse; no se acepta esa IP por
+suposición. Debe añadirse solo después de confirmar el origen que Caddy vea
+realmente. La auditoría permanece apagada y el proxy nunca se conecta a
+`development-security-edge` para este contrato.
 
 ## Evidencia interna y atestación
 
@@ -126,6 +138,14 @@ como prueba de producción.
 | Retención        | `DELETE` en esas tablas y solo sobre la ventana de 30 días  | Purga                            |
 | Propietario      | `NOLOGIN`, propietario del esquema y tablas                 | Administración                   |
 
+En el VPS se aprovisionaron y probaron estos nombres: API
+`grumphya_app`, escritor `grumphya_audit_writer`, retención
+`grumphya_audit_retention` y propietario `grumphya_audit_owner`. Las
+credenciales del escritor y de retención están en secretos root-only con modo
+`600`. El API tiene `SELECT`, el escritor `INSERT, UPDATE` y la retención
+`DELETE`; los dos roles con contraseña iniciaron sesión usando TLS
+`verify-full`.
+
 Provisiona los roles con
 `AUDIT_API_ROLE`, `AUDIT_OWNER_ROLE`, `AUDIT_WRITER_ROLE` y
 `AUDIT_RETENTION_ROLE` usando
@@ -154,10 +174,10 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `Content-Type: application/json`, la envolvente exacta, la firma
    presente, el `kid`, el `scope`, la cardinalidad y el límite de 64 KiB.
 
-4. Antes de cualquier activación deben estar cerrados: ACL observada,
-   clave pública JWT y su huella, clave pública de atestación y su `kid`,
-   roles PostgreSQL y pruebas de permisos. Solo entonces se puede cambiar a
-   `AUDIT_ENABLED=true` en una release aprobada.
+4. Antes de cualquier activación debe estar cerrada la ACL observada. La
+   clave pública JWT y su huella, la clave pública de atestación y su `kid`,
+   los roles PostgreSQL y las pruebas de permisos ya están cerrados. Solo
+   entonces se puede cambiar a `AUDIT_ENABLED=true` en una release aprobada.
 5. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL y conserva
    las rutas normales. No hace falta reiniciar ni modificar datos funcionales.
 
