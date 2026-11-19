@@ -381,6 +381,7 @@ jobs:
           printf '%s\n' "$AUDIT_RELEASE_SIGNING_KEY" > "$signing_key"
           chmod 600 "$signing_key"
           node --input-type=module - "$signing_key" "${GITHUB_SHA}" <<'NODE'
+          import { chmodSync } from "node:fs";
           import { readFile, writeFile } from "node:fs/promises";
           import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
           import { spawnSync } from "node:child_process";
@@ -412,6 +413,11 @@ jobs:
           const manifest = await readFile(manifestPath);
           const signature = sign(null, manifest, key).toString("base64url");
           await writeFile("release/release-manifest.sig", signature, { mode: 0o600 });
+          // The manifest and its detached signature are public verification inputs.
+          // Keep the signing key private, but make these files readable by the
+          // unprivileged API container during the VPS handoff.
+          chmodSync("release/release-manifest.json", 0o644);
+          chmodSync("release/release-manifest.sig", 0o644);
           const publicKeyDer = createPublicKey(key).export({ type: "spki", format: "der" });
           const fingerprint = createHash("sha256").update(publicKeyDer).digest("hex");
           console.log(`Release attestation public key fingerprint: ${fingerprint}`);

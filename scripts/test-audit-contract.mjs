@@ -54,6 +54,7 @@ const writerEntrypoint = await readFile(
 );
 const productionCompose = await readFile("compose.production.yaml", "utf8");
 const deployHelper = await readFile("docker/vps-deploy.sh", "utf8");
+const ciWorkflow = await readFile(".github/workflows/ci.yml", "utf8");
 const technicalAuth = await readFile(
   "apps/api/src/audit/audit-technical-auth.ts",
   "utf8",
@@ -178,6 +179,14 @@ assert.match(
 );
 assert.match(writer, /verifyReleaseManifest/);
 assert.match(writer, /Duplicate audit release attestation/);
+assert.match(
+  ciWorkflow,
+  /chmodSync\("release\/release-manifest\.json", 0o644\)/,
+);
+assert.match(
+  ciWorkflow,
+  /chmodSync\("release\/release-manifest\.sig", 0o644\)/,
+);
 assert.match(writer, /isUniqueViolation/);
 assert.match(writer, /23505/);
 assert.doesNotMatch(writer, /ON CONFLICT \(deployment_sha\)/);
