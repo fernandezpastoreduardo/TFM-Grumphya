@@ -382,6 +382,17 @@ is_approved_audit_contract_migration() {
   return 0
 }
 
+is_approved_audit_writer_migration() {
+  local name=$1 content=$2 expected_hash actual_hash
+  local marker='-- deployment-schema-change: add-audit-writer-upsert'
+  expected_hash='f59b2bc176dc41dedb16d7aad29c6d88c885231473acab02190909ae97b5f2de'
+
+  [[ $name == '041_audit_writer_upsert.sql' ]] || return 1
+  grep -Fq -- "$marker" <<< "$content" || return 1
+  actual_hash=$(printf '%s\n' "$content" | sha256sum | awk '{print $1}')
+  [[ $actual_hash == "$expected_hash" ]]
+}
+
 migrations_compatible() {
   local previous_dir=$1 candidate_dir=$2 file name old_content new_content
   local marker='-- deployment-rollback-compatible: true'
@@ -415,7 +426,8 @@ migrations_compatible() {
     if [[ $new_content =~ $destructive || $new_content =~ $alter_destructive ]]; then
       if is_approved_illuminado_repricing_migration "$name" "$new_content" ||
         is_approved_application_error_context_redaction_migration "$name" "$new_content" ||
-        is_approved_audit_contract_migration "$name" "$new_content"; then
+        is_approved_audit_contract_migration "$name" "$new_content" ||
+        is_approved_audit_writer_migration "$name" "$new_content"; then
         continue
       fi
       log "migration compatibility blocked: new migration $name contains a destructive operation"
