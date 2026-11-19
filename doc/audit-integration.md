@@ -131,12 +131,13 @@ parte del sobre de release (`infrastructure`, `auth`, `quality`, `privacy` y
 del manifiesto. Un fallo revierte toda la transacción y aborta la release; no
 se marca como activa una versión sin evidencia firmada.
 
-La migración `039_audit_evidence` crea el esquema y la `040` añade el
-contrato Beta D, el recurso `ai`, el `jwt_kid`, la cardinalidad y la
-atestación. La tabla `audit.evidence` conserva como máximo una fila actual
-por recurso. Las evidencias deben tener `environment=production`,
-`cardinality=1`, fechas frescas y una atestación Ed25519 válida. La API
-verifica la firma antes de construir la respuesta.
+La migración `039_audit_evidence` crea el esquema, la `040` añade el contrato
+Beta D, el recurso `ai`, el `jwt_kid`, la cardinalidad y la atestación, y la
+`041` crea el upsert `SECURITY DEFINER` del escritor. La tabla
+`audit.evidence` conserva como máximo una fila actual por recurso. Las
+evidencias deben tener `environment=production`, `cardinality=1`, fechas
+frescas y una atestación Ed25519 válida. La API verifica la firma antes de
+construir la respuesta.
 
 La atestación de release usa `kid=grumphya-release-2026`. La clave privada se
 genera en un entorno controlado y solo se guarda como secreto de GitHub Actions
@@ -163,6 +164,11 @@ credenciales del escritor y de retención están en secretos root-only con modo
 `600`. El API tiene `SELECT`, el escritor `INSERT, UPDATE` y la retención
 `DELETE`; los dos roles con contraseña iniciaron sesión usando TLS
 `verify-full`.
+
+El escritor no recibe `SELECT` sobre las tablas. Para mantener ese límite y
+permitir el upsert idempotente, `audit.upsert_evidence` es una función
+`SECURITY DEFINER` propiedad de `grumphya_audit_owner`; el escritor solo recibe
+`EXECUTE` sobre esa función además de `INSERT, UPDATE`.
 
 Provisiona los roles con
 `AUDIT_API_ROLE`, `AUDIT_OWNER_ROLE`, `AUDIT_WRITER_ROLE` y
@@ -221,6 +227,20 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `AUDIT_ENABLED=true` en una release aprobada.
 6. Para revertir, vuelve a `AUDIT_ENABLED=false`, retira la ACL y conserva
    las rutas normales. No hace falta reiniciar ni modificar datos funcionales.
+
+Para detectar rápidamente fallos de montaje de secretos, TLS, migraciones y
+permisos antes de publicar una release, usa el preflight aislado (no ejecuta
+E2E ni contacta con el VPS):
+
+```bash
+bash scripts/test-production-compose.sh <sha-de-40-caracteres> --audit-only
+```
+
+Este modo levanta solo PostgreSQL, migraciones y API, genera un manifiesto y
+una clave efímeros, ejecuta el escritor dos veces, comprueba el rechazo de la
+atestación duplicada, valida la lectura del API y verifica que el escritor no
+tiene `SELECT`. El smoke completo de producción reutiliza además esta misma
+comprobación después de sus validaciones HTTP.
 
 Las pruebas de autorización cubren JWT inválido, scope incorrecto, expiración,
 revocación, ACL, cookies y configuración ausente. Las pruebas de servicio

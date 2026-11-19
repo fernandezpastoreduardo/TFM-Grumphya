@@ -15,6 +15,22 @@ pnpm install
 pnpm db:setup
 ```
 
+## Comprobación local antes de CI
+
+Antes de hacer commit/push de un cambio que pueda afectar a CI, al bundle de
+release o al despliegue, ejecuta primero las puertas locales equivalentes. Empieza
+por los contratos y tests dirigidos; para cambios de producción o auditoría usa el
+preflight aislado documentado en [CI/CD](ci-cd.md):
+
+```sh
+bash scripts/test-production-compose.sh "$(git rev-parse HEAD)" --audit-only
+```
+
+Este preflight no consume minutos de GitHub Actions, no toca el VPS y mantiene
+`AUDIT_ENABLED=false`. Ejecuta E2E solo cuando la evidencia indique que el cambio
+puede afectar al navegador o al runtime E2E; deja registrada la decisión y las
+puertas que sí se ejecutaron.
+
 `pnpm db:setup` genera `.env.docker` con una contraseña de desarrollo y secretos HMAC de IP y access token aleatorios, y permisos de archivo `0600`; está excluida de Git. No copies esos valores a producción. Para E2E, instala Chromium una vez con `pnpm --filter @grumphya/web exec playwright install chromium`.
 
 ## Arranque

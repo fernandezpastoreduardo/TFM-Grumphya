@@ -119,6 +119,28 @@ El comando crea un runner `linux/amd64` con Node de `.node-version`, pnpm `12.5.
 
 `quality` incluye checks de React y migraciones, formato, lint, typecheck, tests, build, seguridad de contenedores/TLS y políticas de despliegue. `e2e` ejecuta Playwright; `audit` ejecuta ambas auditorías pnpm. El modo predeterminado corre los tres grupos de forma secuencial. La auditoría necesita acceso al registry y a los avisos actuales.
 
+### Puerta local antes de enviar cambios a CI
+
+Antes de hacer commit/push o solicitar un workflow, reproduce localmente las puertas
+que pueda afectar el cambio. El orden recomendado es: contratos y sintaxis; tests
+dirigidos; integración del entorno afectado; y después `pnpm lint`, `pnpm typecheck`,
+`pnpm test`, build o auditoría cuando proceda. Así los bugs de Compose, migraciones,
+Dockerfiles, entrypoints y scripts de despliegue se detectan sin consumir minutos de
+GitHub Actions ni tocar el VPS.
+
+Para cambios de producción o auditoría, usa el preflight aislado cuando aplique:
+
+```sh
+bash scripts/test-production-compose.sh "$(git rev-parse HEAD)" --audit-only
+```
+
+Este modo usa imágenes y secretos efímeros, conserva `AUDIT_ENABLED=false` y limpia
+sus recursos al terminar. Las pruebas E2E no son una puerta automática: se omiten si
+la evidencia del cambio demuestra que no puede afectar al navegador o al runtime E2E,
+y se registra esa decisión junto con las comprobaciones ejecutadas. Las variables,
+secretos, permisos del repositorio y comportamiento exclusivo de GitHub siguen
+requiriendo una revisión explícita de Actions después de esta puerta local.
+
 La construcción, el escaneo Trivy y el smoke de las imágenes finales se ejecutan aparte del runner para que el socket Docker no entre en el contenedor de la aplicación:
 
 ```sh

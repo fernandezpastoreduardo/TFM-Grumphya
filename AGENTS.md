@@ -555,6 +555,28 @@ These standards ensure **first-try success** with lint and tests, maintain code 
 - Pedidos como «arregla CI», «haz push» o «verifica el cambio» no autorizan por sí solos a consumir minutos de GitHub Actions. Validar los cambios localmente e informar de lo que queda pendiente en Actions.
 - Antes de publicar, comprobar si el push disparará Actions automáticamente. Si lo hará y el usuario no ha autorizado explícitamente ese gasto, solicitar esa autorización antes del push.
 
+### Puerta local antes de CI
+
+- Todo cambio que pueda afectar a CI, al bundle de release o al despliegue debe pasar
+  primero por una comprobación local equivalente, antes de hacer commit/push o de
+  pedir un workflow. Esto incluye workflows, scripts de CI o despliegue, Dockerfiles,
+  Compose, migraciones, entrypoints, configuración de tests, permisos, secretos y
+  dependencias de runtime.
+- Ejecutar las puertas en este orden: sintaxis y contratos estáticos; tests dirigidos
+  al cambio; preflight de integración que reproduzca el entorno afectado; y solo
+  después la batería local de calidad que siga siendo relevante (`pnpm lint`,
+  `pnpm typecheck`, `pnpm test`, build o auditoría).
+- Para cambios de Compose, producción o auditoría, el preflight mínimo es
+  `bash scripts/test-production-compose.sh <sha-de-40-caracteres> --audit-only`
+  cuando el cambio esté cubierto por ese modo. Debe ejecutarse con secretos y
+  volúmenes efímeros, mantener `AUDIT_ENABLED=false` y no tocar el VPS.
+- No usar GitHub Actions para descubrir un bug que una comprobación local pueda
+  detectar. Si una puerta solo existe en GitHub, documentar esa limitación y la
+  evidencia local equivalente antes de publicar.
+- No ejecutar E2E por rutina: omitirlo cuando la evidencia demuestre que el cambio
+  no puede afectar al navegador ni al runtime E2E, y dejar constancia de esa
+  omisión junto con las puertas que sí se ejecutaron.
+
 ## Evidencia y fechas
 
 - No inferir nunca la fecha de hoy ni usarla como dato de trabajo por el mero
