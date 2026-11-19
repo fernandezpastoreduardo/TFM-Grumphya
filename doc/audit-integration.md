@@ -7,10 +7,10 @@ la evidencia, las rutas de auditoría responden con un rechazo JSON y el resto
 de Grumphya funciona igual.
 
 El perfil implementado es `beta-d-0.2`. La primera identidad de Desarrollo
-Seguro usa el JWT `kid=ds-auditor-2026`. La huella SHA-256 documentada de su
-PEM público es
-`b131af991d5056e26e12fe27df33e149f48e46209d5a4f848944ac5255703bc5`.
-La huella sirve para comparar el material recibido por un canal seguro; no
+Seguro usa el JWT `kid=ds-auditor-2026`. La PEM pública recibida se verificó
+localmente como Ed25519 y su huella DER SPKI SHA-256 es
+`b4aea1fe81f85f13370708dbb38fc22e0815b4aaf59dc5c869d74394b2d27caa`.
+La huella sirve para comparar el material instalado por un canal seguro; no
 sustituye esa verificación.
 
 ## Rutas de lectura
@@ -86,11 +86,11 @@ de identidades vigentes; `AUDIT_TECHNICAL_AUTH_REVOKED_KIDS` y
 denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
-Desarrollo Seguro ha propuesto `31.70.130.181/32` como salida NAT y
-`172.20.0.0/16` como red interna. Ninguna de las dos es todavía el valor
-confirmado observado por el proxy; esta puerta queda pendiente antes de
-activar la auditoría. No se conectan redes Docker de ambos proyectos y el
-proxy nunca se conecta a `development-security-edge`.
+Desarrollo Seguro ha observado `31.70.130.181/32` como IP de salida y
+`172.20.0.0/16` como red interna. Grumphya aún debe comprobar desde Caddy que
+esa IP es la que ve realmente el proxy; hasta esa comprobación la ACL no se
+instala y la auditoría permanece apagada. No se conectan redes Docker de ambos
+proyectos y el proxy nunca se conecta a `development-security-edge`.
 
 ## Evidencia interna y atestación
 
