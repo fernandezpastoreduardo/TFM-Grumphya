@@ -418,11 +418,6 @@ jobs:
           // unprivileged API container during the VPS handoff.
           chmodSync("release/release-manifest.json", 0o644);
           chmodSync("release/release-manifest.sig", 0o644);
-          const publicKeyDer = createPublicKey(key).export({ type: "spki", format: "der" });
-          const fingerprint = createHash("sha256").update(publicKeyDer).digest("hex");
-          console.log(`Release attestation public key fingerprint: ${fingerprint}`);
-          console.log(`Release manifest SHA-256: ${createHash("sha256").update(manifest).digest("hex")}`);
-          console.log(`Release signature SHA-256: ${createHash("sha256").update(signature).digest("hex")}`);
           const publicKeyPath = `${keyPath}.pub`;
           await writeFile(publicKeyPath, createPublicKey(key).export({ type: "spki", format: "pem" }), { mode: 0o600 });
           const verification = spawnSync(process.execPath, [
