@@ -54,10 +54,12 @@ services:
     user: "0"
     secrets:
       - database_settings
+      - postgres_admin_settings
       - source: internal_tls_ca
         target: internal_tls_ca.crt
     environment:
       NODE_ENV: production
+      MIGRATIONS_USE_BOOTSTRAP: "true"
       PGSSL_MODE: verify-full
       NODE_EXTRA_CA_CERTS: /run/secrets/internal_tls_ca.crt
       PGHOST: db

@@ -10,7 +10,7 @@ Esta guía describe cómo operar Grumphya en un único VPS IONOS M+ con Docker C
 - PostgreSQL y los avatares usan volúmenes nombrados persistentes. Caddy conserva también sus certificados.
 - Un servicio de una sola ejecución aplica las migraciones y la API espera a que termine correctamente y a que PostgreSQL esté saludable.
 - PostgreSQL solo pertenece a la red interna. La API también se conecta a una red privada de salida para poder llamar a OpenAI y SMTP; no publica ningún puerto del host.
-- PostgreSQL mantiene separado el usuario bootstrap `postgres`, cuya contraseña está en `postgres_admin_settings` y solo se monta en `db`, del usuario de runtime configurado en `database_settings`. La inicialización crea el usuario de runtime como propietario de la base, sin privilegios de superusuario; API, migrador y aprovisionador Jappy usan solo este rol limitado. La contraseña bootstrap no se entrega a la API.
+- PostgreSQL mantiene separado el usuario bootstrap `postgres`, cuya contraseña está en `postgres_admin_settings`, del usuario de runtime configurado en `database_settings`. La inicialización crea el usuario de runtime como propietario de la base, sin privilegios de superusuario; la API y el aprovisionador de Jappy usan solo este rol limitado. El migrador es la única excepción: monta `postgres_admin_settings` durante su ejecución de una sola vez porque las tablas de auditoría pertenecen a un propietario `NOLOGIN` y el rol de la API no puede modificar su esquema. La contraseña bootstrap no se entrega a la API ni queda en el entorno de la aplicación.
 - Los archivos de secretos permanecen `root:root` con modo `0600` en el VPS. Los entrypoints de API y migraciones los leen al arrancar como root y bajan inmediatamente al usuario `node` antes de ejecutar la aplicación. El entrypoint de PostgreSQL lee los secretos antes de ceder el proceso a `postgres`; el script inicial recibe solo los datos que necesita. No amplíes los permisos de los archivos para resolver errores de lectura.
 
 Nginx publica la web desde `docker/nginx-spa.conf`: `/` sirve el HTML de la SPA
@@ -148,7 +148,7 @@ Instala Docker Engine con Compose v2 en el VPS, clona esta rama en `/opt/grumphy
 3. Deja los archivos bajo control de `root` y con permisos privados: `chown -R root:root .secrets .env.production && chmod 700 .secrets && chmod 600 .secrets/* .env.production`. Ejecuta Compose como `root` en este VPS; el helper comprueba el propietario y los permisos antes de actualizar.
 4. Rellena los archivos en el VPS con secretos nuevos y únicos. No los copies al repositorio ni a la imagen. No los pongas en comandos, historial de shell, argumentos de construcción, `VITE_*` ni registros.
 5. En `postgres_admin_settings`, define una contraseña aleatoria y única para el usuario bootstrap `postgres`. En `database_settings`, define el nombre de la base, el usuario runtime dedicado y otra contraseña larga aleatoria. El usuario runtime no es superusuario. En `grumphya_env`, define `ACCESS_TOKEN_SECRET` y `ANONYMOUS_IP_HMAC_SECRET` con al menos 32 bytes aleatorios cada uno. Para recibir métricas sintéticas de Lighthouse, añade opcionalmente `QUALITY_METRICS_INGEST_TOKEN` con un valor aleatorio Base64URL de al menos 32 caracteres; configura el mismo valor como secreto `LIGHTHOUSE_INGEST_TOKEN` en GitHub Actions. No reutilices valores entre campos o entornos.
-6. Completa `openai_key` con la clave del servidor y `openai_settings` con el proveedor/modelo elegido. Completa `mail_settings` con las credenciales SMTP. Son credenciales independientes; la API exige estos cinco archivos: `grumphya_env`, `database_settings`, `openai_settings`, `openai_key` y `mail_settings`. `postgres_admin_settings` se reserva al contenedor de PostgreSQL.
+6. Completa `openai_key` con la clave del servidor y `openai_settings` con el proveedor/modelo elegido. Completa `mail_settings` con las credenciales SMTP. Son credenciales independientes; la API exige estos cinco archivos: `grumphya_env`, `database_settings`, `openai_settings`, `openai_key` y `mail_settings`. `postgres_admin_settings` se reserva a PostgreSQL y al migrador de una sola ejecución.
 7. `admin_settings` solo se monta en el comando explícito de aprovisionamiento de Jappy. No se carga al iniciar la API. Guarda ahí una contraseña inicial que cumpla 12–128 caracteres e incluya mayúscula, minúscula, número y símbolo.
 8. En `.env.production`, configura `DOMAIN` como nombre DNS sin esquema ni ruta. `WEB_ORIGIN` puede quedar vacío para usar `https://$DOMAIN`, o contener el origen HTTPS exacto. `DEPLOY_SHA` puede quedar vacío para una instalación manual; antes del bootstrap de CI escribe ahí el SHA completo (40 caracteres) de la versión inicial que acabas de probar.
 
@@ -342,13 +342,13 @@ El comando crea la cuenta si aún no existe y no cambia la contraseña en ejecuc
 
 ### Rotar contraseñas de PostgreSQL
 
-La contraseña de `postgres_admin_settings` sirve solo para el usuario bootstrap `postgres`; `GRUMPHYA_DB_PASSWORD` es la del rol de runtime `PGUSER`. Cambiar un archivo no cambia el rol de un volumen PostgreSQL existente. Haz una copia antes, abre una sesión local de `psql` como bootstrap y usa el comando interactivo `\password` para evitar escribir la contraseña en el historial:
+La contraseña de `postgres_admin_settings` sirve para el usuario bootstrap `postgres` y se monta únicamente en `db` y en el migrador de una sola ejecución; `GRUMPHYA_DB_PASSWORD` es la del rol de runtime `PGUSER`. Cambiar un archivo no cambia el rol de un volumen PostgreSQL existente. Haz una copia antes, abre una sesión local de `psql` como bootstrap y usa el comando interactivo `\password` para evitar escribir la contraseña en el historial:
 
 ```sh
 docker compose --project-name grumphya --env-file .env.production -f compose.production.yaml exec -it db psql -U postgres
 ```
 
-En `psql`, ejecuta `\password postgres` para rotar la contraseña bootstrap, o `\password <PGUSER>` con el nombre configurado en `database_settings` para rotar el rol de runtime. Actualiza solo el archivo correspondiente y recrea los servicios que consumen ese secreto; `db` para la contraseña bootstrap, `api`, `migrate` y `admin-provision` para la contraseña runtime. Conserva los demás archivos y volúmenes.
+En `psql`, ejecuta `\password postgres` para rotar la contraseña bootstrap, o `\password <PGUSER>` con el nombre configurado en `database_settings` para rotar el rol de runtime. Actualiza solo el archivo correspondiente y recrea los servicios que consumen ese secreto; `db` y `migrate` para la contraseña bootstrap, `api` y `admin-provision` para la contraseña runtime. Conserva los demás archivos y volúmenes.
 
 ## Actualizar manualmente y migrar (si el CI está desactivado)
 

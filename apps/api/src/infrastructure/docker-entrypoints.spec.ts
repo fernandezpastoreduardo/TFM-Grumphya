@@ -20,6 +20,10 @@ const POSTGRES_ENTRYPOINT_PATH = resolve(
   process.cwd(),
   "../../docker/postgres-entrypoint.sh",
 );
+const DATABASE_ENTRYPOINT_PATH = resolve(
+  process.cwd(),
+  "../../docker/database-entrypoint.sh",
+);
 const POSTGRES_RUNTIME_ROLE_INIT_PATH = resolve(
   process.cwd(),
   "../../docker/initdb/000-provision-runtime-role.sh",
@@ -74,6 +78,50 @@ afterEach(() => {
 });
 
 describe("Docker service entrypoints", () => {
+  it("uses the bootstrap role only for production migrations", () => {
+    const directory = createTemporaryDirectory();
+    const secretsDirectory = resolve(directory, "secrets");
+    mkdirSync(secretsDirectory);
+    writeSecret(
+      secretsDirectory,
+      "database_settings",
+      "PGDATABASE=grumphya_test\nPGUSER=app_test\nGRUMPHYA_DB_PASSWORD=runtime-secret\n",
+    );
+    writeSecret(
+      secretsDirectory,
+      "postgres_admin_settings",
+      "POSTGRES_ADMIN_PASSWORD=bootstrap-secret\n",
+    );
+    writeSecret(secretsDirectory, "internal_tls_ca.crt", "test-ca");
+
+    const output = execFileSync(
+      "sh",
+      [
+        DATABASE_ENTRYPOINT_PATH,
+        "node",
+        "-e",
+        "process.stdout.write(JSON.stringify({database:process.env.PGDATABASE,user:process.env.PGUSER,password:process.env.PGPASSWORD,runtime:process.env.GRUMPHYA_DB_PASSWORD,ca:process.env.NODE_EXTRA_CA_CERTS}))",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GRUMPHYA_SECRETS_DIR: secretsDirectory,
+          MIGRATIONS_USE_BOOTSTRAP: "true",
+          NODE_ENV: "production",
+        },
+      },
+    );
+
+    expect(readJsonOutput<Record<string, unknown>>(output)).toEqual({
+      database: "grumphya_test",
+      user: "postgres",
+      password: "bootstrap-secret",
+      runtime: undefined,
+      ca: resolve(secretsDirectory, "internal_tls_ca.crt"),
+    });
+  });
+
   it("loads only approved API settings, gives the database password precedence, and forwards the command", () => {
     const directory = createTemporaryDirectory();
     const secretsDirectory = resolve(directory, "secrets");
