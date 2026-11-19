@@ -1,5 +1,5 @@
 # Build the official Caddy release with patched Go, x/net, and go-jose versions.
-FROM golang:1.27.3-alpine AS caddy-build
+FROM golang:1.27.4-alpine AS caddy-build
 RUN apk add --no-cache git \
   && git clone --depth 1 --branch v2.11.7 https://github.com/caddyserver/caddy.git /src \
   && test "$(git -C /src rev-parse HEAD)" = 72dd0fb067f6d7826c7f79907670ba4a713bfe37

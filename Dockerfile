@@ -30,7 +30,7 @@ RUN pnpm --filter @grumphya/api build
 
 # Keep PostgreSQL on the same Debian release for the existing data volume.
 # Rebuild gosu with a patched Go toolchain instead of excluding it from Trivy.
-FROM golang:1.27.3-alpine AS gosu-build
+FROM golang:1.27.4-alpine AS gosu-build
 RUN apk add --no-cache git \
   && git clone --depth 1 --branch 1.19 https://github.com/tianon/gosu.git /gosu \
   && test "$(git -C /gosu rev-parse HEAD)" = 6456aaa0f3c854d199d0f037f068eb97515b7513 \

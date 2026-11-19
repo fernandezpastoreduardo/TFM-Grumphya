@@ -24,6 +24,7 @@ const POLICY_TEST_COMMAND = "node scripts/test-container-security-policy.mjs";
 const CADDY_SOURCE_COMMIT = "72dd0fb067f6d7826c7f79907670ba4a713bfe37";
 const CADDY_X_NET_VERSION = "golang.org/x/net@v0.62.0";
 const CADDY_GO_JOSE_VERSION = "github.com/go-jose/go-jose/v4@v4.1.6";
+const PATCHED_GO_VERSION = "1.27.4";
 
 const [
   dependabot,
@@ -95,7 +96,20 @@ assert.ok(
   "the TypeScript ignore must be scoped to that package only",
 );
 
-assert.match(caddyDockerfile, /^FROM golang:1\.27\.3-alpine AS caddy-build$/m);
+assert.match(
+  caddyDockerfile,
+  new RegExp(
+    `^FROM golang:${PATCHED_GO_VERSION.replaceAll(".", "\\.")}-alpine AS caddy-build$`,
+    "m",
+  ),
+);
+assert.match(
+  dockerfile,
+  new RegExp(
+    `^FROM golang:${PATCHED_GO_VERSION.replaceAll(".", "\\.")}-alpine AS gosu-build$`,
+    "m",
+  ),
+);
 const nodeBaseStage = dockerfile.split("FROM node-base AS pnpm-base")[0];
 assert.match(nodeBaseStage, /^FROM node:26\.13\.0-trixie-slim AS node-base$/m);
 assert.match(nodeBaseStage, /apt-get update[\s\S]*?apt-get upgrade -y/);
