@@ -42,6 +42,7 @@ RUNTIME_DIR=$(mktemp -d /tmp/grumphya-audit-writer.XXXXXX)
 cleanup() { rm -rf "$RUNTIME_DIR"; }
 trap cleanup EXIT
 install -o node -g node -m 0444 "$CA_FILE" "$RUNTIME_DIR/ca.crt"
+install -o node -g node -m 0400 "$SETTINGS_FILE" "$RUNTIME_DIR/settings"
 install -o node -g node -m 0444 "$MANIFEST_FILE" "$RUNTIME_DIR/release-manifest.json"
 install -o node -g node -m 0444 "$SIGNATURE_FILE" "$RUNTIME_DIR/release-manifest.sig"
 chown node:node "$RUNTIME_DIR"
@@ -50,6 +51,7 @@ chmod 0700 "$RUNTIME_DIR"
 export PGHOST=${PGHOST:-db} PGPORT=${PGPORT:-5432}
 export PGSSL_MODE=verify-full PGSSL_CA_FILE="$RUNTIME_DIR/ca.crt"
 export NODE_EXTRA_CA_CERTS="$RUNTIME_DIR/ca.crt"
+export AUDIT_WRITER_SETTINGS_FILE="$RUNTIME_DIR/settings"
 export AUDIT_RELEASE_MANIFEST_PUBLIC_KEY
 export AUDIT_RELEASE_MANIFEST_ALLOWED_KIDS AUDIT_TECHNICAL_AUTH_ALLOWED_KIDS
 export EVALUATION_PROVIDER=${EVALUATION_PROVIDER:-openai}

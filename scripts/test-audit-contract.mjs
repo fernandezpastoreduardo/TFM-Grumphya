@@ -150,6 +150,7 @@ assert.match(writer, /verifyReleaseManifest/);
 assert.match(writer, /Duplicate audit release attestation/);
 assert.match(writer, /ON CONFLICT \(resource\) DO UPDATE/);
 assert.match(writerEntrypoint, /PGSSL_MODE/);
+assert.match(writerEntrypoint, /AUDIT_WRITER_SETTINGS_FILE/);
 assert.match(writerEntrypoint, /setpriv --reuid=node/);
 assert.match(deployHelper, /persisting signed audit evidence/);
 assert.match(deployHelper, /--profile audit-evidence run/);
