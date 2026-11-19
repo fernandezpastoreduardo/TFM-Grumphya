@@ -188,4 +188,21 @@ assert.match(writerEntrypoint, /AUDIT_WRITER_SETTINGS_FILE/);
 assert.match(writerEntrypoint, /setpriv --reuid=node/);
 assert.match(deployHelper, /persisting signed audit evidence/);
 assert.match(deployHelper, /--profile audit-evidence run/);
+assert.match(
+  deployHelper,
+  /temporary_dir=\$\(mktemp -d "\$ROOT\/incoming\/audit-verify\.XXXXXXXX"\)/,
+);
+assert.match(
+  deployHelper,
+  /install -m 0444 "\$manifest" "\$temporary_dir\/release-manifest\.json"/,
+);
+assert.match(
+  deployHelper,
+  /install -m 0444 "\$signature" "\$temporary_dir\/release-manifest\.sig"/,
+);
+assert.match(deployHelper, /--volume "\$temporary_dir:\/audit:ro"/);
+assert.doesNotMatch(
+  deployHelper,
+  /--volume "\$dir:\/audit:ro"[\s\S]*--volume "\$temporary_key:\/audit\/public-key\.pem:ro"/,
+);
 console.log("Audit contract configuration validated.");

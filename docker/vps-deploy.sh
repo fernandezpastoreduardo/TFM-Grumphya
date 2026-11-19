@@ -264,7 +264,7 @@ audit_integration_enabled() {
 
 validate_audit_attestation() {
   local dir=$1 sha=$2 manifest="$1/release-manifest.json" signature="$1/release-manifest.sig"
-  local public_key temporary_key
+  local public_key temporary_dir
   audit_integration_enabled || return 0
   [[ -f $manifest && ! -L $manifest ]] || die 'audit integration is enabled but the release manifest is missing'
   [[ -f $signature && ! -L $signature ]] || die 'audit integration is enabled but the release signature is missing'
@@ -273,20 +273,29 @@ validate_audit_attestation() {
   public_key=${public_key//\\n/$'\n'}
   grep -Fq '"environment":"production"' "$manifest" || die 'release attestation is not for production'
   grep -Fq "\"deploymentSha\":\"$sha\"" "$manifest" || die 'release attestation SHA does not match the requested release'
-  temporary_key=$(mktemp "$ROOT/incoming/audit-key.XXXXXXXX")
-  chmod 600 "$temporary_key"
-  printf '%s\n' "$public_key" > "$temporary_key"
+  # The API image runs as the unprivileged node user. Copy only the public
+  # verification inputs into a temporary directory with read-only permissions;
+  # mounting the release's root-owned 0600 files would make the verifier fail
+  # before it can inspect the signature.
+  temporary_dir=$(mktemp -d "$ROOT/incoming/audit-verify.XXXXXXXX")
+  chmod 755 "$temporary_dir"
+  if ! install -m 0444 "$manifest" "$temporary_dir/release-manifest.json" ||
+    ! install -m 0444 "$signature" "$temporary_dir/release-manifest.sig" ||
+    ! printf '%s\n' "$public_key" > "$temporary_dir/public-key.pem" ||
+    ! chmod 0444 "$temporary_dir/public-key.pem"; then
+    rm -rf "$temporary_dir"
+    die 'release attestation inputs could not be staged for verification'
+  fi
   if ! docker run --rm --network none --entrypoint node \
-    --volume "$dir:/audit:ro" \
-    --volume "$temporary_key:/audit/public-key.pem:ro" \
+    --volume "$temporary_dir:/audit:ro" \
     "grumphya-api:$sha" \
     /workspace/scripts/verify-release-manifest.mjs \
     /audit/release-manifest.json /audit/release-manifest.sig \
     /audit/public-key.pem "$sha" >/dev/null 2>&1; then
-    rm -f "$temporary_key"
+    rm -rf "$temporary_dir"
     die 'release attestation signature verification failed'
   fi
-  rm -f "$temporary_key"
+  rm -rf "$temporary_dir"
 }
 
 validate_release_env() {
