@@ -90,8 +90,11 @@ services:
       - ${AUDIT_MANIFEST_SIGNATURE_FILE:-/dev/null}:/workspace/release-manifest.sig:ro
     environment:
       NODE_ENV: production
-      AUDIT_MANIFEST_FILE: ${AUDIT_MANIFEST_FILE:-/dev/null}
-      AUDIT_MANIFEST_SIGNATURE_FILE: ${AUDIT_MANIFEST_SIGNATURE_FILE:-/dev/null}
+      # These are container paths. Compose still uses the host paths above
+      # for the read-only bind mounts, but the writer must read the mounted
+      # files from inside its own filesystem namespace.
+      AUDIT_MANIFEST_FILE: /workspace/release-manifest.json
+      AUDIT_MANIFEST_SIGNATURE_FILE: /workspace/release-manifest.sig
       PGSSL_MODE: verify-full
       PGHOST: db
       PGPORT: 5432

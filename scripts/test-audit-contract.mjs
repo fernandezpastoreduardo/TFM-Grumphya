@@ -138,6 +138,14 @@ assert.match(technicalAuth, /readHeaderKid/);
 assert.match(productionCompose, /audit-writer:/);
 assert.match(productionCompose, /audit-evidence/);
 assert.match(productionCompose, /audit_writer_settings/);
+assert.match(
+  productionCompose,
+  /AUDIT_MANIFEST_FILE: \/workspace\/release-manifest\.json/,
+);
+assert.match(
+  productionCompose,
+  /AUDIT_MANIFEST_SIGNATURE_FILE: \/workspace\/release-manifest\.sig/,
+);
 assert.match(writer, /verifyReleaseManifest/);
 assert.match(writer, /Duplicate audit release attestation/);
 assert.match(writer, /ON CONFLICT \(resource\) DO UPDATE/);
