@@ -98,7 +98,7 @@ health_status=$(curl --fail --silent --show-error --connect-timeout 10 --max-tim
   printf 'Public health endpoint must not redirect.\n' >&2
   exit 1
 }
-grep -Eiq '^content-type:[[:space:]]*application/json(?:;|[[:space:]]|$)' "$health_headers" || {
+grep -Eiq '^content-type:[[:space:]]*application/json(;|[[:space:]]|$)' "$health_headers" || {
   printf 'Public health endpoint must return JSON.\n' >&2
   exit 1
 }
