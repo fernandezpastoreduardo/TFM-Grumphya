@@ -482,7 +482,7 @@ assert.match(responseHeaders, /^cross-origin-opener-policy:\s*same-origin\s*$/im
 assert.match(responseHeaders, /^cross-origin-embedder-policy:\s*require-corp\s*$/im);
 assert.match(
   responseHeaders,
-  /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'nonce-([^']+)' 'strict-dynamic' https:\/\/desarrolloseguro\.org; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self' https:\/\/desarrolloseguro\.org/i,
+  /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'nonce-([^']+)' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self' https:\/\/desarrolloseguro\.org/i,
   "the blocking CSP must use a per-response nonce and restrict document, script, style, image, font and connection sources",
 );
 const cspNonce = responseHeaders.match(

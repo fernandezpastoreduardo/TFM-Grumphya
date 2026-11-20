@@ -207,8 +207,12 @@ for (const policy of cspPolicies) {
     }),
   );
   assert.ok(
-    directives.get("script-src")?.includes(DEVELOPMENT_SECURITY_ORIGIN),
-    "both CSP policies must allow the development security site as a script source",
+    directives.get("script-src")?.includes("'strict-dynamic'"),
+    "both CSP policies must trust nonce-authorized scripts and their descendants",
+  );
+  assert.ok(
+    !directives.get("script-src")?.includes(DEVELOPMENT_SECURITY_ORIGIN),
+    "the badge script origin must not be allowlisted in script-src",
   );
   assert.ok(
     directives.get("connect-src")?.includes(DEVELOPMENT_SECURITY_ORIGIN),

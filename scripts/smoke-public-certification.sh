@@ -94,7 +94,7 @@ function readResponse(headersPath, bodyPath) {
   assert.ok(csp, "the blocking CSP must be present");
   assert.match(
     csp,
-    /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'nonce-([^']+)' 'strict-dynamic' https:\/\/desarrolloseguro\.org; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self' https:\/\/desarrolloseguro\.org/i,
+    /default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'nonce-([^']+)' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self' https:\/\/desarrolloseguro\.org/i,
     "the blocking CSP must use a nonce and strict-dynamic without script-src self",
   );
   const nonce = csp.match(/script-src 'nonce-([^']+)' 'strict-dynamic'/i)?.[1];
