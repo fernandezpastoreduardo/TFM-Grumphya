@@ -111,7 +111,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Build the isolated production web app
-        run: pnpm --dir apps/web build
+        run: VITE_GRUMPHYA_LHCI_FIXTURES=1 pnpm --dir apps/web build
       - name: Install the pinned synthetic browser
         run: pnpm --dir apps/web exec playwright install --with-deps chromium
       - name: Collect mobile and desktop Lighthouse baselines

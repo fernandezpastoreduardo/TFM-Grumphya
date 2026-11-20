@@ -7,6 +7,13 @@ const DEVELOPMENT_SECURITY_BADGE_REPORT_ID =
   "6bff5c3e-ff99-4f68-bfe9-fb5f5dfb2823";
 const DEVELOPMENT_SECURITY_BADGE_SCRIPT_URL =
   "https://desarrolloseguro.org/desarrollo-seguro/badge-widget.js";
+const LIGHTHOUSE_BADGE_SCRIPT_URL = "/__lighthouse/badge-widget.js";
+
+function getBadgeScriptUrl() {
+  return import.meta.env.VITE_GRUMPHYA_LHCI_FIXTURES === "1"
+    ? LIGHTHOUSE_BADGE_SCRIPT_URL
+    : DEVELOPMENT_SECURITY_BADGE_SCRIPT_URL;
+}
 
 function loadBadgeWidget() {
   const nonceScript =
@@ -15,7 +22,7 @@ function loadBadgeWidget() {
   if (!nonce) return () => undefined;
 
   const script = document.createElement("script");
-  script.src = DEVELOPMENT_SECURITY_BADGE_SCRIPT_URL;
+  script.src = getBadgeScriptUrl();
   script.defer = true;
   script.nonce = nonce;
   document.body.append(script);

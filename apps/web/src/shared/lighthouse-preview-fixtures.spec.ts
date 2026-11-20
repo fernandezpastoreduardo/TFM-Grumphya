@@ -79,6 +79,23 @@ describe("Lighthouse preview fixtures", () => {
     expect(requestFixture(handler, "GET", "/precios").nextCalled).toBe(true);
   });
 
+  it("serves the badge stub locally for Lighthouse collection", () => {
+    const handler = createLighthousePreviewMiddleware(true) as PreviewHandler;
+    expect(handler).toBeDefined();
+    if (!handler) return;
+
+    const badge = requestFixture(
+      handler,
+      "GET",
+      "/__lighthouse/badge-widget.js",
+    );
+    expect(badge.status).toBe(200);
+    expect(badge.body).toBe("void 0;");
+    expect(badge.headers.get("Content-Type")).toBe(
+      "application/javascript; charset=utf-8",
+    );
+  });
+
   it("serves a valid synthetic anonymous quota for the home page", () => {
     const handler = createLighthousePreviewMiddleware(true) as PreviewHandler;
     expect(handler).toBeDefined();

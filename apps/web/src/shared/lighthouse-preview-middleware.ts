@@ -25,6 +25,19 @@ export function createLighthousePreviewMiddleware(
 
   return (request, response, next) => {
     const pathname = new URL(request.url ?? "/", "http://vite.local").pathname;
+    if (
+      request.method === "GET" &&
+      pathname === "/__lighthouse/badge-widget.js"
+    ) {
+      response.setHeader(
+        "Content-Type",
+        "application/javascript; charset=utf-8",
+      );
+      response.setHeader("Cache-Control", "no-store");
+      response.statusCode = 200;
+      response.end("void 0;");
+      return;
+    }
     if (!pathname.startsWith("/api/")) return next();
     response.setHeader("Cache-Control", "no-store");
     if (
