@@ -79,7 +79,7 @@ try {
         if (media !== undefined) {
           assert.match(
             media,
-            /^\(max-width: \d+px\)$/,
+            /^\((?:min|max)-width: \d+px\)$/,
             `Invalid image preload media query for ${route.path}`,
           );
         }

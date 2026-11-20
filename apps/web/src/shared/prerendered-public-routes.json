@@ -8,7 +8,12 @@
     "manifestEntry": "src/views/home.tsx",
     "developmentStyles": ["/src/views/home.scss"],
     "requiredCopy": ["Antes de construirla,"],
-    "preloadImages": [{ "href": "/assets/grumphya/stage-curtain-v2.webp" }]
+    "preloadImages": [
+      {
+        "href": "/assets/grumphya/stage-curtain-v2.webp",
+        "media": "(min-width: 641px)"
+      }
+    ]
   },
   {
     "path": "/lo-peor-de-lo-peor",

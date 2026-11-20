@@ -309,6 +309,7 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
   );
   await expect(curtainPreload).toHaveCount(1);
   await expect(curtainPreload).toHaveAttribute("fetchpriority", "high");
+  await expect(curtainPreload).toHaveAttribute("media", "(min-width: 641px)");
 
   const fredokaPreload = page.locator(
     'link[rel="preload"][as="font"][href="/assets/fonts/Fredoka-Variable-latin.woff2"]',
@@ -1492,6 +1493,9 @@ test("runs Home and section animations only when motion is allowed", async ({
   const homeAnimations = await page.evaluate(() => ({
     supportsScrollReveal: CSS.supports("animation-timeline", "view()"),
     scrollReveal: getComputedStyle(
+      document.querySelector(".home-result") as Element,
+    ).animationName,
+    marketingAnimation: getComputedStyle(
       document.querySelector(".home-marketing") as Element,
     ).animationName,
     copy: getComputedStyle(
@@ -1507,6 +1511,7 @@ test("runs Home and section animations only when motion is allowed", async ({
   expect(homeAnimations).toEqual({
     supportsScrollReveal: homeAnimations.supportsScrollReveal,
     scrollReveal: homeAnimations.supportsScrollReveal ? "scroll-rise" : "none",
+    marketingAnimation: "none",
     copy: "home-copy-enter",
     mascot: "mascot-float",
     buttonTransition: "transform, box-shadow",
@@ -1515,6 +1520,9 @@ test("runs Home and section animations only when motion is allowed", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
   const reducedHomeAnimations = await page.evaluate(() => ({
     scrollReveal: getComputedStyle(
+      document.querySelector(".home-result") as Element,
+    ).animationName,
+    marketingAnimation: getComputedStyle(
       document.querySelector(".home-marketing") as Element,
     ).animationName,
     homeCopy: getComputedStyle(
@@ -1529,6 +1537,7 @@ test("runs Home and section animations only when motion is allowed", async ({
   }));
   expect(reducedHomeAnimations).toEqual({
     scrollReveal: "none",
+    marketingAnimation: "none",
     homeCopy: "none",
     mascot: "none",
     buttonTransition: "none",

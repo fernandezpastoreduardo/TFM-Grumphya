@@ -1767,3 +1767,10 @@
     margin: 0;
   }
 }
+
+@media (max-width: 640px) {
+  .app-page::before,
+  .app-page::after {
+    background-image: none;
+  }
+}

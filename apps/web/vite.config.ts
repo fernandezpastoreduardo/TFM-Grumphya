@@ -63,7 +63,8 @@ const publicRoutePrerenderPlugin: Plugin = {
           .map(({ href, media }) => {
             if (
               !/^\/assets\/[a-zA-Z0-9/_-]+\.(svg|webp|png)$/.test(href) ||
-              (media !== undefined && !/^\(max-width: \d+px\)$/.test(media))
+              (media !== undefined &&
+                !/^\((?:min|max)-width: \d+px\)$/.test(media))
             ) {
               throw new Error(
                 `Invalid image preload configuration for ${route.path}`,
