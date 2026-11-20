@@ -192,6 +192,69 @@ test("keeps the Home hero and workspace spacing at desktop width", async ({
   }
 });
 
+test("omits decorative backgrounds on mobile and restores them on desktop", async ({
+  page,
+}) => {
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: /antes de construirla/i }),
+  ).toBeVisible();
+
+  const homeMobileBackgrounds = await page.evaluate(() => {
+    const home = document.querySelector(".home-page");
+    if (!home) return null;
+    return [
+      getComputedStyle(home, "::before").backgroundImage,
+      getComputedStyle(home, "::after").backgroundImage,
+    ];
+  });
+  expect(homeMobileBackgrounds).toEqual(["none", "none"]);
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  const homeDesktopBackgrounds = await page.evaluate(() => {
+    const home = document.querySelector(".home-page");
+    if (!home) return null;
+    return [
+      getComputedStyle(home, "::before").backgroundImage,
+      getComputedStyle(home, "::after").backgroundImage,
+    ];
+  });
+  expect(homeDesktopBackgrounds).toEqual([
+    expect.stringContaining("stage-curtain-v2.webp"),
+    expect.stringContaining("audience-rounded.webp"),
+  ]);
+
+  await page.setViewportSize(MOBILE_VIEWPORT);
+  await page.goto("/precios");
+  await expect(
+    page.getByRole("heading", { name: "Once usos. Sí, once." }),
+  ).toBeVisible();
+  const sectionMobileBackgrounds = await page.evaluate(() => {
+    const section = document.querySelector(".app-page");
+    if (!section) return null;
+    return [
+      getComputedStyle(section, "::before").backgroundImage,
+      getComputedStyle(section, "::after").backgroundImage,
+    ];
+  });
+  expect(sectionMobileBackgrounds).toEqual(["none", "none"]);
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  const sectionDesktopBackgrounds = await page.evaluate(() => {
+    const section = document.querySelector(".app-page");
+    if (!section) return null;
+    return [
+      getComputedStyle(section, "::before").backgroundImage,
+      getComputedStyle(section, "::after").backgroundImage,
+    ];
+  });
+  expect(sectionDesktopBackgrounds).toEqual([
+    expect.stringContaining("stage-curtain-v2.webp"),
+    expect.stringContaining("audience-rounded.webp"),
+  ]);
+});
+
 test("sizes every section hero to its copy on desktop", async ({ page }) => {
   test.setTimeout(90_000);
   let authenticatedRole: "guest" | "user" | "admin" = "guest";
@@ -1492,11 +1555,11 @@ test("runs Home and section animations only when motion is allowed", async ({
 
   const homeAnimations = await page.evaluate(() => ({
     supportsScrollReveal: CSS.supports("animation-timeline", "view()"),
-    scrollReveal: getComputedStyle(
-      document.querySelector(".home-result") as Element,
-    ).animationName,
-    marketingAnimation: getComputedStyle(
+    marketingReveal: getComputedStyle(
       document.querySelector(".home-marketing") as Element,
+    ).animationName,
+    resultReveal: getComputedStyle(
+      document.querySelector(".home-result") as Element,
     ).animationName,
     copy: getComputedStyle(
       document.querySelector(".home-heading-copy") as Element,
@@ -1510,8 +1573,8 @@ test("runs Home and section animations only when motion is allowed", async ({
   }));
   expect(homeAnimations).toEqual({
     supportsScrollReveal: homeAnimations.supportsScrollReveal,
-    scrollReveal: homeAnimations.supportsScrollReveal ? "scroll-rise" : "none",
-    marketingAnimation: "none",
+    marketingReveal: "none",
+    resultReveal: homeAnimations.supportsScrollReveal ? "scroll-rise" : "none",
     copy: "home-copy-enter",
     mascot: "mascot-float",
     buttonTransition: "transform, box-shadow",
@@ -1519,11 +1582,11 @@ test("runs Home and section animations only when motion is allowed", async ({
 
   await page.emulateMedia({ reducedMotion: "reduce" });
   const reducedHomeAnimations = await page.evaluate(() => ({
-    scrollReveal: getComputedStyle(
-      document.querySelector(".home-result") as Element,
-    ).animationName,
-    marketingAnimation: getComputedStyle(
+    marketingReveal: getComputedStyle(
       document.querySelector(".home-marketing") as Element,
+    ).animationName,
+    resultReveal: getComputedStyle(
+      document.querySelector(".home-result") as Element,
     ).animationName,
     homeCopy: getComputedStyle(
       document.querySelector(".home-heading-copy") as Element,
@@ -1536,8 +1599,8 @@ test("runs Home and section animations only when motion is allowed", async ({
     ).transitionProperty,
   }));
   expect(reducedHomeAnimations).toEqual({
-    scrollReveal: "none",
-    marketingAnimation: "none",
+    marketingReveal: "none",
+    resultReveal: "none",
     homeCopy: "none",
     mascot: "none",
     buttonTransition: "none",
