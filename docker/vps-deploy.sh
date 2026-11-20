@@ -405,7 +405,7 @@ is_approved_audit_writer_migration() {
 is_approved_audit_evidence_shape_migration() {
   local name=$1 content=$2 expected_hash actual_hash
   local marker='-- deployment-schema-change: replace-audit-evidence-shape-check'
-  expected_hash='b5b8833a02bccf972d78412d9d88f34492b48642eb36594b8059953396d1a822'
+  expected_hash='06f6d9d1ab999b1882886a1ad2f7aa508cc35578f63458b5997990c66ac87731'
 
   [[ $name == '042_audit_evidence_shape.sql' ]] || return 1
   grep -Fq -- "$marker" <<< "$content" || return 1

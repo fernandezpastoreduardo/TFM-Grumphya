@@ -80,6 +80,28 @@ describe("controlled database migrations", () => {
     );
   });
 
+  it("preserves legacy audit evidence arrays when changing the storage shape", async () => {
+    const query = vi.fn().mockImplementation(async (sql: string) => {
+      if (sql.startsWith("SELECT version FROM schema_migrations")) {
+        return { rows: [], rowCount: 0 };
+      }
+      return { rows: [], rowCount: 0 };
+    });
+    const { pool } = fakePool(query);
+
+    await runMigrations(pool);
+
+    const migrationSql = query.mock.calls.find(([sql]) =>
+      String(sql).includes("jsonb_build_object('legacyItems', items)"),
+    )?.[0];
+    expect(migrationSql).toContain("WHERE jsonb_typeof(items) = 'array'");
+    expect(migrationSql).toContain("evidence_items_object_check");
+    expect(query).toHaveBeenCalledWith(
+      "INSERT INTO schema_migrations(version) VALUES($1)",
+      ["042_audit_evidence_shape"],
+    );
+  });
+
   it("creates only dimension counters for anonymous analytics", async () => {
     const query = vi.fn().mockImplementation(async (sql: string) => {
       if (sql.startsWith("SELECT version FROM schema_migrations")) {

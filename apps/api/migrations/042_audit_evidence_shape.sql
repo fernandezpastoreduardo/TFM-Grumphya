@@ -3,6 +3,10 @@
 ALTER TABLE audit.evidence
   DROP CONSTRAINT IF EXISTS evidence_items_check;
 
+UPDATE audit.evidence
+SET items = jsonb_build_object('legacyItems', items)
+WHERE jsonb_typeof(items) = 'array';
+
 DO $constraints$
 BEGIN
   IF NOT EXISTS (
