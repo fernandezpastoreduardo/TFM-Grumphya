@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { mockDevelopmentSecurityBadge } from "./support/mock-development-security-badge";
 
 const VERIFICATION_URL = "/acreditaciones/DS-GRUMPHYA-2026-001";
 const EXTERNAL_SITE_URL = "https://desarrolloseguro.org/";
 const LEGACY_PROTOTYPE_URL = "/desarrollo-seguro";
-const SEAL_NAME = /desarrolloseguro\.org.*conocer la propuesta/i;
+const BADGE_SELECTOR = "a[data-ds-verified-badge]";
+const BADGE_NAME = /sello verificado por desarrolloseguro\.org/i;
 const ACADEMIC_RECORD = {
   id: "DS-GRUMPHYA-2026-001",
   issuer: "Grumphya · revisión interna",
@@ -29,18 +31,19 @@ const ACADEMIC_RECORD = {
     "Demostración académica, sin certificación oficial ni auditoría independiente.",
 };
 
-test("links the home seal to the independent site and keeps the local verification record", async ({
+test("loads the verified badge and keeps the local verification record", async ({
   page,
 }) => {
+  await mockDevelopmentSecurityBadge(page);
   await page.route("**/api/accreditations/**", (route) =>
     route.fulfill({ json: ACADEMIC_RECORD }),
   );
   await page.goto("/");
 
-  const link = page.getByRole("link", { name: SEAL_NAME });
+  const link = page.getByRole("link", { name: BADGE_NAME });
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", EXTERNAL_SITE_URL);
-  await expect(link.locator("img")).toHaveJSProperty("naturalWidth", 128);
+  await expect(link).toHaveAttribute("data-hostname", "grumphya.com");
 
   await page.goto(VERIFICATION_URL);
   await expect(
@@ -57,11 +60,12 @@ test("keeps the seal and verification within mobile width", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 844 });
+  await mockDevelopmentSecurityBadge(page);
   await page.route("**/api/accreditations/**", (route) =>
     route.fulfill({ json: ACADEMIC_RECORD }),
   );
   await page.goto("/precios");
-  const link = page.getByRole("link", { name: SEAL_NAME });
+  const link = page.locator(BADGE_SELECTOR);
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", EXTERNAL_SITE_URL);
   expect(

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { mockDevelopmentSecurityBadge } from "./support/mock-development-security-badge";
 
 const VERIFICATION_URL = "/acreditaciones/DS-GRUMPHYA-2026-001";
 const NARROW_DESKTOP = { width: 980, height: 1000 };
@@ -101,27 +102,23 @@ test("keeps signed-in account actions beside the theme switch on public verifica
 test("integrates the secure-development seal in desktop and mobile footers", async ({
   page,
 }) => {
+  await mockDevelopmentSecurityBadge(page);
   await mockVerificationAndSession(page);
   await page.setViewportSize(DESKTOP);
   await page.goto(VERIFICATION_URL);
 
   const footer = page.locator(".site-footer");
-  const seal = footer.locator(".accreditation-seal");
-  const caption = seal.locator(".accreditation-seal-caption");
-  await expect(seal).toBeVisible();
-  await expect(caption).toContainText("Demostración académica");
-  await expect(caption).toHaveCSS("color", "rgb(16, 27, 32)");
+  const badge = footer.locator("a[data-ds-verified-badge]");
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveAttribute("href", "https://desarrolloseguro.org/");
+  await expect(badge).toContainText(
+    "Sello verificado por desarrolloseguro.org",
+  );
 
   const desktopLayout = await footer.evaluate((element) => {
     const children = Array.from(element.children).map((child) =>
       child.getBoundingClientRect(),
     );
-    const sealElement = element.querySelector(".accreditation-seal");
-    const sealImage = sealElement?.querySelector("img");
-    const sealCaption = sealElement?.querySelector(".accreditation-seal-copy");
-    if (!sealImage || !sealCaption) return null;
-    const imageBox = sealImage.getBoundingClientRect();
-    const captionBox = sealCaption.getBoundingClientRect();
     return {
       footerChildrenShareRow: children.every(
         (child) =>
@@ -131,78 +128,38 @@ test("integrates the secure-development seal in desktop and mobile footers", asy
               (children[0].top + children[0].height / 2),
           ) < 3,
       ),
-      sealContentsShareRow:
-        Math.abs(
-          imageBox.top +
-            imageBox.height / 2 -
-            (captionBox.top + captionBox.height / 2),
-        ) < 3,
     };
   });
-  expect(desktopLayout).toEqual({
-    footerChildrenShareRow: true,
-    sealContentsShareRow: true,
-  });
+  expect(desktopLayout).toEqual({ footerChildrenShareRow: true });
 
   await page.setViewportSize(MOBILE);
-  await expect(seal).toBeVisible();
-  await expect(caption).toBeVisible();
-  await seal.scrollIntoViewIfNeeded();
-  const mobileSealImage = seal.locator("img");
-  await expect(mobileSealImage).toHaveAttribute(
-    "src",
-    "/assets/desarrolloseguro.org/icon.svg",
+  await expect(badge).toBeVisible();
+  await badge.scrollIntoViewIfNeeded();
+  const mobileBadgeBox = await badge.boundingBox();
+  expect(mobileBadgeBox).not.toBeNull();
+  expect(mobileBadgeBox!.x + mobileBadgeBox!.width).toBeLessThanOrEqual(
+    MOBILE.width,
   );
-  await expect(mobileSealImage).toHaveJSProperty("naturalWidth", 128);
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(MOBILE.width);
 
-  const mobileLayout = await seal.evaluate((element) => {
-    const image = element.querySelector("img");
-    const text = element.querySelector(".accreditation-seal-copy");
-    if (!image || !text) return null;
-    const imageBox = image.getBoundingClientRect();
-    const textBox = text.getBoundingClientRect();
-    return {
-      imageBeforeCaption: imageBox.right <= textBox.left,
-      sameRow:
-        Math.abs(
-          imageBox.top +
-            imageBox.height / 2 -
-            (textBox.top + textBox.height / 2),
-        ) < 3,
-    };
-  });
-  expect(mobileLayout).toEqual({ imageBeforeCaption: true, sameRow: true });
-
   await page.evaluate(() => {
     document.querySelector(".app-page")?.classList.add("theme-dark");
   });
-  await expect(caption).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(badge).toBeVisible();
 
   await page.setViewportSize(DESKTOP);
   await page.goto("/");
   const homeFooter = page.locator(".home-footer");
   const homeFooterNote = homeFooter.locator(".home-footer-note");
-  const homeFooterSeal = homeFooter.locator(".accreditation-seal");
+  const homeFooterBadge = homeFooter.locator("a[data-ds-verified-badge]");
   await expect(homeFooterNote).toBeVisible();
-  await expect(homeFooterSeal).toContainText("Demostración académica");
-  const homeFooterLayout = await homeFooter.evaluate((footer) => {
-    const note = footer.querySelector(".home-footer-note");
-    const seal = footer.querySelector(".accreditation-seal");
-    if (!note || !seal) return null;
-    const noteBox = note.getBoundingClientRect();
-    const sealBox = seal.getBoundingClientRect();
-    return {
-      noteCenterY: noteBox.y + noteBox.height / 2,
-      sealCenterY: sealBox.y + sealBox.height / 2,
-    };
-  });
-  expect(homeFooterLayout).not.toBeNull();
-  expect(
-    Math.abs(homeFooterLayout!.noteCenterY - homeFooterLayout!.sealCenterY),
-  ).toBeLessThan(7);
+  await expect(homeFooterBadge).toBeVisible();
+  await expect(homeFooterBadge).toHaveAttribute(
+    "href",
+    "https://desarrolloseguro.org/",
+  );
   await page.evaluate(() => {
     document.querySelector(".home-page")?.classList.add("theme-dark");
   });
