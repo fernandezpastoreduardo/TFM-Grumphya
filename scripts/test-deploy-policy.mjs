@@ -16,6 +16,7 @@ const REQUIRED_DEPLOY_GUARDS = [
   "inputs.approve_production_deploy == true",
   "needs.quality-and-e2e.result == 'success'",
   "needs.e2e.result == 'success'",
+  "needs.performance-lab.result == 'success'",
   "needs.dependency-audit.result == 'success'",
   "vars.PRODUCTION_DEPLOY_ENABLED == 'true'",
 ];
@@ -101,6 +102,16 @@ assert.match(
   performanceLabJob,
   /report_base64: \$\{\{ steps\.summarize\.outputs\.report_base64 \}\}/,
   "Lighthouse lab must expose only an allowlisted summary to later jobs",
+);
+assert.match(
+  performanceLabJob,
+  /Build the production web app for browser audit evidence\s+run: pnpm --dir apps\/web build/,
+  "browser audit evidence must use the real production build without LHCI fixtures",
+);
+assert.match(
+  performanceLabJob,
+  /collect-audit-browser-evidence\.mjs "\$output"[\s\S]*?audit_evidence_base64=/,
+  "browser evidence must be measured before being passed between CI jobs",
 );
 assert.match(
   performanceLabJob,
@@ -227,7 +238,10 @@ for (const jobName of [
   );
 }
 
-assert.match(releaseJob, /needs:\s*\[quality-and-e2e, e2e, dependency-audit\]/);
+assert.match(
+  releaseJob,
+  /needs:\s*\[quality-and-e2e, e2e, performance-lab, dependency-audit\]/,
+);
 assert.match(
   releaseJob,
   /BUILDX_BUILDER: \$\{\{ steps\.buildx\.outputs\.name \}\}[\s\S]*?docker compose --parallel 4[\s\S]*?--file compose\.production\.yaml[\s\S]*?build --pull api web db proxy/,
@@ -476,7 +490,6 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
   assert.match(scanStep, /--scanners vuln/);
   assert.match(scanStep, /--severity HIGH,CRITICAL/);
   assert.match(scanStep, /--ignore-unfixed/);
-  assert.match(scanStep, /--exit-code 1/);
   assert.match(scanStep, /--skip-version-check/);
   assert.match(scanStep, /--disable-telemetry/);
   assert.match(scanStep, /--cache-dir "\$RUNNER_TEMP\/trivy-db"/);
@@ -496,15 +509,15 @@ for (const scanName of REQUIRED_IMAGE_SCANS) {
     /java-db|--download-java-db-only/,
     "production images do not need Trivy's Java index database",
   );
+  assert.match(scanStep, /--scanners secret/);
+  assert.match(scanStep, /--format json/);
+  assert.match(scanStep, /--output "\$scan_dir\/\$name\.vuln\.json"/);
+  assert.match(scanStep, /--output "\$scan_dir\/\$name\.secret\.json"/);
+  assert.match(scanStep, /scan_status=0[\s\S]*?scan_status=1/);
   assert.match(
     scanStep,
-    /scan_status=0\s+for image in[\s\S]*?if TRIVY_SKIP_DB_UPDATE=true[\s\S]*?"\$image" > "\$scan_dir\/\$name\.log" 2>&1; then\s+(:|true)\s+else\s+scan_status=1\s+fi/,
-    "exit 0 must leave the initialized status unchanged, and any failed Trivy scan must set it to 1",
-  );
-  assert.match(
-    scanStep,
-    /done\s+for image in "\$API_IMAGE"[\s\S]*?cat "\$scan_dir\/\$\{image%%:\*\}\.log"[\s\S]*?exit "\$scan_status"/,
-    "every image report must be printed and any failed scan must fail the step",
+    /summarize-image-security\.mjs "\$scan_dir" release\/security-results\.json \|\| scan_status=1[\s\S]*?exit "\$scan_status"/,
+    "failed scans or findings must fail the release gate after writing summarized evidence",
   );
 }
 assert.match(

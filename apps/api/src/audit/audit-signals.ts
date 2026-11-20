@@ -49,7 +49,11 @@ const REASON_CODES: Record<string, readonly string[]> = {
     "network_surface_restricted",
     "network_surface_unobserved",
   ],
-  "application.secrets": ["secrets_not_in_image", "secrets_check_unavailable"],
+  "application.secrets": [
+    "secrets_not_in_image",
+    "secrets_present_in_image",
+    "secrets_check_unavailable",
+  ],
   "application.dependencies": [
     "dependency_risk_not_observed",
     "high_dependency_risk_observed",
@@ -75,10 +79,19 @@ const REASON_CODES: Record<string, readonly string[]> = {
   ],
   "privacy.third_parties": [
     "third_party_request_count",
+    "third_party_origin_count",
+    "third_party_origins_allowlisted",
+    "third_party_origin_not_allowlisted",
     "known_tracker_request_count",
     "external_ingest_enabled",
   ],
-  "privacy.consent": ["consent_choice_recorded", "consent_state_respected"],
+  "privacy.consent": [
+    "consent_choice_recorded",
+    "consent_choice_not_recorded",
+    "consent_choice_selected",
+    "consent_choice_not_selected",
+    "consent_state_respected",
+  ],
   "ethics.transparency": [
     "privacy_notice_present",
     "privacy_notice_missing",

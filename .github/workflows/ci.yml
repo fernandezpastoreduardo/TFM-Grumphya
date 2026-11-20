@@ -98,6 +98,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       report_base64: ${{ steps.summarize.outputs.report_base64 }}
+      audit_evidence_base64: ${{ steps.audit-evidence.outputs.audit_evidence_base64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -120,6 +121,8 @@ jobs:
           set -euo pipefail
           GRUMPHYA_LHCI_FORM_FACTOR=mobile GRUMPHYA_LHCI_OUTPUT_DIR=.lighthouseci/mobile pnpm --dir apps/web exec lhci autorun --config=lighthouserc.cjs
           GRUMPHYA_LHCI_FORM_FACTOR=desktop GRUMPHYA_LHCI_OUTPUT_DIR=.lighthouseci/desktop pnpm --dir apps/web exec lhci autorun --config=lighthouserc.cjs
+      - name: Build the production web app for browser audit evidence
+        run: pnpm --dir apps/web build
       - name: Summarize the allowlisted Lighthouse measurements
         id: summarize
         env:
@@ -130,6 +133,14 @@ jobs:
           node apps/web/scripts/summarize-lighthouse.mjs \
             apps/web/.lighthouseci "$RUNNER_TEMP/lighthouse-quality.json"
           printf 'report_base64=%s\n' "$(base64 -w 0 "$RUNNER_TEMP/lighthouse-quality.json")" >> "$GITHUB_OUTPUT"
+      - name: Measure browser audit evidence from the production build
+        id: audit-evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/audit-browser-evidence.json"
+          node apps/web/scripts/collect-audit-browser-evidence.mjs "$output"
+          printf 'audit_evidence_base64=%s\n' "$(base64 -w 0 "$output")" >> "$GITHUB_OUTPUT"
 
   publish-lighthouse:
     name: Publish Lighthouse summary after deployment
@@ -210,7 +221,7 @@ jobs:
     if: >-
       github.event_name != 'workflow_dispatch' ||
       (github.actor == 'fernandezpastoreduardo' && github.triggering_actor == 'fernandezpastoreduardo')
-    needs: [quality-and-e2e, e2e, dependency-audit]
+    needs: [quality-and-e2e, e2e, performance-lab, dependency-audit]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -305,20 +316,28 @@ jobs:
               --scanners vuln \
               --severity HIGH,CRITICAL \
               --ignore-unfixed \
-              --exit-code 1 \
-              "$image" > "$scan_dir/$name.log" 2>&1; then
+              --format json \
+              --output "$scan_dir/$name.vuln.json" \
+              "$image" >/dev/null 2>&1; then
+              :
+            else
+              scan_status=1
+            fi
+            if TRIVY_SKIP_DB_UPDATE=true TRIVY_SKIP_JAVA_DB_UPDATE=true trivy image \
+              --skip-version-check \
+              --disable-telemetry \
+              --cache-dir "$RUNNER_TEMP/trivy-db" \
+              --scanners secret \
+              --format json \
+              --output "$scan_dir/$name.secret.json" \
+              "$image" >/dev/null 2>&1; then
               :
             else
               scan_status=1
             fi
           done
-          for image in "$API_IMAGE" "$WEB_IMAGE" "$DATABASE_IMAGE" "$PROXY_IMAGE"; do
-            cat "$scan_dir/${image%%:*}.log"
-          done
           mkdir -p release
-          cat > release/security-results.json <<'EOF'
-          {"trivy":{"status":"passed","severity":["HIGH","CRITICAL"],"ignoreUnfixed":true},"highRiskCount":0,"criticalRiskCount":0}
-          EOF
+          node scripts/summarize-image-security.mjs "$scan_dir" release/security-results.json || scan_status=1
           exit "$scan_status"
       - name: Verify OpenAI idea evaluation and roast before release
         if: >-
@@ -343,6 +362,8 @@ jobs:
             "$API_IMAGE" \
             apps/api/dist/infrastructure/ai/production-ai-smoke.js
       - name: Smoke test the scanned production images with isolated Compose resources
+        env:
+          AUDIT_EVIDENCE_OUTPUT_PATH: release/compose-audit-evidence.json
         run: bash scripts/test-production-compose.sh "${{ github.sha }}"
       - name: Generate and sign the production release attestation
         if: >-
@@ -354,15 +375,31 @@ jobs:
           inputs.approve_production_deploy == true &&
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
+          needs.performance-lab.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
           AUDIT_RELEASE_SIGNING_KEY: ${{ secrets.AUDIT_RELEASE_SIGNING_KEY }}
+          AUDIT_BROWSER_EVIDENCE_BASE64: ${{ needs.performance-lab.outputs.audit_evidence_base64 }}
+          CI_QUALITY_RESULT: ${{ needs.quality-and-e2e.result }}
+          CI_E2E_RESULT: ${{ needs.e2e.result }}
+          CI_DEPENDENCY_RESULT: ${{ needs.dependency-audit.result }}
         shell: bash
         run: |
           set -Eeuo pipefail
           : "${AUDIT_RELEASE_SIGNING_KEY:?Create the AUDIT_RELEASE_SIGNING_KEY Actions secret before persisting production audit evidence}"
           test -s release/security-results.json
+          test -s release/compose-audit-evidence.json
+          browser_evidence="$RUNNER_TEMP/audit-browser-evidence.json"
+          if ! printf '%s' "$AUDIT_BROWSER_EVIDENCE_BASE64" | base64 --decode > "$browser_evidence"; then
+            echo '::error::The browser evidence report could not be decoded.'
+            exit 1
+          fi
+          node scripts/build-release-audit-evidence.mjs \
+            release/security-results.json \
+            release/compose-audit-evidence.json \
+            "$browser_evidence" \
+            release/audit-evidence.json
           pnpm list --prod --recursive --json --depth Infinity > release/dependency-inventory.json
           api_digest=$(docker image inspect --format '{{.Id}}' "grumphya-api:${GITHUB_SHA}")
           web_digest=$(docker image inspect --format '{{.Id}}' "grumphya-web:${GITHUB_SHA}")
@@ -376,7 +413,8 @@ jobs:
             "${api_digest}" \
             "${web_digest}" \
             "${database_digest}" \
-            "${proxy_digest}"
+            "${proxy_digest}" \
+            release/audit-evidence.json
           signing_key="$RUNNER_TEMP/grumphya-audit-signing-key.pem"
           printf '%s\n' "$AUDIT_RELEASE_SIGNING_KEY" > "$signing_key"
           chmod 600 "$signing_key"
@@ -442,6 +480,7 @@ jobs:
           inputs.approve_production_deploy == true &&
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
+          needs.performance-lab.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         run: |
@@ -464,6 +503,7 @@ jobs:
           inputs.approve_production_deploy == true &&
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
+          needs.performance-lab.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
@@ -502,6 +542,7 @@ jobs:
           inputs.approve_production_deploy == true &&
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
+          needs.performance-lab.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:
@@ -561,6 +602,7 @@ jobs:
           inputs.approve_production_deploy == true &&
           needs.quality-and-e2e.result == 'success' &&
           needs.e2e.result == 'success' &&
+          needs.performance-lab.result == 'success' &&
           needs.dependency-audit.result == 'success' &&
           vars.PRODUCTION_DEPLOY_ENABLED == 'true'
         env:

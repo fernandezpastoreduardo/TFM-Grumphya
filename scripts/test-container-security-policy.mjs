@@ -456,7 +456,7 @@ assert.ok(
   "early production source guards must execute the container security policy checks",
 );
 const webImageStageStart = dockerfile.indexOf(
-  "FROM nginx:1.30-alpine AS web-production",
+  "FROM nginx:1.30.7-alpine3.24 AS web-production",
 );
 const webImageStageEnd = dockerfile.indexOf(
   "FROM pnpm-base AS production-dependencies",

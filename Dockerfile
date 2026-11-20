@@ -66,7 +66,7 @@ COPY . .
 RUN printf '{"revision":"%s"}\n' "$DEPLOY_SHA" > apps/web/public/build.json
 RUN pnpm --filter @grumphya/web build
 
-FROM nginx:1.30-alpine AS web-production
+FROM nginx:1.30.7-alpine3.24 AS web-production
 COPY docker/nginx-spa.conf /etc/nginx/conf.d/default.conf
 RUN apk upgrade --no-cache \
   && apk add --no-cache openssl \

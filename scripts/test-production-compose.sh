@@ -163,8 +163,20 @@ cat > "$TEMP_ROOT/dependency-inventory.json" <<'EOF'
 {"name":"audit-integration-fixture","version":"0.0.0","dependencies":{}}
 EOF
 cat > "$TEMP_ROOT/security-results.json" <<'EOF'
-{"trivy":{"status":"passed"},"highRiskCount":0,"criticalRiskCount":0}
+{"trivy":{"status":"passed"},"highRiskCount":0,"criticalRiskCount":0,"secretCount":0}
 EOF
+cat > "$TEMP_ROOT/compose-audit-evidence.json" <<'EOF'
+{"tlsTransportVerified":true,"securityHeadersVerified":true,"networkSurfaceRestricted":true}
+EOF
+cat > "$TEMP_ROOT/browser-audit-evidence.json" <<'EOF'
+{"responseTimeMs":210,"firstContentfulPaintMs":700,"interactionToNextPaintMs":32,"criticalAccessibilityViolations":0,"firstPartyCookiesOnly":true,"essentialStorageOnly":true,"thirdPartyOriginCount":1,"thirdPartyOriginsAllowlisted":true,"privacyChoiceSelected":true,"privacyPolicyVisible":true,"aiDisclosureVisible":true,"noticeAcknowledged":true}
+EOF
+CI_QUALITY_RESULT=success CI_E2E_RESULT=success CI_DEPENDENCY_RESULT=success \
+  node "$REPO_ROOT/scripts/build-release-audit-evidence.mjs" \
+  "$TEMP_ROOT/security-results.json" \
+  "$TEMP_ROOT/compose-audit-evidence.json" \
+  "$TEMP_ROOT/browser-audit-evidence.json" \
+  "$TEMP_ROOT/audit-evidence.json"
 node "$REPO_ROOT/scripts/create-release-manifest.mjs" \
   "$AUDIT_MANIFEST_FILE" \
   "$TEMP_ROOT/dependency-inventory.json" \
@@ -173,7 +185,8 @@ node "$REPO_ROOT/scripts/create-release-manifest.mjs" \
   sha256:0000000000000000000000000000000000000000000000000000000000000001 \
   sha256:0000000000000000000000000000000000000000000000000000000000000002 \
   sha256:0000000000000000000000000000000000000000000000000000000000000003 \
-  sha256:0000000000000000000000000000000000000000000000000000000000000004
+  sha256:0000000000000000000000000000000000000000000000000000000000000004 \
+  "$TEMP_ROOT/audit-evidence.json"
 node --input-type=module - "$AUDIT_MANIFEST_FILE" "$AUDIT_SIGNATURE_FILE" \
   "$TEMP_ROOT/audit-attestation-private.pem" "$TEMP_ROOT/audit-attestation-public.pem" <<'NODE'
 import { readFile, writeFile } from "node:fs/promises";
@@ -375,6 +388,29 @@ assert_proxy_ports
 curl --insecure --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 2 \
   --dump-header "$TEMP_ROOT/public-headers.txt" \
   "https://localhost:$HTTPS_PORT/" -o "$TEMP_ROOT/home.html"
+tls_version=$(node --input-type=module - "$HTTPS_PORT" <<'NODE'
+import { connect } from "node:tls";
+
+const port = Number(process.argv[2]);
+const socket = connect(
+  { host: "127.0.0.1", port, servername: "localhost", rejectUnauthorized: false },
+  () => {
+    process.stdout.write(socket.getProtocol() ?? "");
+    socket.end();
+  },
+);
+socket.setTimeout(5000, () => socket.destroy(new Error("TLS handshake timed out")));
+socket.on("error", () => {
+  process.stderr.write("TLS_HANDSHAKE_FAILED\n");
+  process.exitCode = 1;
+});
+NODE
+)
+[[ $tls_version == TLSv1.2 || $tls_version == TLSv1.3 ]] || {
+  printf 'Expected TLS 1.2 or 1.3 from the production proxy (got %s).\n' \
+    "$tls_version" >&2
+  exit 1
+}
 node - "$TEMP_ROOT/public-headers.txt" "$TEMP_ROOT/home.html" <<'NODE'
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
@@ -630,4 +666,24 @@ if [[ $MODE == --audit-only ]]; then
   printf 'Audit writer integration passed: TLS, root-only secret handoff, least-privilege roles, signed manifest, duplicate rejection, and API read access.\n'
 else
   printf 'Production Compose smoke passed: HTTPS proxy, SPA, API, pgvector, production mode, internal ports, and persistence after recreation.\n'
+fi
+
+if [[ -n ${AUDIT_EVIDENCE_OUTPUT_PATH:-} ]]; then
+  [[ $MODE == run ]] || {
+    printf 'Audit evidence requires the full production Compose smoke.\n' >&2
+    exit 1
+  }
+  node - "$AUDIT_EVIDENCE_OUTPUT_PATH" "$tls_version" <<'NODE'
+const { writeFileSync } = require("node:fs");
+const [outputPath, tlsVersion] = process.argv.slice(2);
+writeFileSync(
+  outputPath,
+  `${JSON.stringify({
+    tlsTransportVerified: ["TLSv1.2", "TLSv1.3"].includes(tlsVersion),
+    securityHeadersVerified: true,
+    networkSurfaceRestricted: true,
+  })}\n`,
+  { mode: 0o600 },
+);
+NODE
 fi

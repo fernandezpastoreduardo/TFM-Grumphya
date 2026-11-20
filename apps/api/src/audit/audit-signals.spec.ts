@@ -116,6 +116,28 @@ describe("Beta D signal contract", () => {
       }
     }
   });
+  it("accepts measured allowlisted third-party origin signals", () => {
+    const signals: AuditSignal[] = [
+      {
+        criterionId: "privacy.third_parties",
+        status: "pass",
+        reasonCode: "third_party_origin_count",
+        value: 1,
+        unit: "count",
+        limit: 1,
+      },
+      {
+        criterionId: "privacy.third_parties",
+        status: "pass",
+        reasonCode: "third_party_origins_allowlisted",
+        value: 1,
+        unit: "boolean",
+      },
+    ];
+    expect(
+      parseAuditEvidence(evidence("privacy", signals), "privacy").signals,
+    ).toEqual(signals);
+  });
   it.each([
     [
       "duplicate criterion",

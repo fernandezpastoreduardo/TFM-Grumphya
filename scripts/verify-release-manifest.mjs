@@ -34,6 +34,7 @@ const REASONS = {
   ]),
   "application.secrets": new Set([
     "secrets_not_in_image",
+    "secrets_present_in_image",
     "secrets_check_unavailable",
   ]),
   "application.dependencies": new Set([
@@ -65,11 +66,17 @@ const REASONS = {
   ]),
   "privacy.third_parties": new Set([
     "third_party_request_count",
+    "third_party_origin_count",
+    "third_party_origins_allowlisted",
+    "third_party_origin_not_allowlisted",
     "known_tracker_request_count",
     "external_ingest_enabled",
   ]),
   "privacy.consent": new Set([
     "consent_choice_recorded",
+    "consent_choice_not_recorded",
+    "consent_choice_selected",
+    "consent_choice_not_selected",
     "consent_state_respected",
   ]),
   "ethics.transparency": new Set([
