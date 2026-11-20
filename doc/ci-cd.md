@@ -11,9 +11,10 @@ el ranking, la ficha demostrativa local y los cupos anónimos, y con `204` para
 la analítica y la renovación de una sesión ausente. Así Lighthouse mide las
 vistas cargadas y no estados de error por ausencia de API. Una petición
 registrada con estado HTTP 4xx/5xx, URL inválida u origen distinto de
-`http://127.0.0.1:4173` invalida el resumen. El icono del sello no aparece en este preview: la
-compilación de producción en `127.0.0.1` no está en la lista de dominios
-autorizados del sello, aunque su ficha sintética se pueda consultar. La muestra
+`http://127.0.0.1:4173` invalida el resumen. El widget externo del sello no se
+solicita en este preview porque la página servida en `127.0.0.1` no lleva el
+nonce CSP requerido para cargarlo bajo `strict-dynamic`; la ficha sintética
+local sí se puede consultar. La muestra
 sigue siendo de laboratorio y no incluye la latencia, el contenido cambiante,
 la sesión ni las cabeceras de producción.
 No visita producción ni envía mediciones de personas usuarias, y no instala RUM,

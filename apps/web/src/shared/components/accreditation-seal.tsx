@@ -1,65 +1,40 @@
-import { useEffect, useState } from "react";
-import {
-  EXTERNAL_ACCREDITATION_SITE_URL,
-  getAccreditation,
-  isSealDisplayAllowed,
-} from "../accreditation-verification";
-import "./accreditation-seal.scss";
+import { useEffect } from "react";
 
-const SEAL_CAPTIONS = {
-  loading: "Consultando el estado del sello · Conocer la propuesta ↗",
-  demonstration:
-    "Demostración académica · Sin certificación oficial · Conocer la propuesta ↗",
-  unavailable: "Sello no verificable o sin vigencia · Conocer la propuesta ↗",
-} as const;
+const DEVELOPMENT_SECURITY_BADGE_TOKEN =
+  "oKRH-ZltmA7YRYP2ttXFkIcOBPm4sGksI14GN8nPscc";
+const DEVELOPMENT_SECURITY_BADGE_HOSTNAME = "grumphya.com";
+const DEVELOPMENT_SECURITY_BADGE_REPORT_ID =
+  "6bff5c3e-ff99-4f68-bfe9-fb5f5dfb2823";
+const DEVELOPMENT_SECURITY_BADGE_SCRIPT_URL =
+  "https://desarrolloseguro.org/desarrollo-seguro/badge-widget.js";
+
+function loadBadgeWidget() {
+  const nonceScript =
+    document.querySelector<HTMLScriptElement>("script[nonce]");
+  const nonce = nonceScript?.nonce;
+  if (!nonce) return () => undefined;
+
+  const script = document.createElement("script");
+  script.src = DEVELOPMENT_SECURITY_BADGE_SCRIPT_URL;
+  script.defer = true;
+  script.nonce = nonce;
+  document.body.append(script);
+
+  return () => script.remove();
+}
 
 export function AccreditationSeal() {
-  const [status, setStatus] = useState<
-    "loading" | "demonstration" | "unavailable"
-  >("loading");
-
-  useEffect(() => {
-    let active = true;
-    getAccreditation()
-      .then((record) => {
-        if (!active) return;
-        setStatus(
-          isSealDisplayAllowed(
-            record,
-            window.location.hostname,
-            import.meta.env.DEV,
-          )
-            ? "demonstration"
-            : "unavailable",
-        );
-      })
-      .catch(() => {
-        if (active) setStatus("unavailable");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  useEffect(() => loadBadgeWidget(), []);
 
   return (
-    <a className="accreditation-seal" href={EXTERNAL_ACCREDITATION_SITE_URL}>
-      {status === "demonstration" && (
-        <img
-          src="/assets/desarrolloseguro.org/icon.svg"
-          width="128"
-          height="128"
-          alt=""
-          aria-hidden="true"
-          loading="lazy"
-          decoding="async"
-        />
-      )}
-      <span className="accreditation-seal-copy">
-        <span className="accreditation-seal-site">desarrolloseguro.org</span>
-        <span className="accreditation-seal-caption">
-          {SEAL_CAPTIONS[status]}
-        </span>
-      </span>
+    <a
+      data-ds-verified-badge
+      data-token={DEVELOPMENT_SECURITY_BADGE_TOKEN}
+      data-hostname={DEVELOPMENT_SECURITY_BADGE_HOSTNAME}
+      data-report-id={DEVELOPMENT_SECURITY_BADGE_REPORT_ID}
+      hidden
+    >
+      Comprobando sello…
     </a>
   );
 }

@@ -95,50 +95,15 @@ describe("Home", () => {
     );
   });
 
-  it("links to the independent site from the home footer", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url: unknown) =>
-        url === "/api/accreditations/DS-GRUMPHYA-2026-001"
-          ? Promise.resolve(
-              Response.json({
-                id: "DS-GRUMPHYA-2026-001",
-                issuer: "Grumphya · revisión interna",
-                application: "Grumphya",
-                authorizedDomains: ["grumphya.com"],
-                status: "demonstration",
-                issuedAt: null,
-                validatedAt: null,
-                validationMethod: "No indicada",
-                expiresAt: null,
-                assurances: [],
-                scope: "Prototipo académico",
-                criteria: [],
-                disclaimer: "Sin certificación oficial.",
-              }),
-            )
-          : new Promise(() => undefined),
-      ),
-    );
+  it("renders the development security badge in the home footer", () => {
     render(<Home />);
 
-    const seal = screen
+    const badge = screen
       .getByRole("contentinfo")
-      .querySelector("a[href='https://desarrolloseguro.org/']");
-    expect(seal).toHaveAttribute("href", "https://desarrolloseguro.org/");
-    expect(
-      await screen.findByText(
-        /Demostración académica · Sin certificación oficial/i,
-      ),
-    ).toBeVisible();
-    expect(seal?.querySelector("img")).toHaveAttribute(
-      "src",
-      "/assets/desarrolloseguro.org/icon.svg",
-    );
-    expect(seal).toHaveTextContent("Demostración académica");
-    expect(seal).toHaveAccessibleName(
-      /desarrolloseguro\.org.*demostración académica.*sin certificación oficial.*conocer la propuesta/i,
-    );
+      .querySelector("a[data-ds-verified-badge]");
+    expect(badge).toHaveAttribute("data-hostname", "grumphya.com");
+    expect(badge).toHaveAttribute("hidden");
+    expect(badge).toHaveTextContent("Comprobando sello…");
   });
 
   it("loads the hero illustration at high priority", () => {

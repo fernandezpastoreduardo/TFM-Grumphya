@@ -27,8 +27,9 @@ usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven
 Nginx devuelve `308` desde las rutas heredadas `/desarrollo-seguro` y
 `/desarrollo-seguro/*` hacia `https://desarrolloseguro.org/`. La imagen web ya no
 incluye el prototipo estático: el sitio independiente tiene su propio repositorio
-y despliegue. El sello del footer carga su ilustración desde los recursos locales
-de Grumphya y enlaza al dominio externo. La ficha demostrativa local
+y despliegue. El sello del footer integra el widget de desarrolloseguro.org, que
+Grumphya carga con el nonce de la CSP; si la página no tiene nonce, el widget no
+se solicita. La ficha demostrativa local
 `/acreditaciones/DS-GRUMPHYA-2026-001` continúa siendo una ruta de la SPA y
 consulta el endpoint de acreditaciones de la API de Grumphya.
 El healthcheck del servicio web solicita `/` por HTTPS directamente a Nginx,
