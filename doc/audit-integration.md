@@ -8,11 +8,12 @@ operativo. Si se activa sin claves o ACL válidas, la API no arranca; si falta
 evidencia válida tras el arranque, la consulta autenticada devuelve
 `503 evidence_unavailable`.
 
-Estado observado en el VPS el 19 de noviembre de 2026: `AUDIT_ENABLED=true`,
-`AUDIT_ALLOWED_NETWORKS=172.30.0.1/32`, API recreada y saludable, y el proxy
-conserva su conexión a `development-security-ingress`. Estas comprobaciones no
-acreditan por sí solas la respuesta autenticada de las siete rutas ni el
-contenido de sus evidencias; verifica ambos con el smoke indicado abajo.
+Estado observado en el VPS el 20 de noviembre de 2026: `AUDIT_ENABLED=true`,
+`AUDIT_ALLOWED_NETWORKS=31.70.130.181/32` y API recreada y saludable. Los logs
+de rechazos de la integración muestran `31.70.130.181` como origen visto por
+Grumphya; esta ACL elimina el `403 insufficient_scope` para ese origen. No se
+ha validado todavía ninguna respuesta firmada ni el contenido de las siete
+evidencias; verifica ambos con el smoke indicado abajo.
 
 El perfil implementado es `beta-d-0.2`. La primera identidad de Desarrollo
 Seguro usa el JWT `kid=ds-auditor-2026`. La PEM pública recibida se verificó
@@ -111,23 +112,17 @@ de identidades vigentes; `AUDIT_TECHNICAL_AUTH_REVOKED_KIDS` y
 denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
-La IP pública `31.70.130.181` fue la salida externa observada en una prueba
-anterior; no es la dirección que Caddy ve al volver desde el bridge de
-Desarrollo Seguro al dominio público del mismo VPS. Ese recorrido hace
-hairpin NAT y Caddy observa `172.30.0.1`, puerta de enlace de la red `edge` de
-Grumphya. Por ello, la ACL instalada es
-`AUDIT_ALLOWED_NETWORKS=172.30.0.1/32`. `172.20.0.0/16` pertenece a la red
-interna de Desarrollo Seguro y no se añade a la ACL. El gateway de `edge` es
-un origen compartido: otros recorridos hairpin del host podrían presentar la
-misma IP. Por tanto, la ACL no identifica exclusivamente a Desarrollo Seguro.
-La verificación del JWT Ed25519, su `kid` permitido, el `scope`, el TTL máximo
-de cinco minutos y los límites de peticiones siguen siendo barreras
-independientes. Una separación más fuerte requeriría una salida de red
-dedicada o identidad autenticada en el transporte; no se aplica en esta beta.
-Cualquier otra dirección que llegue al guard queda rechazada. Si cambia la
-topología o el recorrido, vuelve a medir la IP que ve la API antes de cambiar
-la ACL; no amplíes el CIDR por suposición. El proxy nunca se conecta a
-`development-security-edge` para este contrato.
+El 20 de noviembre de 2026, los rechazos `403 insufficient_scope` registraron
+`31.70.130.181` como origen observado por Grumphya. La ACL instalada es por
+tanto `AUDIT_ALLOWED_NETWORKS=31.70.130.181/32`. Aunque Desarrollo Seguro
+identifica su red dedicada de salida como `172.20.0.0/16`, esa red no debe
+añadirse a la ACL por suposición: no es la dirección observada por el proxy en
+estas peticiones. La ACL solo permite la IP exacta observada. La verificación
+del JWT Ed25519, su `kid` permitido, el `scope`, el TTL máximo de cinco minutos
+y los límites de peticiones siguen siendo barreras independientes. Cualquier
+otra dirección que llegue al guard queda rechazada. Si cambia la topología o
+el recorrido, vuelve a medir la IP que ve Grumphya antes de cambiar la ACL; no
+amplíes el CIDR por suposición.
 
 ## Evidencia interna y atestación
 
@@ -233,7 +228,7 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    `Content-Type: application/json`, la envolvente exacta, la firma
    presente, el `kid`, el `scope`, la cardinalidad y el límite de 64 KiB.
 
-   Desde el bridge de Desarrollo Seguro, comprueba el rechazo de un JWT
+   Desde el origen de Desarrollo Seguro, comprueba el rechazo de un JWT
    inválido contra la instancia actualmente habilitada:
 
    ```bash
@@ -251,9 +246,9 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    cookies ni el cuerpo.
 
 5. Antes de activar otra instancia deben pasar el smoke autenticado y la prueba
-   operativa de rechazo desde el origen hairpin observado, `172.30.0.1/32`,
-   o desde la IP que esa instancia vea realmente. La clave pública JWT y su
-   huella, la ACL, la clave pública de atestación y su `kid`, los roles
+   operativa de rechazo desde el origen autorizado observado,
+   `31.70.130.181/32`, o desde la IP que esa instancia vea realmente. La clave
+   pública JWT y su huella, la ACL, la clave pública de atestación y su `kid`, los roles
    PostgreSQL, la persistencia de las siete evidencias y las pruebas de
    permisos ya deben estar cerrados. Solo entonces se puede cambiar a
    `AUDIT_ENABLED=true` en una release aprobada.
