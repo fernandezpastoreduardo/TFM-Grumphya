@@ -17,9 +17,11 @@ Esta guía describe cómo operar Grumphya en un único VPS IONOS M+ con Docker C
 Nginx publica la web desde `docker/nginx-spa.conf`: `/` sirve el HTML de la SPA
 mediante `try_files /index.html =404;` y envía una precarga de la ilustración
 principal de Home solo a viewports de al menos 768 px. El telón compartido se
-precarga con prioridad alta solo en Home, mediante el HTML prerenderizado de esa
-ruta; el público decorativo y el telón de las demás rutas se descubren desde sus
-hojas de estilo, sin precarga global. `/index.html` usa `Cache-Control: no-cache`; los
+precarga con prioridad alta solo en Home y viewports de al menos 641 px,
+mediante el HTML prerenderizado de esa ruta. En viewports de hasta 640 px, Home
+y las páginas de sección omiten sus fondos decorativos; en escritorio, el público
+decorativo y el telón de las demás rutas se descubren desde sus hojas de estilo,
+sin precarga global. `/index.html` usa `Cache-Control: no-cache`; los
 bundles JavaScript y CSS con nombre versionado
 por hash usan `public, max-age=31536000, immutable`; el resto de `/assets/`
 usa `public, max-age=2592000`. Los archivos inexistentes de `/assets/` devuelven

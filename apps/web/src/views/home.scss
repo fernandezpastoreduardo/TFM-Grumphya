@@ -2204,7 +2204,6 @@
 
 @supports (animation-timeline: view()) {
   .home-result,
-  .home-marketing,
   .home-footer {
     animation: scroll-rise linear both;
     animation-timeline: view();
@@ -3108,4 +3107,11 @@
 .mobile-menu-portal.navigation-overflow nav {
   z-index: 9002;
   pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .home-page::before,
+  .home-page::after {
+    background-image: none;
+  }
 }

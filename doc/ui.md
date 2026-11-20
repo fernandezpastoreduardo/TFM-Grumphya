@@ -380,14 +380,24 @@ para responder a los informes anteriores precargaban el telón y el público
 desde `apps/web/index.html` en todas las rutas. El informe móvil de Peores ideas
 del 4 de noviembre registró rendimiento 0,96, FCP 1,3 s y LCP 2,7 s; descargó
 ambas imágenes decorativas con prioridad alta. Ahora el HTML base deja de
-precargarlas globalmente y Home precarga solo el telón desde la configuración
-de su ruta. Las otras páginas descubren ambos fondos al cargar sus estilos, sin
-reservarles prioridad alta frente al contenido inicial. El mismo informe
-detectó contraste 1,67:1 en el enlace a planes del estado anónimo del
-historial; el enlace ahora fija texto oscuro y fondo claro en ambos temas. La
-prueba de componente verifica que ese CTA use la regla específica. Hace falta
-medir de nuevo la versión desplegada para comprobar el efecto real en LCP y
-contraste de Lighthouse. Para completar la revisión, medir Home, Humanos
+precargarlas globalmente y Home precarga el telón desde la configuración de su
+ruta solo a partir de 641 px. En viewports de hasta 640 px se omiten las
+imágenes de fondo decorativas tanto en Home como en el marco de las páginas de
+sección. La animación `scroll-rise` ya no se aplica al bloque de marketing de
+Home, cuyo titular es candidato al LCP. Una comparación local del 20 de
+noviembre, con el mismo perfil móvil simulado de `performance-lab` y tres
+ejecuciones por ruta, dio estas medianas: Home, 3,618 → 0,906 s; Precios,
+3,232 → 2,781 s; Peores ideas, 3,232 → 2,795 s. Las puntuaciones medianas
+fueron 1,00, 0,96 y 0,88 respectivamente. Es evidencia de laboratorio local,
+no de producción ni de Core Web Vitals de campo. Tras retirar los fondos, el
+aviso de cookies pasa a ser el elemento LCP de Precios y Peores ideas; aparece
+después de hidratar la aplicación y consultar `localStorage`, por lo que su
+tiempo sigue pendiente de investigación.
+
+El informe del 4 de noviembre también detectó contraste 1,67:1 en el enlace a
+planes del estado anónimo del historial; el enlace ahora fija texto oscuro y
+fondo claro en ambos temas. La prueba de componente verifica que ese CTA use la
+regla específica. Para completar la revisión visual, medir Home, Humanos
 notables, Contacto, Descárgate, alta y `/panel-control` con Lighthouse en
 escritorio y móvil, ambos temas y caché fría y caliente; revisar waterfall,
 bytes transferidos y cambios de layout. Las siete ilustraciones transparentes
