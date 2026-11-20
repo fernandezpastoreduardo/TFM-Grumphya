@@ -9,10 +9,12 @@ evidencia válida tras el arranque, la consulta autenticada devuelve
 `503 evidence_unavailable`.
 
 Estado observado en el VPS el 20 de noviembre de 2026: `AUDIT_ENABLED=true`,
-`AUDIT_ALLOWED_NETWORKS=31.70.130.181/32` y API recreada y saludable. Los logs
-de rechazos de la integración muestran `31.70.130.181` como origen visto por
-Grumphya; esta ACL elimina el `403 insufficient_scope` para ese origen. No se
-ha validado todavía ninguna respuesta firmada ni el contenido de las siete
+`AUDIT_ALLOWED_NETWORKS=172.30.0.1/32` y API recreada y saludable. Los logs
+de rechazo de las siete rutas muestran `172.30.0.1` como origen que llega al
+guard a través del proxy. La ruta de prueba por esa interfaz devuelve
+`401 invalid_identity` ante un JWT inválido; el origen público
+`31.70.130.181` recibe `403 insufficient_scope`. No se han validado todavía
+respuestas firmadas desde Desarrollo Seguro ni el contenido de las siete
 evidencias; verifica ambos con el smoke indicado abajo.
 
 El perfil implementado es `beta-d-0.2`. La primera identidad de Desarrollo
@@ -112,17 +114,19 @@ de identidades vigentes; `AUDIT_TECHNICAL_AUTH_REVOKED_KIDS` y
 denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
-El 20 de noviembre de 2026, los rechazos `403 insufficient_scope` registraron
-`31.70.130.181` como origen observado por Grumphya. La ACL instalada es por
-tanto `AUDIT_ALLOWED_NETWORKS=31.70.130.181/32`. Aunque Desarrollo Seguro
-identifica su red dedicada de salida como `172.20.0.0/16`, esa red no debe
-añadirse a la ACL por suposición: no es la dirección observada por el proxy en
-estas peticiones. La ACL solo permite la IP exacta observada. La verificación
-del JWT Ed25519, su `kid` permitido, el `scope`, el TTL máximo de cinco minutos
-y los límites de peticiones siguen siendo barreras independientes. Cualquier
-otra dirección que llegue al guard queda rechazada. Si cambia la topología o
-el recorrido, vuelve a medir la IP que ve Grumphya antes de cambiar la ACL; no
-amplíes el CIDR por suposición.
+El 20 de noviembre de 2026, los rechazos de las siete rutas desde el flujo de
+auditoría registraron `172.30.0.1` como origen que llega al guard. Es la
+dirección gateway de la red `edge` de Grumphya, anunciada por Caddy en este
+recorrido. La ACL instalada permite solo esa dirección exacta:
+`AUDIT_ALLOWED_NETWORKS=172.30.0.1/32`. La IP pública `31.70.130.181` no pasa
+la ACL actual. Aunque Desarrollo Seguro identifica su red dedicada de salida
+como `172.20.0.0/16`, Grumphya no observa esa dirección en estas peticiones y
+no debe añadirse el rango por suposición. La verificación del JWT Ed25519, su
+`kid` permitido, el `scope`, el TTL máximo de cinco minutos y los límites de
+peticiones siguen siendo barreras independientes. Cualquier otra dirección
+que llegue al guard queda rechazada. Si cambia la topología o el recorrido,
+vuelve a medir la IP que ve Grumphya antes de cambiar la ACL; no amplíes el
+CIDR por suposición.
 
 ## Evidencia interna y atestación
 
@@ -247,7 +251,7 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
 
 5. Antes de activar otra instancia deben pasar el smoke autenticado y la prueba
    operativa de rechazo desde el origen autorizado observado,
-   `31.70.130.181/32`, o desde la IP que esa instancia vea realmente. La clave
+   `172.30.0.1/32`, o desde la IP que esa instancia vea realmente. La clave
    pública JWT y su huella, la ACL, la clave pública de atestación y su `kid`, los roles
    PostgreSQL, la persistencia de las siete evidencias y las pruebas de
    permisos ya deben estar cerrados. Solo entonces se puede cambiar a
