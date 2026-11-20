@@ -68,7 +68,11 @@
 	}
 }
 www.{$DOMAIN} {
-	header -Server
+	header {
+		-Server
+		Content-Security-Policy "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+		Cache-Control "no-store"
+	}
 	redir https://{$DOMAIN}{uri} permanent
 }
 

@@ -167,6 +167,9 @@ grep -Eiq "^location:[[:space:]]*https://$DOMAIN/[[:space:]]*$" "$www_headers" |
   printf 'www origin must redirect exactly to the canonical HTTPS origin.\n' >&2
   exit 1
 }
+assert_header "$www_headers" 'content-security-policy' \
+  "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+assert_header "$www_headers" 'cache-control' 'no-store'
 
 assert_tls_accepted tls1_2 "$TEMP_ROOT/tls1_2.txt"
 assert_tls_accepted tls1_3 "$TEMP_ROOT/tls1_3.txt"

@@ -388,6 +388,25 @@ assert_proxy_ports
 curl --insecure --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 2 \
   --dump-header "$TEMP_ROOT/public-headers.txt" \
   "https://localhost:$HTTPS_PORT/" -o "$TEMP_ROOT/home.html"
+www_status=$(curl --insecure --silent --show-error --max-time 15 \
+  --resolve "www.localhost:$HTTPS_PORT:127.0.0.1" \
+  --dump-header "$TEMP_ROOT/www-headers.txt" --output /dev/null --write-out '%{http_code}' \
+  "https://www.localhost:$HTTPS_PORT/")
+[[ "$www_status" == 301 ]] || {
+  printf 'www root must redirect before following the canonical origin (got %s).\n' "$www_status" >&2
+  exit 1
+}
+node - "$TEMP_ROOT/www-headers.txt" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const headers = readFileSync(process.argv[2], "utf8");
+assert.match(headers, /^location:\s*https:\/\/localhost\/$/im);
+assert.match(
+  headers,
+  /^content-security-policy:\s*default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'\s*$/im,
+);
+assert.match(headers, /^cache-control:\s*no-store\s*$/im);
+NODE
 tls_version=$(node --input-type=module - "$HTTPS_PORT" <<'NODE'
 import { connect } from "node:tls";
 

@@ -60,6 +60,10 @@ metadatos para compartir el enlace durante el alta, aunque `robots.txt`
 excluye `/crear-cuenta` y no se pretende indexar esa página. Tras publicar,
 comprueba el HTML inicial de varias rutas, la imagen social y que Nginx/Caddy
 no envíen la versión del servidor, incluido el redirect de `www`.
+El `301` de `https://www.grumphya.com/` también publica una CSP restrictiva
+(`default-src 'none'`) y `Cache-Control: no-store`: un scanner puede evaluar la
+respuesta de redirección antes de seguirla, y no debe conservar una variante sin
+CSP.
 
 El DNS autoritativo del correo se administra en IONOS, fuera del VPS y de este
 repositorio. Al salir de `p=none`, configura informes agregados y avanza
