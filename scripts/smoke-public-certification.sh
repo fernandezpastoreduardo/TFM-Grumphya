@@ -57,6 +57,7 @@ assert_tls_rejected() {
 https_headers="$TEMP_ROOT/https.headers"
 https_second_headers="$TEMP_ROOT/https-second.headers"
 http_headers="$TEMP_ROOT/http.headers"
+http_www_headers="$TEMP_ROOT/http-www.headers"
 www_headers="$TEMP_ROOT/www.headers"
 health_headers="$TEMP_ROOT/health.headers"
 
@@ -155,6 +156,24 @@ grep -Eiq "^location:[[:space:]]*https://$DOMAIN/[[:space:]]*$" "$http_headers" 
   printf 'HTTP root must redirect exactly to the canonical HTTPS origin.\n' >&2
   exit 1
 }
+assert_header "$http_headers" 'content-security-policy' \
+  "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+assert_header "$http_headers" 'cache-control' 'no-store'
+
+http_www_status=$(curl --silent --show-error --connect-timeout 10 --max-time 30 \
+  --dump-header "$http_www_headers" --output /dev/null --write-out '%{http_code}' \
+  "http://www.$DOMAIN/")
+[[ "$http_www_status" == 301 || "$http_www_status" == 308 ]] || {
+  printf 'HTTP www origin must redirect with 301 or 308 (got %s).\n' "$http_www_status" >&2
+  exit 1
+}
+grep -Eiq "^location:[[:space:]]*https://$DOMAIN/[[:space:]]*$" "$http_www_headers" || {
+  printf 'HTTP www origin must redirect exactly to the canonical HTTPS origin.\n' >&2
+  exit 1
+}
+assert_header "$http_www_headers" 'content-security-policy' \
+  "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+assert_header "$http_www_headers" 'cache-control' 'no-store'
 
 www_status=$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 \
   --dump-header "$www_headers" --output /dev/null --write-out '%{http_code}' \

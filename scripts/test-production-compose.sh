@@ -388,6 +388,30 @@ assert_proxy_ports
 curl --insecure --fail --silent --show-error --retry 12 --retry-connrefused --retry-delay 2 \
   --dump-header "$TEMP_ROOT/public-headers.txt" \
   "https://localhost:$HTTPS_PORT/" -o "$TEMP_ROOT/home.html"
+for host in localhost www.localhost; do
+  status=$(curl --silent --show-error --max-time 15 \
+    --resolve "$host:$HTTP_PORT:127.0.0.1" \
+    --dump-header "$TEMP_ROOT/$host-http-headers.txt" --output /dev/null \
+    --write-out '%{http_code}' "http://$host:$HTTP_PORT/")
+  [[ "$status" == 301 ]] || {
+    printf 'HTTP %s root must redirect before following the canonical origin (got %s).\n' \
+      "$host" "$status" >&2
+    exit 1
+  }
+done
+node - "$TEMP_ROOT/localhost-http-headers.txt" "$TEMP_ROOT/www.localhost-http-headers.txt" <<'NODE'
+const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+for (const path of process.argv.slice(2)) {
+  const headers = readFileSync(path, "utf8");
+  assert.match(headers, /^location:\s*https:\/\/localhost\/$/im);
+  assert.match(
+    headers,
+    /^content-security-policy:\s*default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'\s*$/im,
+  );
+  assert.match(headers, /^cache-control:\s*no-store\s*$/im);
+}
+NODE
 www_status=$(curl --insecure --silent --show-error --max-time 15 \
   --resolve "www.localhost:$HTTPS_PORT:127.0.0.1" \
   --dump-header "$TEMP_ROOT/www-headers.txt" --output /dev/null --write-out '%{http_code}' \

@@ -1,4 +1,25 @@
-{$DOMAIN} {
+(canonical_redirect_headers) {
+	header {
+		-Server
+		Content-Security-Policy "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
+		Cache-Control "no-store"
+	}
+}
+
+http://{$DOMAIN} {
+	import canonical_redirect_headers
+	redir https://{$DOMAIN}{uri} permanent
+}
+http://www.{$DOMAIN} {
+	import canonical_redirect_headers
+	redir https://{$DOMAIN}{uri} permanent
+}
+https://www.{$DOMAIN} {
+	import canonical_redirect_headers
+	redir https://{$DOMAIN}{uri} permanent
+}
+
+https://{$DOMAIN} {
 	encode zstd gzip
 	tls {
 		protocols tls1.2 tls1.3
@@ -67,13 +88,4 @@
 		Permissions-Policy "camera=(), microphone=(self), geolocation=(), on-device-speech-recognition=(self)"
 	}
 }
-www.{$DOMAIN} {
-	header {
-		-Server
-		Content-Security-Policy "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
-		Cache-Control "no-store"
-	}
-	redir https://{$DOMAIN}{uri} permanent
-}
-
 import /etc/caddy/sites-enabled/*.caddy

@@ -241,22 +241,52 @@ assert.match(
   developmentSecuritySite,
   /^\s*redir https:\/\/desarrolloseguro\.org\{uri\} permanent$/m,
 );
-const wwwSite = caddyfile.match(/^www\.\{\$DOMAIN\} \{([\s\S]*?)^\}/m)?.[1];
-assert.ok(wwwSite, "Caddy must define the www canonical redirect site");
-assert.match(
-  wwwSite,
-  /Content-Security-Policy "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"/,
-  "the www redirect response must include a restrictive CSP",
+const redirectHeaders = caddyfile.match(
+  /^\(canonical_redirect_headers\) \{([\s\S]*?)^\}/m,
+)?.[1];
+assert.ok(
+  redirectHeaders,
+  "Caddy must define shared redirect security headers",
 );
 assert.match(
-  wwwSite,
+  redirectHeaders,
+  /Content-Security-Policy "default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'"/,
+  "redirect responses must include a restrictive CSP",
+);
+assert.match(
+  redirectHeaders,
   /Cache-Control "no-store"/,
-  "the www redirect must not be cached without its current security headers",
+  "redirect responses must not be cached without their current security headers",
+);
+assert.match(
+  caddyfile,
+  /^http:\/\/\{\$DOMAIN\} \{[\s\S]*?import canonical_redirect_headers[\s\S]*?redir https:\/\/\{\$DOMAIN\}\{uri\} permanent/m,
+  "the HTTP canonical host must add security headers before redirecting to HTTPS",
+);
+assert.match(
+  caddyfile,
+  /^http:\/\/www\.\{\$DOMAIN\} \{[\s\S]*?import canonical_redirect_headers[\s\S]*?redir https:\/\/\{\$DOMAIN\}\{uri\} permanent/m,
+  "the HTTP www host must add security headers before redirecting to the canonical host",
+);
+assert.match(
+  caddyfile,
+  /^https:\/\/www\.\{\$DOMAIN\} \{[\s\S]*?import canonical_redirect_headers[\s\S]*?redir https:\/\/\{\$DOMAIN\}\{uri\} permanent/m,
+  "the HTTPS www host must add security headers before redirecting to the canonical host",
 );
 assert.match(
   productionComposeSmoke,
   /www\.localhost:\$HTTPS_PORT[\s\S]*?content-security-policy:[\s\S]*?cache-control:[\s\S]*?no-store/,
   "the isolated production smoke must inspect CSP and cache headers on the www redirect",
+);
+assert.match(
+  productionComposeSmoke,
+  /http:\/\/\$host:\$HTTP_PORT[\s\S]*?content-security-policy:[\s\S]*?cache-control:[\s\S]*?no-store/,
+  "the isolated production smoke must inspect CSP and cache headers on the HTTP redirect",
+);
+assert.match(
+  publicCertificationSmoke,
+  /assert_header "\$http_headers" 'content-security-policy'[\s\S]*?assert_header "\$http_headers" 'cache-control' 'no-store'/,
+  "the public certification smoke must check CSP and no-store on the HTTP redirect",
 );
 assert.match(developmentSecuritySite, /^\s*encode zstd gzip$/m);
 assert.match(developmentSecuritySite, /^\s*protocols tls1\.2 tls1\.3$/m);

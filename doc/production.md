@@ -64,6 +64,9 @@ El `301` de `https://www.grumphya.com/` también publica una CSP restrictiva
 (`default-src 'none'`) y `Cache-Control: no-store`: un scanner puede evaluar la
 respuesta de redirección antes de seguirla, y no debe conservar una variante sin
 CSP.
+Los redirects HTTP de ambos hosts también incluyen esa CSP y `no-store` antes de
+redirigir a HTTPS, para que el scanner reciba la cabecera incluso si evalúa la
+respuesta inicial sin seguirla.
 
 El DNS autoritativo del correo se administra en IONOS, fuera del VPS y de este
 repositorio. Al salir de `p=none`, configura informes agregados y avanza
