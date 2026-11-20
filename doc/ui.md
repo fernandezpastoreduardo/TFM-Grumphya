@@ -405,9 +405,10 @@ en Lighthouse.
 `worst-ideas-wall.webp`, usado en el hero de Peores ideas, mide 600 × 480 px y
 pesa 44.232 B. El antiguo sello S4 del footer usaba una variante móvil de
 84 × 84 px y 4.788 B para pantallas de hasta 767 px, y una imagen principal de
-128 × 128 px y 7.550 B en tamaños mayores. La integración actual usa un icono
-SVG neutro local de 128 × 128 px y 735 B junto al nombre
-`desarrolloseguro.org`; el enlace abre el proyecto independiente. En el ranking
+128 × 128 px y 7.550 B en tamaños mayores. La integración actual usa el widget
+de `desarrolloseguro.org`, cargado desde el proyecto independiente con el nonce
+CSP. No hay una medición Lighthouse posterior que cuantifique su coste de red o
+JavaScript. En el ranking
 público, el skeleton
 representa las diez filas máximas y conserva la altura de la tarjeta al recibir
 una respuesta con diez resultados. Se muestra inmediatamente, sin el retraso

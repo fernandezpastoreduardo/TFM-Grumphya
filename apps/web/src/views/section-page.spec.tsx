@@ -162,48 +162,15 @@ describe("SectionPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("links to the public verification from the section footer", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockImplementation(() =>
-        Promise.resolve(
-          Response.json({
-            id: "DS-GRUMPHYA-2026-001",
-            issuer: "Grumphya · revisión interna",
-            application: "Grumphya",
-            authorizedDomains: ["grumphya.com"],
-            status: "demonstration",
-            issuedAt: null,
-            validatedAt: null,
-            validationMethod: "No indicada",
-            expiresAt: null,
-            assurances: [],
-            scope: "Prototipo académico",
-            criteria: [],
-            disclaimer: "Sin certificación oficial.",
-          }),
-        ),
-      ),
-    );
+  it("renders the development security badge in the section footer", () => {
     render(<SectionPage path="/precios" />);
 
-    const seal = screen
+    const badge = screen
       .getByRole("contentinfo")
-      .querySelector("a[href='https://desarrolloseguro.org/']");
-    expect(seal).toHaveAttribute("href", "https://desarrolloseguro.org/");
-    expect(seal).toHaveAccessibleName(
-      /consultando el estado del sello.*conocer la propuesta/i,
-    );
-    expect(
-      await screen.findByText(
-        /Demostración académica · Sin certificación oficial/i,
-      ),
-    ).toBeVisible();
-    expect(seal?.querySelector("img")).toHaveAttribute(
-      "src",
-      "/assets/desarrolloseguro.org/icon.svg",
-    );
-    expect(seal).toHaveTextContent("Demostración académica");
+      .querySelector("a[data-ds-verified-badge]");
+    expect(badge).toHaveAttribute("data-report-id");
+    expect(badge).toHaveAttribute("hidden");
+    expect(badge).toHaveTextContent("Comprobando sello…");
   });
 
   it("opens the public verification and rejects an unknown accreditation route", async () => {
