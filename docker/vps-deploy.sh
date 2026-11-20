@@ -403,15 +403,14 @@ is_approved_audit_writer_migration() {
 }
 
 is_approved_audit_evidence_shape_migration() {
-  local name=$1 content=$2 normalized_sql expected_sql
+  local name=$1 content=$2 expected_hash actual_hash
   local marker='-- deployment-schema-change: replace-audit-evidence-shape-check'
+  expected_hash='b5b8833a02bccf972d78412d9d88f34492b48642eb36594b8059953396d1a822'
 
   [[ $name == '042_audit_evidence_shape.sql' ]] || return 1
   grep -Fq -- "$marker" <<< "$content" || return 1
-  normalized_sql=$(sed -E '/^[[:space:]]*(--|$)/d; s/[[:space:]]+/ /g' <<< "$content" |
-    tr '\n' ' ' | sed -E 's/ +/ /g; s/^ //; s/ $//')
-  expected_sql="ALTER TABLE audit.evidence DROP CONSTRAINT IF EXISTS evidence_items_check; ALTER TABLE audit.evidence ADD CONSTRAINT evidence_items_object_check CHECK (jsonb_typeof(items) = 'object');"
-  [[ $normalized_sql == "$expected_sql" ]]
+  actual_hash=$(printf '%s\n' "$content" | sha256sum | awk '{print $1}')
+  [[ $actual_hash == "$expected_hash" ]]
 }
 
 migrations_compatible() {
