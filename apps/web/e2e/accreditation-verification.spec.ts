@@ -43,7 +43,10 @@ test("loads the verified badge and keeps the local verification record", async (
   const link = page.getByRole("link", { name: BADGE_NAME });
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", EXTERNAL_SITE_URL);
-  await expect(link).toHaveAttribute("data-hostname", "grumphya.com");
+  await expect(link).toHaveAttribute(
+    "data-hostname",
+    new URL(page.url()).hostname,
+  );
 
   await page.goto(VERIFICATION_URL);
   await expect(

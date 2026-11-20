@@ -101,7 +101,7 @@ describe("Home", () => {
     const badge = screen
       .getByRole("contentinfo")
       .querySelector("a[data-ds-verified-badge]");
-    expect(badge).toHaveAttribute("data-hostname", "grumphya.com");
+    expect(badge).toHaveAttribute("data-hostname", window.location.hostname);
     expect(badge).toHaveAttribute("hidden");
     expect(badge).toHaveTextContent("Comprobando sello…");
   });

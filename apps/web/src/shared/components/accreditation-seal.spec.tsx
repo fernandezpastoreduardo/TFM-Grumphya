@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccreditationSeal } from "./accreditation-seal";
 
 const BADGE_TOKEN = "oKRH-ZltmA7YRYP2ttXFkIcOBPm4sGksI14GN8nPscc";
@@ -9,6 +9,7 @@ const BADGE_SCRIPT_URL =
 const CSP_NONCE = "test-csp-nonce";
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   document
     .querySelectorAll(`script[src="${BADGE_SCRIPT_URL}"]`)
     .forEach((script) => script.remove());
@@ -18,21 +19,25 @@ afterEach(() => {
 });
 
 describe("AccreditationSeal", () => {
-  it("renders the official hidden badge with its site credentials", () => {
-    render(<AccreditationSeal />);
+  it.each(["grumphya.com", "www.grumphya.com"])(
+    "requests verification for the current hostname (%s)",
+    (hostname) => {
+      vi.stubGlobal("window", { location: { hostname } });
+      render(<AccreditationSeal />);
 
-    const badge = document.querySelector<HTMLAnchorElement>(
-      "a[data-ds-verified-badge]",
-    );
-    expect(badge).toHaveAttribute("hidden");
-    expect(badge).toHaveAttribute("data-token", BADGE_TOKEN);
-    expect(badge).toHaveAttribute("data-hostname", "grumphya.com");
-    expect(badge).toHaveAttribute("data-report-id", BADGE_REPORT_ID);
-    expect(badge).toHaveTextContent("Comprobando sello…");
-    expect(
-      screen.queryByText(/Demostración académica/i),
-    ).not.toBeInTheDocument();
-  });
+      const badge = document.querySelector<HTMLAnchorElement>(
+        "a[data-ds-verified-badge]",
+      );
+      expect(badge).toHaveAttribute("hidden");
+      expect(badge).toHaveAttribute("data-token", BADGE_TOKEN);
+      expect(badge).toHaveAttribute("data-hostname", hostname);
+      expect(badge).toHaveAttribute("data-report-id", BADGE_REPORT_ID);
+      expect(badge).toHaveTextContent("Comprobando sello…");
+      expect(
+        screen.queryByText(/Demostración académica/i),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("loads the widget with the page CSP nonce", () => {
     const nonceScript = document.createElement("script");

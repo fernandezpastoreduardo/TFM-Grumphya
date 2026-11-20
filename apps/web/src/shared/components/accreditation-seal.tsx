@@ -1,8 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const DEVELOPMENT_SECURITY_BADGE_TOKEN =
   "oKRH-ZltmA7YRYP2ttXFkIcOBPm4sGksI14GN8nPscc";
-const DEVELOPMENT_SECURITY_BADGE_HOSTNAME = "grumphya.com";
 const DEVELOPMENT_SECURITY_BADGE_REPORT_ID =
   "6bff5c3e-ff99-4f68-bfe9-fb5f5dfb2823";
 const DEVELOPMENT_SECURITY_BADGE_SCRIPT_URL =
@@ -31,13 +30,20 @@ function loadBadgeWidget() {
 }
 
 export function AccreditationSeal() {
-  useEffect(() => loadBadgeWidget(), []);
+  const badgeRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (badgeRef.current) {
+      badgeRef.current.dataset.hostname = window.location.hostname;
+    }
+    return loadBadgeWidget();
+  }, []);
 
   return (
     <a
+      ref={badgeRef}
       data-ds-verified-badge
       data-token={DEVELOPMENT_SECURITY_BADGE_TOKEN}
-      data-hostname={DEVELOPMENT_SECURITY_BADGE_HOSTNAME}
       data-report-id={DEVELOPMENT_SECURITY_BADGE_REPORT_ID}
       hidden
     >
