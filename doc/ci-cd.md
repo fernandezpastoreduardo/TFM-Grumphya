@@ -74,6 +74,41 @@ La respuesta contiene hasta seis resúmenes: el más reciente para cada una de
 tres rutas y dos dispositivos. `DataRetentionService` ejecuta la purga cada
 hora y elimina resultados de más de 90 días.
 
+## Evidencia medida y manifiesto Beta D
+
+En una ejecución de release aprobada, `performance-lab` vuelve a construir la
+web de producción sin fixtures y
+`apps/web/scripts/collect-audit-browser-evidence.mjs` recoge evidencia con
+Chromium local. Mide respuesta HTML, FCP, duración de interacción, violaciones
+críticas WCAG A/AA, almacenamiento previo a la elección, orígenes de terceros,
+casilla de lectura de la política seleccionada, política visible y aviso de IA.
+La ficha de alta usa un plan sintético para mostrar el formulario; no se envían
+ideas ni credenciales. El widget externo del sello se carga desde
+`desarrolloseguro.org` y ese único origen está allowlisted. La medición es de
+laboratorio sobre la build, no RUM ni dato de campo.
+
+Con esos resultados, la evidencia de Compose (TLS, cabeceras y superficie de
+red), los escaneos Trivy de vulnerabilidades y secretos, y los resultados de
+calidad, E2E y dependencias, `scripts/build-release-audit-evidence.mjs` genera
+17 señales distribuidas entre infraestructura, despliegue, dependencias,
+autenticación, calidad, privacidad e IA. Los límites relevantes incluyen cero
+violaciones críticas, respuesta HTML hasta 2.500 ms, FCP hasta 1.800 ms,
+interacción hasta 200 ms, almacenamiento esencial, la casilla de lectura
+seleccionada y solo orígenes de terceros permitidos. Si una señal falla, no se
+crea ni firma el manifiesto y el job no puede desplegar.
+
+Con `approve_production_deploy=true`, el smoke real de evaluación y roast con
+OpenAI debe pasar además de los gates anteriores. CI liga las siete envolventes
+de recursos al SHA y a los digests de las imágenes, firma cada envolvente con
+EdDSA y firma también el manifiesto. El `audit-writer` valida y persiste esas
+evidencias en el VPS durante el despliegue; la publicación no habilita ingesta
+externa ni agrega rutas. En el despliegue de `e30caa3` del 20 de noviembre de
+2026, el run [44772841616](https://github.com/fernandezpastoreduardo/TFM-Grumphya/actions/runs/44772841616)
+pasó todos los gates, generó 17 señales `pass` y 0 `fail`, confirmó el
+despliegue y publicó el resumen Lighthouse. El smoke firmado desde el
+consumidor Desarrollo Seguro sigue siendo una comprobación separada; consulta
+el estado y sus límites en [audit-integration.md](audit-integration.md).
+
 El incidente del 28 de octubre de 2026 —recuperación SSH del VPS, actualización del helper y excepción restringida para la migración `034`— está documentado en [recuperación de acceso y despliegue](incident-vps-access-and-deployment-2026-10.md).
 
 Los fallos de Compose y del preflight de migraciones del 29 de octubre de 2026 están resumidos en [fallos recientes de CI](ci-failures-2026-10-29.md).

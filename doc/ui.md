@@ -103,9 +103,11 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
 
 ## Escenario y assets
 
-- La composición aprobada muestra el telón por arriba y las siluetas del público
-  por abajo. Ambos elementos son decorativos, ocupan el ancho de la ventana y
-  permanecen por encima del contenido cuando la página se desplaza.
+- En escritorio, la composición aprobada muestra el telón por arriba y las
+  siluetas del público por abajo. Ambos elementos son decorativos, ocupan el
+  ancho de la ventana y permanecen por encima del contenido cuando la página se
+  desplaza. En ventanas de hasta 640 px se omiten los fondos decorativos de
+  Home y del marco de sección para reducir trabajo y descarga en móvil.
 - El telón usa una cenefa horizontal en azul marino oscuro, a juego con las
   siluetas del público. Su borde inferior cae suavemente hacia los extremos y
   no incluye paños laterales ni el borde vertical de atado. Su volumen vertical

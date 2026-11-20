@@ -13,9 +13,21 @@ Estado observado en el VPS el 20 de noviembre de 2026: `AUDIT_ENABLED=true`,
 de rechazo de las siete rutas muestran `172.30.0.1` como origen que llega al
 guard a través del proxy. La ruta de prueba por esa interfaz devuelve
 `401 invalid_identity` ante un JWT inválido; el origen público
-`31.70.130.181` recibe `403 insufficient_scope`. No se han validado todavía
-respuestas firmadas desde Desarrollo Seguro ni el contenido de las siete
-evidencias; verifica ambos con el smoke indicado abajo.
+`31.70.130.181` recibe `403 insufficient_scope`.
+
+El workflow de release `44772841616` desplegó el commit
+`e30caa3b2bde270c4ff3e6dd7460f55ff62b76a6` el 20 de noviembre de 2026 y
+confirmó sus healthchecks públicos. La release generó y firmó 17 señales
+medidas con estado `pass` y cero `fail`; el escritor interno las persiste
+durante el despliegue. Esto acredita la creación de la evidencia de release,
+pero no sustituye la validación desde el consumidor: aún no se ha completado un
+smoke autenticado desde Desarrollo Seguro que confirme las siete respuestas,
+sus firmas EdDSA, `cardinality=1`, digests y vigencia. Una petición diagnóstica
+posterior desde un origen externo a la ACL, con un token deliberadamente
+inválido, obtuvo `403 application/json`; no se inspeccionó el cuerpo y esa
+prueba no valida la respuesta `401 invalid_identity` desde el origen permitido.
+Completa el smoke descrito abajo desde el egress autorizado con un JWT válido;
+no registres el JWT, cuerpos ni cookies.
 
 El perfil implementado es `beta-d-0.2`. La primera identidad de Desarrollo
 Seguro usa el JWT `kid=ds-auditor-2026`. La PEM pública recibida se verificó
