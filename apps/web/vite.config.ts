@@ -174,7 +174,7 @@ export default defineConfig({
     environment: "jsdom",
     maxWorkers: 2,
     setupFiles: "./src/test-setup.ts",
-    include: ["src/**/*.spec.{ts,tsx}"],
+    include: ["src/**/*.spec.{ts,tsx}", "scripts/**/*.spec.mjs"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

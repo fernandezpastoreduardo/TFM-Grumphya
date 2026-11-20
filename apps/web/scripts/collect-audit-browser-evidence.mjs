@@ -5,11 +5,10 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import axe from "axe-core";
+import { isAllowedThirdPartyOrigin } from "./audit-origin-policy.mjs";
 
 const WEB_DIRECTORY = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const HOST = "127.0.0.1";
-const FIRST_PARTY_HOSTNAMES = new Set([HOST, "localhost"]);
-const ALLOWED_THIRD_PARTY_HOSTNAMES = new Set(["desarrolloseguro.org"]);
 const PORT = 4187;
 const ORIGIN = `http://${HOST}:${PORT}`;
 const OUTPUT_PATH = process.argv[2];
@@ -80,7 +79,7 @@ async function collectEvidence() {
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
-    const thirdPartyRequestHosts = new Set();
+    const thirdPartyRequestOrigins = new Set();
     page.on("request", (request) => {
       try {
         const requestUrl = new URL(request.url());
@@ -88,8 +87,8 @@ async function collectEvidence() {
           requestUrl.protocol === "http:" ||
           requestUrl.protocol === "https:"
         ) {
-          if (!FIRST_PARTY_HOSTNAMES.has(requestUrl.hostname)) {
-            thirdPartyRequestHosts.add(requestUrl.hostname);
+          if (requestUrl.origin !== ORIGIN) {
+            thirdPartyRequestOrigins.add(requestUrl.origin);
           }
         }
       } catch {
@@ -223,8 +222,8 @@ async function collectEvidence() {
     const firstPartyCookiesOnly = cookiesBeforeChoice.every(
       (cookie) => cookie.domain.replace(/^\./u, "") === HOST,
     );
-    const thirdPartyOriginsAllowlisted = [...thirdPartyRequestHosts].every(
-      (hostname) => ALLOWED_THIRD_PARTY_HOSTNAMES.has(hostname),
+    const thirdPartyOriginsAllowlisted = [...thirdPartyRequestOrigins].every(
+      isAllowedThirdPartyOrigin,
     );
 
     const result = {
@@ -239,7 +238,7 @@ async function collectEvidence() {
       ),
       firstPartyCookiesOnly,
       essentialStorageOnly,
-      thirdPartyOriginCount: thirdPartyRequestHosts.size,
+      thirdPartyOriginCount: thirdPartyRequestOrigins.size,
       thirdPartyOriginsAllowlisted,
       privacyChoiceSelected,
       privacyPolicyVisible,
