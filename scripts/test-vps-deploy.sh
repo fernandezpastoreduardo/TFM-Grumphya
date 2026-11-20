@@ -446,6 +446,33 @@ DROP TABLE users;" '041_audit_writer_upsert.sql'
   cleanup_fixture
 }
 
+test_audit_evidence_shape_migration_is_rollback_compatible() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  make_bundle "$NEW_SHA" "$(<"$SCRIPT_DIR/../apps/api/migrations/042_audit_evidence_shape.sql")" \
+    '042_audit_evidence_shape.sql'
+  run_deploy "$NEW_SHA" >/dev/null ||
+    fail 'the audit evidence shape migration was incorrectly rejected'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" \
+    'current state after compatible audit evidence shape migration'
+  cleanup_fixture
+}
+
+test_audit_evidence_shape_migration_rejects_extra_destructive_sql() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  local migration_content
+  migration_content=$(<"$SCRIPT_DIR/../apps/api/migrations/042_audit_evidence_shape.sql")
+  make_bundle "$NEW_SHA" "$migration_content
+DROP TABLE users;" '042_audit_evidence_shape.sql'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'the audit evidence shape allowlist accepted extra destructive SQL'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" \
+    'current state after rejected audit evidence shape SQL'
+  cleanup_fixture
+}
+
 test_illuminado_repricing_migration_rejects_extra_destructive_sql() {
   new_fixture
   seed_release "$OLD_SHA"
@@ -736,6 +763,8 @@ for test_case in \
   test_audit_contract_migration_rejects_extra_destructive_sql \
   test_audit_writer_migration_is_rollback_compatible \
   test_audit_writer_migration_rejects_extra_destructive_sql \
+  test_audit_evidence_shape_migration_is_rollback_compatible \
+  test_audit_evidence_shape_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_migration_rejects_extra_destructive_sql \
   test_illuminado_repricing_allowlist_requires_exact_migration_name \
   test_failed_compose_restores_previous \

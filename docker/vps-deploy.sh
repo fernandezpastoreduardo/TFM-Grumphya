@@ -402,6 +402,18 @@ is_approved_audit_writer_migration() {
   [[ $actual_hash == "$expected_hash" ]]
 }
 
+is_approved_audit_evidence_shape_migration() {
+  local name=$1 content=$2 normalized_sql expected_sql
+  local marker='-- deployment-schema-change: replace-audit-evidence-shape-check'
+
+  [[ $name == '042_audit_evidence_shape.sql' ]] || return 1
+  grep -Fq -- "$marker" <<< "$content" || return 1
+  normalized_sql=$(sed -E '/^[[:space:]]*(--|$)/d; s/[[:space:]]+/ /g' <<< "$content" |
+    tr '\n' ' ' | sed -E 's/ +/ /g; s/^ //; s/ $//')
+  expected_sql="ALTER TABLE audit.evidence DROP CONSTRAINT IF EXISTS evidence_items_check; ALTER TABLE audit.evidence ADD CONSTRAINT evidence_items_object_check CHECK (jsonb_typeof(items) = 'object');"
+  [[ $normalized_sql == "$expected_sql" ]]
+}
+
 migrations_compatible() {
   local previous_dir=$1 candidate_dir=$2 file name old_content new_content normalized_content
   local marker='-- deployment-rollback-compatible: true'
@@ -437,7 +449,8 @@ migrations_compatible() {
       if is_approved_illuminado_repricing_migration "$name" "$new_content" ||
         is_approved_application_error_context_redaction_migration "$name" "$new_content" ||
         is_approved_audit_contract_migration "$name" "$new_content" ||
-        is_approved_audit_writer_migration "$name" "$new_content"; then
+        is_approved_audit_writer_migration "$name" "$new_content" ||
+        is_approved_audit_evidence_shape_migration "$name" "$new_content"; then
         continue
       fi
       log "migration compatibility blocked: new migration $name contains a destructive operation"

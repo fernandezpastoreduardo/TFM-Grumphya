@@ -121,6 +121,7 @@ const MIGRATIONS = [
     "040_audit_contract_beta_d02.sql",
   ),
   defineMigration("041_audit_writer_upsert", "041_audit_writer_upsert.sql"),
+  defineMigration("042_audit_evidence_shape", "042_audit_evidence_shape.sql"),
 ] as const;
 
 export async function runMigrations(pool: Pool): Promise<void> {

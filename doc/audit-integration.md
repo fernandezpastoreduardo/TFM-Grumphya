@@ -158,8 +158,9 @@ del manifiesto. Un fallo revierte toda la transacción y aborta la release; no
 se marca como activa una versión sin evidencia firmada.
 
 La migración `039_audit_evidence` crea el esquema, la `040` añade el contrato
-Beta D, el recurso `ai`, el `jwt_kid`, la cardinalidad y la atestación, y la
-`041` crea el upsert `SECURITY DEFINER` del escritor. La tabla
+Beta D, el recurso `ai`, el `jwt_kid`, la cardinalidad y la atestación, la
+`041` crea el upsert `SECURITY DEFINER` del escritor y la `042` sustituye la
+restricción heredada de array por la forma objeto de `evidence`. La tabla
 `audit.evidence` conserva como máximo una fila actual por recurso. Las
 evidencias deben tener `environment=production`, `cardinality=1`, fechas
 frescas y una atestación Ed25519 válida. La API verifica la firma antes de
