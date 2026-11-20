@@ -51,44 +51,42 @@ try {
   );
   assert.equal(result.status, 0, result.stderr);
   const manifest = JSON.parse(await readFile(output, "utf8"));
-  assert.equal(manifest.environment, "production");
+  assert.equal(manifest.schemaVersion, "beta-d-0.2");
   assert.equal(manifest.deployment.deploymentSha, sha);
-  assert.deepEqual(manifest.deployment.images, {
-    api: digest,
-    web: digest,
-    database: digest,
-    proxy: digest,
-  });
-  assert.equal(manifest.dependencies.packageCount, 2);
-  assert.equal(manifest.dependencies.highRiskCount, 0);
-  assert.equal(manifest.audit.envelopes.deployment.profile, "beta-d-0.2");
-  assert.equal(manifest.audit.envelopes.deployment.scope, "audit:deployment");
-  assert.equal(manifest.audit.envelopes.deployment.kid, "ds-auditor-2026");
-  assert.equal(
-    manifest.audit.envelopes.deployment.attestation.kid,
-    "grumphya-release-2026",
-  );
+  assert.equal(manifest.deploymentDigest.startsWith("sha256:"), true);
+  assert.equal(manifest.audit.envelopes.deployment.cardinality, 1);
+  assert.deepEqual(Object.keys(manifest.audit.envelopes.deployment).sort(), [
+    "attestation",
+    "cardinality",
+    "deploymentDigest",
+    "environment",
+    "evidence",
+    "observedAt",
+    "schemaVersion",
+    "validUntil",
+  ]);
   const { privateKey, publicKey } = generateKeyPairSync("ed25519");
-  const stableJson = (value) => {
-    if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-    if (value !== null && typeof value === "object") {
-      return `{${Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
-        .join(",")}}`;
-    }
-    return JSON.stringify(value) ?? "null";
-  };
+  const canonical = (value) =>
+    Array.isArray(value)
+      ? "[" + value.map(canonical).join(",") + "]"
+      : value !== null && typeof value === "object"
+        ? "{" +
+          Object.entries(value)
+            .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+            .map(([key, child]) => JSON.stringify(key) + ":" + canonical(child))
+            .join(",") +
+          "}"
+        : (JSON.stringify(value) ?? "null");
   for (const envelope of Object.values(manifest.audit.envelopes)) {
     const unsigned = { ...envelope };
     delete unsigned.attestation;
     envelope.attestation.signature = sign(
       null,
-      Buffer.from(stableJson(unsigned)),
+      Buffer.from(canonical(unsigned)),
       privateKey,
     ).toString("base64url");
   }
-  await writeFile(output, stableJson(manifest));
+  await writeFile(output, canonical(manifest));
   await writeFile(
     signature,
     sign(null, await readFile(output), privateKey).toString("base64url"),

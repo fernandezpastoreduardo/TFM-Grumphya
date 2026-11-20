@@ -1,11 +1,9 @@
-import { createPublicKey, verify } from "node:crypto";
+import { createHash, createPublicKey, verify } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 const [, , manifestPath, signaturePath, publicKeyPath, expectedSha] =
   process.argv;
-const RELEASE_ATTESTATION_KID = "grumphya-release-2026";
-const AUDIT_JWT_KID = "ds-auditor-2026";
-const AUDIT_RESOURCES = [
+const RESOURCES = [
   "infrastructure",
   "deployment",
   "dependencies",
@@ -14,85 +12,260 @@ const AUDIT_RESOURCES = [
   "privacy",
   "ai",
 ];
-if (
-  !manifestPath ||
-  !signaturePath ||
-  !publicKeyPath ||
-  !/^[0-9a-f]{40}$/u.test(expectedSha ?? "")
-) {
-  process.exit(2);
-}
-
-function stableJson(value) {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value !== null && typeof value === "object") {
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
-      .join(",")}}`;
-  }
+const RELEASE_KID = "grumphya-release-2026";
+const DIGEST = /^sha256:[0-9a-f]{64}$/u;
+const STATUSES = new Set(["pass", "fail", "unknown", "not_applicable"]);
+const UNITS = new Set(["boolean", "count", "milliseconds"]);
+const REASONS = {
+  "infrastructure.tls": new Set([
+    "infrastructure_transport_verified",
+    "infrastructure_transport_incomplete",
+    "infrastructure_transport_not_applicable",
+  ]),
+  "infrastructure.headers": new Set([
+    "security_headers_verified",
+    "security_headers_missing",
+    "security_headers_unobserved",
+  ]),
+  "infrastructure.network": new Set([
+    "network_surface_allowlisted",
+    "network_surface_restricted",
+    "network_surface_unobserved",
+  ]),
+  "application.secrets": new Set([
+    "secrets_not_in_image",
+    "secrets_check_unavailable",
+  ]),
+  "application.dependencies": new Set([
+    "dependency_risk_not_observed",
+    "high_dependency_risk_observed",
+    "critical_dependency_risk_observed",
+  ]),
+  "authentication.authorization": new Set([
+    "technical_contract_verified",
+    "technical_contract_mismatch",
+    "authorization_flow_passed",
+    "authorization_flow_failed",
+  ]),
+  "quality.e2e": new Set([
+    "public_flow_loaded",
+    "report_flow_loaded",
+    "release_checks",
+  ]),
+  "quality.accessibility": new Set(["accessibility_critical_violations"]),
+  "performance.page_load": new Set([
+    "response_time",
+    "first_contentful_paint",
+    "interaction_to_next_paint",
+  ]),
+  "privacy.cookies": new Set([
+    "nonessential_storage_before_consent",
+    "essential_storage_only_before_consent",
+    "raw_identifier_storage_observed",
+  ]),
+  "privacy.third_parties": new Set([
+    "third_party_request_count",
+    "known_tracker_request_count",
+    "external_ingest_enabled",
+  ]),
+  "privacy.consent": new Set([
+    "consent_choice_recorded",
+    "consent_state_respected",
+  ]),
+  "ethics.transparency": new Set([
+    "privacy_notice_present",
+    "privacy_notice_missing",
+    "privacy_notice_unobserved",
+  ]),
+  "ai.disclosure": new Set([
+    "ai_disclosure_present",
+    "ai_disclosure_missing",
+    "ai_disclosure_unobserved",
+  ]),
+};
+const ROUTE_CRITERIA = {
+  infrastructure: [
+    "infrastructure.tls",
+    "infrastructure.headers",
+    "infrastructure.network",
+  ],
+  deployment: ["application.secrets"],
+  dependencies: ["application.dependencies"],
+  auth: ["authentication.authorization"],
+  quality: ["quality.e2e", "quality.accessibility", "performance.page_load"],
+  privacy: [
+    "privacy.cookies",
+    "privacy.third_parties",
+    "privacy.consent",
+    "ethics.transparency",
+  ],
+  ai: ["ai.disclosure"],
+};
+function canonical(value) {
+  if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
+  if (value !== null && typeof value === "object")
+    return (
+      "{" +
+      Object.entries(value)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([key, child]) => JSON.stringify(key) + ":" + canonical(child))
+        .join(",") +
+      "}"
+    );
   return JSON.stringify(value) ?? "null";
 }
-
+function validSignal(signal, criteria) {
+  if (!signal || typeof signal !== "object" || Array.isArray(signal))
+    return false;
+  const keys = Object.keys(signal);
+  const hasLimit = Object.hasOwn(signal, "limit");
+  const expected = hasLimit
+    ? ["criterionId", "status", "reasonCode", "value", "unit", "limit"]
+    : ["criterionId", "status", "reasonCode", "value", "unit"];
+  if (
+    keys.length !== expected.length ||
+    !expected.every((key) => keys.includes(key)) ||
+    !criteria.includes(signal.criterionId) ||
+    !STATUSES.has(signal.status) ||
+    !REASONS[signal.criterionId]?.has(signal.reasonCode) ||
+    !UNITS.has(signal.unit)
+  )
+    return false;
+  if (
+    (signal.status === "unknown" || signal.status === "not_applicable") &&
+    signal.value !== null
+  )
+    return false;
+  const max =
+    signal.unit === "count"
+      ? 1000
+      : signal.unit === "milliseconds"
+        ? 120000
+        : 1;
+  if (
+    signal.status !== "unknown" &&
+    signal.status !== "not_applicable" &&
+    (!Number.isInteger(signal.value) || signal.value < 0 || signal.value > max)
+  )
+    return false;
+  if (signal.unit === "boolean" && hasLimit) return false;
+  if (
+    signal.unit !== "boolean" &&
+    (!hasLimit ||
+      !Number.isInteger(signal.limit) ||
+      signal.limit < 0 ||
+      signal.limit > max)
+  )
+    return false;
+  const quality = {
+    "quality.accessibility:accessibility_critical_violations": 0,
+    "performance.page_load:response_time": 2500,
+    "performance.page_load:first_contentful_paint": 1800,
+    "performance.page_load:interaction_to_next_paint": 200,
+  };
+  return (
+    quality[signal.criterionId + ":" + signal.reasonCode] === undefined ||
+    signal.limit === quality[signal.criterionId + ":" + signal.reasonCode]
+  );
+}
+function validEvidence(evidence, resource) {
+  if (
+    !evidence ||
+    typeof evidence !== "object" ||
+    Array.isArray(evidence) ||
+    Object.keys(evidence).sort().join(",") !== "observedAt,sampleRef,signals" ||
+    !Number.isFinite(Date.parse(evidence.observedAt)) ||
+    !/^sha256:[0-9a-f]{64}$/u.test(evidence.sampleRef) ||
+    !Array.isArray(evidence.signals)
+  )
+    return false;
+  const criteria = ROUTE_CRITERIA[resource];
+  const seen = new Set();
+  if (
+    !evidence.signals.every((signal) => {
+      const key = signal?.criterionId + ":" + signal?.reasonCode;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return validSignal(signal, criteria);
+    })
+  )
+    return false;
+  return (
+    evidence.sampleRef ===
+    "sha256:" +
+      createHash("sha256")
+        .update(canonical(evidence.signals), "utf8")
+        .digest("hex")
+  );
+}
 try {
+  if (
+    !manifestPath ||
+    !signaturePath ||
+    !publicKeyPath ||
+    !/^[0-9a-f]{40}$/u.test(expectedSha ?? "")
+  )
+    process.exit(2);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const signature = Buffer.from(
     (await readFile(signaturePath, "utf8")).trim(),
     "base64url",
   );
   const publicKey = createPublicKey(await readFile(publicKeyPath, "utf8"));
-  const validUntil = Date.parse(manifest.validUntil);
-  const observedAt = Date.parse(manifest.observedAt);
-  const imageDigests = manifest.deployment?.images;
-  const hasImageDigests =
-    imageDigests &&
-    Object.values(imageDigests).length === 4 &&
-    Object.values(imageDigests).every((value) =>
-      /^sha256:[0-9a-f]{64}$/u.test(value),
-    );
-  const hasAuditEnvelopes = AUDIT_RESOURCES.every((resource) => {
+  const deployment = manifest.deployment;
+  const images = deployment?.images;
+  const baseValid =
+    verify(
+      null,
+      Buffer.from(canonical(manifest), "utf8"),
+      publicKey,
+      signature,
+    ) &&
+    manifest.schemaVersion === "beta-d-0.2" &&
+    manifest.environment === "production" &&
+    deployment?.deploymentSha === expectedSha &&
+    DIGEST.test(manifest.deploymentDigest ?? "") &&
+    images &&
+    Object.keys(images).length === 4 &&
+    Object.values(images).every((value) => DIGEST.test(value)) &&
+    /^[0-9a-f]{64}$/u.test(
+      manifest.dependencies?.dependencyInventoryDigest ?? "",
+    ) &&
+    Number.isFinite(Date.parse(manifest.observedAt)) &&
+    Number.isFinite(Date.parse(manifest.validUntil)) &&
+    Date.parse(manifest.validUntil) > Date.parse(manifest.observedAt) &&
+    Date.parse(manifest.validUntil) - Date.parse(manifest.observedAt) <=
+      24 * 60 * 60 * 1000;
+  const envelopesValid = RESOURCES.every((resource) => {
     const envelope = manifest.audit?.envelopes?.[resource];
-    if (!envelope) return false;
-    const { attestation, ...unsigned } = envelope;
     if (
-      envelope.hostname !== "grumphya.com" ||
+      !envelope ||
+      Object.keys(envelope).sort().join(",") !==
+        "attestation,cardinality,deploymentDigest,environment,evidence,observedAt,schemaVersion,validUntil" ||
+      envelope.schemaVersion !== "beta-d-0.2" ||
       envelope.environment !== "production" ||
-      envelope.profile !== "beta-d-0.2" ||
-      envelope.scope !== `audit:${resource}` ||
-      envelope.kid !== AUDIT_JWT_KID ||
-      !Number.isFinite(Date.parse(envelope.generatedAt)) ||
-      !Number.isFinite(Date.parse(envelope.expiresAt)) ||
-      Date.parse(envelope.expiresAt) <= Date.parse(envelope.generatedAt) ||
-      !Array.isArray(envelope.evidence) ||
-      envelope.evidence.length !== 1 ||
-      attestation?.alg !== "EdDSA" ||
-      attestation.kid !== RELEASE_ATTESTATION_KID ||
-      typeof attestation.signature !== "string" ||
-      !attestation.signature
-    ) {
+      envelope.cardinality !== 1 ||
+      envelope.deploymentDigest !== manifest.deploymentDigest ||
+      !Number.isFinite(Date.parse(envelope.observedAt)) ||
+      !Number.isFinite(Date.parse(envelope.validUntil)) ||
+      Date.parse(envelope.validUntil) <= Date.parse(envelope.observedAt) ||
+      !validEvidence(envelope.evidence, resource) ||
+      Date.parse(envelope.validUntil) - Date.parse(envelope.observedAt) >
+        24 * 60 * 60 * 1000 ||
+      envelope.attestation?.alg !== "EdDSA" ||
+      envelope.attestation?.kid !== RELEASE_KID ||
+      typeof envelope.attestation?.signature !== "string"
+    )
       return false;
-    }
+    const { attestation, ...unsigned } = envelope;
     return verify(
       null,
-      Buffer.from(stableJson(unsigned)),
+      Buffer.from(canonical(unsigned), "utf8"),
       publicKey,
       Buffer.from(attestation.signature, "base64url"),
     );
   });
-  const valid =
-    verify(null, Buffer.from(stableJson(manifest)), publicKey, signature) &&
-    manifest.schemaVersion === "beta-d-0.2" &&
-    manifest.environment === "production" &&
-    manifest.deployment?.deploymentSha === expectedSha &&
-    /^sha256:[0-9a-f]{64}$/u.test(manifest.deploymentDigest ?? "") &&
-    hasImageDigests &&
-    hasAuditEnvelopes &&
-    typeof manifest.dependencies?.dependencyInventoryDigest === "string" &&
-    /^[0-9a-f]{64}$/u.test(manifest.dependencies.dependencyInventoryDigest) &&
-    Number.isFinite(observedAt) &&
-    Number.isFinite(validUntil) &&
-    validUntil > observedAt;
-  process.exit(valid ? 0 : 1);
+  process.exit(baseValid && envelopesValid ? 0 : 1);
 } catch {
   process.exit(1);
 }

@@ -5,6 +5,7 @@ import type {
   ReleaseAttestationRecord,
   AuditEvidenceRepository,
 } from "./audit.models";
+import { parseAuditEvidence } from "./audit-signals";
 
 type EvidenceRow = {
   resource: AuditResource;
@@ -12,6 +13,7 @@ type EvidenceRow = {
   valid_until: Date;
   environment: string;
   cardinality: number;
+  deployment_digest: string;
   jwt_kid: string;
   evidence: unknown;
   attestation: unknown;
@@ -33,7 +35,7 @@ export class PostgresAuditEvidenceRepository implements AuditEvidenceRepository 
   ): Promise<AuditEvidenceRecord | null> {
     const result = await this.pool.query<EvidenceRow>(
       `SELECT resource, observed_at, valid_until, environment,
-              cardinality, jwt_kid, items AS evidence, attestation
+              cardinality, deployment_digest, jwt_kid, items AS evidence, attestation
        FROM audit.evidence
        WHERE resource = $1
        ORDER BY observed_at DESC
@@ -42,14 +44,22 @@ export class PostgresAuditEvidenceRepository implements AuditEvidenceRepository 
     );
     const row = result.rows[0];
     if (!row) return null;
+    if (row.cardinality !== 1) return null;
+    let evidence;
+    try {
+      evidence = parseAuditEvidence(row.evidence, row.resource);
+    } catch {
+      return null;
+    }
     return {
       resource: row.resource,
       observedAt: row.observed_at,
       validUntil: row.valid_until,
       environment: row.environment,
-      cardinality: row.cardinality,
+      cardinality: 1,
+      deploymentDigest: row.deployment_digest,
       jwtKid: row.jwt_kid,
-      evidence: row.evidence,
+      evidence,
       attestation: row.attestation,
     };
   }

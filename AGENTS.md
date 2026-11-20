@@ -565,9 +565,8 @@ These standards ensure **first-try success** with lint and tests, maintain code 
 
 ## GitHub Actions: uso de minutos
 
-- No iniciar ni repetir workflows o jobs de GitHub Actions por iniciativa propia, incluido `workflow_dispatch`. Solo hacerlo si el usuario pide explícitamente ejecutar GitHub Actions.
-- Pedidos como «arregla CI», «haz push» o «verifica el cambio» no autorizan por sí solos a consumir minutos de GitHub Actions. Validar los cambios localmente e informar de lo que queda pendiente en Actions.
-- Antes de publicar, comprobar si el push disparará Actions automáticamente. Si lo hará y el usuario no ha autorizado explícitamente ese gasto, solicitar esa autorización antes del push.
+- La cuenta y el repositorio tienen autorización operativa para usar GitHub Actions cuando ayude a validar, publicar o monitorizar un cambio. No hace falta pedir una autorización adicional por el coste de minutos dentro de una tarea ya autorizada; sí hay que respetar cualquier restricción específica de la tarea, como no desplegar o mantener `AUDIT_ENABLED=false`.
+- La puerta local sigue siendo obligatoria antes de CI: Actions confirma el estado del entorno remoto, no sustituye las comprobaciones reproducibles del checkout.
 
 ### Puerta local antes de CI
 

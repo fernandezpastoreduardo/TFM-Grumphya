@@ -8,29 +8,43 @@ import {
   AUDIT_SCHEMA_VERSION,
   type AuditResource,
 } from "./audit.models";
+import {
+  canonicalJson,
+  parseAuditEvidence,
+  type AuditEvidence,
+} from "./audit-signals";
 
 const RELEASE_ATTESTATION_KID = "grumphya-release-2026" as const;
 const JWT_KID = "ds-auditor-2026" as const;
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const SHA_PATTERN = /^[0-9a-f]{40}$/u;
 const PUBLIC_KEY_PATTERN = /BEGIN PUBLIC KEY/iu;
+const MAX_EVIDENCE_AGE_MS = 24 * 60 * 60 * 1000;
+const ENVELOPE_KEYS = [
+  "schemaVersion",
+  "observedAt",
+  "validUntil",
+  "environment",
+  "deploymentDigest",
+  "cardinality",
+  "evidence",
+  "attestation",
+] as const;
 
 export type ReleaseManifestEnvelope = {
-  hostname: "grumphya.com";
+  schemaVersion: typeof AUDIT_SCHEMA_VERSION;
+  observedAt: string;
+  validUntil: string;
   environment: typeof AUDIT_ENVIRONMENT;
-  generatedAt: string;
-  expiresAt: string;
-  profile: typeof AUDIT_SCHEMA_VERSION;
-  scope: `audit:${AuditResource}`;
-  evidence: unknown;
+  deploymentDigest: string;
+  cardinality: 1;
+  evidence: AuditEvidence;
   attestation: {
     alg: typeof AUDIT_ATTESTATION_ALGORITHM;
     kid: typeof RELEASE_ATTESTATION_KID;
     signature: string;
   };
-  kid: typeof JWT_KID;
 };
-
 export type VerifiedReleaseManifest = {
   deploymentSha: string;
   deploymentDigest: string;
@@ -42,26 +56,16 @@ export type VerifiedReleaseManifest = {
 };
 
 export function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-  if (value !== null && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, child]) => `${JSON.stringify(key)}:${stableJson(child)}`)
-      .join(",")}}`;
-  }
-  return JSON.stringify(value) ?? "null";
+  return canonicalJson(value);
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
-
 function parseDate(value: unknown): Date | undefined {
   if (typeof value !== "string") return undefined;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? new Date(timestamp) : undefined;
 }
-
 function verifySignature(
   value: unknown,
   signature: string,
@@ -73,7 +77,7 @@ function verifySignature(
       publicKey.asymmetricKeyType === "ed25519" &&
       verify(
         null,
-        Buffer.from(stableJson(value)),
+        Buffer.from(stableJson(value), "utf8"),
         publicKey,
         Buffer.from(signature, "base64url"),
       )
@@ -82,52 +86,74 @@ function verifySignature(
     return false;
   }
 }
-
 function readEnvelope(
   value: unknown,
   resource: AuditResource,
   publicKeyPem: string,
 ): ReleaseManifestEnvelope | undefined {
-  if (!isRecord(value)) return undefined;
-  const attestation = value.attestation;
-  if (!isRecord(attestation)) return undefined;
   if (
-    value.hostname !== "grumphya.com" ||
+    !isRecord(value) ||
+    Object.keys(value).length !== ENVELOPE_KEYS.length ||
+    !ENVELOPE_KEYS.every((key) => key in value)
+  )
+    return undefined;
+  if (
+    value.schemaVersion !== AUDIT_SCHEMA_VERSION ||
     value.environment !== AUDIT_ENVIRONMENT ||
-    value.profile !== AUDIT_SCHEMA_VERSION ||
-    value.scope !== `audit:${resource}` ||
-    value.kid !== JWT_KID ||
+    value.cardinality !== 1 ||
+    typeof value.observedAt !== "string" ||
+    typeof value.validUntil !== "string" ||
+    typeof value.deploymentDigest !== "string" ||
+    !DIGEST_PATTERN.test(value.deploymentDigest)
+  )
+    return undefined;
+  const observedAt = parseDate(value.observedAt);
+  const validUntil = parseDate(value.validUntil);
+  const attestation = value.attestation;
+  if (
+    !observedAt ||
+    !validUntil ||
+    validUntil.getTime() - observedAt.getTime() > MAX_EVIDENCE_AGE_MS ||
+    !isRecord(attestation) ||
     attestation.alg !== AUDIT_ATTESTATION_ALGORITHM ||
     attestation.kid !== RELEASE_ATTESTATION_KID ||
     typeof attestation.signature !== "string" ||
-    attestation.signature.length === 0 ||
-    !parseDate(value.generatedAt) ||
-    !parseDate(value.expiresAt)
-  ) {
+    !attestation.signature
+  )
+    return undefined;
+  let evidence: AuditEvidence;
+  try {
+    evidence = parseAuditEvidence(value.evidence, resource);
+  } catch {
     return undefined;
   }
-  const unsigned = { ...value };
-  delete unsigned.attestation;
-  if (!verifySignature(unsigned, attestation.signature, publicKeyPem)) {
-    return undefined;
-  }
-  return {
-    hostname: "grumphya.com",
-    environment: AUDIT_ENVIRONMENT,
-    generatedAt: value.generatedAt as string,
-    expiresAt: value.expiresAt as string,
-    profile: AUDIT_SCHEMA_VERSION,
-    scope: `audit:${resource}`,
+  if (evidence.observedAt !== observedAt.toISOString()) return undefined;
+  const unsigned = {
+    schemaVersion: value.schemaVersion,
+    observedAt: value.observedAt,
+    validUntil: value.validUntil,
+    environment: value.environment,
+    deploymentDigest: value.deploymentDigest,
+    cardinality: value.cardinality,
     evidence: value.evidence,
+  };
+  if (!verifySignature(unsigned, attestation.signature, publicKeyPem))
+    return undefined;
+  return {
+    schemaVersion: AUDIT_SCHEMA_VERSION,
+    observedAt: observedAt.toISOString(),
+    validUntil: validUntil.toISOString(),
+    environment: AUDIT_ENVIRONMENT,
+    deploymentDigest: value.deploymentDigest,
+    cardinality: 1,
+    evidence,
     attestation: {
       alg: AUDIT_ATTESTATION_ALGORITHM,
       kid: RELEASE_ATTESTATION_KID,
       signature: attestation.signature,
     },
-    kid: JWT_KID,
   };
 }
-
 function readRequiredRecord(
   manifest: Record<string, unknown>,
   key: string,
@@ -135,29 +161,24 @@ function readRequiredRecord(
   const value = manifest[key];
   return isRecord(value) ? value : undefined;
 }
-
 export function verifyReleaseManifest(
   manifestText: string,
   signature: string,
   publicKeyPem: string,
   now = new Date(),
 ): VerifiedReleaseManifest {
-  if (!PUBLIC_KEY_PATTERN.test(publicKeyPem)) {
+  if (!PUBLIC_KEY_PATTERN.test(publicKeyPem))
     throw new Error("Audit manifest public key is not configured.");
-  }
   const manifestValue: unknown = JSON.parse(manifestText);
-  if (!isRecord(manifestValue)) {
+  if (!isRecord(manifestValue))
     throw new Error("Audit release manifest must be an object.");
-  }
-  if (!verifySignature(manifestValue, signature, publicKeyPem)) {
+  if (!verifySignature(manifestValue, signature, publicKeyPem))
     throw new Error("Audit release manifest signature is invalid.");
-  }
   if (
     manifestValue.schemaVersion !== AUDIT_SCHEMA_VERSION ||
     manifestValue.environment !== AUDIT_ENVIRONMENT
-  ) {
+  )
     throw new Error("Audit release manifest has an unsupported contract.");
-  }
   const deployment = readRequiredRecord(manifestValue, "deployment");
   const deploymentSha = deployment?.deploymentSha;
   const deploymentDigest = manifestValue.deploymentDigest;
@@ -169,16 +190,12 @@ export function verifyReleaseManifest(
     typeof deploymentDigest !== "string" ||
     !DIGEST_PATTERN.test(deploymentDigest) ||
     !observedAt ||
-    !validUntil
-  ) {
-    throw new Error("Audit release manifest dates or digest are invalid.");
-  }
-  if (
+    !validUntil ||
+    validUntil.getTime() - observedAt.getTime() > MAX_EVIDENCE_AGE_MS ||
     observedAt.getTime() > now.getTime() ||
     validUntil.getTime() <= now.getTime()
-  ) {
-    throw new Error("Audit release manifest is expired.");
-  }
+  )
+    throw new Error("Audit release manifest dates or digest are invalid.");
   const imageValues = deployment
     ? readRequiredRecord(deployment, "images")
     : undefined;
@@ -188,17 +205,15 @@ export function verifyReleaseManifest(
     !Object.values(imageValues).every(
       (value) => typeof value === "string" && DIGEST_PATTERN.test(value),
     )
-  ) {
+  )
     throw new Error("Audit release manifest image digests are invalid.");
-  }
   const dependencies = readRequiredRecord(manifestValue, "dependencies");
   if (
     !dependencies ||
     typeof dependencies.dependencyInventoryDigest !== "string" ||
     !/^[0-9a-f]{64}$/u.test(dependencies.dependencyInventoryDigest)
-  ) {
+  )
     throw new Error("Audit dependency inventory digest is invalid.");
-  }
   const audit = readRequiredRecord(manifestValue, "audit");
   const envelopeValues = readRequiredRecord(audit ?? {}, "envelopes");
   const envelopes = {} as Record<AuditResource, ReleaseManifestEnvelope>;
@@ -208,19 +223,17 @@ export function verifyReleaseManifest(
       resource,
       publicKeyPem,
     );
-    if (!envelope) {
-      throw new Error(`Audit envelope is invalid for ${resource}.`);
-    }
-    const envelopeGeneratedAt = parseDate(envelope.generatedAt);
-    const envelopeExpiresAt = parseDate(envelope.expiresAt);
+    if (!envelope || envelope.deploymentDigest !== deploymentDigest)
+      throw new Error("Audit envelope is invalid for " + resource + ".");
+    const envelopeObservedAt = parseDate(envelope.observedAt);
+    const envelopeValidUntil = parseDate(envelope.validUntil);
     if (
-      !envelopeGeneratedAt ||
-      !envelopeExpiresAt ||
-      envelopeGeneratedAt.getTime() > now.getTime() ||
-      envelopeExpiresAt.getTime() <= now.getTime()
-    ) {
-      throw new Error(`Audit envelope is expired for ${resource}.`);
-    }
+      !envelopeObservedAt ||
+      !envelopeValidUntil ||
+      envelopeObservedAt.getTime() > now.getTime() ||
+      envelopeValidUntil.getTime() <= now.getTime()
+    )
+      throw new Error("Audit envelope is expired for " + resource + ".");
     envelopes[resource] = envelope;
   }
   return {
@@ -233,7 +246,6 @@ export function verifyReleaseManifest(
     envelopes,
   };
 }
-
 export function buildAuditEvidenceRows(
   release: VerifiedReleaseManifest,
 ): Array<{
@@ -244,7 +256,7 @@ export function buildAuditEvidenceRows(
   deploymentDigest: string;
   cardinality: 1;
   jwtKid: typeof JWT_KID;
-  evidence: unknown;
+  evidence: AuditEvidence;
   attestation: ReleaseManifestEnvelope["attestation"];
 }> {
   return AUDIT_RESOURCES.filter(
@@ -253,8 +265,8 @@ export function buildAuditEvidenceRows(
     const envelope = release.envelopes[resource];
     return {
       resource,
-      observedAt: new Date(envelope.generatedAt),
-      validUntil: new Date(envelope.expiresAt),
+      observedAt: new Date(envelope.observedAt),
+      validUntil: new Date(envelope.validUntil),
       environment: AUDIT_ENVIRONMENT,
       deploymentDigest: release.deploymentDigest,
       cardinality: 1,
@@ -264,13 +276,9 @@ export function buildAuditEvidenceRows(
     };
   });
 }
-
 export function assertNoDuplicateReleaseAttestation(rowCount: number): void {
-  if (rowCount > 0) {
-    throw new Error("Duplicate audit release attestation.");
-  }
+  if (rowCount > 0) throw new Error("Duplicate audit release attestation.");
 }
-
 function isUniqueViolation(error: unknown): boolean {
   return (
     error !== null &&
@@ -279,7 +287,6 @@ function isUniqueViolation(error: unknown): boolean {
     error.code === "23505"
   );
 }
-
 async function readSettings(path: string): Promise<Record<string, string>> {
   const text = await readFile(path, "utf8");
   const settings: Record<string, string> = {};
@@ -290,25 +297,22 @@ async function readSettings(path: string): Promise<Record<string, string>> {
   }
   return settings;
 }
-
 function requiredSetting(
   settings: Record<string, string>,
   name: string,
 ): string {
   const value = settings[name]?.trim();
-  if (!value) throw new Error(`Missing audit writer setting: ${name}.`);
+  if (!value) throw new Error("Missing audit writer setting: " + name + ".");
   return value.replace(/\\n/gu, "\n");
 }
-
 async function main(): Promise<void> {
   const manifestPath = process.env.AUDIT_MANIFEST_FILE;
   const signaturePath = process.env.AUDIT_MANIFEST_SIGNATURE_FILE;
   const settingsPath =
     process.env.AUDIT_WRITER_SETTINGS_FILE ??
     "/run/secrets/audit_writer_settings";
-  if (!manifestPath || !signaturePath) {
+  if (!manifestPath || !signaturePath)
     throw new Error("Audit manifest paths are not configured.");
-  }
   const settings = await readSettings(settingsPath);
   process.env.PGDATABASE = requiredSetting(settings, "PGDATABASE");
   process.env.PGUSER = requiredSetting(settings, "PGUSER");
@@ -323,9 +327,8 @@ async function main(): Promise<void> {
   )
     .split(",")
     .map((value) => value.trim());
-  if (!allowedKids.includes(RELEASE_ATTESTATION_KID)) {
+  if (!allowedKids.includes(RELEASE_ATTESTATION_KID))
     throw new Error("Audit release attestation kid is not allowlisted.");
-  }
   const release = verifyReleaseManifest(
     await readFile(manifestPath, "utf8"),
     (await readFile(signaturePath, "utf8")).trim(),
@@ -337,9 +340,7 @@ async function main(): Promise<void> {
     await client.query("BEGIN");
     try {
       await client.query(
-        `INSERT INTO audit.release_attestations
-          (deployment_sha, environment, manifest, signature, kid, observed_at, valid_until)
-         VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)`,
+        "INSERT INTO audit.release_attestations (deployment_sha, environment, manifest, signature, kid, observed_at, valid_until) VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7)",
         [
           release.deploymentSha,
           AUDIT_ENVIRONMENT,
@@ -351,16 +352,12 @@ async function main(): Promise<void> {
         ],
       );
     } catch (error: unknown) {
-      if (isUniqueViolation(error)) {
-        assertNoDuplicateReleaseAttestation(1);
-      }
+      if (isUniqueViolation(error)) assertNoDuplicateReleaseAttestation(1);
       throw error;
     }
     for (const row of buildAuditEvidenceRows(release)) {
       await client.query(
-        `SELECT audit.upsert_evidence(
-          $1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb
-        )`,
+        "SELECT audit.upsert_evidence($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)",
         [
           row.resource,
           row.observedAt,
@@ -376,7 +373,11 @@ async function main(): Promise<void> {
     }
     await client.query("COMMIT");
     process.stdout.write(
-      `Persisted audit evidence for ${release.deploymentSha} (${AUDIT_RESOURCES.length} resources).\n`,
+      "Persisted audit evidence for " +
+        release.deploymentSha +
+        " (" +
+        AUDIT_RESOURCES.length +
+        " resources).\\n",
     );
   } catch (error) {
     await client.query("ROLLBACK");
@@ -386,12 +387,10 @@ async function main(): Promise<void> {
     await pool.end();
   }
 }
-
-if (process.argv[1]?.endsWith("audit-evidence-writer.js")) {
+if (process.argv[1]?.endsWith("audit-evidence-writer.js"))
   main().catch((error: unknown) => {
-    const message =
-      error instanceof Error ? error.message : "Audit writer failed.";
-    process.stderr.write(`${message}\n`);
+    process.stderr.write(
+      (error instanceof Error ? error.message : "Audit writer failed.") + "\\n",
+    );
     process.exitCode = 1;
   });
-}

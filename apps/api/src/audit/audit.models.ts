@@ -22,15 +22,14 @@ export type AuditAttestation = {
 };
 
 export type AuditEnvelope = {
-  hostname: "grumphya.com";
+  schemaVersion: typeof AUDIT_SCHEMA_VERSION;
+  observedAt: string;
+  validUntil: string;
   environment: typeof AUDIT_ENVIRONMENT;
-  generatedAt: string;
-  expiresAt: string;
-  profile: typeof AUDIT_SCHEMA_VERSION;
-  scope: AuditScope;
-  evidence: unknown;
+  deploymentDigest: string;
+  cardinality: 1;
+  evidence: import("./audit-signals").AuditEvidence;
   attestation: AuditAttestation;
-  kid: string;
 };
 
 export type AuditEvidenceRecord = {
@@ -38,9 +37,10 @@ export type AuditEvidenceRecord = {
   observedAt: Date;
   validUntil: Date;
   environment: string;
+  deploymentDigest: string;
   jwtKid: string;
-  cardinality: number;
-  evidence: unknown;
+  cardinality: 1;
+  evidence: import("./audit-signals").AuditEvidence;
   attestation: unknown;
 };
 

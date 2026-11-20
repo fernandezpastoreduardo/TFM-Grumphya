@@ -23,6 +23,7 @@ const CIDR_PATTERN = /^(\d{1,3}(?:\.\d{1,3}){3})\/(\d|[12]\d|3[0-2])$/u;
 
 export type AuditTechnicalIdentity = {
   issuer: string;
+  subject: string;
   audience: string;
   environment: string;
   domain: string;
@@ -41,6 +42,7 @@ export type AuditRequest = Request & {
 type JwtHeader = { alg?: unknown; typ?: unknown; kid?: unknown };
 type JwtClaims = {
   iss?: unknown;
+  sub?: unknown;
   aud?: unknown;
   environment?: unknown;
   domain?: unknown;
@@ -291,6 +293,7 @@ export function verifyTechnicalJwt(
     throw auditError(401, "invalid_identity", "Identidad técnica no válida.");
   }
   const issuer = stringClaim(parsed.claims.iss);
+  const subject = stringClaim(parsed.claims.sub);
   const audience = stringClaim(parsed.claims.aud);
   const environment = stringClaim(parsed.claims.environment);
   const domain = stringClaim(parsed.claims.domain);
@@ -303,6 +306,7 @@ export function verifyTechnicalJwt(
   const claimKid = stringClaim(parsed.claims.kid);
   if (
     !issuer ||
+    !subject ||
     !audience ||
     !environment ||
     !domain ||
@@ -320,6 +324,7 @@ export function verifyTechnicalJwt(
   const skew = config.clockSkewSeconds;
   if (
     issuer !== config.issuer ||
+    subject !== config.issuer ||
     audience !== config.audience ||
     environment !== config.environment ||
     domain !== config.domain ||
@@ -343,6 +348,7 @@ export function verifyTechnicalJwt(
   }
   return {
     issuer,
+    subject,
     audience,
     environment,
     domain,

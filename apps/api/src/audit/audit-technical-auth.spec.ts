@@ -30,6 +30,7 @@ function token(
 ): string {
   const payload = {
     iss: "desarrolloseguro-audit",
+    sub: "desarrolloseguro-audit",
     aud: "grumphya-audit",
     environment: "production",
     domain: "grumphya.com",
@@ -88,6 +89,7 @@ describe("technical audit JWT", () => {
 
     expect(identity).toMatchObject<Partial<AuditTechnicalIdentity>>({
       issuer: "desarrolloseguro-audit",
+      subject: "desarrolloseguro-audit",
       audience: "grumphya-audit",
       kid: "ds-auditor-2026",
       jti: "reader-request-1",
@@ -137,6 +139,7 @@ describe("technical audit JWT", () => {
   it.each([
     ["wrong signature", token({ jti: "different" }).slice(0, -3) + "abc"],
     ["wrong scope", token({ scope: "audit:privacy" })],
+    ["wrong subject", token({ sub: "user" })],
     ["scope outside allowlist", token({ scope: "audit:quality profile:read" })],
     ["duplicate scope", token({ scope: "audit:quality audit:quality" })],
     ["wrong token type", token({}, { typ: "at+jwt" })],

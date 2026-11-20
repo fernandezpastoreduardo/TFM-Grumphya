@@ -57,28 +57,34 @@ La respuesta válida tiene exactamente esta envolvente:
 
 ```json
 {
-  "hostname": "grumphya.com",
+  "schemaVersion": "beta-d-0.2",
+  "observedAt": "2026-11-19T20:00:00.000Z",
+  "validUntil": "2026-11-20T20:00:00.000Z",
   "environment": "production",
-  "generatedAt": "2026-11-19T20:00:00.000Z",
-  "expiresAt": "2026-11-20T20:00:00.000Z",
-  "profile": "beta-d-0.2",
-  "scope": "audit:quality",
-  "evidence": [{}],
+  "deploymentDigest": "sha256:<64 hex>",
+  "cardinality": 1,
+  "evidence": {
+    "observedAt": "2026-11-19T20:00:00.000Z",
+    "sampleRef": "sha256:<64 hex>",
+    "signals": []
+  },
   "attestation": {
     "alg": "EdDSA",
     "kid": "grumphya-release-2026",
     "signature": "<base64url>"
-  },
-  "kid": "ds-auditor-2026"
+  }
 }
 ```
 
-`scope` coincide con el recurso solicitado. `evidence` contiene exactamente un
-resultado. `kid` identifica el JWT que
-autorizó la lectura; el `kid` de `attestation` es independiente y pertenece
-a la release. Se devuelve como máximo un resultado por ruta y la respuesta
-completa ocupa menos de 64 KiB. No se sirven fixtures, semillas ni datos
-simulados en producción.
+El recurso se autoriza con el scope del JWT, pero ese scope no se repite en la
+envolvente. `evidence` tiene exactamente `observedAt`, `sampleRef` y `signals`;
+`sampleRef` es el SHA-256 de la serialización canónica de `signals`. Cada señal
+usa únicamente el criterio, estado, código, unidad y límite de la matriz Beta D.
+Un control no observable se representa como `status=unknown` y `value=null`.
+El `kid` de `attestation` es independiente y pertenece a la release. Se
+devuelve como máximo una evidencia por ruta y la respuesta completa ocupa
+menos de 64 KiB. No se sirven fixtures, semillas ni datos simulados en
+producción.
 
 ## Identidad, autorización y red
 
@@ -86,6 +92,7 @@ Se verifica exclusivamente JWT Ed25519 (`alg=EdDSA`) con estos valores
 exactos:
 
 - `iss=desarrolloseguro-audit`
+- `sub=desarrolloseguro-audit`
 - `aud=grumphya-audit`
 - `environment=production`
 - `domain=grumphya.com`

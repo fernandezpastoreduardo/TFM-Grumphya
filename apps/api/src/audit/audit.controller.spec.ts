@@ -12,6 +12,7 @@ function request(
     query,
     auditTechnicalIdentity: {
       issuer: "desarrolloseguro-audit",
+      subject: "desarrolloseguro-audit",
       audience: "grumphya-audit",
       environment: "production",
       domain: "grumphya.com",
@@ -26,14 +27,32 @@ function request(
 }
 
 describe("AuditController", () => {
+  it.each([
+    "infrastructure",
+    "deployment",
+    "dependencies",
+    "auth",
+    "quality",
+    "privacy",
+    "ai",
+  ])("allows the seven Beta D GET resources: %s", async (resource) => {
+    const service = {
+      read: vi.fn().mockResolvedValue({ schemaVersion: "beta-d-0.2" }),
+    };
+    await expect(
+      new AuditController(service as never).read(request("GET", resource)),
+    ).resolves.toMatchObject({ schemaVersion: "beta-d-0.2" });
+    expect(service.read).toHaveBeenCalledWith(resource, expect.anything());
+  });
+
   it("reads an allowed resource without rendering HTML", async () => {
     const service = {
-      read: vi.fn().mockResolvedValue({ profile: "beta-d-0.2" }),
+      read: vi.fn().mockResolvedValue({ schemaVersion: "beta-d-0.2" }),
     };
     const controller = new AuditController(service as never);
 
     await expect(controller.read(request("GET", "quality"))).resolves.toEqual({
-      profile: "beta-d-0.2",
+      schemaVersion: "beta-d-0.2",
     });
     expect(service.read).toHaveBeenCalledWith(
       "quality",
