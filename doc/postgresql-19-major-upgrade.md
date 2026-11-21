@@ -1,4 +1,12 @@
-# Preparación de la migración de PostgreSQL 17 a 19
+# Migración de PostgreSQL 17 a 19
+
+## Corte completado — 2026-11-21
+
+La migración de producción de Grumphya se completó mediante el workflow aprobado, con el release `7699c8bf72826662ae3b538b69645cf094607e6e`. La API confirmó `database: ok` y pgvector `0.8.7`; PostgreSQL informó `19.0` y la API ejecuta Node `26.13.1`. Desarrollo Seguro permaneció disponible durante el corte y se verificó también en PostgreSQL `19.0` y Node `26.13.1`.
+
+Antes del corte se restauraron y compararon los dumps cifrados de ambas aplicaciones y se verificó el archivo cifrado de avatares. Los volúmenes de PostgreSQL 17 y PG19 de Grumphya siguen presentes. El volumen PG17 se conserva detenido para recuperación; no debe eliminarse ni reactivarse después de que PG19 haya aceptado escrituras sin seguir el procedimiento de recuperación de datos de abajo. Los backups externos están en `Backups/Grumphya-PG19-20261121`.
+
+El primer intento de despliegue se detuvo antes de cambiar la aplicación porque el helper activo del VPS era v4. Se actualizó atómicamente a v5, conservando una copia previa, y el workflow se repitió con éxito. El smoke público de certificación y los checks de salud posteriores al corte pasaron. El workflow también completó sus pruebas de calidad, E2E, auditoría y Lighthouse.
 
 ## Decisión de versiones
 
@@ -13,7 +21,7 @@ CI ejecuta las pruebas de integración de la aplicación contra PostgreSQL 19 y 
 
 Un cambio de `DATABASE_IMAGE` a PG19 sobre `grumphya-production-postgres` no es una actualización segura: los ficheros de datos de PostgreSQL 17 no son un clúster PostgreSQL 19. La actualización de major necesita una copia lógica y un volumen nuevo. Un rollback de imágenes no revierte una migración de clúster.
 
-La composición de producción conserva por ahora PostgreSQL 17 como valor predeterminado y el volumen estable actual. Las pruebas de CI para PG19 no cambian el clúster del VPS. No lances un despliegue PG19 hasta que la ruta de producción use un volumen versionado nuevo y el helper de despliegue pueda migrar y verificar datos sin tocar el volumen 17.
+La composición del release activo usa el volumen versionado `grumphya-production-postgres-pg19`. El volumen `grumphya-production-postgres` contiene el clúster PG17 original y debe permanecer intacto durante el periodo de observación. Las pruebas de CI por sí solas no sustituyen la validación de producción descrita arriba.
 
 ## Secuencia segura para el corte de producción
 
@@ -27,12 +35,11 @@ La composición de producción conserva por ahora PostgreSQL 17 como valor prede
 8. Antes de reabrir tráfico, un fallo de validación puede volver a la release 17 porque no se han aceptado escrituras nuevas. Después de reabrir, el volumen 17 queda desfasado: no se debe volver a él silenciosamente, pues perdería escrituras nuevas. Un rollback de datos posterior exige detener escrituras, decidir explícitamente cómo conservar los cambios y seguir un plan de recuperación revisado.
 9. Conserva la copia externa y el volumen 17 hasta completar el periodo de observación y una nueva copia verificada de PG19. Retíralos después mediante el procedimiento de retención aprobado, nunca con `docker compose down -v`.
 
-## Condiciones antes de activar el flujo de producción
+## Controles realizados para activar producción
 
-- Añadir al helper del VPS una operación de migración explícita, con preflight de espacio, bloqueo de escrituras, volumen destino versionado, verificación de la copia y limpieza que nunca elimine el volumen origen.
-- Probar el helper con volúmenes efímeros PG17 y PG19, incluyendo fallo durante dump, restore, validación, corte y rollback previo a aceptar escrituras.
-- Confirmar el espacio disponible y tiempo de mantenimiento usando una copia reciente restaurada del VPS. CI solo usa datos sintéticos; no sustituye ese ensayo.
-- Actualizar el Compose de producción a PG19 y cambiar el volumen solo dentro del mismo cambio revisado que habilita esa operación. Mantener el PG17 anterior disponible para recuperación.
-- Desplegar mediante el workflow aprobado y comprobar la versión SQL de la base activa después del corte.
+- El helper v5 valida el volumen versionado PG19 y su marcador de restauración verificada; las pruebas del helper cubren validación y rollback.
+- Se restauraron los backups cifrados en volúmenes aislados PG19 y se compararon recuentos, índices, secuencias, migraciones, roles, membresías y propietarios antes del corte.
+- Se detuvieron escritores durante el dump final y se conservó el volumen PG17 original.
+- El workflow aprobado desplegó el Compose PG19 y comprobó los endpoints públicos; después se consultaron las versiones SQL y Node, pgvector y la salud de ambos sitios.
 
-Hasta que estas condiciones estén cubiertas, la base de producción debe seguir en la línea parcheada PG17.12. Es una línea soportada con correcciones de seguridad; la migración a PG19 requiere su propio corte de datos y una ruta de reversión explícita.
+Mantén el volumen PG17 y las copias externas durante el periodo de observación y hasta disponer de una copia verificada nueva de PG19. El rollback de la aplicación no revierte escrituras nuevas de PG19. Si hace falta recuperar datos, detén escrituras y aplica un plan explícito que conserve los cambios; no vuelvas silenciosamente al volumen PG17 ni uses `docker compose down -v`.
