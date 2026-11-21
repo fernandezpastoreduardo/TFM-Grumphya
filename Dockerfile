@@ -1,4 +1,4 @@
-FROM node:26.13.0-trixie-slim AS node-base
+FROM node:26.13.1-trixie-slim AS node-base
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
@@ -37,7 +37,7 @@ RUN apk add --no-cache git \
   && cd /gosu \
   && CGO_ENABLED=0 go build -trimpath -o /out/gosu .
 
-FROM pgvector/pgvector:0.8.7-pg17 AS database-production
+FROM pgvector/pgvector:0.8.7-pg17-bookworm AS database-production
 COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 COPY docker/postgres-entrypoint.sh /usr/local/bin/grumphya-postgres-entrypoint.sh
 COPY docker/postgres-pg_hba.conf /etc/postgresql/pg_hba.conf

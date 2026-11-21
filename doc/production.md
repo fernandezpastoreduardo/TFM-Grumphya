@@ -6,7 +6,7 @@ Esta guía describe cómo operar Grumphya en un único VPS IONOS M+ con Docker C
 
 - Caddy es el único servicio publicado: HTTP 80 redirige a HTTPS y HTTPS 443 sirve el sitio, `/api/*` y las rutas de la SPA.
 - La web React se compila en la imagen y Nginx sirve los archivos estáticos; Vite no se ejecuta en producción.
-- La API NestJS solo está en la red privada de Compose, junto con PostgreSQL 17 (`pgvector/pgvector:0.8.7-pg17`).
+- La API NestJS solo está en la red privada de Compose, junto con PostgreSQL 17.12 (`pgvector/pgvector:0.8.7-pg17-bookworm`).
 - PostgreSQL y los avatares usan volúmenes nombrados persistentes. Caddy conserva también sus certificados.
 - Un servicio de una sola ejecución aplica las migraciones y la API espera a que termine correctamente y a que PostgreSQL esté saludable.
 - PostgreSQL solo pertenece a la red interna. La API también se conecta a una red privada de salida para poder llamar a OpenAI y SMTP; no publica ningún puerto del host.

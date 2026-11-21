@@ -2,34 +2,34 @@
 
 ## Requisitos y componentes
 
-| Componente           | Uso                                | Versión verificada / política                    |
-| -------------------- | ---------------------------------- | ------------------------------------------------ |
-| macOS Apple Silicon  | Host local actual                  | macOS del equipo de desarrollo                   |
-| Node.js              | Runtime de frontend y API          | 26.13.0 (`.node-version`); rango `^26.13.0`      |
-| pnpm                 | Workspaces y dependencias          | 12.5.1; fijado en `packageManager`               |
-| Docker Desktop       | Motor local de contenedores        | 4.94.0 (241994)                                  |
-| Docker Engine        | Servidor de contenedores           | 29.8.2, linux/arm64                              |
-| Docker Compose       | Orquestación local                 | 5.5.1                                            |
-| React / React DOM    | Interfaz                           | 19.3.1                                           |
-| Vite                 | Servidor local y build web         | 7.3.7                                            |
-| NestJS               | API modular                        | 12.2.0 (`^12.1.3`)                               |
-| TypeScript           | Lenguaje                           | 6.0.3 (`~6.0.3`)                                 |
-| PostgreSQL           | Base relacional local              | 17; imagen `pgvector/pgvector:0.8.7-pg17`        |
-| pgvector             | Embeddings en PostgreSQL           | 0.8.7; habilitada al inicializar la base         |
-| node-postgres (`pg`) | Cliente PostgreSQL para Node       | 8.23.1                                           |
-| Vitest               | Pruebas unitarias                  | 4.1.12                                           |
-| Testing Library      | Pruebas de UI orientadas a usuario | React 16.3.3, user-event 14.6.7                  |
-| jsdom                | Entorno DOM para pruebas web       | 31.0.1                                           |
-| ESLint               | Análisis estático                  | 10.15.0 + typescript-eslint 8.71.1               |
-| Prettier             | Formato consistente                | 3.10.1                                           |
-| Playwright           | E2E navegador                      | `@playwright/test` 1.65.1, Chromium 159.0.8154.6 |
-| Husky                | Hooks locales de Git               | 9.1.7                                            |
+| Componente           | Uso                                | Versión verificada / política                         |
+| -------------------- | ---------------------------------- | ----------------------------------------------------- |
+| macOS Apple Silicon  | Host local actual                  | macOS del equipo de desarrollo                        |
+| Node.js              | Runtime de frontend y API          | 26.13.1 (`.node-version`); rango `^26.13.1`           |
+| pnpm                 | Workspaces y dependencias          | 12.5.1; fijado en `packageManager`                    |
+| Docker Desktop       | Motor local de contenedores        | 4.94.0 (241994)                                       |
+| Docker Engine        | Servidor de contenedores           | 29.8.2, linux/arm64                                   |
+| Docker Compose       | Orquestación local                 | 5.5.1                                                 |
+| React / React DOM    | Interfaz                           | 19.3.1                                                |
+| Vite                 | Servidor local y build web         | 7.3.7                                                 |
+| NestJS               | API modular                        | 12.2.0 (`^12.1.3`)                                    |
+| TypeScript           | Lenguaje                           | 6.0.3 (`~6.0.3`)                                      |
+| PostgreSQL           | Base relacional local              | 17.12; imagen `pgvector/pgvector:0.8.7-pg17-bookworm` |
+| pgvector             | Embeddings en PostgreSQL           | 0.8.7; habilitada al inicializar la base              |
+| node-postgres (`pg`) | Cliente PostgreSQL para Node       | 8.23.1                                                |
+| Vitest               | Pruebas unitarias                  | 4.1.12                                                |
+| Testing Library      | Pruebas de UI orientadas a usuario | React 16.3.3, user-event 14.6.7                       |
+| jsdom                | Entorno DOM para pruebas web       | 31.0.1                                                |
+| ESLint               | Análisis estático                  | 10.15.0 + typescript-eslint 8.71.1                    |
+| Prettier             | Formato consistente                | 3.10.1                                                |
+| Playwright           | E2E navegador                      | `@playwright/test` 1.65.1, Chromium 159.0.8154.6      |
+| Husky                | Hooks locales de Git               | 9.1.7                                                 |
 
 Las versiones efectivamente resueltas quedan fijadas en `pnpm-lock.yaml`. Consulta `package.json` de cada workspace para rangos declarados.
 
 ## Decisiones de actualización
 
-- NestJS 12 requiere Node.js 20.19 o posterior, o Node.js 22.12 o posterior en la línea 22. Para alinear runtime, tipos (`@types/node` 26), toolchain e imágenes, el proyecto fija Node 26.13.0 y limita el soporte a `^26.13.0`, de acuerdo con sus herramientas de desarrollo y CI. Véase la [guía oficial de migración de NestJS 12](https://docs.nestjs.com/migration-guide).
+- NestJS 12 requiere Node.js 20.19 o posterior, o Node.js 22.12 o posterior en la línea 22. Para alinear runtime, tipos (`@types/node` 26), toolchain e imágenes, el proyecto fija Node 26.13.1 y limita el soporte a `^26.13.1`, de acuerdo con sus herramientas de desarrollo y CI. Véase la [guía oficial de migración de NestJS 12](https://docs.nestjs.com/migration-guide).
 - ESLint 10 requiere Node.js 20.19 o posterior, 22.13 o posterior o 24 o posterior; los runtimes admitidos por este repositorio cumplen esos mínimos. Véase la [guía oficial de migración de ESLint 10](https://eslint.org/docs/latest/use/migrate-to-10.0.0).
 - Se mantiene TypeScript 6.0.3 como compilador estable verificado con NestJS 12, `typescript-eslint` y la configuración de ambos workspaces. TypeScript 7 ya es estable, pero su cambio a una implementación nativa queda para una actualización independiente que verifique compilación, editor e integraciones antes de adoptarlo; no se incluye en esta actualización de dependencias. Dependabot ignora versiones `>=7.0.0` para evitar PR incompatibles mientras `typescript-eslint` no declare soporte. Véase la [documentación oficial de TypeScript 6](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-6-0.html) y el [anuncio de TypeScript 7](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/).
 - La versión estable `typescript-eslint` 8.71.1 declara soporte para TypeScript `>=4.8.4 <6.1.0`. El TypeScript 7 estable queda fuera de ese rango; la exclusión de Dependabot se mantiene hasta que el parser declare soporte y pase typecheck/lint en este repositorio. Véase la [matriz oficial de versiones](https://typescript-eslint.io/users/dependency-versions/).

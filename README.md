@@ -37,7 +37,7 @@ Integración de pagos reales para los planes.
 
 ## Instalación y arranque local
 
-Requisitos: Git, Node.js `26.13.0`, pnpm `12.5.1` y Docker Desktop/Engine con Docker Compose v2. Los comandos siguientes usan una terminal compatible con POSIX (macOS, Linux, WSL o Git Bash). Clona el repositorio; en macOS, Linux o WSL con `nvm`, instala y activa la versión fijada:
+Requisitos: Git, Node.js `26.13.1`, pnpm `12.5.1` y Docker Desktop/Engine con Docker Compose v2. Los comandos siguientes usan una terminal compatible con POSIX (macOS, Linux, WSL o Git Bash). Clona el repositorio; en macOS, Linux o WSL con `nvm`, instala y activa la versión fijada:
 
 ```sh
 git clone git@github.com:fernandezpastoreduardo/TFM-Grumphya.git

@@ -1,6 +1,6 @@
 services:
   db:
-    image: pgvector/pgvector:0.8.7-pg17
+    image: pgvector/pgvector:0.8.7-pg17-bookworm
     restart: unless-stopped
     command: ["/bin/sh", "/docker/postgres-entrypoint.sh"]
     secrets:

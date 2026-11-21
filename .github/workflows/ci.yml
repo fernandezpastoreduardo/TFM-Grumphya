@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: pgvector/pgvector:0.8.7-pg17
+        image: pgvector/pgvector:0.8.7-pg17-bookworm
         env:
           POSTGRES_DB: grumphya_test
           POSTGRES_USER: grumphya_test

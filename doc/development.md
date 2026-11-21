@@ -2,7 +2,7 @@
 
 ## Requisitos
 
-- macOS, Linux o Windows con Node.js `^26.13.0` y pnpm 12. El repositorio fija Node 26.13.0 en `.node-version` y `.nvmrc`; con nvm, actívalo desde la raíz con `nvm use`. Los rangos admitidos están definidos en `package.json`.
+- macOS, Linux o Windows con Node.js `^26.13.1` y pnpm 12. El repositorio fija Node 26.13.1 en `.node-version` y `.nvmrc`; con nvm, actívalo desde la raíz con `nvm use`. Los rangos admitidos están definidos en `package.json`.
 - Docker Desktop y PostgreSQL 17 con extensión pgvector 0.8.x (arranca con Compose).
 - Para tests E2E: navegador Chromium de Playwright.
 

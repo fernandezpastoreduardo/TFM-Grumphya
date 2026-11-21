@@ -203,7 +203,7 @@ try {
     recordedCommands,
     /docker build --progress plain --platform linux\/amd64/,
   );
-  assert.match(recordedCommands, /--build-arg NODE_VERSION=26\.13\.0/);
+  assert.match(recordedCommands, /--build-arg NODE_VERSION=26\.13\.1/);
   assert.match(recordedCommands, /--build-arg PNPM_VERSION=12\.5\.1/);
   assert.match(
     recordedCommands,
