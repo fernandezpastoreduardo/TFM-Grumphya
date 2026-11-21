@@ -123,7 +123,7 @@ assert.match(
   ),
 );
 const nodeBaseStage = dockerfile.split("FROM node-base AS pnpm-base")[0];
-assert.match(nodeBaseStage, /^FROM node:26\.13\.0-trixie-slim AS node-base$/m);
+assert.match(nodeBaseStage, /^FROM node:26\.13\.1-trixie-slim AS node-base$/m);
 assert.match(nodeBaseStage, /apt-get update[\s\S]*?apt-get upgrade -y/);
 assert.match(nodeBaseStage, /rm -rf \/var\/lib\/apt\/lists\/\*/);
 assert.ok(

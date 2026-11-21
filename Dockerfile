@@ -1,3 +1,5 @@
+ARG POSTGRES_MAJOR=17
+
 FROM node:26.13.1-trixie-slim AS node-base
 
 RUN apt-get update \
@@ -28,7 +30,7 @@ FROM development AS build
 
 RUN pnpm --filter @grumphya/api build
 
-# Keep PostgreSQL on the same Debian release for the existing data volume.
+# Keep PostgreSQL on the same Debian release when rehearsing major upgrades.
 # Rebuild gosu with a patched Go toolchain instead of excluding it from Trivy.
 FROM golang:1.27.4-alpine AS gosu-build
 RUN apk add --no-cache git \
@@ -37,7 +39,7 @@ RUN apk add --no-cache git \
   && cd /gosu \
   && CGO_ENABLED=0 go build -trimpath -o /out/gosu .
 
-FROM pgvector/pgvector:0.8.7-pg17-bookworm AS database-production
+FROM pgvector/pgvector:0.8.7-pg${POSTGRES_MAJOR}-bookworm AS database-production
 COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 COPY docker/postgres-entrypoint.sh /usr/local/bin/grumphya-postgres-entrypoint.sh
 COPY docker/postgres-pg_hba.conf /etc/postgresql/pg_hba.conf

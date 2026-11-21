@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: pgvector/pgvector:0.8.7-pg17-bookworm
+        image: pgvector/pgvector:0.8.7-pg19-bookworm
         env:
           POSTGRES_DB: grumphya_test
           POSTGRES_USER: grumphya_test
@@ -57,6 +57,15 @@ jobs:
           persist-credentials: false
       - name: Run production source preflight guards
         run: bash scripts/ci-preflight.sh
+      - name: Build the PostgreSQL 19 production candidate
+        run: >-
+          docker build --pull --file Dockerfile --target database-production
+          --build-arg POSTGRES_MAJOR=19
+          --tag grumphya-database:postgres-19-candidate .
+      - name: Rehearse PostgreSQL 17 to 19 data migration
+        env:
+          TARGET_IMAGE: grumphya-database:postgres-19-candidate
+        run: bash scripts/test-postgres-major-upgrade.sh
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 12.5.1
@@ -522,6 +531,10 @@ jobs:
           WEB_IMAGE=grumphya-web:${{ github.sha }}
           DATABASE_IMAGE=grumphya-database:${{ github.sha }}
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
+          POSTGRES_MAJOR=17
+          POSTGRES_DATA_MOUNT=/var/lib/postgresql/data
+          POSTGRES_DATA_DIRECTORY=/var/lib/postgresql/data
+          POSTGRES_VOLUME=grumphya-production-postgres
           EOF
           test -s release/release-manifest.json
           test -s release/release-manifest.sig

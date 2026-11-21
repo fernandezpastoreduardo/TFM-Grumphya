@@ -115,4 +115,12 @@ if (( status != 0 )); then
   echo "CI-equivalent checks failed (exit $status). Logs and Playwright artifacts: $ARTIFACTS" >&2
   exit "$status"
 fi
+if [[ "$MODE" == all || "$MODE" == quality ]]; then
+  docker build --progress plain --file "$ROOT/Dockerfile" \
+    --target database-production --build-arg POSTGRES_MAJOR=19 \
+    --tag grumphya-database:postgres-19-candidate "$ROOT" \
+    | tee "$ARTIFACTS/postgres-major-upgrade-build.log"
+  TARGET_IMAGE=grumphya-database:postgres-19-candidate \
+    bash "$ROOT/scripts/test-postgres-major-upgrade.sh"
+fi
 echo "CI-equivalent checks passed. Logs and Playwright artifacts: $ARTIFACTS"

@@ -5,6 +5,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: database-production
+      args:
+        POSTGRES_MAJOR: ${POSTGRES_MAJOR:-17}
     restart: unless-stopped
     secrets:
       - database_settings
@@ -27,8 +29,10 @@ services:
         "-c",
         "hba_file=/etc/postgresql/pg_hba.conf",
       ]
+    environment:
+      PGDATA: ${POSTGRES_DATA_DIRECTORY:-/var/lib/postgresql/data}
     volumes:
-      - grumphya-production-postgres:/var/lib/postgresql/data
+      - grumphya-production-postgres:${POSTGRES_DATA_MOUNT:-/var/lib/postgresql/data}
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
       interval: 5s
@@ -268,7 +272,7 @@ networks:
 
 volumes:
   grumphya-production-postgres:
-    name: grumphya-production-postgres
+    name: ${POSTGRES_VOLUME:-grumphya-production-postgres}
   grumphya-production-avatars:
     name: grumphya-production-avatars
   grumphya-caddy-data:
