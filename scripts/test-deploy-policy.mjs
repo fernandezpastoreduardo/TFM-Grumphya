@@ -721,6 +721,10 @@ const deploymentPreflightStep = deploymentStep.slice(
   0,
   deploymentExecutionStepStart - deploymentStepStart,
 );
+assert.ok(
+  deploymentPreflightStep.includes('[[ ! "$helper_version" =~ ^(4|5)$ ]]'),
+  "preflight must accept both the installed v4 helper and upgraded v5 helper",
+);
 assert.match(
   deploymentPreflightStep,
   /id: production-preflight[\s\S]*?preflight \$GITHUB_SHA \$release_bytes/,

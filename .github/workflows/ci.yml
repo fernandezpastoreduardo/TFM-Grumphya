@@ -594,8 +594,8 @@ jobs:
             echo '::error::The VPS deployment helper is outdated or unreachable. Recover administrative SSH access and install the reviewed helper before retrying.'
             exit 1
           fi
-          if [[ "$helper_version" != 4 ]]; then
-            echo "::error::The VPS deployment helper is version $helper_version; version 4 is required. Recover administrative SSH access and install the reviewed helper before retrying."
+          if [[ ! "$helper_version" =~ ^(4|5)$ ]]; then
+            echo "::error::The VPS deployment helper is version $helper_version; version 4 or 5 is required. Recover administrative SSH access and install the reviewed helper before retrying."
             exit 1
           fi
           echo "Checking VPS capacity and current release before transferring $release_bytes bytes."
