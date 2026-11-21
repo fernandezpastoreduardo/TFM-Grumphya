@@ -30,8 +30,8 @@ FROM development AS build
 
 RUN pnpm --filter @grumphya/api build
 
-# Keep PostgreSQL on the same Debian release when rehearsing major upgrades.
-# Rebuild gosu with a patched Go toolchain instead of excluding it from Trivy.
+# Use the current Debian stable base for PostgreSQL 19. Rebuild gosu with a
+# patched Go toolchain instead of excluding it from Trivy.
 FROM golang:1.27.4-alpine AS gosu-build
 RUN apk add --no-cache git \
   && git clone --depth 1 --branch 1.19 https://github.com/tianon/gosu.git /gosu \
@@ -39,7 +39,7 @@ RUN apk add --no-cache git \
   && cd /gosu \
   && CGO_ENABLED=0 go build -trimpath -o /out/gosu .
 
-FROM pgvector/pgvector:0.8.7-pg${POSTGRES_MAJOR}-bookworm AS database-production
+FROM pgvector/pgvector:0.8.7-pg${POSTGRES_MAJOR}-trixie AS database-production
 COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 COPY docker/postgres-entrypoint.sh /usr/local/bin/grumphya-postgres-entrypoint.sh
 COPY docker/postgres-pg_hba.conf /etc/postgresql/pg_hba.conf

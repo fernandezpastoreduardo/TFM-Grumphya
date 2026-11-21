@@ -7,44 +7,55 @@ const PROPERTIES_PATH = "sonar-project.properties";
 const ANALYSIS_SCRIPT_PATH = "scripts/run-sonarqube-analysis.sh";
 const PUSH_HOOK_PATH = ".husky/pre-push";
 const PACKAGE_PATH = "package.json";
+const GITIGNORE_PATH = ".gitignore";
 const compose = await readFile(COMPOSE_PATH, "utf8");
 const properties = await readFile(PROPERTIES_PATH, "utf8");
 const analysisScript = await readFile(ANALYSIS_SCRIPT_PATH, "utf8");
 const pushHook = await readFile(PUSH_HOOK_PATH, "utf8");
 const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+const gitignore = await readFile(GITIGNORE_PATH, "utf8");
 const packageJson = JSON.parse(await readFile(PACKAGE_PATH, "utf8"));
+const gitMetadata = spawnSync("git", ["rev-parse", "--git-dir"]);
 for (const name of ["sonarqube_settings", "sonarqube_token"]) {
   const secretPath = `.secrets/${name}`;
   const examplePath = `${secretPath}.example`;
-  const ignoredSecret = spawnSync("git", [
-    "check-ignore",
-    "--quiet",
-    "--no-index",
-    secretPath,
-  ]);
-  const ignoredExample = spawnSync("git", [
-    "check-ignore",
-    "--quiet",
-    "--no-index",
-    examplePath,
-  ]);
-  const trackedSecret = spawnSync("git", [
-    "ls-files",
-    "--error-unmatch",
-    "--",
-    secretPath,
-  ]);
-  assert.equal(ignoredSecret.status, 0, `${secretPath} must be ignored by Git`);
-  assert.equal(
-    trackedSecret.status,
-    1,
-    `${secretPath} must not be tracked by Git`,
-  );
-  assert.equal(
-    ignoredExample.status,
-    1,
-    `${examplePath} must remain trackable`,
-  );
+  assert.match(gitignore, /^\.secrets\/\*$/m);
+  assert.match(gitignore, /^!\.secrets\/\*\.example$/m);
+  if (gitMetadata.status === 0) {
+    const ignoredSecret = spawnSync("git", [
+      "check-ignore",
+      "--quiet",
+      "--no-index",
+      secretPath,
+    ]);
+    const ignoredExample = spawnSync("git", [
+      "check-ignore",
+      "--quiet",
+      "--no-index",
+      examplePath,
+    ]);
+    const trackedSecret = spawnSync("git", [
+      "ls-files",
+      "--error-unmatch",
+      "--",
+      secretPath,
+    ]);
+    assert.equal(
+      ignoredSecret.status,
+      0,
+      `${secretPath} must be ignored by Git`,
+    );
+    assert.equal(
+      trackedSecret.status,
+      1,
+      `${secretPath} must not be tracked by Git`,
+    );
+    assert.equal(
+      ignoredExample.status,
+      1,
+      `${examplePath} must remain trackable`,
+    );
+  }
   await readFile(examplePath, "utf8");
 }
 const databaseSection = compose.match(

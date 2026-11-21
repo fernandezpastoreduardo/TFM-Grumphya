@@ -3,7 +3,7 @@ set -Eeuo pipefail
 umask 077
 
 readonly SOURCE_IMAGE=${SOURCE_IMAGE:-pgvector/pgvector:0.8.7-pg17-bookworm}
-readonly TARGET_IMAGE=${TARGET_IMAGE:-pgvector/pgvector:0.8.7-pg19-bookworm}
+readonly TARGET_IMAGE=${TARGET_IMAGE:-pgvector/pgvector:0.8.7-pg19-trixie}
 readonly RUN_ID="grumphya-pg-upgrade-$(date +%s)-$$"
 readonly SOURCE_CONTAINER="$RUN_ID-source"
 readonly TARGET_CONTAINER="$RUN_ID-target"

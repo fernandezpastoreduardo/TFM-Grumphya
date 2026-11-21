@@ -313,7 +313,7 @@ assert.doesNotMatch(
   additionalSitesCompose,
   /development-security-edge|^  (api|db|web):/m,
 );
-assert.match(vpsDeployHelper, /readonly HELPER_VERSION=4/);
+assert.match(vpsDeployHelper, /readonly HELPER_VERSION=5/);
 assert.match(
   vpsDeployHelper,
   /docker network inspect --format '\{\{\.Internal\}\}'/,

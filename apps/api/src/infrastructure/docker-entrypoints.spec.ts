@@ -113,13 +113,19 @@ describe("Docker service entrypoints", () => {
       },
     );
 
-    expect(readJsonOutput<Record<string, unknown>>(output)).toEqual({
+    const result = readJsonOutput<Record<string, unknown>>(output);
+    expect(result).toMatchObject({
       database: "grumphya_test",
       user: "postgres",
       password: "bootstrap-secret",
-      runtime: undefined,
-      ca: resolve(secretsDirectory, "internal_tls_ca.crt"),
     });
+    if (process.getuid?.() === 0) {
+      expect(result.ca).toMatch(
+        /^\/tmp\/grumphya-database-tls\.[^/]+\/ca\.crt$/u,
+      );
+    } else {
+      expect(result.ca).toBe(resolve(secretsDirectory, "internal_tls_ca.crt"));
+    }
   });
 
   it("loads only approved API settings, gives the database password precedence, and forwards the command", () => {

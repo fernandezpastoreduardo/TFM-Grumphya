@@ -2,12 +2,12 @@
 
 ## Decisión de versiones
 
-- La base de datos de la aplicación tiene como destino PostgreSQL 19.0 con pgvector 0.8.7 (`pgvector/pgvector:0.8.7-pg19-bookworm`).
+- La base de datos de la aplicación tiene como destino PostgreSQL 19.0 con pgvector 0.8.7 sobre Debian 13 (`pgvector/pgvector:0.8.7-pg19-trixie`).
 - La línea Node.js de producción sigue en 26 LTS. Node.js 27 está en Alpha y no es adecuada para producción. La versión menor de Node se mantiene en la última publicación de seguridad de 26.x.
 - pgvector 0.8.7 es la versión actual de la extensión; no hay una major 1.x que adoptar.
 - El PostgreSQL de SonarQube sigue separado. La versión de SonarQube instalada admite PostgreSQL 14–18, no 19; no se le debe cambiar la major sin soporte del proveedor.
 
-CI ejecuta las pruebas de integración de la aplicación contra PostgreSQL 19 y compila la imagen de base de datos 19. Además, `scripts/test-postgres-major-upgrade.sh` migra una base sintética desde PostgreSQL 17 usando el mismo helper `grumphya-postgres-backup.sh` de producción. Comprueba la versión de origen y destino, el rol de runtime, la extensión vectorial, una tabla, filas e índice HNSW; elimina ambos volúmenes de prueba al terminar y nunca usa datos o secretos reales.
+CI ejecuta las pruebas de integración de la aplicación contra PostgreSQL 19 y compila la imagen de base de datos 19. Además, `scripts/test-postgres-major-upgrade.sh` migra una base sintética desde PostgreSQL 17 a la imagen PG19 sobre Debian 13 usando el mismo helper `grumphya-postgres-backup.sh` de producción. Comprueba la versión de origen y destino, el rol de runtime, la extensión vectorial, una tabla, filas e índice HNSW; elimina ambos volúmenes de prueba al terminar y nunca usa datos o secretos reales.
 
 ## No reutilizar el volumen de PostgreSQL 17
 

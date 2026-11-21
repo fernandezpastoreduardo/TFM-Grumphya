@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: pgvector/pgvector:0.8.7-pg19-bookworm
+        image: pgvector/pgvector:0.8.7-pg19-trixie
         env:
           POSTGRES_DB: grumphya_test
           POSTGRES_USER: grumphya_test
@@ -258,6 +258,7 @@ jobs:
         env:
           DOMAIN: ci.invalid
           DEPLOY_SHA: ${{ github.sha }}
+          POSTGRES_MAJOR: "19"
           API_IMAGE: grumphya-api:${{ github.sha }}
           WEB_IMAGE: grumphya-web:${{ github.sha }}
           DATABASE_IMAGE: grumphya-database:${{ github.sha }}
@@ -531,10 +532,10 @@ jobs:
           WEB_IMAGE=grumphya-web:${{ github.sha }}
           DATABASE_IMAGE=grumphya-database:${{ github.sha }}
           PROXY_IMAGE=grumphya-proxy:${{ github.sha }}
-          POSTGRES_MAJOR=17
-          POSTGRES_DATA_MOUNT=/var/lib/postgresql/data
-          POSTGRES_DATA_DIRECTORY=/var/lib/postgresql/data
-          POSTGRES_VOLUME=grumphya-production-postgres
+          POSTGRES_MAJOR=19
+          POSTGRES_DATA_MOUNT=/var/lib/postgresql
+          POSTGRES_DATA_DIRECTORY=/var/lib/postgresql/19/docker
+          POSTGRES_VOLUME=grumphya-production-postgres-pg19
           EOF
           test -s release/release-manifest.json
           test -s release/release-manifest.sig

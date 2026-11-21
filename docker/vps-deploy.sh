@@ -21,7 +21,7 @@ readonly EXPECTED_SECRETS=(
 )
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
-readonly HELPER_VERSION=4
+readonly HELPER_VERSION=5
 readonly DEFAULT_ROOT=/opt/grumphya
 readonly MIN_FREE_BYTES_DEFAULT=536870912
 
@@ -301,12 +301,13 @@ validate_audit_attestation() {
 validate_release_env() {
   local dir=$1 sha=$2 line key value
   local seen=' ' API_IMAGE='' WEB_IMAGE='' DATABASE_IMAGE='' PROXY_IMAGE='' DEPLOY_SHA=''
+  local POSTGRES_MAJOR='' POSTGRES_DATA_MOUNT='' POSTGRES_DATA_DIRECTORY='' POSTGRES_VOLUME=''
   while IFS= read -r line || [[ -n $line ]]; do
     [[ $line =~ ^([A-Z_]+)=([A-Za-z0-9_./:@-]+)$ ]] || die 'release metadata has invalid syntax'
     key=${BASH_REMATCH[1]}
     value=${BASH_REMATCH[2]}
     case "$key" in
-      API_IMAGE|WEB_IMAGE|DATABASE_IMAGE|PROXY_IMAGE|DEPLOY_SHA) ;;
+      API_IMAGE|WEB_IMAGE|DATABASE_IMAGE|PROXY_IMAGE|DEPLOY_SHA|POSTGRES_MAJOR|POSTGRES_DATA_MOUNT|POSTGRES_DATA_DIRECTORY|POSTGRES_VOLUME) ;;
       *) die 'release metadata contains an unexpected key' ;;
     esac
     [[ $seen != *" $key "* ]] || die 'release metadata contains a duplicate key'
@@ -317,9 +318,14 @@ validate_release_env() {
       DATABASE_IMAGE) DATABASE_IMAGE=$value ;;
       PROXY_IMAGE) PROXY_IMAGE=$value ;;
       DEPLOY_SHA) DEPLOY_SHA=$value ;;
+      POSTGRES_MAJOR) POSTGRES_MAJOR=$value ;;
+      POSTGRES_DATA_MOUNT) POSTGRES_DATA_MOUNT=$value ;;
+      POSTGRES_DATA_DIRECTORY) POSTGRES_DATA_DIRECTORY=$value ;;
+      POSTGRES_VOLUME) POSTGRES_VOLUME=$value ;;
     esac
   done < "$dir/release.env"
-  [[ -n $DEPLOY_SHA && -n $API_IMAGE && -n $WEB_IMAGE && -n $DATABASE_IMAGE && -n $PROXY_IMAGE ]] ||
+  [[ -n $DEPLOY_SHA && -n $API_IMAGE && -n $WEB_IMAGE && -n $DATABASE_IMAGE && -n $PROXY_IMAGE && \
+    -n $POSTGRES_MAJOR && -n $POSTGRES_DATA_MOUNT && -n $POSTGRES_DATA_DIRECTORY && -n $POSTGRES_VOLUME ]] ||
     die 'release metadata is incomplete'
   [[ $DEPLOY_SHA == "$sha" ]] || die 'release metadata SHA does not match requested deployment'
   [[ $API_IMAGE == "grumphya-api:$sha" && \
@@ -327,6 +333,31 @@ validate_release_env() {
     $DATABASE_IMAGE == "grumphya-database:$sha" && \
     $PROXY_IMAGE == "grumphya-proxy:$sha" ]] ||
     die 'release image tags do not match the requested SHA'
+  case "$POSTGRES_MAJOR:$POSTGRES_DATA_MOUNT:$POSTGRES_DATA_DIRECTORY:$POSTGRES_VOLUME" in
+    17:/var/lib/postgresql/data:/var/lib/postgresql/data:grumphya-production-postgres) ;;
+    19:/var/lib/postgresql:/var/lib/postgresql/19/docker:grumphya-production-postgres-pg19) ;;
+    *) die 'release PostgreSQL major and versioned volume settings are inconsistent' ;;
+  esac
+  RELEASE_POSTGRES_MAJOR=$POSTGRES_MAJOR
+  RELEASE_POSTGRES_DATA_MOUNT=$POSTGRES_DATA_MOUNT
+  RELEASE_POSTGRES_DATA_DIRECTORY=$POSTGRES_DATA_DIRECTORY
+  RELEASE_POSTGRES_VOLUME=$POSTGRES_VOLUME
+}
+
+validate_postgres_volume_ready() {
+  local database_image=$1
+  [[ $RELEASE_POSTGRES_MAJOR == 19 ]] || return 0
+  docker volume inspect grumphya-production-postgres >/dev/null 2>&1 ||
+    die 'PostgreSQL 17 source volume is missing; refusing a major upgrade'
+  docker volume inspect "$RELEASE_POSTGRES_VOLUME" >/dev/null 2>&1 ||
+    die 'versioned PostgreSQL 19 target volume is missing; refusing a major upgrade'
+  docker run --rm --network none \
+    --volume "$RELEASE_POSTGRES_VOLUME:$RELEASE_POSTGRES_DATA_MOUNT:ro" \
+    --env "PGDATA=$RELEASE_POSTGRES_DATA_DIRECTORY" \
+    --env "POSTGRES_DATA_MOUNT=$RELEASE_POSTGRES_DATA_MOUNT" \
+    --entrypoint sh "$database_image" -ec \
+    'test "$(cat "$PGDATA/PG_VERSION")" = 19 && test -s "$POSTGRES_DATA_MOUNT/.grumphya-pg19-migration-verified"' >/dev/null 2>&1 ||
+    die 'versioned PostgreSQL 19 volume lacks verified restored data; refusing a major upgrade'
 }
 
 install_release_helper() {
@@ -616,6 +647,7 @@ deploy() {
   log "release contents and rollback compatibility validated for $sha"
   log "loading scanned release images for $sha"
   load_release_images "$candidate_dir" "$sha"
+  validate_postgres_volume_ready "grumphya-database:$sha"
   log "scanned release images loaded for $sha"
   validate_audit_attestation "$candidate_dir" "$sha"
   mv "$candidate_dir" "$release_path"
@@ -778,6 +810,10 @@ WEB_IMAGE=grumphya-web:$sha
 DATABASE_IMAGE=grumphya-database:$sha
 PROXY_IMAGE=grumphya-proxy:$sha
 DEPLOY_SHA=$sha
+POSTGRES_MAJOR=17
+POSTGRES_DATA_MOUNT=/var/lib/postgresql/data
+POSTGRES_DATA_DIRECTORY=/var/lib/postgresql/data
+POSTGRES_VOLUME=grumphya-production-postgres
 EOF
   docker save --output "$staging/images.tar" \
     "grumphya-api:$sha" "grumphya-web:$sha" \

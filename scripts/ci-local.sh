@@ -64,6 +64,15 @@ rsync -a --delete \
   --exclude='dist' --exclude='coverage' --exclude='test-results' \
   --exclude='playwright-report' --exclude='.turbo' \
   "$ROOT/" "$STAGING/source/"
+# CI fixtures may require tracked examples under .secrets, but never copy local secrets.
+mkdir -p "$STAGING/source/.secrets"
+cp "$ROOT"/.secrets/*.example "$STAGING/source/.secrets/"
+git -C "$STAGING/source" init --quiet --initial-branch=main
+git -C "$STAGING/source" config user.name 'Grumphya CI Fixture'
+git -C "$STAGING/source" config user.email 'ci-fixture@grumphya.invalid'
+git -C "$STAGING/source" add --all
+git -C "$STAGING/source" commit --quiet --message 'test: create isolated CI fixture revision'
+git -C "$STAGING/source" update-ref refs/remotes/origin/main HEAD
 
 docker build --progress plain --platform linux/amd64 \
   --build-arg "NODE_VERSION=$NODE_VERSION" \

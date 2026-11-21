@@ -63,6 +63,11 @@ fi
 if [[ $1 == info ]]; then exit 0; fi
 if [[ $1 == load ]]; then exit 0; fi
 if [[ $1 == exec ]]; then exit 0; fi
+if [[ $1 == volume && ${2:-} == inspect ]]; then exit 0; fi
+if [[ $1 == run ]]; then
+  [[ ${TEST_PG19_READY:-0} == 1 ]]
+  exit
+fi
 if [[ $1 == image && ${2:-} == inspect ]]; then
   if [[ ${3:-} == --format ]]; then
     printf 'sha256:fake-id\n'
@@ -177,7 +182,7 @@ MV_STUB
   export GRUMPHYA_ROOT="$TEST_ROOT"
   export GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy"
   export GRUMPHYA_TESTING=1
-  unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_AI_SMOKE_SHA FAIL_CURRENT_STATE_MOVE_ONCE MOCK_INGRESS_INTERNAL || true
+  unset FAIL_UP_SHA FAIL_CONFIG_SHA FAIL_AI_SMOKE_SHA FAIL_CURRENT_STATE_MOVE_ONCE MOCK_INGRESS_INTERNAL BUNDLE_POSTGRES_MAJOR TEST_PG19_READY || true
 }
 
 cleanup_fixture() {
@@ -198,6 +203,10 @@ WEB_IMAGE=grumphya-web:$sha
 DATABASE_IMAGE=grumphya-database:$sha
 PROXY_IMAGE=grumphya-proxy:$sha
 DEPLOY_SHA=$sha
+POSTGRES_MAJOR=17
+POSTGRES_DATA_MOUNT=/var/lib/postgresql/data
+POSTGRES_DATA_DIRECTORY=/var/lib/postgresql/data
+POSTGRES_VOLUME=grumphya-production-postgres
 EOF
   ln -s "$TEST_ROOT/.secrets" "$dir/.secrets"
   chmod -R u+rwX "$dir"
@@ -207,6 +216,15 @@ EOF
 
 make_bundle() {
   local sha=$1 migration_content=$2 migration_name=${3:-002_candidate.sql}
+  local postgres_major=${BUNDLE_POSTGRES_MAJOR:-17}
+  local postgres_data_mount=/var/lib/postgresql/data
+  local postgres_data_directory=/var/lib/postgresql/data
+  local postgres_volume=grumphya-production-postgres
+  if [[ $postgres_major == 19 ]]; then
+    postgres_data_mount=/var/lib/postgresql
+    postgres_data_directory=/var/lib/postgresql/19/docker
+    postgres_volume=grumphya-production-postgres-pg19
+  fi
   local dir="$TEST_ROOT/payload"
   rm -rf -- "$dir"
   mkdir -p "$dir/docker" "$dir/migrations"
@@ -224,6 +242,10 @@ WEB_IMAGE=grumphya-web:$sha
 DATABASE_IMAGE=grumphya-database:$sha
 PROXY_IMAGE=grumphya-proxy:$sha
 DEPLOY_SHA=$sha
+POSTGRES_MAJOR=$postgres_major
+POSTGRES_DATA_MOUNT=$postgres_data_mount
+POSTGRES_DATA_DIRECTORY=$postgres_data_directory
+POSTGRES_VOLUME=$postgres_volume
 EOF
   tar -C "$dir" -czf "$TEST_ROOT/bundle.tar.gz" .
   BUNDLE_BYTES=$(wc -c < "$TEST_ROOT/bundle.tar.gz" | tr -d '[:space:]')
@@ -268,6 +290,28 @@ ALTER TABLE baseline ADD COLUMN note text;'
   if grep -Eq '(^| )down( |$)|-v|--volumes|volume prune' "$DOCKER_LOG"; then
     fail 'deploy used a volume-destructive command'
   fi
+  cleanup_fixture
+}
+
+test_pg19_release_requires_verified_versioned_volume() {
+  new_fixture
+  seed_release "$OLD_SHA"
+  export BUNDLE_POSTGRES_MAJOR=19
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  if run_deploy "$NEW_SHA" >/dev/null 2>&1; then
+    fail 'PostgreSQL 19 release deployed without a verified restored volume'
+  fi
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$OLD_SHA" 'current state after missing PostgreSQL 19 restore marker'
+  if grep -Fq -- "--file $TEST_ROOT/releases/$NEW_SHA/compose.production.yaml up" "$DOCKER_LOG"; then
+    fail 'PostgreSQL 19 release started before the restored volume was verified'
+  fi
+
+  export TEST_PG19_READY=1
+  make_bundle "$NEW_SHA" '-- deployment-rollback-compatible: true
+ALTER TABLE baseline ADD COLUMN note text;'
+  run_deploy "$NEW_SHA" >/dev/null || fail 'verified PostgreSQL 19 volume did not deploy'
+  assert_eq "$(cat "$TEST_ROOT/state/current")" "$NEW_SHA" 'current state after verified PostgreSQL 19 deployment'
   cleanup_fixture
 }
 
@@ -735,7 +779,7 @@ test_gateway_accepts_only_allowlisted_commands() {
   status_output=$(SSH_ORIGINAL_COMMAND=status "$DEPLOY_HELPER" gateway)
   assert_eq "$status_output" none 'gateway status command'
   status_output=$(SSH_ORIGINAL_COMMAND=helper-version "$DEPLOY_HELPER" gateway)
-  assert_eq "$status_output" 4 'gateway helper version command'
+  assert_eq "$status_output" 5 'gateway helper version command'
   for command in \
     'status extra' \
     'rollback --volumes' \
@@ -752,6 +796,7 @@ test_gateway_accepts_only_allowlisted_commands() {
 
 for test_case in \
   test_deploy_ok \
+  test_pg19_release_requires_verified_versioned_volume \
   test_optional_caddy_sites_survive_new_release \
   test_missing_ingress_keeps_default_deployment \
   test_all_time_ranking_migration_is_rollback_compatible \
