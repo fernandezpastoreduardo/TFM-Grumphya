@@ -722,8 +722,8 @@ const deploymentPreflightStep = deploymentStep.slice(
   deploymentExecutionStepStart - deploymentStepStart,
 );
 assert.ok(
-  deploymentPreflightStep.includes('[[ ! "$helper_version" =~ ^(4|5)$ ]]'),
-  "preflight must accept both the installed v4 helper and upgraded v5 helper",
+  deploymentPreflightStep.includes('[[ ! "$helper_version" =~ ^(4|5|6)$ ]]'),
+  "preflight must accept the installed v4 helper and upgraded v5/v6 helpers",
 );
 assert.match(
   deploymentPreflightStep,

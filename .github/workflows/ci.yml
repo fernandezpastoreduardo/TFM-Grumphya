@@ -594,8 +594,8 @@ jobs:
             echo '::error::The VPS deployment helper is outdated or unreachable. Recover administrative SSH access and install the reviewed helper before retrying.'
             exit 1
           fi
-          if [[ ! "$helper_version" =~ ^(4|5)$ ]]; then
-            echo "::error::The VPS deployment helper is version $helper_version; version 4 or 5 is required. Recover administrative SSH access and install the reviewed helper before retrying."
+          if [[ ! "$helper_version" =~ ^(4|5|6)$ ]]; then
+            echo "::error::The VPS deployment helper is version $helper_version; version 4, 5 or 6 is required. Recover administrative SSH access and install the reviewed helper before retrying."
             exit 1
           fi
           echo "Checking VPS capacity and current release before transferring $release_bytes bytes."
@@ -626,6 +626,8 @@ jobs:
           PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
           PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
           PRODUCTION_DOMAIN: ${{ vars.PRODUCTION_DOMAIN }}
+          AUDIT_ENABLED: ${{ vars.AUDIT_ENABLED }}
+          AUDIT_RELEASE_SIGNING_KEY: ${{ secrets.AUDIT_RELEASE_SIGNING_KEY }}
           RELEASE_BYTES: ${{ steps.production-preflight.outputs.release_bytes }}
           RELEASE_SHA256: ${{ steps.production-preflight.outputs.release_sha256 }}
           PREVIOUS_RELEASE_SHA: ${{ steps.production-preflight.outputs.previous_sha }}
@@ -636,6 +638,9 @@ jobs:
           : "${PRODUCTION_SSH_USER:?Create secret PRODUCTION_SSH_USER}"
           : "${PRODUCTION_SSH_PRIVATE_KEY:?Create secret PRODUCTION_SSH_PRIVATE_KEY}"
           : "${PRODUCTION_SSH_KNOWN_HOSTS:?Create secret PRODUCTION_SSH_KNOWN_HOSTS}"
+          if [[ "${AUDIT_ENABLED:-false}" == "true" ]]; then
+            : "${AUDIT_RELEASE_SIGNING_KEY:?Create secret AUDIT_RELEASE_SIGNING_KEY}"
+          fi
           : "${PRODUCTION_DOMAIN:?Create variable PRODUCTION_DOMAIN}"
           [[ "$PRODUCTION_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
           [[ "$PRODUCTION_SSH_USER" =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]]
@@ -684,6 +689,17 @@ jobs:
             fi
             trap request_rollback_and_verify ERR
           fi
+          if [[ "${AUDIT_ENABLED:-false}" == "true" ]]; then
+            signing_key="$RUNNER_TEMP/production-ssh/audit-release-signing-key.pem"
+            printf '%s\n' "$AUDIT_RELEASE_SIGNING_KEY" > "$signing_key"
+            chmod 600 "$signing_key"
+            if ! ssh "${ssh_args[@]}" "$ssh_target" provision-audit-signing-key < "$signing_key"; then
+              rm -f "$signing_key"
+              echo '::error::The audit release signing key could not be provisioned or the API did not restart healthy.'
+              exit 1
+            fi
+            rm -f "$signing_key"
+          fi
           echo "Checking public application endpoints for release $GITHUB_SHA."
           curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 "https://$PRODUCTION_DOMAIN/" >/dev/null
           curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/account" >/dev/null
@@ -692,6 +708,13 @@ jobs:
           curl --fail --silent --show-error "https://$PRODUCTION_DOMAIN/build.json" > "$RUNNER_TEMP/web-build.json"
           node -e 'const build = require(process.argv[1]); if (build.revision !== process.argv[2]) process.exit(1)' "$RUNNER_TEMP/web-build.json" "$GITHUB_SHA"
           bash scripts/smoke-public-certification.sh "$PRODUCTION_DOMAIN"
+          if [[ "${AUDIT_ENABLED:-false}" == "true" ]]; then
+            audit_status=$(curl --silent --show-error --output "$RUNNER_TEMP/audit-processors-response.json" --write-out '%{http_code}' "https://$PRODUCTION_DOMAIN/api/audit/processors")
+            if [[ "$audit_status" != 401 ]]; then
+              echo '::error::The private processor inventory endpoint did not reject an unauthenticated request as expected.'
+              exit 1
+            fi
+          fi
           trap - ERR
   deploy-production:
     name: Production deployment confirmed

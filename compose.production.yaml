@@ -130,6 +130,7 @@ services:
       - openai_settings
       - openai_key
       - mail_settings
+      - audit_release_signing_key
       - source: internal_tls_ca
         target: internal_tls_ca.crt
       - source: api_tls_cert
@@ -295,6 +296,8 @@ secrets:
     file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/openai_key
   mail_settings:
     file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/mail_settings
+  audit_release_signing_key:
+    file: ${AUDIT_RELEASE_SIGNING_KEY_FILE:-/dev/null}
   admin_settings:
     file: ${GRUMPHYA_SECRETS_DIR:-./.secrets}/admin_settings
   internal_tls_ca:

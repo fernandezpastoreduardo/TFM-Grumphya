@@ -51,6 +51,7 @@ async function runScenario({
   expectedStatus,
   expectedCommands,
   expectedActiveSha,
+  auditEnabled = false,
 }) {
   await writeFile(statePath, previousSha);
   await writeFile(logPath, "");
@@ -69,6 +70,10 @@ async function runScenario({
       RELEASE_BYTES: String(Buffer.byteLength(bundle)),
       RELEASE_SHA256: bundleHash,
       PREVIOUS_RELEASE_SHA: previousSha,
+      AUDIT_ENABLED: auditEnabled ? "true" : "false",
+      AUDIT_RELEASE_SIGNING_KEY: auditEnabled
+        ? "synthetic-test-private-key"
+        : "",
       GITHUB_SHA: NEW_SHA,
       MOCK_STATE: statePath,
       MOCK_LOG: logPath,
@@ -106,6 +111,7 @@ try {
     'command="${!#}"',
     'case "$command" in',
     '  deploy*) printf "deploy\\n" >> "$MOCK_LOG"; printf "%s" "$GITHUB_SHA" > "$MOCK_STATE" ;;',
+    '  provision-audit-signing-key) printf "provision-audit-signing-key\\n" >> "$MOCK_LOG" ;;',
     '  rollback) printf "rollback\\n" >> "$MOCK_LOG"; printf "%s" "$PREVIOUS_RELEASE_SHA" > "$MOCK_STATE" ;;',
     '  status) cat "$MOCK_STATE" ;;',
     "  *) exit 2 ;;",
@@ -114,6 +120,7 @@ try {
   await writeMock("curl", [
     'url="${!#}"',
     'active_sha=$(cat "$MOCK_STATE")',
+    'if [[ "$url" == */api/audit/processors ]]; then printf "401"; exit 0; fi',
     'if [[ "$url" == */account && "$MOCK_FAIL_ACCOUNT" == 1 && "$active_sha" == "$GITHUB_SHA" ]]; then exit 22; fi',
     'case "$url" in',
     '  */api/health) printf \'{"status":"ok","revision":"%s"}\\n\' "$active_sha" ;;',
@@ -153,6 +160,15 @@ try {
     expectedStatus: 1,
     expectedCommands: ["deploy", "rollback"],
     expectedActiveSha: OLD_SHA,
+  });
+  await runScenario({
+    name: "new audited deployment provisions the signer before smoke checks",
+    previousSha: OLD_SHA,
+    failAccount: false,
+    expectedStatus: 0,
+    expectedCommands: ["deploy", "provision-audit-signing-key"],
+    expectedActiveSha: NEW_SHA,
+    auditEnabled: true,
   });
 } finally {
   await rm(tempRoot, { recursive: true, force: true });

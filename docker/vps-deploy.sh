@@ -21,7 +21,7 @@ readonly EXPECTED_SECRETS=(
 )
 readonly IMAGE_NAMES=(api web database proxy)
 readonly SHA_PATTERN='^[0-9a-f]{40}$'
-readonly HELPER_VERSION=5
+readonly HELPER_VERSION=6
 readonly DEFAULT_ROOT=/opt/grumphya
 readonly MIN_FREE_BYTES_DEFAULT=536870912
 
@@ -41,6 +41,14 @@ ADDITIONAL_COMPOSE_FILE="$ROOT/integrations/compose.yaml"
 LOCK_FD=9
 DEPLOY_TEMP_DIR=''
 ROLLOUT_IN_PROGRESS=0
+AUDIT_KEY_STAGING_FILE=''
+AUDIT_PUBLIC_STAGING_FILE=''
+
+cleanup_audit_key_staging() {
+  [[ -z $AUDIT_KEY_STAGING_FILE ]] || rm -f -- "$AUDIT_KEY_STAGING_FILE"
+  [[ -z $AUDIT_PUBLIC_STAGING_FILE ]] || rm -f -- "$AUDIT_PUBLIC_STAGING_FILE"
+}
+trap cleanup_audit_key_staging EXIT
 
 die() {
   printf 'grumphya-deploy: %s\n' "$1" >&2
@@ -154,7 +162,7 @@ check_secrets() {
 
 check_tools() {
   local tool
-  for tool in docker flock tar sha256sum df awk wc head mktemp mv cp rm find sort grep stat tr; do
+  for tool in docker flock tar sha256sum df awk wc head mktemp mv cp rm find sort grep stat tr install; do
     command -v "$tool" >/dev/null 2>&1 || die "required command is unavailable: $tool"
   done
   docker compose version >/dev/null 2>&1 || die 'Docker Compose v2 is unavailable'
@@ -380,6 +388,73 @@ install_release_helper() {
     die 'cannot activate the release deployment helper'
   }
   log "deployment helper updated to version $version from the validated release"
+}
+
+provision_audit_signing_key() {
+  [[ $# -eq 0 ]] || die 'usage: provision-audit-signing-key'
+  require_root
+  ensure_layout
+  check_secrets
+  check_tools
+  audit_integration_enabled || die 'audit integration is disabled'
+
+  local staging public_file setting line current_sha temporary_env current
+  current_sha=$(read_state current)
+  [[ $current_sha =~ $SHA_PATTERN ]] || die 'current release is unavailable'
+  current="$RELEASES_DIR/$current_sha"
+  release_is_complete "$current_sha" || die 'current release is unavailable'
+  staging=$(mktemp "$ROOT/incoming/audit-signing-key.XXXXXXXX")
+  public_file=$(mktemp "$ROOT/incoming/audit-signing-public.XXXXXXXX")
+  AUDIT_KEY_STAGING_FILE=$staging
+  AUDIT_PUBLIC_STAGING_FILE=$public_file
+  chmod 600 "$staging" "$public_file"
+  head -c 16385 > "$staging" || die 'audit signing key could not be received'
+  if (( $(wc -c < "$staging") > 16384 )); then
+    die 'audit signing key exceeds the allowed size'
+  fi
+  [[ -s $staging ]] || die 'audit signing key is empty'
+
+  setting=$(read_grumphya_setting AUDIT_RELEASE_MANIFEST_PUBLIC_KEY)
+  setting=${setting//\\n/$'\n'}
+  [[ -n $setting ]] || die 'audit release public key is unavailable'
+  printf '%s\n' "$setting" > "$public_file"
+  if ! docker run --rm --network none \
+    --volume "$staging:/audit/private.pem:ro" \
+    --volume "$public_file:/audit/public.pem:ro" \
+    --entrypoint node "grumphya-api:$current_sha" -e '
+      const { readFileSync } = require("node:fs");
+      const { createPrivateKey, createPublicKey } = require("node:crypto");
+      const privateKey = createPrivateKey(readFileSync("/audit/private.pem"));
+      const configuredPublicKey = createPublicKey(readFileSync("/audit/public.pem"));
+      const derivedPublicKey = createPublicKey(privateKey);
+      const configuredDer = configuredPublicKey.export({ type: "spki", format: "der" });
+      const derivedDer = derivedPublicKey.export({ type: "spki", format: "der" });
+      if (!configuredDer.equals(derivedDer)) process.exit(1);
+    ' >/dev/null 2>&1; then
+    die 'audit signing key does not match the configured release public key'
+  fi
+
+  if [[ ${GRUMPHYA_TESTING:-0} == 1 ]]; then
+    install -m 0600 "$staging" "$SECRETS_DIR/audit_release_signing_key"
+  else
+    install -o root -g root -m 0600 "$staging" "$SECRETS_DIR/audit_release_signing_key"
+  fi
+  setting="$SECRETS_DIR/audit_release_signing_key"
+  temporary_env="$ENV_FILE.$$.tmp"
+  : > "$temporary_env"
+  chmod 600 "$temporary_env"
+  while IFS= read -r line || [[ -n $line ]]; do
+    if [[ $line == AUDIT_RELEASE_SIGNING_KEY_FILE=* ]]; then
+      continue
+    fi
+    printf '%s\n' "$line" >> "$temporary_env"
+  done < "$ENV_FILE"
+  printf 'AUDIT_RELEASE_SIGNING_KEY_FILE=%s\n' "$setting" >> "$temporary_env"
+  mv -f -- "$temporary_env" "$ENV_FILE"
+
+  compose_for "$current" up -d --no-build --no-deps --force-recreate --wait api >/dev/null ||
+    die 'API could not restart with the audit signing key'
+  log 'audit release signing key provisioned and API restarted'
 }
 
 is_approved_illuminado_repricing_migration() {
@@ -749,6 +824,9 @@ gateway() {
   if [[ $command == status ]]; then
     exec "$0" status
   fi
+  if [[ $command == provision-audit-signing-key ]]; then
+    exec "$0" provision-audit-signing-key
+  fi
   if [[ $command == helper-version ]]; then
     exec "$0" helper-version
   fi
@@ -828,7 +906,7 @@ EOF
 }
 
 main() {
-  [[ $# -ge 1 ]] || die 'usage: preflight|deploy|rollback|status|helper-version|bootstrap|gateway'
+  [[ $# -ge 1 ]] || die 'usage: preflight|deploy|rollback|status|helper-version|provision-audit-signing-key|bootstrap|gateway'
   local action=$1
   shift
   case "$action" in
@@ -837,6 +915,7 @@ main() {
     rollback) rollback "$@" ;;
     status) status "$@" ;;
     helper-version) helper_version "$@" ;;
+    provision-audit-signing-key) provision_audit_signing_key "$@" ;;
     bootstrap) bootstrap "$@" ;;
     gateway) gateway "$@" ;;
     *) die 'unknown action' ;;

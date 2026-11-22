@@ -103,6 +103,15 @@ else
   export API_TLS_KEY_FILE=${API_TLS_KEY_FILE:-$SECRETS_DIR/api_tls.key}
   export NODE_EXTRA_CA_CERTS=${NODE_EXTRA_CA_CERTS:-$SECRETS_DIR/internal_tls_ca.crt}
 fi
+if [ "$(id -u)" -eq 0 ] && [ -s "$SECRETS_DIR/audit_release_signing_key" ]; then
+  AUDIT_RUNTIME_DIR=$(mktemp -d /tmp/grumphya-audit.XXXXXX)
+  chown node:node "$AUDIT_RUNTIME_DIR"
+  chmod 0700 "$AUDIT_RUNTIME_DIR"
+  install -o node -g node -m 0400 \
+    "$SECRETS_DIR/audit_release_signing_key" \
+    "$AUDIT_RUNTIME_DIR/signing-key.pem"
+  export AUDIT_RELEASE_SIGNING_PRIVATE_KEY_FILE="$AUDIT_RUNTIME_DIR/signing-key.pem"
+fi
 export WEB_ORIGIN=${WEB_ORIGIN:-http://127.0.0.1:5173}
 export PGPASSWORD="$GRUMPHYA_DB_PASSWORD"
 unset GRUMPHYA_DB_PASSWORD

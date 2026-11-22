@@ -65,6 +65,10 @@ if [[ $1 == load ]]; then exit 0; fi
 if [[ $1 == exec ]]; then exit 0; fi
 if [[ $1 == volume && ${2:-} == inspect ]]; then exit 0; fi
 if [[ $1 == run ]]; then
+  if [[ " $* " == *" --entrypoint node "* ]]; then
+    [[ ${TEST_AUDIT_KEY_MATCH:-0} == 1 ]]
+    exit
+  fi
   [[ ${TEST_PG19_READY:-0} == 1 ]]
   exit
 fi
@@ -779,7 +783,7 @@ test_gateway_accepts_only_allowlisted_commands() {
   status_output=$(SSH_ORIGINAL_COMMAND=status "$DEPLOY_HELPER" gateway)
   assert_eq "$status_output" none 'gateway status command'
   status_output=$(SSH_ORIGINAL_COMMAND=helper-version "$DEPLOY_HELPER" gateway)
-  assert_eq "$status_output" 5 'gateway helper version command'
+  assert_eq "$status_output" 6 'gateway helper version command'
   for command in \
     'status extra' \
     'rollback --volumes' \
@@ -791,6 +795,47 @@ test_gateway_accepts_only_allowlisted_commands() {
     fi
   done
   [[ ! -e $injection_file ]] || fail 'gateway executed shell text from SSH_ORIGINAL_COMMAND'
+  cleanup_fixture
+}
+
+test_audit_signing_key_is_verified_and_provisioned_privately() {
+  new_fixture
+  local public_key_escaped
+  node --input-type=module - "$TEST_ROOT" <<'NODE'
+import { generateKeyPairSync } from "node:crypto";
+import { writeFileSync } from "node:fs";
+const root = process.argv[2];
+const pair = generateKeyPairSync("ed25519");
+writeFileSync(`${root}/audit-private.pem`, pair.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });
+writeFileSync(`${root}/audit-public.pem`, pair.publicKey.export({ type: "spki", format: "pem" }), { mode: 0o600 });
+const wrong = generateKeyPairSync("ed25519");
+writeFileSync(`${root}/wrong-private.pem`, wrong.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });
+NODE
+  public_key_escaped=$(awk 'BEGIN { ORS="" } { printf "%s\\n", $0 }' "$TEST_ROOT/audit-public.pem")
+  cat > "$TEST_ROOT/.secrets/grumphya_env" <<EOF
+AUDIT_ENABLED=true
+AUDIT_RELEASE_MANIFEST_PUBLIC_KEY=$public_key_escaped
+EOF
+  seed_release "$OLD_SHA"
+
+  if ! TEST_AUDIT_KEY_MATCH=1 GRUMPHYA_TESTING=1 GRUMPHYA_ROOT="$TEST_ROOT" GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy" \
+    PATH="$TEST_BIN:$PATH" SSH_ORIGINAL_COMMAND=provision-audit-signing-key \
+    "$DEPLOY_HELPER" gateway < "$TEST_ROOT/audit-private.pem" > "$TEST_ROOT/provision.out" 2> "$TEST_ROOT/provision.err"; then
+    fail 'the matching audit signing key was not provisioned'
+  fi
+  [[ -f $TEST_ROOT/.secrets/audit_release_signing_key ]] || fail 'the audit signing key was not installed'
+  assert_eq "$(stat -c '%a' "$TEST_ROOT/.secrets/audit_release_signing_key")" 600 'audit signing key mode'
+  assert_contains "$TEST_ROOT/.env.production" "AUDIT_RELEASE_SIGNING_KEY_FILE=$TEST_ROOT/.secrets/audit_release_signing_key"
+  assert_contains "$DOCKER_LOG" 'up -d --no-build --no-deps --force-recreate --wait api'
+  if grep -Fq 'PRIVATE KEY' "$TEST_ROOT/provision.out" "$TEST_ROOT/provision.err" "$DOCKER_LOG"; then
+    fail 'audit signing key material appeared in command output or Docker logs'
+  fi
+
+  if TEST_AUDIT_KEY_MATCH=0 GRUMPHYA_TESTING=1 GRUMPHYA_ROOT="$TEST_ROOT" GRUMPHYA_DEPLOY_HELPER_PATH="$TEST_ROOT/usr/local/sbin/grumphya-deploy" \
+    PATH="$TEST_BIN:$PATH" SSH_ORIGINAL_COMMAND=provision-audit-signing-key \
+    "$DEPLOY_HELPER" gateway < "$TEST_ROOT/wrong-private.pem" > /dev/null 2>&1; then
+    fail 'an audit signing key that did not match the release public key was accepted'
+  fi
   cleanup_fixture
 }
 
@@ -825,6 +870,7 @@ for test_case in \
   test_lowercase_destructive_migration_is_blocked \
   test_changed_old_migration_is_blocked \
   test_bootstrap_snapshots_running_images_without_recreating \
+  test_audit_signing_key_is_verified_and_provisioned_privately \
   test_gateway_accepts_only_allowlisted_commands; do
   "$test_case"
   printf 'PASS %s\n' "$test_case"
