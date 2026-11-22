@@ -68,6 +68,7 @@ const auditPaths = [
   "/audit/quality",
   "/audit/privacy",
   "/audit/ai",
+  "/audit/processors",
 ];
 for (const path of auditPaths)
   assert.match(caddy, new RegExp(path.replaceAll("/", "\\/")));

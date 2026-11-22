@@ -122,7 +122,7 @@ try {
   await writeMock("curl", [
     'url="${!#}"',
     'active_sha=$(cat "$MOCK_STATE")',
-    'if [[ "$url" == */api/audit/processors ]]; then printf "%s" "$MOCK_AUDIT_STATUS"; exit 0; fi',
+    'if [[ "$url" == */audit/processors ]]; then printf "%s" "$MOCK_AUDIT_STATUS"; exit 0; fi',
     'if [[ "$url" == */account && "$MOCK_FAIL_ACCOUNT" == 1 && "$active_sha" == "$GITHUB_SHA" ]]; then exit 22; fi',
     'case "$url" in',
     '  */api/health) printf \'{"status":"ok","revision":"%s"}\\n\' "$active_sha" ;;',
