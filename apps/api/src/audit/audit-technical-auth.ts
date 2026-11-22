@@ -385,7 +385,11 @@ export class AuditTechnicalAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuditRequest>();
     const response = context.switchToHttp().getResponse<Response>();
     try {
-      const resource = request.params.resource as AuditResource | undefined;
+      const routeResource = request.params.resource as string | undefined;
+      const resource =
+        routeResource === "processors"
+          ? "privacy"
+          : (routeResource as AuditResource | undefined);
       if (!resource) {
         throw auditError(
           404,

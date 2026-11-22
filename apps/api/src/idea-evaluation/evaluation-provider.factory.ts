@@ -5,6 +5,7 @@ import {
 } from "./openai-evaluation.port";
 import type { EvaluationPort } from "./evaluation-port";
 import type { AiUsageRecorder } from "../infrastructure/ai/ai-usage";
+import { recordBackendProcessorRegistration } from "../infrastructure/observability/backend-processors-registry";
 
 const EVALUATION_PROVIDER_ENV = "EVALUATION_PROVIDER";
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
@@ -32,21 +33,31 @@ export function createEvaluationProvider(
   usageRecorder?: AiUsageRecorder,
 ): EvaluationPort | undefined {
   const selectedProvider = process.env[EVALUATION_PROVIDER_ENV];
-  if (!selectedProvider) return undefined;
+  if (!selectedProvider) {
+    recordBackendProcessorRegistration("openai-evaluation", null);
+    return undefined;
+  }
   if (selectedProvider !== SUPPORTED_PROVIDER) {
     throw new Error("EVALUATION_PROVIDER is not supported.");
   }
 
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
   if (!apiKey) {
+    recordBackendProcessorRegistration("openai-evaluation", null);
     throw new Error("OPENAI_API_KEY is required for the selected provider.");
   }
 
   const configuredModel = process.env[OPENAI_MODEL_ENV]?.trim();
-  return new OpenAiEvaluationPort({
+  const provider = new OpenAiEvaluationPort({
     apiKey,
     model: configuredModel || DEFAULT_OPENAI_MODEL,
     reasoningEffort: getReasoningEffort(),
     usageRecorder,
   });
+  recordBackendProcessorRegistration("openai-evaluation", {
+    providerId: "openai",
+    displayName: "OpenAI",
+    product: "Responses API",
+  });
+  return provider;
 }

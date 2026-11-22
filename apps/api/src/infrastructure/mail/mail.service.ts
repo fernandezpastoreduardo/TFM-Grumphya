@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { isEmailAddress } from "../validation/email-address";
 import { SmtpMailTransport, type MailEnvelope } from "./smtp-mail.transport";
+import { recordBackendProcessorRegistration } from "../observability/backend-processors-registry";
+import { smtpBackendProcessor } from "./smtp-backend-processor";
 
 export type MailMessage = MailEnvelope;
 export type MailDeliveryResult = "sent" | "previewed";
@@ -43,6 +45,10 @@ export class MailService {
         fromAddress: requireEmail(process.env.MAIL_FROM_ADDRESS!),
       });
     }
+    recordBackendProcessorRegistration(
+      "smtp-mail",
+      this.smtp ? smtpBackendProcessor(process.env.MAIL_SMTP_HOST!) : null,
+    );
   }
 
   async send(message: MailMessage): Promise<MailDeliveryResult> {

@@ -5,11 +5,15 @@ import { AuditTechnicalAuthGuard } from "./audit-technical-auth";
 import { AuditRequestPolicyGuard } from "./audit-request-policy";
 import { AUDIT_RESOURCES, type AuditResource } from "./audit.models";
 import { AuditService } from "./audit.service";
+import { ProcessorInventoryService } from "./processor-inventory.service";
 
 @Controller("audit")
 @UseGuards(AuditTechnicalAuthGuard, AuditRequestPolicyGuard)
 export class AuditController {
-  constructor(private readonly service: AuditService) {}
+  constructor(
+    private readonly service: AuditService,
+    private readonly processors: ProcessorInventoryService,
+  ) {}
 
   @All(":resource")
   read(@Req() request: AuditRequest) {
@@ -23,17 +27,23 @@ export class AuditController {
         "No se permiten parámetros de consulta.",
       );
     }
-    const resource = request.params.resource as AuditResource;
-    if (!AUDIT_RESOURCES.includes(resource)) {
+    const resource = request.params.resource as string;
+    if (!request.auditTechnicalIdentity) {
+      throw auditError(401, "invalid_identity", "Falta la identidad técnica.");
+    }
+    if (resource === "processors") {
+      return this.processors.read(request.auditTechnicalIdentity);
+    }
+    if (!AUDIT_RESOURCES.includes(resource as AuditResource)) {
       throw auditError(
         404,
         "resource_not_allowed",
         "Recurso de auditoría no permitido.",
       );
     }
-    if (!request.auditTechnicalIdentity) {
-      throw auditError(401, "invalid_identity", "Falta la identidad técnica.");
-    }
-    return this.service.read(resource, request.auditTechnicalIdentity);
+    return this.service.read(
+      resource as AuditResource,
+      request.auditTechnicalIdentity,
+    );
   }
 }

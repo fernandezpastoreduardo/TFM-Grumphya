@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createEvaluationProvider } from "./evaluation-provider.factory";
 import { OpenAiEvaluationPort } from "./openai-evaluation.port";
+import {
+  readBackendProcessorRegistry,
+  resetBackendProcessorRegistryForTests,
+} from "../infrastructure/observability/backend-processors-registry";
 
 const PROVIDER_ENV = "EVALUATION_PROVIDER";
 const API_KEY_ENV = "OPENAI_API_KEY";
@@ -10,6 +14,7 @@ const REASONING_EFFORT_ENV = "OPENAI_REASONING_EFFORT";
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  resetBackendProcessorRegistryForTests();
 });
 
 describe("createEvaluationProvider", () => {
@@ -18,6 +23,11 @@ describe("createEvaluationProvider", () => {
     vi.stubEnv(API_KEY_ENV, "test-key");
 
     expect(createEvaluationProvider()).toBeUndefined();
+    expect(
+      readBackendProcessorRegistry().registrations.find(
+        ({ registrationId }) => registrationId === "openai-evaluation",
+      )?.processor,
+    ).toBeNull();
   });
 
   it("requires an API key for the explicitly selected OpenAI provider", () => {
@@ -58,6 +68,15 @@ describe("createEvaluationProvider", () => {
 
     const provider = createEvaluationProvider();
     expect(provider).toBeInstanceOf(OpenAiEvaluationPort);
+    expect(
+      readBackendProcessorRegistry().registrations.find(
+        ({ registrationId }) => registrationId === "openai-evaluation",
+      )?.processor,
+    ).toEqual({
+      providerId: "openai",
+      displayName: "OpenAI",
+      product: "Responses API",
+    });
     if (!provider) throw new Error("Expected configured OpenAI provider.");
 
     await provider.evaluate({

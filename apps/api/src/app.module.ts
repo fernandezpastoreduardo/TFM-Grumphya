@@ -52,6 +52,7 @@ import {
   type AdminDashboardRepository,
 } from "./admin-dashboard/admin-dashboard.models";
 import type { AiUsageRecorder } from "./infrastructure/ai/ai-usage";
+import { recordBackendProcessorRegistration } from "./infrastructure/observability/backend-processors-registry";
 import { CspReportController } from "./security/csp-report.controller";
 import { VerifyAccreditationModule } from "./verify-accreditation/verify-accreditation.module";
 import { AnonymousAnalyticsController } from "./anonymous-analytics/anonymous-analytics.controller";
@@ -59,28 +60,50 @@ import { AnonymousAnalyticsService } from "./anonymous-analytics/anonymous-analy
 import { AuditModule } from "./audit/audit.module";
 
 const OPENAI_API_KEY_ENV = "OPENAI_API_KEY";
-function createRoastReplyProvider(
+export function createRoastReplyProvider(
   repository: AdminDashboardRepository,
 ): OpenAiRoastReplyPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey
+  const provider = apiKey
     ? new OpenAiRoastReplyPort({
         apiKey,
         usageRecorder: toUsageRecorder(repository),
       })
     : undefined;
+  recordBackendProcessorRegistration(
+    "openai-roast",
+    provider
+      ? {
+          providerId: "openai",
+          displayName: "OpenAI",
+          product: "Responses API",
+        }
+      : null,
+  );
+  return provider;
 }
 
-function createTextEmbeddingProvider(
+export function createTextEmbeddingProvider(
   repository: AdminDashboardRepository,
 ): OpenAiTextEmbeddingPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey
+  const provider = apiKey
     ? new OpenAiTextEmbeddingPort({
         apiKey,
         usageRecorder: toUsageRecorder(repository),
       })
     : undefined;
+  recordBackendProcessorRegistration(
+    "openai-embedding",
+    provider
+      ? {
+          providerId: "openai",
+          displayName: "OpenAI",
+          product: "Embeddings API",
+        }
+      : null,
+  );
+  return provider;
 }
 
 function toUsageRecorder(
@@ -116,28 +139,50 @@ function createIdeaSearch(
   );
 }
 
-function createIdeaEquivalenceProvider(
+export function createIdeaEquivalenceProvider(
   repository: AdminDashboardRepository,
 ): OpenAiIdeaEquivalencePort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey
+  const provider = apiKey
     ? new OpenAiIdeaEquivalencePort({
         apiKey,
         usageRecorder: toUsageRecorder(repository),
       })
     : undefined;
+  recordBackendProcessorRegistration(
+    "openai-idea-equivalence",
+    provider
+      ? {
+          providerId: "openai",
+          displayName: "OpenAI",
+          product: "Responses API",
+        }
+      : null,
+  );
+  return provider;
 }
 
-function createSemanticIdeaFingerprintProvider(
+export function createSemanticIdeaFingerprintProvider(
   repository: AdminDashboardRepository,
 ): OpenAiSemanticIdeaFingerprintPort | undefined {
   const apiKey = process.env[OPENAI_API_KEY_ENV]?.trim();
-  return apiKey
+  const provider = apiKey
     ? new OpenAiSemanticIdeaFingerprintPort({
         apiKey,
         usageRecorder: toUsageRecorder(repository),
       })
     : undefined;
+  recordBackendProcessorRegistration(
+    "openai-idea-fingerprint",
+    provider
+      ? {
+          providerId: "openai",
+          displayName: "OpenAI",
+          product: "Responses API",
+        }
+      : null,
+  );
+  return provider;
 }
 
 function createIdeaSubmissionService(

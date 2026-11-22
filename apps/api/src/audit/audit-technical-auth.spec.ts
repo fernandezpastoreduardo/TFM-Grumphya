@@ -217,6 +217,32 @@ describe("technical audit JWT", () => {
     );
   });
 
+  it("authorises the processors route with audit:privacy without adding a Beta resource", () => {
+    configure();
+    const now = Math.floor(Date.now() / 1_000);
+    const request = {
+      params: { resource: "processors" },
+      ip: "127.0.0.1",
+      socket: { remoteAddress: "127.0.0.1" },
+      header: (name: string) =>
+        name === "authorization"
+          ? `Bearer ${token({ scope: "audit:privacy", iat: now, exp: now + 240 })}`
+          : undefined,
+    };
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({ setHeader: vi.fn() }),
+      }),
+    } as never;
+
+    expect(new AuditTechnicalAuthGuard().canActivate(context)).toBe(true);
+    expect(request).toHaveProperty(
+      "auditTechnicalIdentity.scopes",
+      new Set(["audit:privacy"]),
+    );
+  });
+
   it("rejects cookies even when the bearer identity is valid", () => {
     configure();
     const guard = new AuditTechnicalAuthGuard();

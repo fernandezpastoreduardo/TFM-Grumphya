@@ -259,6 +259,23 @@ function signedManifestIsValid(
     return false;
   }
 }
+export function verifiedCurrentReleaseDigest(
+  attestation: ReleaseAttestationRecord,
+  now: Date,
+): string | undefined {
+  if (!signedManifestIsValid(attestation, now)) return undefined;
+  const observedAt = parseDate(attestation.manifest.observedAt);
+  const validUntil = parseDate(attestation.manifest.validUntil);
+  const deploymentDigest = attestation.manifest.deploymentDigest;
+  if (!observedAt || !validUntil || typeof deploymentDigest !== "string")
+    return undefined;
+  try {
+    validateFreshness(observedAt, validUntil, now);
+  } catch {
+    return undefined;
+  }
+  return deploymentDigest;
+}
 function buildEnvelope(
   record: AuditEvidenceRecord,
   resource: AuditResource,
@@ -325,6 +342,21 @@ export class AuditService {
     private readonly repository: AuditEvidenceRepository,
     @Inject(AUDIT_CLOCK) private readonly clock: () => Date = () => new Date(),
   ) {}
+  async readCurrentReleaseDigest(): Promise<string> {
+    const attestation = await this.withTimeout(
+      this.repository.findLatestReleaseAttestation(),
+    );
+    const digest = attestation
+      ? verifiedCurrentReleaseDigest(attestation, this.clock())
+      : undefined;
+    if (!digest)
+      throw auditError(
+        503,
+        "evidence_unavailable",
+        "La atestación de release no está disponible.",
+      );
+    return digest;
+  }
   async read(
     resource: AuditResource,
     identity: AuditTechnicalIdentity,

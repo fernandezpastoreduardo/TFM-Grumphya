@@ -14,6 +14,10 @@ vi.mock("./smtp-mail.transport", () => ({
 }));
 
 import { MailService } from "./mail.service";
+import {
+  readBackendProcessorRegistry,
+  resetBackendProcessorRegistryForTests,
+} from "../observability/backend-processors-registry";
 
 const REQUIRED_ENV = [
   "NODE_ENV",
@@ -33,11 +37,13 @@ afterEach(() => {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
+  resetBackendProcessorRegistryForTests();
 });
 
 beforeEach(() => {
   vi.clearAllMocks();
   smtpSend.mockResolvedValue(undefined);
+  resetBackendProcessorRegistryForTests();
 });
 
 function configureProductionMail(
@@ -144,6 +150,21 @@ describe("MailService", () => {
       fromAddress: "mail@example.test",
     });
     expect(smtpSend).toHaveBeenCalledWith(VALID_MESSAGE);
+  });
+
+  it("registers the configured SMTP adapter without exposing its host", () => {
+    configureProductionMail();
+    new MailService();
+
+    const registration = readBackendProcessorRegistry().registrations.find(
+      ({ registrationId }) => registrationId === "smtp-mail",
+    );
+    expect(registration?.processor).toEqual({
+      providerId: "smtp-unidentified",
+      displayName: "Proveedor SMTP no identificado",
+      product: "SMTP",
+    });
+    expect(JSON.stringify(registration)).not.toContain("smtp.example.test");
   });
 
   it("propagates SMTP delivery failures without storing a local preview", async () => {
