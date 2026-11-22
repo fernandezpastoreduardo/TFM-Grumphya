@@ -418,7 +418,7 @@ provision_audit_signing_key() {
   setting=${setting//\\n/$'\n'}
   [[ -n $setting ]] || die 'audit release public key is unavailable'
   printf '%s\n' "$setting" > "$public_file"
-  if ! docker run --rm --network none \
+  if ! docker run --rm --network none --user 0:0 \
     --volume "$staging:/audit/private.pem:ro" \
     --volume "$public_file:/audit/public.pem:ro" \
     --entrypoint node "grumphya-api:$current_sha" -e '

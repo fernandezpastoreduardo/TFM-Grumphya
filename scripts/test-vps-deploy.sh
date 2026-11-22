@@ -827,6 +827,7 @@ EOF
   assert_eq "$(stat -c '%a' "$TEST_ROOT/.secrets/audit_release_signing_key")" 600 'audit signing key mode'
   assert_contains "$TEST_ROOT/.env.production" "AUDIT_RELEASE_SIGNING_KEY_FILE=$TEST_ROOT/.secrets/audit_release_signing_key"
   assert_contains "$DOCKER_LOG" 'up -d --no-build --no-deps --force-recreate --wait api'
+  assert_contains "$DOCKER_LOG" 'run --rm --network none --user 0:0'
   if grep -Fq 'PRIVATE KEY' "$TEST_ROOT/provision.out" "$TEST_ROOT/provision.err" "$DOCKER_LOG"; then
     fail 'audit signing key material appeared in command output or Docker logs'
   fi
