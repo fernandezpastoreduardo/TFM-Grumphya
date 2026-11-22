@@ -52,6 +52,7 @@ async function runScenario({
   expectedCommands,
   expectedActiveSha,
   auditEnabled = false,
+  auditStatus = 401,
 }) {
   await writeFile(statePath, previousSha);
   await writeFile(logPath, "");
@@ -78,6 +79,7 @@ async function runScenario({
       MOCK_STATE: statePath,
       MOCK_LOG: logPath,
       MOCK_FAIL_ACCOUNT: failAccount ? "1" : "0",
+      MOCK_AUDIT_STATUS: String(auditStatus),
     },
   });
   assert.equal(
@@ -120,7 +122,7 @@ try {
   await writeMock("curl", [
     'url="${!#}"',
     'active_sha=$(cat "$MOCK_STATE")',
-    'if [[ "$url" == */api/audit/processors ]]; then printf "401"; exit 0; fi',
+    'if [[ "$url" == */api/audit/processors ]]; then printf "%s" "$MOCK_AUDIT_STATUS"; exit 0; fi',
     'if [[ "$url" == */account && "$MOCK_FAIL_ACCOUNT" == 1 && "$active_sha" == "$GITHUB_SHA" ]]; then exit 22; fi',
     'case "$url" in',
     '  */api/health) printf \'{"status":"ok","revision":"%s"}\\n\' "$active_sha" ;;',
@@ -169,6 +171,26 @@ try {
     expectedCommands: ["deploy", "provision-audit-signing-key"],
     expectedActiveSha: NEW_SHA,
     auditEnabled: true,
+  });
+  await runScenario({
+    name: "audited endpoint rejects a runner outside its allowlisted network",
+    previousSha: OLD_SHA,
+    failAccount: false,
+    expectedStatus: 0,
+    expectedCommands: ["deploy", "provision-audit-signing-key"],
+    expectedActiveSha: NEW_SHA,
+    auditEnabled: true,
+    auditStatus: 403,
+  });
+  await runScenario({
+    name: "audited endpoint smoke rejects unexpected public responses",
+    previousSha: OLD_SHA,
+    failAccount: false,
+    expectedStatus: 1,
+    expectedCommands: ["deploy", "provision-audit-signing-key"],
+    expectedActiveSha: NEW_SHA,
+    auditEnabled: true,
+    auditStatus: 404,
   });
 } finally {
   await rm(tempRoot, { recursive: true, force: true });

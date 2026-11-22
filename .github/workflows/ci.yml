@@ -710,8 +710,8 @@ jobs:
           bash scripts/smoke-public-certification.sh "$PRODUCTION_DOMAIN"
           if [[ "${AUDIT_ENABLED:-false}" == "true" ]]; then
             audit_status=$(curl --silent --show-error --output "$RUNNER_TEMP/audit-processors-response.json" --write-out '%{http_code}' "https://$PRODUCTION_DOMAIN/api/audit/processors")
-            if [[ "$audit_status" != 401 ]]; then
-              echo '::error::The private processor inventory endpoint did not reject an unauthenticated request as expected.'
+            if [[ "$audit_status" != 401 && "$audit_status" != 403 ]]; then
+              echo "::error::The private processor inventory endpoint returned unexpected HTTP status $audit_status; expected 401 or 403."
               exit 1
             fi
           fi
