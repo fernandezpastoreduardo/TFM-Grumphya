@@ -279,6 +279,9 @@ describe("technical audit JWT", () => {
 
   it("rejects the processors route from an unallowed source despite valid credentials", () => {
     configure({ AUDIT_ALLOWED_NETWORKS: "10.0.0.0/8" });
+    const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => {
+      return undefined;
+    });
     const now = Math.floor(Date.now() / 1_000);
     const request = {
       params: { resource: "processors" },
@@ -299,6 +302,45 @@ describe("technical audit JWT", () => {
     expect(() => new AuditTechnicalAuthGuard().canActivate(context)).toThrow(
       /red.*no autorizada/i,
     );
+    expect(JSON.parse(String(warn.mock.calls[0]?.[0]))).toEqual({
+      code: "insufficient_scope",
+      ip: "127.0.0.1",
+    });
+    warn.mockRestore();
+  });
+
+  it("does not log a caller IP for an invalid processors identity", () => {
+    configure();
+    const warn = vi.spyOn(Logger.prototype, "warn").mockImplementation(() => {
+      return undefined;
+    });
+    const request = {
+      params: { resource: "processors" },
+      path: "/audit/processors?token=must-not-log",
+      ip: "127.0.0.1",
+      socket: { remoteAddress: "127.0.0.1" },
+      body: { inventory: "must-not-log" },
+      header: (name: string) =>
+        name === "authorization"
+          ? `Bearer ${token().slice(0, -3)}bad`
+          : undefined,
+    };
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({ setHeader: vi.fn() }),
+      }),
+    } as never;
+
+    expect(() => new AuditTechnicalAuthGuard().canActivate(context)).toThrow(
+      /identidad/i,
+    );
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    const diagnostic = JSON.parse(String(warn.mock.calls[0]?.[0]));
+    expect(diagnostic).toEqual({ code: "invalid_identity" });
+    expect(JSON.stringify(diagnostic)).not.toContain("must-not-log");
+    warn.mockRestore();
   });
 
   it("rejects cookies even when the bearer identity is valid", () => {
@@ -351,8 +393,11 @@ describe("technical audit JWT", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     const event = JSON.parse(String(warn.mock.calls[0]?.[0]));
     expect(event).toEqual({
+      event: "AUDIT_REQUEST_REJECTED",
       code: "invalid_identity",
       ip: "31.70.130.181",
+      route: "/audit/quality",
+      kid: "ds-auditor-2026",
     });
     expect(JSON.stringify(event)).not.toContain("must-not-log");
     warn.mockRestore();

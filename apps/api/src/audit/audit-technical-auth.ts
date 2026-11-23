@@ -384,6 +384,7 @@ export class AuditTechnicalAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuditRequest>();
     const response = context.switchToHttp().getResponse<Response>();
+    let processorIdentityValidated = false;
     try {
       const routeResource = request.params.resource as string | undefined;
       const resource =
@@ -406,6 +407,13 @@ export class AuditTechnicalAuthGuard implements CanActivate {
         );
       }
       if (!isAllowedNetwork(requestAddress(request), config.allowedNetworks)) {
+        if (routeResource === "processors") {
+          processorIdentityValidated = hasValidIdentity(
+            request,
+            resource,
+            config,
+          );
+        }
         throw auditError(
           403,
           "insufficient_scope",
@@ -429,14 +437,64 @@ export class AuditTechnicalAuthGuard implements CanActivate {
       return true;
     } catch (error) {
       if (error instanceof AuditHttpException) {
-        this.logger.warn(
-          JSON.stringify({
+        const isProcessorsRoute = request.params.resource === "processors";
+        if (isProcessorsRoute) {
+          const rejectionLog: Record<string, string> = {
             code: error.code,
-            ip: requestAddress(request) || "unknown",
-          }),
-        );
+          };
+          if (processorIdentityValidated) {
+            rejectionLog.ip = requestAddress(request) || "unknown";
+          }
+          this.logger.warn(JSON.stringify(rejectionLog));
+        } else {
+          const kid = readHeaderKid(request);
+          this.logger.warn(
+            JSON.stringify({
+              event: "AUDIT_REQUEST_REJECTED",
+              code: error.code,
+              ip: requestAddress(request) || "unknown",
+              route: requestRoute(request),
+              ...(kid ? { kid } : {}),
+            }),
+          );
+        }
       }
       throw error;
     }
+  }
+}
+
+function hasValidIdentity(
+  request: Request,
+  resource: AuditResource,
+  config: AuditAuthConfig,
+): boolean {
+  try {
+    verifyTechnicalJwt(readBearer(request), resource, config);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function requestRoute(request: Request): string {
+  const rawRoute = request.path || request.url || request.originalUrl || "/";
+  return rawRoute.split("?", 1)[0].slice(0, 200);
+}
+
+function readHeaderKid(request: Request): string | undefined {
+  const authorization = request.header("authorization");
+  if (!authorization?.startsWith(BEARER_PREFIX)) return undefined;
+  const encodedHeader = authorization.slice(BEARER_PREFIX.length).split(".")[0];
+  if (!encodedHeader) return undefined;
+  try {
+    const header = JSON.parse(
+      Buffer.from(encodedHeader, "base64url").toString("utf8"),
+    ) as { kid?: unknown };
+    return typeof header.kid === "string" && header.kid.length <= 100
+      ? header.kid
+      : undefined;
+  } catch {
+    return undefined;
   }
 }

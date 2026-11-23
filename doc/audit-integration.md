@@ -272,9 +272,12 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    En un entorno apagado, la misma prueba espera `404` y
    `resource_not_allowed`; desde una red fuera de la ACL, la instancia
    habilitada devuelve `403` e `insufficient_scope` antes de validar el JWT.
-   En los rechazos, el guard registra únicamente el código de rechazo y la IP
-   de origen que ve Grumphya; no registra el token, cabeceras, cookies, ruta,
-   `kid` ni el cuerpo.
+   En los rechazos de las siete rutas Beta D, el guard conserva el formato
+   operativo existente: evento, código, IP observada, ruta normalizada y `kid`
+   cuando está presente. En `/audit/processors`, el rechazo por ACL registra
+   también la IP solo después de validar el JWT y confirmar el scope
+   `audit:privacy`; los demás rechazos registran únicamente el código. Ninguna
+   de estas rutas registra tokens, cabeceras de autorización, cookies ni cuerpos.
 
 5. Antes de activar otra instancia deben pasar el smoke autenticado y la prueba
    operativa de rechazo desde el origen autorizado observado,
