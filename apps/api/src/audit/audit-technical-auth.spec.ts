@@ -243,6 +243,64 @@ describe("technical audit JWT", () => {
     );
   });
 
+  it("rejects the processors route when the allowed source has no valid privacy identity", () => {
+    configure();
+    const now = Math.floor(Date.now() / 1_000);
+    const requests = [
+      { name: "missing bearer", authorization: undefined },
+      { name: "invalid bearer", authorization: "Bearer invalid" },
+      {
+        name: "wrong scope",
+        authorization: `Bearer ${token({ scope: "audit:quality", iat: now, exp: now + 240 })}`,
+      },
+    ];
+
+    for (const { name, authorization } of requests) {
+      const request = {
+        params: { resource: "processors" },
+        ip: "127.0.0.1",
+        socket: { remoteAddress: "127.0.0.1" },
+        header: (headerName: string) =>
+          headerName === "authorization" ? authorization : undefined,
+      };
+      const context = {
+        switchToHttp: () => ({
+          getRequest: () => request,
+          getResponse: () => ({ setHeader: vi.fn() }),
+        }),
+      } as never;
+
+      expect(
+        () => new AuditTechnicalAuthGuard().canActivate(context),
+        name,
+      ).toThrow();
+    }
+  });
+
+  it("rejects the processors route from an unallowed source despite valid credentials", () => {
+    configure({ AUDIT_ALLOWED_NETWORKS: "10.0.0.0/8" });
+    const now = Math.floor(Date.now() / 1_000);
+    const request = {
+      params: { resource: "processors" },
+      ip: "127.0.0.1",
+      socket: { remoteAddress: "127.0.0.1" },
+      header: (name: string) =>
+        name === "authorization"
+          ? `Bearer ${token({ scope: "audit:privacy", iat: now, exp: now + 240 })}`
+          : undefined,
+    };
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => ({ setHeader: vi.fn() }),
+      }),
+    } as never;
+
+    expect(() => new AuditTechnicalAuthGuard().canActivate(context)).toThrow(
+      /red.*no autorizada/i,
+    );
+  });
+
   it("rejects cookies even when the bearer identity is valid", () => {
     configure();
     const guard = new AuditTechnicalAuthGuard();
@@ -293,11 +351,8 @@ describe("technical audit JWT", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     const event = JSON.parse(String(warn.mock.calls[0]?.[0]));
     expect(event).toEqual({
-      event: "AUDIT_REQUEST_REJECTED",
       code: "invalid_identity",
       ip: "31.70.130.181",
-      route: "/audit/quality",
-      kid: "ds-auditor-2026",
     });
     expect(JSON.stringify(event)).not.toContain("must-not-log");
     warn.mockRestore();

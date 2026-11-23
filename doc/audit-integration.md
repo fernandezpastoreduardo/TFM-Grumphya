@@ -8,12 +8,16 @@ operativo. Si se activa sin claves o ACL válidas, la API no arranca; si falta
 evidencia válida tras el arranque, la consulta autenticada devuelve
 `503 evidence_unavailable`.
 
-Estado observado en el VPS el 20 de noviembre de 2026: `AUDIT_ENABLED=true`,
+Último estado registrado en el VPS, el 20 de noviembre de 2026:
+`AUDIT_ENABLED=true`,
 `AUDIT_ALLOWED_NETWORKS=172.30.0.1/32` y API recreada y saludable. Los logs
 de rechazo de las siete rutas muestran `172.30.0.1` como origen que llega al
 guard a través del proxy. La ruta de prueba por esa interfaz devuelve
 `401 invalid_identity` ante un JWT inválido; el origen público
 `31.70.130.181` recibe `403 insufficient_scope`.
+
+Ese registro es una observación histórica de las siete rutas Beta D; no confirma
+la IP observada para llamadas actuales a `/audit/processors`.
 
 El workflow de release `44772841616` desplegó el commit
 `e30caa3b2bde270c4ff3e6dd7460f55ff62b76a6` el 20 de noviembre de 2026 y
@@ -47,7 +51,7 @@ La privada se guardó únicamente en el secreto de GitHub Actions
 
 ## Rutas de lectura
 
-Caddy permite únicamente estos siete recursos externos:
+Caddy permite estos siete recursos Beta D externos:
 
 ```text
 /audit/infrastructure
@@ -58,6 +62,17 @@ Caddy permite únicamente estos siete recursos externos:
 /audit/privacy
 /audit/ai
 ```
+
+`GET /audit/processors` es un endpoint adicional con contrato independiente; no
+es un octavo recurso Beta D. Caddy aplica también aquí el método `GET`, la
+prohibición de query strings y el mismo proxy a la API. El guard comprueba la
+ACL de `AUDIT_ALLOWED_NETWORKS` antes de validar el JWT; se aplican todos los
+requisitos de identidad técnica anteriores, incluido el scope `audit:privacy`.
+La respuesta usa el esquema `processor-inventory-v1` y se
+firma con `kid=grumphya-release-2026`. La prueba desde una IP permitida debe
+verificarse contra los registros actuales del guard; la observación histórica
+de las siete rutas Beta D no basta para inferir qué IP ve hoy la llamada del
+lector.
 
 Solo aceptan `GET`, sin query strings, redirecciones, cookies ni credenciales
 en la URL. Caddy reescribe internamente a `/api/audit/<recurso>`; el prefijo
@@ -126,8 +141,8 @@ de identidades vigentes; `AUDIT_TECHNICAL_AUTH_REVOKED_KIDS` y
 denegación de red es por defecto y `AUDIT_ALLOWED_NETWORKS` debe contener la
 IP/CIDR que el proxy vea realmente.
 
-El 20 de noviembre de 2026, los rechazos de las siete rutas desde el flujo de
-auditoría registraron `172.30.0.1` como origen que llega al guard. Es la
+El 20 de noviembre de 2026, los rechazos de las siete rutas Beta D desde el
+flujo de auditoría registraron `172.30.0.1` como origen que llega al guard. Es la
 dirección gateway de la red `edge` de Grumphya, anunciada por Caddy en este
 recorrido. La ACL instalada permite solo esa dirección exacta:
 `AUDIT_ALLOWED_NETWORKS=172.30.0.1/32`. La IP pública `31.70.130.181` no pasa
@@ -257,9 +272,9 @@ sean distintos. `scripts/retire-audit-evidence.sh` solo ejecuta los dos
    En un entorno apagado, la misma prueba espera `404` y
    `resource_not_allowed`; desde una red fuera de la ACL, la instancia
    habilitada devuelve `403` e `insufficient_scope` antes de validar el JWT.
-   El guard registra únicamente `code`, `ip`, `route` y
-   `kid` bajo el evento `AUDIT_REQUEST_REJECTED`; nunca registra el token, las
-   cookies ni el cuerpo.
+   En los rechazos, el guard registra únicamente el código de rechazo y la IP
+   de origen que ve Grumphya; no registra el token, cabeceras, cookies, ruta,
+   `kid` ni el cuerpo.
 
 5. Antes de activar otra instancia deben pasar el smoke autenticado y la prueba
    operativa de rechazo desde el origen autorizado observado,

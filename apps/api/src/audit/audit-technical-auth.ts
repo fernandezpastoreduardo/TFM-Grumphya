@@ -429,40 +429,14 @@ export class AuditTechnicalAuthGuard implements CanActivate {
       return true;
     } catch (error) {
       if (error instanceof AuditHttpException) {
-        const kid = readHeaderKid(request);
         this.logger.warn(
           JSON.stringify({
-            event: "AUDIT_REQUEST_REJECTED",
             code: error.code,
             ip: requestAddress(request) || "unknown",
-            route: requestRoute(request),
-            ...(kid ? { kid } : {}),
           }),
         );
       }
       throw error;
     }
-  }
-}
-
-function requestRoute(request: Request): string {
-  const rawRoute = request.path || request.url || request.originalUrl || "/";
-  return rawRoute.split("?", 1)[0].slice(0, 200);
-}
-
-function readHeaderKid(request: Request): string | undefined {
-  const authorization = request.header("authorization");
-  if (!authorization?.startsWith(BEARER_PREFIX)) return undefined;
-  const encodedHeader = authorization.slice(BEARER_PREFIX.length).split(".")[0];
-  if (!encodedHeader) return undefined;
-  try {
-    const header = JSON.parse(
-      Buffer.from(encodedHeader, "base64url").toString("utf8"),
-    ) as { kid?: unknown };
-    return typeof header.kid === "string" && header.kid.length <= 100
-      ? header.kid
-      : undefined;
-  } catch {
-    return undefined;
   }
 }
