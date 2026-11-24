@@ -75,7 +75,12 @@ start_database() {
 wait_for_database() {
   local name=$1 attempt status
   for attempt in $(seq 1 120); do
-    if docker exec "$name" pg_isready --username postgres --dbname postgres >/dev/null 2>&1; then
+    # pg_isready can report readiness during the brief interval before the
+    # server accepts an actual SQL session. Require a real query before the
+    # migration fixture starts issuing DDL through docker exec.
+    if docker exec "$name" pg_isready --username postgres --dbname postgres >/dev/null 2>&1 \
+      && docker exec "$name" psql --no-password --tuples-only --no-align \
+        --username postgres --dbname postgres --command 'SELECT 1;' >/dev/null 2>&1; then
       return 0
     fi
     status=$(docker inspect --format '{{.State.Status}}' "$name")
