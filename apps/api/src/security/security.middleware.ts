@@ -1,6 +1,9 @@
 import type { RequestHandler } from "express";
 import { readCookie } from "../infrastructure/http/read-cookie";
-import { LoginAbuseProtection } from "./login-abuse-protection.service";
+import {
+  AbuseProtection,
+  type AbuseChallengeScope,
+} from "./abuse-protection.service";
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const API_REQUEST_LIMIT = 120;
@@ -29,7 +32,7 @@ type RateLimitBucket = { count: number; resetAt: number };
 type SecurityMiddlewareOptions = {
   apiRequestLimit?: number;
   sessionRefreshRequestLimit?: number;
-  loginAbuseProtection?: LoginAbuseProtection;
+  abuseProtection?: AbuseProtection;
 };
 
 function setSecurityHeaders(response: Parameters<RequestHandler>[1]): void {
@@ -54,35 +57,38 @@ type SecurityResponse = Parameters<RequestHandler>[1];
 type ScopedLimit = [string, number];
 
 function shouldDisableCaching(path: string): boolean {
+  const normalizedPath = normalizeRequestPath(path);
   return (
-    path === "/api/account" ||
-    path.startsWith("/api/account/") ||
-    path === "/api/auth" ||
-    path.startsWith("/api/auth/") ||
-    path.startsWith("/api/registration") ||
-    path === "/api/contact-messages" ||
-    path.startsWith("/api/admin/") ||
-    path.startsWith("/api/internal/lighthouse-quality/") ||
-    path.startsWith("/api/dev/mail-preview")
+    normalizedPath === "/api/account" ||
+    normalizedPath.startsWith("/api/account/") ||
+    normalizedPath === "/api/auth" ||
+    normalizedPath.startsWith("/api/auth/") ||
+    normalizedPath.startsWith("/api/registration") ||
+    normalizedPath === "/api/contact-messages" ||
+    normalizedPath.startsWith("/api/admin/") ||
+    normalizedPath.startsWith("/api/internal/lighthouse-quality/") ||
+    normalizedPath.startsWith("/api/dev/mail-preview")
   );
 }
 
 function isProtectedCookieMutation(request: SecurityRequest): boolean {
+  const path = normalizeRequestPath(request.path);
   if (
     request.method !== "POST" &&
-    !(request.method === "DELETE" && request.path === "/api/account")
+    !(request.method === "DELETE" && path === "/api/account")
   ) {
     return false;
   }
   return (
-    request.path.startsWith("/api/registration") ||
-    request.path.startsWith("/api/account/") ||
-    request.path === "/api/account" ||
-    request.path.startsWith("/api/auth/") ||
-    request.path === "/api/anonymous-usage" ||
-    request.path === "/api/evaluation-process" ||
-    request.path === "/api/roast" ||
-    request.path === "/api/contact-messages"
+    path.startsWith("/api/registration") ||
+    path.startsWith("/api/account/") ||
+    path === "/api/account" ||
+    path.startsWith("/api/auth/") ||
+    path === "/api/anonymous-usage" ||
+    path === "/api/evaluation-process" ||
+    path === "/api/roast" ||
+    path === "/api/contact-messages" ||
+    path.startsWith("/api/contact-messages/")
   );
 }
 
@@ -112,13 +118,38 @@ function rejectInvalidMutation(
 }
 
 function isLoginRequest(request: SecurityRequest): boolean {
-  return request.method === "POST" && request.path === "/api/auth/login";
+  return (
+    request.method === "POST" &&
+    normalizeRequestPath(request.path) === "/api/auth/login"
+  );
+}
+
+function abuseChallengeScope(
+  request: SecurityRequest,
+): AbuseChallengeScope | undefined {
+  const path = normalizeRequestPath(request.path);
+  if (request.method !== "POST") return undefined;
+  if (path === "/api/auth/login") return "login";
+  if (
+    path === "/api/registration-intents" ||
+    path === "/api/registrations" ||
+    path === "/api/registrations/resend-verification"
+  ) {
+    return "registration";
+  }
+  if (
+    path === "/api/contact-messages" ||
+    path.startsWith("/api/contact-messages/")
+  ) {
+    return "contact";
+  }
+  return undefined;
 }
 
 function rejectBlockedLogin(
   request: SecurityRequest,
   response: SecurityResponse,
-  protection: LoginAbuseProtection,
+  protection: AbuseProtection,
   clientAddress: string,
   now: number,
 ): boolean {
@@ -136,7 +167,8 @@ function rejectBlockedLogin(
 }
 
 function evaluationLimit(request: SecurityRequest): ScopedLimit | undefined {
-  const { method, path } = request;
+  const { method } = request;
+  const path = normalizeRequestPath(request.path);
   if (method === "POST" && path === "/api/csp-reports") {
     return ["csp-report", CSP_REPORT_REQUEST_LIMIT];
   }
@@ -153,7 +185,8 @@ function evaluationLimit(request: SecurityRequest): ScopedLimit | undefined {
 }
 
 function readLimit(request: SecurityRequest): ScopedLimit | undefined {
-  const { method, path } = request;
+  const { method } = request;
+  const path = normalizeRequestPath(request.path);
   if (
     method === "GET" &&
     (path === "/api/worst-ideas" || path === "/api/worst-ideas/all-time")
@@ -178,6 +211,10 @@ function stripTrailingSlashes(path: string): string {
   return path.slice(0, end) || "/";
 }
 
+function normalizeRequestPath(path: string): string {
+  return stripTrailingSlashes(path.replace(/\/{2,}/gu, "/").toLowerCase());
+}
+
 function registrationLimit(path: string): ScopedLimit {
   if (path.includes("verify") || path.includes("confirm")) {
     return ["registration-verification", REGISTRATION_VERIFY_REQUEST_LIMIT];
@@ -192,12 +229,16 @@ function mutationLimit(
   request: SecurityRequest,
   sessionRefreshRequestLimit: number,
 ): ScopedLimit | undefined {
-  const { method, path } = request;
+  const { method } = request;
+  const path = normalizeRequestPath(request.path);
   if (method === "DELETE" && path === "/api/account") {
     return ["account-delete", ACCOUNT_DELETE_REQUEST_LIMIT];
   }
   if (method !== "POST") return undefined;
-  if (path === "/api/contact-messages") {
+  if (
+    path === "/api/contact-messages" ||
+    path.startsWith("/api/contact-messages/")
+  ) {
     return ["contact-message", CONTACT_MESSAGE_REQUEST_LIMIT];
   }
   if (isAvatarUploadRequest(request)) {
@@ -278,31 +319,36 @@ function consumeRateLimits(
   return false;
 }
 
-function rejectLoginChallenge(
+function rejectAbuseChallenge(
   request: SecurityRequest,
   response: SecurityResponse,
-  protection: LoginAbuseProtection,
+  protection: AbuseProtection,
   clientAddress: string,
   now: number,
 ): boolean {
-  if (!isLoginRequest(request) || !protection.isChallengeModeActive(now)) {
+  const scope = abuseChallengeScope(request);
+  if (!scope || !protection.isChallengeModeActive(now, scope)) {
     return false;
   }
   if (
     protection.verifyChallenge(
       clientAddress,
-      request.get("x-login-challenge") ?? "",
-      request.get("x-login-proof") ?? "",
+      request.get("x-abuse-challenge") ?? "",
+      request.get("x-abuse-proof") ?? "",
       now,
+      scope,
     )
   ) {
     return false;
   }
   response.status(428).json({
     statusCode: 428,
-    code: "LOGIN_CHALLENGE_REQUIRED",
+    code:
+      scope === "login"
+        ? "LOGIN_CHALLENGE_REQUIRED"
+        : "ABUSE_CHALLENGE_REQUIRED",
     message: "Verifica el navegador para continuar.",
-    challenge: protection.createChallenge(clientAddress, now),
+    challenge: protection.createChallenge(clientAddress, now, scope),
   });
   return true;
 }
@@ -312,7 +358,7 @@ function rejectRegistrationQuery(
   response: SecurityResponse,
 ): boolean {
   if (
-    !request.path.startsWith("/api/registration") ||
+    !normalizeRequestPath(request.path).startsWith("/api/registration") ||
     !request.originalUrl?.includes("?")
   ) {
     return false;
@@ -338,8 +384,7 @@ export function createSecurityMiddleware(
       ? Number(options.sessionRefreshRequestLimit)
       : REGISTRATION_VERIFY_REQUEST_LIMIT;
   const buckets = new Map<string, RateLimitBucket>();
-  const loginAbuseProtection =
-    options.loginAbuseProtection ?? new LoginAbuseProtection();
+  const abuseProtection = options.abuseProtection ?? new AbuseProtection();
   let requestCount = 0;
 
   return (request, response, next) => {
@@ -363,33 +408,34 @@ export function createSecurityMiddleware(
 
     const clientAddress =
       request.ip ?? request.socket.remoteAddress ?? "unknown";
+    const clientAddressKey =
+      abuseProtection.getPseudonymousAddressKey(clientAddress);
     if (rejectRegistrationQuery(request, response)) return;
     if (
-      rejectBlockedLogin(
-        request,
-        response,
-        loginAbuseProtection,
-        clientAddress,
-        now,
-      )
+      rejectBlockedLogin(request, response, abuseProtection, clientAddress, now)
     )
       return;
     if (
       consumeRateLimits(
         requestLimits(request, apiRequestLimit, sessionRefreshRequestLimit),
         buckets,
-        clientAddress,
+        clientAddressKey,
         now,
         response,
       )
     )
       return;
-    if (isLoginRequest(request)) loginAbuseProtection.recordLoginRequest(now);
+    const abuseScope = abuseChallengeScope(request);
+    if (isLoginRequest(request)) {
+      abuseProtection.recordLoginRequest(now);
+    } else if (abuseScope) {
+      abuseProtection.recordProtectedRequest(now, abuseScope);
+    }
     if (
-      rejectLoginChallenge(
+      rejectAbuseChallenge(
         request,
         response,
-        loginAbuseProtection,
+        abuseProtection,
         clientAddress,
         now,
       )
@@ -403,5 +449,8 @@ export function createSecurityMiddleware(
 function isAvatarUploadRequest(
   request: Parameters<RequestHandler>[0],
 ): boolean {
-  return request.method === "POST" && request.path === "/api/account/avatar";
+  return (
+    request.method === "POST" &&
+    normalizeRequestPath(request.path) === "/api/account/avatar"
+  );
 }

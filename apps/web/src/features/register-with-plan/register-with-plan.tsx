@@ -18,6 +18,7 @@ import {
   USERNAME_PATTERN,
 } from "./register-with-plan.constants";
 import { isStrongPassword } from "./register-with-plan.validation";
+import { ABUSE_CHALLENGE_NOTICE } from "../../shared/constants/abuse-challenge.constants";
 import {
   loadSelectedPlan,
   resendRegistrationVerification,
@@ -38,6 +39,7 @@ export function RegisterWithPlan() {
   const submissionLocked = useRef(false);
   const [error, setError] = useState("");
   const [errorField, setErrorField] = useState<RegistrationField | null>(null);
+  const [challengeNotice, setChallengeNotice] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordConfirmationVisible, setPasswordConfirmationVisible] =
     useState(false);
@@ -64,6 +66,7 @@ export function RegisterWithPlan() {
     if (submissionLocked.current || submitted) return;
     setError("");
     setErrorField(null);
+    setChallengeNotice("");
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "").trim();
     const username = String(formData.get("username") ?? "").trim();
@@ -104,11 +107,14 @@ export function RegisterWithPlan() {
     setSubmitted(true);
     setSubmitting(true);
     try {
-      const result = await submitRegistrationRequest({
-        email,
-        username,
-        password,
-      });
+      const result = await submitRegistrationRequest(
+        {
+          email,
+          username,
+          password,
+        },
+        () => setChallengeNotice(ABUSE_CHALLENGE_NOTICE),
+      );
       if (result.pending) {
         setRegisteredEmail(email);
         setVerificationPending(true);
@@ -118,6 +124,7 @@ export function RegisterWithPlan() {
     } catch {
       setError(GENERIC_ERROR);
     } finally {
+      setChallengeNotice("");
       setSubmitting(false);
     }
   }
@@ -127,7 +134,11 @@ export function RegisterWithPlan() {
     setResending(true);
     setResendMessage("");
     try {
-      if (await resendRegistrationVerification(registeredEmail)) {
+      if (
+        await resendRegistrationVerification(registeredEmail, () =>
+          setChallengeNotice(ABUSE_CHALLENGE_NOTICE),
+        )
+      ) {
         setResendMessage(
           "Si hay una verificación pendiente para ese correo, enviaremos otro enlace cuando sea posible.",
         );
@@ -137,6 +148,7 @@ export function RegisterWithPlan() {
     } catch {
       setResendMessage(GENERIC_ERROR);
     } finally {
+      setChallengeNotice("");
       setResending(false);
     }
   }
@@ -199,6 +211,7 @@ export function RegisterWithPlan() {
           {resending ? "Solicitando…" : "Solicitar otro enlace"}
         </button>
         {resendMessage ? <p role="status">{resendMessage}</p> : null}
+        {challengeNotice ? <p role="status">{challengeNotice}</p> : null}
       </section>
     );
   }
@@ -209,6 +222,7 @@ export function RegisterWithPlan() {
         submitting={submitting}
         submitted={submitted}
         error={error}
+        challengeNotice={challengeNotice}
         errorField={errorField}
         passwordVisible={passwordVisible}
         passwordConfirmationVisible={passwordConfirmationVisible}

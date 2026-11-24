@@ -4,9 +4,9 @@ const MIN_DIFFICULTY_BITS = 4;
 const MAX_DIFFICULTY_BITS = 24;
 const SHA256_ALGORITHM = "SHA-256";
 
-export type LoginChallenge = { token: string; difficulty: number };
+export type AbuseChallenge = { token: string; difficulty: number };
 
-export function isLoginChallenge(value: unknown): value is LoginChallenge {
+export function isAbuseChallenge(value: unknown): value is AbuseChallenge {
   if (!value || typeof value !== "object") return false;
   const challenge = value as Record<string, unknown>;
   return (
@@ -21,8 +21,8 @@ export function isLoginChallenge(value: unknown): value is LoginChallenge {
   );
 }
 
-export async function solveLoginChallenge(
-  challenge: LoginChallenge,
+export async function solveAbuseChallenge(
+  challenge: AbuseChallenge,
 ): Promise<string> {
   const prefix = "0".repeat(challenge.difficulty / 4);
   for (let attempt = 0; attempt < MAX_PROOF_ATTEMPTS; attempt += 1) {
@@ -36,7 +36,7 @@ export async function solveLoginChallenge(
       await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
     }
   }
-  throw new Error("Login challenge could not be solved.");
+  throw new Error("ABUSE_CHALLENGE_COULD_NOT_BE_SOLVED");
 }
 
 function toHex(value: ArrayBuffer): string {

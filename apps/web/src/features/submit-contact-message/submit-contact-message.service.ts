@@ -1,4 +1,5 @@
 import { authenticatedFetch } from "../../infrastructure/auth/session";
+import { fetchWithAbuseChallenge } from "../../infrastructure/api/fetch-with-abuse-challenge";
 
 const CONTACT_MESSAGES_ENDPOINT = "/api/contact-messages";
 const JSON_CONTENT_TYPE = "application/json";
@@ -47,25 +48,36 @@ export async function submitContactMessage(
   subject: string,
   message: string,
   idempotencyKey: string,
+  onChallenge?: () => void,
 ): Promise<ContactMessageSubmission> {
-  const response = await authenticatedFetch(CONTACT_MESSAGES_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": JSON_CONTENT_TYPE,
-      [IDEMPOTENCY_HEADER]: idempotencyKey,
-    },
-    body: JSON.stringify({ subject, message }),
-  });
+  const response = await fetchWithAbuseChallenge(
+    (challengeHeaders) =>
+      authenticatedFetch(CONTACT_MESSAGES_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": JSON_CONTENT_TYPE,
+          [IDEMPOTENCY_HEADER]: idempotencyKey,
+          ...challengeHeaders,
+        },
+        body: JSON.stringify({ subject, message }),
+      }),
+    onChallenge,
+  );
   if (!response.ok) await throwSubmissionError(response);
   return parseSubmission(await response.json());
 }
 
 export async function retryContactMessageConfirmation(
   reference: string,
+  onChallenge?: () => void,
 ): Promise<ContactMessageSubmission> {
-  const response = await authenticatedFetch(
-    `${CONTACT_MESSAGES_ENDPOINT}/${encodeURIComponent(reference)}/confirmation/retry`,
-    { method: "POST" },
+  const response = await fetchWithAbuseChallenge(
+    (challengeHeaders) =>
+      authenticatedFetch(
+        `${CONTACT_MESSAGES_ENDPOINT}/${encodeURIComponent(reference)}/confirmation/retry`,
+        { method: "POST", headers: challengeHeaders },
+      ),
+    onChallenge,
   );
   if (!response.ok) throw new Error("CONTACT_CONFIRMATION_RETRY_FAILED");
   return parseSubmission(await response.json());

@@ -11,6 +11,7 @@ type RegistrationFormProps = {
   submitting: boolean;
   submitted: boolean;
   error: string;
+  challengeNotice: string;
   errorField: RegistrationField | null;
   passwordVisible: boolean;
   passwordConfirmationVisible: boolean;
@@ -24,6 +25,7 @@ export function RegistrationForm({
   submitting,
   submitted,
   error,
+  challengeNotice,
   errorField,
   passwordVisible,
   passwordConfirmationVisible,
@@ -180,6 +182,11 @@ export function RegistrationForm({
               role="alert"
             >
               {error}
+            </p>
+          ) : null}
+          {challengeNotice ? (
+            <p className="registration-status" role="status">
+              {challengeNotice}
             </p>
           ) : null}
           <button

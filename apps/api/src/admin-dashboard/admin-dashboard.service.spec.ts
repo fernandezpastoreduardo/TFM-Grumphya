@@ -2,7 +2,7 @@ import { ServiceUnavailableException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminDashboardRepository } from "./admin-dashboard.models";
 import { AdminDashboardService } from "./admin-dashboard.service";
-import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
+import { AbuseProtection } from "../security/abuse-protection.service";
 
 const PRIVATE_DATABASE_DETAIL = "password=private; idea=private";
 const DASHBOARD_UNAVAILABLE_MESSAGE =
@@ -38,16 +38,16 @@ describe("AdminDashboardService", () => {
     const repository = {
       getSnapshot: vi.fn().mockResolvedValue(snapshot),
     } as unknown as AdminDashboardRepository;
-    const loginAbuseProtection = {
+    const abuseProtection = {
       getAdminSnapshot: vi.fn().mockReturnValue(liveMetrics),
-    } as unknown as LoginAbuseProtection;
-    const service = new AdminDashboardService(repository, loginAbuseProtection);
+    } as unknown as AbuseProtection;
+    const service = new AdminDashboardService(repository, abuseProtection);
 
     await expect(service.getSnapshot()).resolves.toEqual({
       ...snapshot,
       loginSecurity: liveMetrics,
     });
-    expect(loginAbuseProtection.getAdminSnapshot).toHaveBeenCalledOnce();
+    expect(abuseProtection.getAdminSnapshot).toHaveBeenCalledOnce();
   });
 
   it("hides repository details when dashboard metrics are unavailable", async () => {

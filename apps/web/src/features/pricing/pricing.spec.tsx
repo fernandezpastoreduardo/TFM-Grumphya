@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Pricing } from "./pricing";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
+import * as abuseChallenge from "../../shared/utils/abuse-challenge";
+import * as anonymousAnalytics from "../../shared/utils/anonymous-analytics";
 
 vi.mock("../../infrastructure/auth/use-session-status", () => ({
   useSessionStatus: vi.fn(),
@@ -86,6 +88,44 @@ describe("Pricing registration intent", () => {
       }),
     );
     expect(assign).toHaveBeenCalledWith("/crear-cuenta");
+  });
+
+  it("shows the security check and retries a registration intent after a challenge", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(
+      anonymousAnalytics,
+      "recordAnonymousPlanSelection",
+    ).mockImplementation(() => undefined);
+    const challenge = { token: "plan-intent-challenge", difficulty: 16 };
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, assign },
+    });
+    let resolveProof: (proof: string) => void = () => undefined;
+    vi.spyOn(abuseChallenge, "solveAbuseChallenge").mockReturnValue(
+      new Promise((resolve) => {
+        resolveProof = resolve;
+      }),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ code: "ABUSE_CHALLENGE_REQUIRED", challenge }, 428),
+        )
+        .mockResolvedValueOnce(jsonResponse({ status: "created" })),
+    );
+    render(<Pricing />);
+
+    await user.click(screen.getByRole("button", { name: /elegir iluminado/i }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /comprobando la solicitud para proteger el servicio/i,
+    );
+    resolveProof("29");
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("/crear-cuenta"));
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the user on pricing and shows an error when the intent fails", async () => {

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RegistrationController } from "./registration.controller";
 import { RegistrationError } from "./registration.models";
 import { RegistrationService } from "./registration.service";
-import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
+import { AbuseProtection } from "../security/abuse-protection.service";
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const RESEND_BODY = { email: "persona@example.es" };
@@ -23,7 +23,7 @@ const SESSION = {
   result: ACCOUNT_RESULT,
 };
 
-function createController(loginAbuseProtection = createLoginAbuseProtection()) {
+function createController(abuseProtection = createAbuseProtection()) {
   const service = {
     createIntent: vi.fn().mockResolvedValue({
       token: "intent-token",
@@ -52,17 +52,17 @@ function createController(loginAbuseProtection = createLoginAbuseProtection()) {
     purchasePlanForUser: vi.fn(),
   } as unknown as RegistrationService;
   return {
-    controller: new RegistrationController(service, loginAbuseProtection),
+    controller: new RegistrationController(service, abuseProtection),
     service,
-    loginAbuseProtection,
+    abuseProtection,
   };
 }
 
-function createLoginAbuseProtection() {
+function createAbuseProtection() {
   return {
     recordLoginFailure: vi.fn(),
     recordLoginSuccess: vi.fn(),
-  } as unknown as LoginAbuseProtection;
+  } as unknown as AbuseProtection;
 }
 
 function createResponse() {
@@ -314,7 +314,7 @@ describe("RegistrationController", () => {
   });
 
   it("logs in and sets a refresh cookie without remember-me lifetime", async () => {
-    const { controller, service, loginAbuseProtection } = createController();
+    const { controller, service, abuseProtection } = createController();
     const response = createResponse();
     const body = { email: "persona@example.es", password: "secret" };
 
@@ -328,13 +328,11 @@ describe("RegistrationController", () => {
       REFRESH_TOKEN,
       expect.not.objectContaining({ maxAge: expect.any(Number) }),
     );
-    expect(loginAbuseProtection.recordLoginSuccess).toHaveBeenCalledWith(
-      "unknown",
-    );
+    expect(abuseProtection.recordLoginSuccess).toHaveBeenCalledWith("unknown");
   });
 
   it("records a failed login against the request IP without exposing the error", async () => {
-    const { controller, service, loginAbuseProtection } = createController();
+    const { controller, service, abuseProtection } = createController();
     const response = createResponse();
     const request = { ip: "192.0.2.25", socket: { remoteAddress: "local" } };
     vi.mocked(service.login).mockRejectedValueOnce(
@@ -349,14 +347,12 @@ describe("RegistrationController", () => {
       controller.login({}, response as never, request as never),
     ).rejects.toMatchObject({ status: 401, code: "LOGIN_UNAVAILABLE" });
 
-    expect(loginAbuseProtection.recordLoginFailure).toHaveBeenCalledWith(
-      request.ip,
-    );
+    expect(abuseProtection.recordLoginFailure).toHaveBeenCalledWith(request.ip);
     expect(response.cookie).not.toHaveBeenCalled();
   });
 
   it("does not count infrastructure errors as failed credential attempts", async () => {
-    const { controller, service, loginAbuseProtection } = createController();
+    const { controller, service, abuseProtection } = createController();
     const response = createResponse();
     const infrastructureError = new Error("Database connection unavailable.");
     vi.mocked(service.login).mockRejectedValueOnce(infrastructureError);
@@ -368,8 +364,8 @@ describe("RegistrationController", () => {
       ),
     ).rejects.toBe(infrastructureError);
 
-    expect(loginAbuseProtection.recordLoginFailure).not.toHaveBeenCalled();
-    expect(loginAbuseProtection.recordLoginSuccess).not.toHaveBeenCalled();
+    expect(abuseProtection.recordLoginFailure).not.toHaveBeenCalled();
+    expect(abuseProtection.recordLoginSuccess).not.toHaveBeenCalled();
     expect(response.cookie).not.toHaveBeenCalled();
   });
 

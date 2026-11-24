@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 import { describe, expect, it, vi } from "vitest";
 import { createSecurityMiddleware } from "./security.middleware";
-import { LoginAbuseProtection } from "./login-abuse-protection.service";
+import { AbuseProtection } from "./abuse-protection.service";
 
 const EVALUATION_PATH = "/api/evaluation-process";
 const LOGIN_PATH = "/api/auth/login";
@@ -9,20 +10,35 @@ const PASSWORD_RESET_REQUEST_PATH = "/api/auth/password-reset/request";
 const REFRESH_PATH = "/api/auth/refresh";
 const REQUEST_IP = "192.0.2.10";
 const LOGIN_RATE_PER_SECOND = 10;
+const REGISTRATION_PATH = "/api/registrations";
+const CONTACT_PATH = "/api/contact-messages";
+const CHALLENGE_REQUIRED_PATHS = [
+  ["/API/AUTH/LOGIN/", "login"],
+  ["/api/registration-intents", "registration"],
+  [REGISTRATION_PATH, "registration"],
+  ["/api/registrations/resend-verification", "registration"],
+  [CONTACT_PATH, "contact"],
+  ["/api/contact-messages/reference/confirmation/retry", "contact"],
+  ["/API/REGISTRATIONS/", "registration"],
+  ["/API/CONTACT-MESSAGES/", "contact"],
+] as const;
 
 function createRequest(
   path = EVALUATION_PATH,
   method = "POST",
   ip = REQUEST_IP,
+  extraHeaders: Record<string, string> = {},
 ): Request {
   return {
     ip,
     path,
     method,
     socket: { remoteAddress: ip },
-    headers: {},
+    headers: extraHeaders,
     get: (name: string) =>
-      name.toLowerCase() === "origin" ? "http://127.0.0.1:5173" : undefined,
+      name.toLowerCase() === "origin"
+        ? "http://127.0.0.1:5173"
+        : extraHeaders[name.toLowerCase()],
     is: (type: string) => type === "application/json",
   } as unknown as Request;
 }
@@ -41,6 +57,191 @@ function createResponse() {
 }
 
 describe("security middleware", () => {
+  it.each(CHALLENGE_REQUIRED_PATHS)(
+    "accepts a valid PoW on %s when its scope matches",
+    (path, scope) => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date(3_000));
+        const protection = new AbuseProtection({ secret: "test-secret" });
+        activateChallengeMode(protection, scope);
+        const challenge = protection.createChallenge(REQUEST_IP, 3_000, scope);
+        const proof = findChallengeProof(challenge.token, challenge.difficulty);
+        const middleware = createSecurityMiddleware({
+          abuseProtection: protection,
+        });
+        const next = vi.fn() as NextFunction;
+
+        middleware(
+          createRequest(path, "POST", REQUEST_IP, {
+            "x-abuse-challenge": challenge.token,
+            "x-abuse-proof": proof,
+          }),
+          createResponse().response,
+          next,
+        );
+
+        expect(next).toHaveBeenCalledOnce();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it("rejects a valid PoW issued for a different protected form scope", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(3_000));
+      const protection = new AbuseProtection({ secret: "test-secret" });
+      activateChallengeMode(protection, "contact");
+      const challenge = protection.createChallenge(
+        REQUEST_IP,
+        3_000,
+        "registration",
+      );
+      const proof = findChallengeProof(challenge.token, challenge.difficulty);
+      const middleware = createSecurityMiddleware({
+        abuseProtection: protection,
+      });
+      const next = vi.fn() as NextFunction;
+      const { response } = createResponse();
+
+      middleware(
+        createRequest(CONTACT_PATH, "POST", REQUEST_IP, {
+          "x-abuse-challenge": challenge.token,
+          "x-abuse-proof": proof,
+        }),
+        response,
+        next,
+      );
+
+      expect(response.status).toHaveBeenCalledWith(428);
+      expect(next).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects a malformed proof while challenge mode is active", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(3_000));
+      const protection = new AbuseProtection({ secret: "test-secret" });
+      activateChallengeMode(protection, "contact");
+      const challenge = protection.createChallenge(
+        REQUEST_IP,
+        3_000,
+        "contact",
+      );
+      const { response } = createResponse();
+      const next = vi.fn() as NextFunction;
+
+      createSecurityMiddleware({ abuseProtection: protection })(
+        createRequest(CONTACT_PATH, "POST", REQUEST_IP, {
+          "x-abuse-challenge": challenge.token,
+          "x-abuse-proof": "not-a-proof",
+        }),
+        response,
+        next,
+      );
+
+      expect(response.status).toHaveBeenCalledWith(428);
+      expect(next).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["/API/REGISTRATIONS/", "registration"],
+    ["/API/CONTACT-MESSAGES/", "contact"],
+  ] as const)(
+    "requires a challenge for normalized form path %s",
+    (path, scope) => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date(3_000));
+        const protection = new AbuseProtection({ secret: "test-secret" });
+        activateChallengeMode(protection, scope);
+        const { response } = createResponse();
+        const next = vi.fn() as NextFunction;
+
+        createSecurityMiddleware({ abuseProtection: protection })(
+          createRequest(path),
+          response,
+          next,
+        );
+
+        expect(response.status).toHaveBeenCalledWith(428);
+        expect(response.json).toHaveBeenCalledWith(
+          expect.objectContaining({ code: "ABUSE_CHALLENGE_REQUIRED" }),
+        );
+        expect(next).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
+
+  it("does not apply a form proof challenge to evaluation requests", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(3_000));
+      const protection = new AbuseProtection({ secret: "test-secret" });
+      activateLoginChallengeMode(protection);
+      const next = vi.fn() as NextFunction;
+      const { response } = createResponse();
+
+      createSecurityMiddleware({ abuseProtection: protection })(
+        createRequest(EVALUATION_PATH),
+        response,
+        next,
+      );
+
+      expect(response.status).not.toHaveBeenCalledWith(428);
+      expect(next).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([REGISTRATION_PATH, CONTACT_PATH])(
+    "requires a first-party abuse challenge for %s during sustained form abuse",
+    (path) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-11-24T12:00:00.000Z"));
+      const protection = new AbuseProtection({ secret: "test-secret" });
+      const middleware = createSecurityMiddleware({
+        abuseProtection: protection,
+      });
+      const next = vi.fn() as NextFunction;
+
+      for (let second = 0; second < 3; second += 1) {
+        for (
+          let requestIndex = 0;
+          requestIndex < LOGIN_RATE_PER_SECOND;
+          requestIndex += 1
+        ) {
+          middleware(
+            createRequest(path, "POST", `192.0.${second}.${requestIndex + 1}`),
+            createResponse().response,
+            next,
+          );
+        }
+        vi.advanceTimersByTime(1_000);
+      }
+
+      const { response } = createResponse();
+      middleware(createRequest(path), response, next);
+
+      expect(response.status).toHaveBeenCalledWith(428);
+      expect(response.json).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "ABUSE_CHALLENGE_REQUIRED" }),
+      );
+      vi.useRealTimers();
+    },
+  );
+
   it("adds defensive headers and allows requests below the evaluation limit", () => {
     const middleware = createSecurityMiddleware();
     const request = createRequest();
@@ -172,14 +373,14 @@ describe("security middleware", () => {
   it("does not let rate-limited requests from one IP activate the global challenge threshold", () => {
     vi.useFakeTimers();
     try {
-      const loginAbuseProtection = new LoginAbuseProtection({
+      const abuseProtection = new AbuseProtection({
         secret: "test-secret",
       });
       const recordLoginRequest = vi.spyOn(
-        loginAbuseProtection,
+        abuseProtection,
         "recordLoginRequest",
       );
-      const middleware = createSecurityMiddleware({ loginAbuseProtection });
+      const middleware = createSecurityMiddleware({ abuseProtection });
       const next = vi.fn() as NextFunction;
 
       for (let second = 0; second < 3; second += 1) {
@@ -195,7 +396,7 @@ describe("security middleware", () => {
 
       expect(next).toHaveBeenCalledTimes(5);
       expect(recordLoginRequest).toHaveBeenCalledTimes(5);
-      expect(loginAbuseProtection.isChallengeModeActive(2_999)).toBe(false);
+      expect(abuseProtection.isChallengeModeActive(2_999)).toBe(false);
     } finally {
       vi.useRealTimers();
     }
@@ -203,10 +404,10 @@ describe("security middleware", () => {
 
   it("requires a web challenge after sustained global login traffic across IPs", () => {
     vi.useFakeTimers();
-    const loginAbuseProtection = new LoginAbuseProtection({
+    const abuseProtection = new AbuseProtection({
       secret: "test-secret",
     });
-    const middleware = createSecurityMiddleware({ loginAbuseProtection });
+    const middleware = createSecurityMiddleware({ abuseProtection });
     const next = vi.fn() as NextFunction;
 
     for (let second = 0; second < 3; second += 1) {
@@ -238,25 +439,25 @@ describe("security middleware", () => {
   it("blocks an IP after four failed logins during challenge mode", () => {
     vi.useFakeTimers();
     vi.setSystemTime(3_003);
-    const loginAbuseProtection = new LoginAbuseProtection({
+    const abuseProtection = new AbuseProtection({
       secret: "test-secret",
     });
     for (let second = 0; second < 3; second += 1) {
       for (let requestNumber = 0; requestNumber < 10; requestNumber += 1) {
-        loginAbuseProtection.recordLoginRequest(second * 1_000);
+        abuseProtection.recordLoginRequest(second * 1_000);
       }
     }
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      loginAbuseProtection.recordLoginFailure(REQUEST_IP, 3_000 + attempt);
+      abuseProtection.recordLoginFailure(REQUEST_IP, 3_000 + attempt);
     }
-    const middleware = createSecurityMiddleware({ loginAbuseProtection });
+    const middleware = createSecurityMiddleware({ abuseProtection });
     const { response, headers } = createResponse();
 
     middleware(createRequest(LOGIN_PATH), response, vi.fn() as NextFunction);
 
     expect(response.status).toHaveBeenCalledWith(429);
     expect(headers.get("Retry-After")).toBe("900");
-    expect(loginAbuseProtection.getAdminSnapshot(3_003)).toMatchObject({
+    expect(abuseProtection.getAdminSnapshot(3_003)).toMatchObject({
       blockedRequests: 1,
       activeBlockedAddresses: 1,
     });
@@ -650,3 +851,42 @@ describe("security middleware", () => {
     expect(next).toHaveBeenCalledOnce();
   });
 });
+
+function activateLoginChallengeMode(protection: AbuseProtection): void {
+  for (let second = 0; second < 3; second += 1) {
+    for (
+      let requestIndex = 0;
+      requestIndex < LOGIN_RATE_PER_SECOND;
+      requestIndex += 1
+    ) {
+      protection.recordLoginRequest(second * 1_000);
+    }
+  }
+}
+
+function activateChallengeMode(
+  protection: AbuseProtection,
+  scope: "login" | "registration" | "contact",
+): void {
+  for (let second = 0; second < 3; second += 1) {
+    for (
+      let requestIndex = 0;
+      requestIndex < LOGIN_RATE_PER_SECOND;
+      requestIndex += 1
+    ) {
+      protection.recordProtectedRequest(second * 1_000, scope);
+    }
+  }
+}
+
+function findChallengeProof(token: string, difficulty: number): string {
+  let counter = 0;
+  while (true) {
+    const proof = String(counter);
+    const digest = createHash("sha256")
+      .update(`${token}:${proof}`)
+      .digest("hex");
+    if (digest.startsWith("0".repeat(difficulty / 4))) return proof;
+    counter += 1;
+  }
+}

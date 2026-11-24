@@ -12,7 +12,7 @@ describe("PrivacyPolicy", () => {
       screen.getByRole("heading", { name: /política de privacidad/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Versión 5 · 3 de noviembre de 2026/i),
+      screen.getByText(/Versión 6 · 24 de noviembre de 2026/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/borrador/i)).not.toBeInTheDocument();
     expect(
@@ -42,6 +42,9 @@ describe("PrivacyPolicy", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/perfil seudónimo del navegador/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/HMAC seudonimizado —no anónimo— de la IP/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/revisaremos la solicitud manualmente y, si procede/i),

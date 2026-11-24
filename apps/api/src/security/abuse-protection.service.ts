@@ -30,6 +30,7 @@ type LoginChallengePayload = {
   id: string;
   expiresAt: number;
   addressKey: string;
+  scope: AbuseChallengeScope;
 };
 
 type FailureBucket = {
@@ -40,15 +41,19 @@ type FailureBucket = {
 type RecentFailureBucket = { timestamps: number[] };
 
 export type LoginChallenge = { token: string; difficulty: number };
+export type AbuseChallengeScope = "login" | "registration" | "contact";
 
-export class LoginAbuseProtection {
+export class AbuseProtection {
   private readonly secret: string;
-  private readonly requestsBySecond = new Map<number, number>();
+  private readonly requestsBySecond = new Map<
+    AbuseChallengeScope,
+    Map<number, number>
+  >();
   private readonly failedLogins = new Map<string, FailureBucket>();
   private readonly recentFailedLogins = new Map<string, RecentFailureBucket>();
   private readonly consumedChallenges = new Map<string, number>();
   private readonly loginTelemetry = new Map<number, LoginTelemetryBucket>();
-  private attackModeUntil = 0;
+  private readonly attackModeUntil = new Map<AbuseChallengeScope, number>();
 
   constructor(options: { secret?: string } = {}) {
     this.secret =
@@ -60,32 +65,50 @@ export class LoginAbuseProtection {
 
   recordLoginRequest(now = Date.now()): void {
     this.recordTelemetry("loginRequests", now);
+    this.recordProtectedRequest(now, "login");
+  }
+
+  recordProtectedRequest(
+    now = Date.now(),
+    scope: AbuseChallengeScope = "login",
+  ): void {
     const second = Math.floor(now / 1_000);
     this.cleanup(now);
-    this.requestsBySecond.set(
-      second,
-      (this.requestsBySecond.get(second) ?? 0) + 1,
-    );
+    const scopeRequests = this.requestsBySecond.get(scope) ?? new Map();
+    scopeRequests.set(second, (scopeRequests.get(second) ?? 0) + 1);
+    this.requestsBySecond.set(scope, scopeRequests);
     const sustainedAttack = Array.from(
       { length: SUSTAINED_WINDOW_COUNT },
-      (_, index) => this.requestsBySecond.get(second - index) ?? 0,
+      (_, index) => scopeRequests.get(second - index) ?? 0,
     ).every((count) => count >= REQUESTS_PER_SECOND_THRESHOLD);
     if (sustainedAttack) {
-      this.attackModeUntil = now + ATTACK_MODE_TTL_MS;
-      this.applyRecentFailures(now);
+      this.attackModeUntil.set(scope, now + ATTACK_MODE_TTL_MS);
+      if (scope === "login") this.applyRecentFailures(now);
     }
   }
 
-  isChallengeModeActive(now = Date.now()): boolean {
-    return now < this.attackModeUntil;
+  isChallengeModeActive(
+    now = Date.now(),
+    scope: AbuseChallengeScope = "login",
+  ): boolean {
+    return now < (this.attackModeUntil.get(scope) ?? 0);
   }
 
-  createChallenge(address: string, now = Date.now()): LoginChallenge {
-    this.recordTelemetry("challengesIssued", now);
+  getPseudonymousAddressKey(address: string): string {
+    return this.addressKey(address);
+  }
+
+  createChallenge(
+    address: string,
+    now = Date.now(),
+    scope: AbuseChallengeScope = "login",
+  ): LoginChallenge {
+    if (scope === "login") this.recordTelemetry("challengesIssued", now);
     const payload: LoginChallengePayload = {
       id: randomBytes(18).toString("base64url"),
       expiresAt: now + CHALLENGE_TTL_MS,
       addressKey: this.addressKey(address),
+      scope,
     };
     const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
     const signature = this.sign(encoded);
@@ -100,12 +123,21 @@ export class LoginAbuseProtection {
     token: string,
     proof: string,
     now = Date.now(),
+    scope: AbuseChallengeScope = "login",
   ): boolean {
-    const accepted = this.verifyChallengeProof(address, token, proof, now);
-    this.recordTelemetry(
-      accepted ? "challengesAccepted" : "challengesRejected",
+    const accepted = this.verifyChallengeProof(
+      address,
+      token,
+      proof,
       now,
+      scope,
     );
+    if (scope === "login") {
+      this.recordTelemetry(
+        accepted ? "challengesAccepted" : "challengesRejected",
+        now,
+      );
+    }
     return accepted;
   }
 
@@ -114,6 +146,7 @@ export class LoginAbuseProtection {
     token: string,
     proof: string,
     now: number,
+    scope: AbuseChallengeScope,
   ): boolean {
     if (
       token.length > 1_024 ||
@@ -137,6 +170,7 @@ export class LoginAbuseProtection {
     if (
       payload.expiresAt <= now ||
       payload.addressKey !== this.addressKey(address) ||
+      payload.scope !== scope ||
       this.consumedChallenges.has(payload.id) ||
       this.consumedChallenges.size >= MAX_TRACKED_ENTRIES
     ) {
@@ -195,7 +229,7 @@ export class LoginAbuseProtection {
       windowMinutes: LOGIN_TELEMETRY_WINDOW_MINUTES as 15,
       ...totals,
       activeBlockedAddresses,
-      attackModeActive: this.isChallengeModeActive(now),
+      attackModeActive: this.isChallengeModeActive(now, "login"),
     };
   }
 
@@ -257,9 +291,11 @@ export class LoginAbuseProtection {
   }
 
   private cleanup(now: number): void {
-    for (const [second] of this.requestsBySecond) {
-      if (second < Math.floor(now / 1_000) - SUSTAINED_WINDOW_COUNT) {
-        this.requestsBySecond.delete(second);
+    for (const requestsBySecond of this.requestsBySecond.values()) {
+      for (const [second] of requestsBySecond) {
+        if (second < Math.floor(now / 1_000) - SUSTAINED_WINDOW_COUNT) {
+          requestsBySecond.delete(second);
+        }
       }
     }
     for (const [id, expiresAt] of this.consumedChallenges) {
@@ -321,6 +357,9 @@ function isChallengePayload(value: unknown): value is LoginChallengePayload {
     typeof payload.id === "string" &&
     typeof payload.expiresAt === "number" &&
     Number.isSafeInteger(payload.expiresAt) &&
-    typeof payload.addressKey === "string"
+    typeof payload.addressKey === "string" &&
+    (payload.scope === "login" ||
+      payload.scope === "registration" ||
+      payload.scope === "contact")
   );
 }

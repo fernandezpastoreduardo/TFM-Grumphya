@@ -12,6 +12,7 @@ import {
   RETRY_ERROR,
   SUBMISSION_ERROR,
 } from "./submit-contact-message.constants";
+import { ABUSE_CHALLENGE_NOTICE } from "../../shared/constants/abuse-challenge.constants";
 
 export function SubmitContactMessage() {
   const emailVerification = usePendingEmailVerification();
@@ -22,6 +23,7 @@ export function SubmitContactMessage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState("");
+  const [challengeNotice, setChallengeNotice] = useState("");
   const [retryError, setRetryError] = useState("");
   const [success, setSuccess] = useState("");
   const [savedReference, setSavedReference] = useState("");
@@ -30,6 +32,7 @@ export function SubmitContactMessage() {
     event.preventDefault();
     if (isSubmitting) return;
     setError("");
+    setChallengeNotice("");
     setRetryError("");
     setSuccess("");
     setIsSubmitting(true);
@@ -43,6 +46,7 @@ export function SubmitContactMessage() {
         subject.trim(),
         message.trim(),
         requestKey.current,
+        () => setChallengeNotice(ABUSE_CHALLENGE_NOTICE),
       );
       requestKey.current = null;
       setSubject("");
@@ -56,6 +60,7 @@ export function SubmitContactMessage() {
         setError(SUBMISSION_ERROR);
       }
     } finally {
+      setChallengeNotice("");
       setIsSubmitting(false);
     }
   }
@@ -65,12 +70,15 @@ export function SubmitContactMessage() {
     setRetryError("");
     setIsRetrying(true);
     try {
-      const result = await retryContactMessageConfirmation(savedReference);
+      const result = await retryContactMessageConfirmation(savedReference, () =>
+        setChallengeNotice(ABUSE_CHALLENGE_NOTICE),
+      );
       setSuccess(CONFIRMATION_COPY[result.confirmation]);
       setSavedReference(result.retryAllowed ? result.reference : "");
     } catch {
       setRetryError(RETRY_ERROR);
     } finally {
+      setChallengeNotice("");
       setIsRetrying(false);
     }
   }
@@ -82,6 +90,7 @@ export function SubmitContactMessage() {
         message={message}
         isSubmitting={isSubmitting}
         error={error}
+        challengeNotice={challengeNotice}
         success={success}
         retryError={retryError}
         showRetry={Boolean(savedReference)}

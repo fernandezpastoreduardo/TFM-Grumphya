@@ -4,7 +4,7 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { createSecurityMiddleware } from "./security/security.middleware";
-import { LoginAbuseProtection } from "./security/login-abuse-protection.service";
+import { AbuseProtection } from "./security/abuse-protection.service";
 import { assertAuditRuntimeConfiguration } from "./audit/audit-technical-auth";
 
 const ACCESS_TOKEN_SECRET_MIN_BYTES = 32;
@@ -59,7 +59,13 @@ async function bootstrap() {
   app.enableCors({
     origin: allowedWebOrigin,
     methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key"],
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      "Idempotency-Key",
+      "X-Abuse-Challenge",
+      "X-Abuse-Proof",
+    ],
     maxAge: 600,
     credentials: true,
   });
@@ -73,7 +79,7 @@ async function bootstrap() {
   });
   app.use(
     createSecurityMiddleware({
-      loginAbuseProtection: app.get(LoginAbuseProtection, { strict: false }),
+      abuseProtection: app.get(AbuseProtection, { strict: false }),
     }),
   );
   const port = Number(process.env.API_PORT ?? 3000);

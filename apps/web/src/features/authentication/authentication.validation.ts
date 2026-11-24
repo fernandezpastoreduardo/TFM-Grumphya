@@ -1,7 +1,7 @@
 import {
-  isLoginChallenge,
-  type LoginChallenge,
-} from "./services/login-challenge";
+  isAbuseChallenge,
+  type AbuseChallenge,
+} from "../../shared/utils/abuse-challenge";
 import { LOGIN_CHALLENGE_REQUIRED } from "./authentication.constants";
 import type { LoginResponse } from "./authentication.models";
 
@@ -28,7 +28,7 @@ export function isChallengeRequiredResponse(
   value: unknown,
 ): value is {
   code: typeof LOGIN_CHALLENGE_REQUIRED;
-  challenge: LoginChallenge;
+  challenge: AbuseChallenge;
 } {
   return (
     status === 428 &&
@@ -37,6 +37,6 @@ export function isChallengeRequiredResponse(
     "code" in value &&
     value.code === LOGIN_CHALLENGE_REQUIRED &&
     "challenge" in value &&
-    isLoginChallenge(value.challenge)
+    isAbuseChallenge(value.challenge)
   );
 }

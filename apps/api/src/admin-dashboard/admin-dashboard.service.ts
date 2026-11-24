@@ -11,7 +11,7 @@ import {
   ADMIN_DASHBOARD_REPOSITORY,
   type AdminDashboardRepository,
 } from "./admin-dashboard.models";
-import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
+import { AbuseProtection } from "../security/abuse-protection.service";
 
 const INVALID_ERROR_EVENT_ID_MESSAGE =
   "El identificador del error no es válido.";
@@ -33,8 +33,8 @@ export class AdminDashboardService {
     @Inject(ADMIN_DASHBOARD_REPOSITORY)
     private readonly repository: AdminDashboardRepository,
     @Optional()
-    @Inject(LoginAbuseProtection)
-    private readonly loginAbuseProtection = new LoginAbuseProtection(),
+    @Inject(AbuseProtection)
+    private readonly abuseProtection = new AbuseProtection(),
   ) {}
 
   async getSnapshot() {
@@ -42,7 +42,7 @@ export class AdminDashboardService {
       const snapshot = await this.repository.getSnapshot();
       return {
         ...snapshot,
-        loginSecurity: this.loginAbuseProtection.getAdminSnapshot(),
+        loginSecurity: this.abuseProtection.getAdminSnapshot(),
       };
     } catch {
       this.logger.error("ADMIN_DASHBOARD_UNAVAILABLE");

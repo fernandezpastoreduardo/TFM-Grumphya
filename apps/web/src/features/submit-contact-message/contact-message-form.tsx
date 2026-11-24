@@ -15,6 +15,7 @@ type ContactMessageFormProps = {
   isSubmitting: boolean;
   isRetrying: boolean;
   error: string;
+  challengeNotice: string;
   success: string;
   retryError: string;
   showRetry: boolean;
@@ -30,6 +31,7 @@ export function ContactMessageForm({
   isSubmitting,
   isRetrying,
   error,
+  challengeNotice,
   success,
   retryError,
   showRetry,
@@ -91,6 +93,11 @@ export function ContactMessageForm({
       {error ? (
         <p className="contact-message-error" role="alert">
           {error}
+        </p>
+      ) : null}
+      {challengeNotice ? (
+        <p className="contact-message-status" role="status">
+          {challengeNotice}
         </p>
       ) : null}
       {success ? (

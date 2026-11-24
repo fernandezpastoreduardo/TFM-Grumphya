@@ -1,4 +1,5 @@
 import type { Plan } from "./register-with-plan.models";
+import { fetchWithAbuseChallenge } from "../../infrastructure/api/fetch-with-abuse-challenge";
 import {
   isPlanResponse,
   isRegistrationPendingResponse,
@@ -13,20 +14,23 @@ export async function loadSelectedPlan(): Promise<Plan | null> {
   return response.ok && isPlanResponse(body) ? body.plan : null;
 }
 
-export async function submitRegistration(input: {
-  email: string;
-  username: string;
-  password: string;
-}): Promise<{ pending: boolean; message?: string }> {
-  const response = await fetch("/api/registrations", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...input,
-      privacyPolicyAcknowledged: true,
-    }),
-  });
+export async function submitRegistration(
+  input: { email: string; username: string; password: string },
+  onChallenge?: () => void,
+): Promise<{ pending: boolean; message?: string }> {
+  const response = await fetchWithAbuseChallenge(
+    (challengeHeaders) =>
+      fetch("/api/registrations", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...challengeHeaders },
+        body: JSON.stringify({
+          ...input,
+          privacyPolicyAcknowledged: true,
+        }),
+      }),
+    onChallenge,
+  );
   const body: unknown = await readJson(response);
   if (response.ok && isRegistrationPendingResponse(body)) {
     return { pending: true };
@@ -39,13 +43,18 @@ export async function submitRegistration(input: {
 
 export async function resendRegistrationVerification(
   email: string,
+  onChallenge?: () => void,
 ): Promise<boolean> {
-  const response = await fetch("/api/registrations/resend-verification", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
+  const response = await fetchWithAbuseChallenge(
+    (challengeHeaders) =>
+      fetch("/api/registrations/resend-verification", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", ...challengeHeaders },
+        body: JSON.stringify({ email }),
+      }),
+    onChallenge,
+  );
   const body: unknown = await readJson(response);
   return response.ok && isRegistrationPendingResponse(body);
 }

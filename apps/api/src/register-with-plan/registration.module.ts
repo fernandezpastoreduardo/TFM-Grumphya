@@ -9,15 +9,15 @@ import { PlanUsageService } from "./plan-usage.service";
 import { RegistrationService } from "./registration.service";
 import { MailModule } from "../infrastructure/mail/mail.module";
 import { MailService } from "../infrastructure/mail/mail.service";
-import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
+import { AbuseProtection } from "../security/abuse-protection.service";
 
 @Module({
   imports: [AuthSecurityModule, MailModule],
   controllers: [RegistrationController],
   providers: [
     {
-      provide: LoginAbuseProtection,
-      useFactory: () => new LoginAbuseProtection(),
+      provide: AbuseProtection,
+      useFactory: () => new AbuseProtection(),
     },
     {
       provide: REGISTRATION_REPOSITORY,
@@ -37,6 +37,6 @@ import { LoginAbuseProtection } from "../security/login-abuse-protection.service
     },
     PlanUsageService,
   ],
-  exports: [REGISTRATION_REPOSITORY, PlanUsageService, LoginAbuseProtection],
+  exports: [REGISTRATION_REPOSITORY, PlanUsageService, AbuseProtection],
 })
 export class RegistrationModule {}

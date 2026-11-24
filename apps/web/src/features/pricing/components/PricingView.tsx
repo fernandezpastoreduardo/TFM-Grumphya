@@ -6,11 +6,13 @@ export function PricingView({
   isAuthenticated,
   selectingPlan,
   selectionError,
+  challengeNotice,
   onSelectPlan,
 }: {
   isAuthenticated: boolean | null;
   selectingPlan: PricingPlan | null;
   selectionError: string;
+  challengeNotice: string;
   onSelectPlan: (plan: PricingPlan) => void;
 }) {
   const [showLesson, setShowLesson] = useState(false);
@@ -21,6 +23,11 @@ export function PricingView({
       {selectionError ? (
         <p className="registration-error" role="alert">
           {selectionError}
+        </p>
+      ) : null}
+      {challengeNotice ? (
+        <p className="registration-status" role="status">
+          {challengeNotice}
         </p>
       ) : null}
       <div className="pricing-grid">

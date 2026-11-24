@@ -149,6 +149,6 @@ describe("processor inventory source", () => {
       for (const statement of disclosure.declaredStatements ?? [])
         expect(POLICY_SOURCE).toContain(statement);
     }
-    expect(POLICY_SOURCE).toContain("Versión 5");
+    expect(POLICY_SOURCE).toContain("Versión 6");
   });
 });

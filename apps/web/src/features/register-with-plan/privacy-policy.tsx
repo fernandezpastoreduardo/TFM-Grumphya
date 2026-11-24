@@ -16,7 +16,7 @@ export function PrivacyPolicy() {
           comparten y durante cuánto tiempo los conservamos.
         </p>
         <p className="privacy-policy-version">
-          Versión 5 · 3 de noviembre de 2026
+          Versión 6 · 24 de noviembre de 2026
         </p>
       </header>
 
@@ -109,6 +109,20 @@ export function PrivacyPolicy() {
             servicio.
           </li>
         </ul>
+        <p>
+          Para limitar solicitudes y prevenir abusos, la API calcula un HMAC
+          seudonimizado —no anónimo— de la IP que observa según la configuración
+          de proxies de confianza. Lo usa como clave de estado en memoria para
+          los límites de solicitudes y, en el acceso, para agrupar fallos y
+          aplicar bloqueos temporales. Durante picos de login, alta o contacto,
+          el HMAC también vincula el reto de prueba de trabajo al mismo origen.
+          No se guarda en la base de datos ni se usa como identidad de cuenta.
+          Las ventanas funcionales son de 60 segundos para los límites, hasta 15
+          minutos para los bloqueos de login y 60 segundos para los retos; esos
+          plazos no garantizan el instante exacto en que se elimina cada entrada
+          de la memoria del proceso. Los registros del alojamiento siguen sus
+          propias prácticas y plazos.
+        </p>
         <p>
           No escribas datos especialmente sensibles ni información de otras
           personas en ideas, mensajes o imágenes salvo que sea imprescindible y

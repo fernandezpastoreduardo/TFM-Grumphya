@@ -6,7 +6,7 @@ import {
   getAccessToken,
 } from "../../infrastructure/auth/session";
 import { AuthenticationPage } from "./authentication-page";
-import * as loginChallenge from "./services/login-challenge";
+import * as abuseChallenge from "../../shared/utils/abuse-challenge";
 
 const LOGIN_ENDPOINT = "/api/auth/login";
 const IDENTIFIER = "persona-lista";
@@ -169,7 +169,7 @@ describe("AuthenticationPage", () => {
       configurable: true,
       value: { ...window.location, assign },
     });
-    vi.spyOn(loginChallenge, "solveLoginChallenge").mockResolvedValue("1234");
+    vi.spyOn(abuseChallenge, "solveAbuseChallenge").mockResolvedValue("1234");
     vi.stubGlobal("fetch", fetchMock);
     render(<AuthenticationPage />);
 
@@ -177,15 +177,15 @@ describe("AuthenticationPage", () => {
     await user.type(screen.getByLabelText("Contraseña"), PASSWORD);
     await user.click(screen.getByRole("button", { name: /^entrar/i }));
 
-    expect(loginChallenge.solveLoginChallenge).toHaveBeenCalledWith(challenge);
+    expect(abuseChallenge.solveAbuseChallenge).toHaveBeenCalledWith(challenge);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenLastCalledWith(
       LOGIN_ENDPOINT,
       expect.objectContaining({
         headers: {
           "Content-Type": "application/json",
-          "X-Login-Challenge": challenge.token,
-          "X-Login-Proof": "1234",
+          "X-Abuse-Challenge": challenge.token,
+          "X-Abuse-Proof": "1234",
         },
       }),
     );

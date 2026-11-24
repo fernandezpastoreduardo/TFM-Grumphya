@@ -3,7 +3,7 @@ import {
   type ProcessorDisclosure,
 } from "./processor-inventory.models";
 
-const PRIVACY_POLICY_REVISION = "v5";
+const PRIVACY_POLICY_REVISION = "v6";
 const PROVIDER_SECTION = "privacy-providers-title";
 const OPENAI_PURPOSE =
   "OpenAI interviene como proveedor técnico de las funciones de IA: puede recibir el texto de ideas o mensajes para generar respuestas y la imagen procesada cuando se solicita moderar un avatar.";

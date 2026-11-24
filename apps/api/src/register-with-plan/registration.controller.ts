@@ -17,7 +17,7 @@ import { RegistrationService } from "./registration.service";
 import { readCookie } from "../infrastructure/http/read-cookie";
 import { privateCookieOptions } from "../infrastructure/http/private-cookie-options";
 import { AccessTokenGuard } from "../infrastructure/auth/access-token.guard";
-import { LoginAbuseProtection } from "../security/login-abuse-protection.service";
+import { AbuseProtection } from "../security/abuse-protection.service";
 import { PENDING_REGISTRATION_COOKIE } from "../infrastructure/auth/pending-email-verification";
 
 const INTENT_COOKIE = "grumphya_registration_intent";
@@ -30,15 +30,15 @@ type AuthenticatedRequest = Request & { user?: { userId: string } };
 @Controller()
 export class RegistrationController {
   private readonly service: RegistrationService;
-  private readonly loginAbuseProtection: LoginAbuseProtection;
+  private readonly abuseProtection: AbuseProtection;
   constructor(
     @Inject(RegistrationService) service: RegistrationService,
     @Optional()
-    @Inject(LoginAbuseProtection)
-    loginAbuseProtection = new LoginAbuseProtection(),
+    @Inject(AbuseProtection)
+    abuseProtection = new AbuseProtection(),
   ) {
     this.service = service;
-    this.loginAbuseProtection = loginAbuseProtection;
+    this.abuseProtection = abuseProtection;
   }
 
   @Post("registration-intents")
@@ -174,14 +174,14 @@ export class RegistrationController {
     let session: Awaited<ReturnType<RegistrationService["login"]>>;
     try {
       session = await this.service.login(body);
-      this.loginAbuseProtection.recordLoginSuccess(clientAddress);
+      this.abuseProtection.recordLoginSuccess(clientAddress);
     } catch (error) {
       if (
         error instanceof RegistrationError &&
         error.statusCode === 401 &&
         error.code === "LOGIN_UNAVAILABLE"
       ) {
-        this.loginAbuseProtection.recordLoginFailure(clientAddress);
+        this.abuseProtection.recordLoginFailure(clientAddress);
       }
       throw error;
     }
