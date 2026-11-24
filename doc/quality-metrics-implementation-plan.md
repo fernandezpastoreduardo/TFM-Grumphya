@@ -13,7 +13,7 @@
 
 Ampliar la medición de calidad de Grumphya sin contratar servicios, añadir cookies o tecnologías de seguimiento, ni ampliar la finalidad de privacidad ya descrita. Las métricas servirán para detectar regresiones técnicas, mejorar el rendimiento y vigilar la consistencia de la evaluación de IA.
 
-El plan parte del estado del repositorio revisado el 9 de noviembre de 2026. Ya existen medición agregada de páginas públicas y selecciones de planes, telemetría de operaciones de IA, métricas de seguridad y panel de administración. La política de privacidad versión 5 ya menciona los contadores agregados de páginas públicas. La matriz de privacidad indica que estos no identifican visitas ni pretenden contar personas únicas.
+El plan parte del estado del repositorio revisado el 9 de noviembre de 2026. Ya existen medición agregada de páginas públicas y selecciones de planes, telemetría de operaciones de IA, métricas de seguridad y panel de administración. La versión 6 de la política de privacidad mantiene la información sobre contadores agregados de páginas públicas y añade los controles antiabuso con HMAC seudonimizado.
 
 ### Salvaguardas obligatorias
 
@@ -77,7 +77,7 @@ Los resultados de laboratorio no representan la experiencia real de toda la pobl
 
 1. Confirmar el inventario de datos persistidos, el esquema de `anonymous_analytics_daily`, el panel admin, telemetría stdout, logs de Caddy/hosting y tarea de retención.
 2. Especificar para cada métrica: propósito, agregación, dimensiones permitidas, fuente, acceso, retención y comprobación de ausencia de identificadores.
-3. Confirmar que la política versión 5 cubre la analítica propia actual y que las métricas nuevas caben en la finalidad descrita de calidad/seguridad/operación. Si no caben, no implementarlas dentro de este plan.
+3. Confirmar que la política versión 6 cubre la analítica propia y los controles de seguridad actuales y que las métricas nuevas caben en la finalidad descrita de calidad/seguridad/operación. Si no caben, no implementarlas dentro de este plan.
 4. Verificar que las direcciones IP de infraestructura no se copian al almacén de métricas ni se reutilizan para analítica.
 
 **Aceptación:** diccionario aprobado técnicamente; cero identificadores de navegador/sesión/usuario en las métricas nuevas; ninguna cookie o SDK nuevo; cualquier dato fuera del alcance se elimina del plan de implementación.

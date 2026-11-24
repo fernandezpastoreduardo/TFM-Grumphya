@@ -69,7 +69,8 @@ prohibición de query strings y el mismo proxy a la API. El guard comprueba la
 ACL de `AUDIT_ALLOWED_NETWORKS` antes de validar el JWT; se aplican todos los
 requisitos de identidad técnica anteriores, incluido el scope `audit:privacy`.
 La respuesta usa el esquema `processor-inventory-v1` y se
-firma con `kid=grumphya-release-2026`. La prueba desde una IP permitida debe
+firma con `kid=grumphya-release-2026`; `privacyPolicy.revision` declara `v6`.
+Esto describe el contrato del código, no verifica la respuesta viva. La prueba desde una IP permitida debe
 verificarse contra los registros actuales del guard; la observación histórica
 de las siete rutas Beta D no basta para inferir qué IP ve hoy la llamada del
 lector.

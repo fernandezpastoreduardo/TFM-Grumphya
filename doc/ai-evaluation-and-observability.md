@@ -61,19 +61,22 @@ privado de consumos almacena tokens y costes asociados a `userId`; estos
 identificadores no aparecen en los eventos stdout ni en la tabla de actividad
 reciente.
 
-Las métricas de `LoginAbuseProtection` cubren una ventana móvil de 15 minutos:
-solicitudes de login admitidas por el rate limit, challenges emitidos/aceptados/rechazados, fallos de
-autenticación durante el modo challenge, solicitudes denegadas por el bloqueo
-temporal, direcciones de red bloqueadas vigentes y estado del modo de ataque.
-El detector y el contador de solicitudes consideran las solicitudes admitidas
-por el rate limit de login; las denegadas por ese límite no activan el
-challenge. Los fallos cuentan solo una respuesta `401 LOGIN_UNAVAILABLE`
-durante el modo challenge e incluyen los fallos recientes usados al activarlo.
-Son contadores volátiles en memoria por proceso y se reinician con el proceso;
-no registran ni muestran IP, usuario, cuenta o sesiones individuales. No hay
-sincronización entre procesos o réplicas. El bloqueo temporal se aplica a la IP
-de salida compartida, por lo que puede afectar a varias personas detrás de una
-NAT.
+Las métricas de `AbuseProtection` que muestra la pestaña «Seguridad y acceso»
+cubren una ventana móvil de 15 minutos y siguen limitadas al login: solicitudes
+de login admitidas por el rate limit, retos emitidos/aceptados/rechazados,
+fallos de autenticación durante el modo challenge, solicitudes denegadas por el
+bloqueo temporal, recuento de claves HMAC con bloqueo vigente y estado del
+detector de login. Los detectores de login, alta y contacto son independientes
+por ámbito: cada uno se activa durante 15 minutos cuando alcanza 10 solicitudes
+admitidas por segundo durante tres segundos consecutivos. Las solicitudes
+denegadas por rate limit no activan el reto. El panel no expone contadores de
+retos ni actividad de alta/contacto. Los fallos cuentan solo una respuesta
+`401 LOGIN_UNAVAILABLE` durante el modo challenge de login e incluyen los
+fallos recientes usados al activarlo. Son contadores volátiles en memoria por
+proceso y se reinician con el proceso; no registran ni muestran IP, usuario,
+cuenta o sesiones individuales. No hay sincronización entre procesos o
+réplicas. El bloqueo temporal se aplica a una clave HMAC de la IP observada,
+por lo que puede afectar a varias personas detrás de una misma salida NAT.
 
 Los errores HTTP 5xx conservan códigos y diagnósticos seguros para las métricas
 del panel, pero los eventos nuevos no guardan contexto de entrada ni texto de
