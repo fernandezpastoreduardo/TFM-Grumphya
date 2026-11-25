@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import {
   createPrivateKey,
   createPublicKey,
@@ -348,6 +348,7 @@ function assertSignedSize(value: ProcessorInventoryResponse): void {
 
 @Injectable()
 export class ProcessorInventoryService {
+  private readonly logger = new Logger(ProcessorInventoryService.name);
   constructor(
     private readonly releases: AuditService,
     private readonly clock: InventoryClock = () => new Date(),
@@ -360,6 +361,7 @@ export class ProcessorInventoryService {
   ): Promise<ProcessorInventoryResponse> {
     assertIdentity(identity);
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let stage: "release" | "inventory" | "signing" | "response" = "release";
     try {
       const digest = await Promise.race([
         this.releases.readCurrentReleaseDigest(),
@@ -377,7 +379,9 @@ export class ProcessorInventoryService {
           "evidence_unavailable",
           "El release activo no está validado.",
         );
+      stage = "inventory";
       const unsigned = buildUnsignedInventory(this.source(), digest, now);
+      stage = "signing";
       const signing = this.signingKeyReader();
       const signature = sign(
         null,
@@ -392,6 +396,7 @@ export class ProcessorInventoryService {
           signature,
         },
       };
+      stage = "response";
       if (
         !exactKeys(response, INVENTORY_KEYS) ||
         !exactKeys(response.attestation, SIGNATURE_KEYS) ||
@@ -408,6 +413,15 @@ export class ProcessorInventoryService {
       assertSignedSize(response);
       return response;
     } catch (error) {
+      const code =
+        error instanceof AuditHttpException
+          ? error.code
+          : "evidence_unavailable";
+      this.logger.warn({
+        event: "processor_inventory_read_failed",
+        stage,
+        code,
+      });
       if (error instanceof AuditHttpException) throw error;
       throw auditError(
         503,

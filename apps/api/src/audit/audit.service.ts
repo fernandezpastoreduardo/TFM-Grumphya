@@ -208,6 +208,7 @@ function isProductionManifest(manifest: Record<string, unknown>): boolean {
 function signedManifestIsValid(
   attestation: ReleaseAttestationRecord,
   now: Date,
+  allowExpired = false,
 ): boolean {
   const publicKeyPem = readManifestPublicKey();
   if (
@@ -229,7 +230,12 @@ function signedManifestIsValid(
       attestation.manifest.schemaVersion !== AUDIT_SCHEMA_VERSION ||
       attestation.manifest.environment !== AUDIT_ENVIRONMENT ||
       !isProductionManifest(attestation.manifest) ||
-      attestation.validUntil.getTime() <= now.getTime()
+      !validManifestWindow(attestation.manifest) ||
+      attestation.observedAt.toISOString() !==
+        attestation.manifest.observedAt ||
+      attestation.validUntil.toISOString() !==
+        attestation.manifest.validUntil ||
+      (!allowExpired && attestation.validUntil.getTime() <= now.getTime())
     )
       return false;
     return (["deployment", "dependencies"] as const).every((resource) => {
@@ -258,6 +264,32 @@ function signedManifestIsValid(
   } catch {
     return false;
   }
+}
+function validManifestWindow(manifest: Record<string, unknown>): boolean {
+  const observedAt = parseDate(manifest.observedAt);
+  const validUntil = parseDate(manifest.validUntil);
+  return Boolean(
+    observedAt &&
+    validUntil &&
+    validUntil.getTime() > observedAt.getTime() &&
+    validUntil.getTime() - observedAt.getTime() <= MAX_EVIDENCE_AGE_MS,
+  );
+}
+export function verifiedCurrentReleaseIdentityDigest(
+  attestation: ReleaseAttestationRecord,
+  now: Date,
+): string | undefined {
+  if (!signedManifestIsValid(attestation, now, true)) return undefined;
+  const observedAt = parseDate(attestation.manifest.observedAt);
+  const digest = attestation.manifest.deploymentDigest;
+  if (
+    !observedAt ||
+    observedAt.getTime() > now.getTime() + 30_000 ||
+    typeof digest !== "string" ||
+    !DIGEST_PATTERN.test(digest)
+  )
+    return undefined;
+  return digest;
 }
 export function verifiedCurrentReleaseDigest(
   attestation: ReleaseAttestationRecord,
@@ -347,7 +379,7 @@ export class AuditService {
       this.repository.findLatestReleaseAttestation(),
     );
     const digest = attestation
-      ? verifiedCurrentReleaseDigest(attestation, this.clock())
+      ? verifiedCurrentReleaseIdentityDigest(attestation, this.clock())
       : undefined;
     if (!digest)
       throw auditError(

@@ -4,10 +4,15 @@ import {
   sign,
   verify,
 } from "node:crypto";
+import { Logger } from "@nestjs/common";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuditHttpException } from "./audit-errors";
 import { canonicalJson, emptyAuditEvidence } from "./audit-signals";
-import { verifiedCurrentReleaseDigest } from "./audit.service";
+import {
+  AuditService,
+  verifiedCurrentReleaseDigest,
+  verifiedCurrentReleaseIdentityDigest,
+} from "./audit.service";
 import type { AuditTechnicalIdentity } from "./audit-technical-auth";
 import { ProcessorInventoryService } from "./processor-inventory.service";
 import type {
@@ -165,6 +170,7 @@ function signedReleaseRecord(): ReleaseAttestationRecord {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const key of ENVIRONMENT_KEYS) delete process.env[key];
 });
 
@@ -228,8 +234,11 @@ describe("ProcessorInventoryService", () => {
 
   it("returns a safe read error when private inventory inspection fails", async () => {
     configureSigning();
+    const warning = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
     const result = service(() => {
-      throw new Error("private inspection details");
+      throw new Error("private inspection details and inventory payload");
     });
 
     await expect(result.read(IDENTITY)).rejects.toMatchObject({
@@ -239,6 +248,43 @@ describe("ProcessorInventoryService", () => {
         message: "El inventario de proveedores no está disponible.",
       },
     });
+    expect(warning).toHaveBeenCalledWith({
+      event: "processor_inventory_read_failed",
+      stage: "inventory",
+      code: "evidence_unavailable",
+    });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain(
+      "private inspection details",
+    );
+  });
+
+  it("returns a safe read error and logs only a code when signing fails", async () => {
+    const signingFailure = "private signing key detail";
+    const warning = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const reader = new ProcessorInventoryService(
+      { readCurrentReleaseDigest: async () => RELEASE_DIGEST } as never,
+      () => new Date(NOW),
+      () => EMPTY_COMPLETE_INVENTORY,
+      () => {
+        throw new Error(signingFailure);
+      },
+    );
+
+    await expect(reader.read(IDENTITY)).rejects.toMatchObject({
+      status: 503,
+      code: "evidence_unavailable",
+      response: {
+        message: "El inventario de proveedores no está disponible.",
+      },
+    });
+    expect(warning).toHaveBeenCalledWith({
+      event: "processor_inventory_read_failed",
+      stage: "signing",
+      code: "evidence_unavailable",
+    });
+    expect(JSON.stringify(warning.mock.calls)).not.toContain(signingFailure);
   });
 
   it.each([
@@ -324,5 +370,66 @@ describe("ProcessorInventoryService", () => {
 
     process.env.DEPLOY_SHA = "e".repeat(40);
     expect(verifiedCurrentReleaseDigest(record, NOW)).toBeUndefined();
+  });
+
+  it("uses a structurally valid signed digest for the active release after the manifest freshness window", () => {
+    configureSigning();
+    process.env.DEPLOY_SHA = "c".repeat(40);
+    const record = signedReleaseRecord();
+    const afterExpiry = new Date(NOW.getTime() + 25 * 60 * 60 * 1000);
+
+    expect(verifiedCurrentReleaseIdentityDigest(record, afterExpiry)).toBe(
+      RELEASE_DIGEST,
+    );
+    expect(verifiedCurrentReleaseDigest(record, afterExpiry)).toBeUndefined();
+
+    process.env.DEPLOY_SHA = "e".repeat(40);
+    expect(
+      verifiedCurrentReleaseIdentityDigest(record, afterExpiry),
+    ).toBeUndefined();
+  });
+
+  it("issues a fresh signed inventory from the current persisted release identity after evidence expiry", async () => {
+    configureSigning();
+    process.env.DEPLOY_SHA = "c".repeat(40);
+    const storedRelease = signedReleaseRecord();
+    const afterExpiry = new Date(NOW.getTime() + 25 * 60 * 60 * 1000);
+    const repository = {
+      findLatestReleaseAttestation: vi.fn().mockResolvedValue(storedRelease),
+      findLatestEvidence: vi.fn(),
+    };
+    const releases = new AuditService(repository as never, () => afterExpiry);
+    const inventory = new ProcessorInventoryService(
+      releases,
+      () => afterExpiry,
+      () => EMPTY_COMPLETE_INVENTORY,
+    );
+
+    const result = await inventory.read(IDENTITY);
+
+    expect(repository.findLatestReleaseAttestation).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({
+      observedAt: afterExpiry.toISOString(),
+      validUntil: new Date(
+        afterExpiry.getTime() + 24 * 60 * 60 * 1000,
+      ).toISOString(),
+      deploymentDigest: RELEASE_DIGEST,
+      inventoryStatus: "complete",
+    });
+    assertSignatureIsValid(result);
+  });
+
+  it("rejects a release identity when stored timestamps no longer match its signed manifest", () => {
+    configureSigning();
+    process.env.DEPLOY_SHA = "c".repeat(40);
+    const record = signedReleaseRecord();
+    const inconsistent = {
+      ...record,
+      validUntil: new Date(record.validUntil.getTime() + 1),
+    };
+
+    expect(
+      verifiedCurrentReleaseIdentityDigest(inconsistent, NOW),
+    ).toBeUndefined();
   });
 });
