@@ -70,6 +70,22 @@ ACL de `AUDIT_ALLOWED_NETWORKS` antes de validar el JWT; se aplican todos los
 requisitos de identidad técnica anteriores, incluido el scope `audit:privacy`.
 La respuesta usa el esquema `processor-inventory-v1` y se
 firma con `kid=grumphya-release-2026`; `privacyPolicy.revision` declara `v6`.
+El inventario se construye en cada lectura y recibe una firma EdDSA nueva con
+vigencia máxima de 24 horas. Para enlazarlo al release activo, el servicio
+verifica la firma Ed25519 del manifiesto persistido, el `kid` permitido, el
+esquema y entorno, la estructura y sus digests, además de las firmas de las
+envolventes `deployment` y `dependencies`, y que
+`manifest.deployment.deploymentSha` coincida exactamente con `DEPLOY_SHA`.
+También exige que `observedAt` y `validUntil` coincidan con los valores firmados,
+que `validUntil` sea posterior a `observedAt` y que ese intervalo no supere 24
+horas. No exige que `validUntil` siga en el futuro ni limita cuánto tiempo ha
+pasado desde `observedAt`: un manifiesto vencido, incluso con más de 24 horas de
+antigüedad, puede identificar el release mientras su firma y su enlace a
+`DEPLOY_SHA` sigan siendo válidos. En este flujo el manifiesto sirve como
+identidad firmada del release, no como evidencia fresca de auditoría. Las siete
+rutas Beta D mantienen la comprobación estricta de frescura de sus evidencias.
+Los errores internos del inventario registran solo una etapa y un código
+acotados, nunca excepciones ni contenido.
 Esto describe el contrato del código, no verifica la respuesta viva. La prueba desde una IP permitida debe
 verificarse contra los registros actuales del guard; la observación histórica
 de las siete rutas Beta D no basta para inferir qué IP ve hoy la llamada del
