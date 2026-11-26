@@ -1,4 +1,4 @@
-import { getPublicExistingProductExample } from "../evaluation-process";
+import { getPublicExistingProductExample } from "../public-product-example.validation";
 import {
   EVALUATION_STATUS_LABELS,
   EXISTING_PRODUCT_EXAMPLE_LABEL,

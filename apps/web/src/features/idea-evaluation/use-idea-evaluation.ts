@@ -2,15 +2,12 @@ import { useRef, useState } from "react";
 import { useAnonymousUsage } from "../../shared/hooks/use-anonymous-usage";
 import { useSessionStatus } from "../../infrastructure/auth/use-session-status";
 import { usePendingEmailVerification } from "../../shared/hooks/use-pending-email-verification";
+import type { EvaluationProcessError } from "./evaluation-process";
 import type {
   EvaluationProcessResult,
   EvaluationSubmissionResult,
   SimilarIdeaMatchResult,
   SpecialIdeaCaseResult,
-} from "./evaluation-process";
-import {
-  evaluationProcess,
-  EvaluationProcessError,
 } from "./evaluation-process";
 import { EVALUATION_FAILURE_MESSAGE } from "./evaluation.constants";
 import type { HomeEvaluationRequest } from "./idea-evaluation.models";
@@ -68,12 +65,16 @@ export function useIdeaEvaluation(
         ? pendingSubmission.idempotencyKey
         : crypto.randomUUID();
     retryableSubmissionRef.current = { request, idempotencyKey };
+    let processErrorType: typeof EvaluationProcessError | null = null;
     try {
+      const { evaluationProcess, EvaluationProcessError } =
+        await import("./evaluation-process");
+      processErrorType = EvaluationProcessError;
       const result = await evaluationProcess(request, idempotencyKey);
       applySubmissionResult(result, request, idempotencyKey);
       retryableSubmissionRef.current = null;
     } catch (error: unknown) {
-      handleEvaluationError(error);
+      handleEvaluationError(error, processErrorType);
     } finally {
       isEvaluationSubmittingRef.current = false;
       setIsEvaluating(false);
@@ -93,7 +94,11 @@ export function useIdeaEvaluation(
     setEvaluationError("");
     setIsEvaluating(true);
     setIsEvaluationDialogOpen(true);
+    let processErrorType: typeof EvaluationProcessError | null = null;
     try {
+      const { evaluationProcess, EvaluationProcessError } =
+        await import("./evaluation-process");
+      processErrorType = EvaluationProcessError;
       const result = await evaluationProcess(
         pendingEvaluation.request,
         pendingEvaluation.idempotencyKey,
@@ -105,7 +110,7 @@ export function useIdeaEvaluation(
         pendingEvaluation.idempotencyKey,
       );
     } catch (error: unknown) {
-      handleEvaluationError(error);
+      handleEvaluationError(error, processErrorType);
     } finally {
       isEvaluationSubmittingRef.current = false;
       setIsEvaluating(false);
@@ -113,8 +118,11 @@ export function useIdeaEvaluation(
     }
   }
 
-  function handleEvaluationError(error: unknown) {
-    if (error instanceof EvaluationProcessError) {
+  function handleEvaluationError(
+    error: unknown,
+    errorType: typeof EvaluationProcessError | null,
+  ) {
+    if (errorType && error instanceof errorType) {
       if (error.code === "EMAIL_VERIFICATION_REQUIRED") {
         setIsEvaluationDialogOpen(false);
         setIsEmailVerificationDialogOpen(true);

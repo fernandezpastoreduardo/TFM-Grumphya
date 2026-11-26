@@ -57,6 +57,46 @@ describe("AccreditationSeal", () => {
     expect(widgetScript).not.toBeInTheDocument();
   });
 
+  it("loads the widget when the browser is idle and cancels pending work", () => {
+    const nonceScript = document.createElement("script");
+    nonceScript.nonce = CSP_NONCE;
+    document.head.append(nonceScript);
+
+    const scheduledIdleCallback: { current: IdleRequestCallback | null } = {
+      current: null,
+    };
+    const requestIdleCallbackMock = vi.fn((callback: IdleRequestCallback) => {
+      scheduledIdleCallback.current = callback;
+      return 17;
+    });
+    const cancelIdleCallbackMock = vi.fn();
+    vi.stubGlobal("requestIdleCallback", requestIdleCallbackMock);
+    vi.stubGlobal("cancelIdleCallback", cancelIdleCallbackMock);
+
+    const { unmount } = render(<AccreditationSeal />);
+
+    expect(requestIdleCallbackMock).toHaveBeenCalledWith(expect.any(Function), {
+      timeout: 2_500,
+    });
+    expect(
+      document.querySelector(`script[src="${BADGE_SCRIPT_URL}"]`),
+    ).not.toBeInTheDocument();
+
+    scheduledIdleCallback.current?.({
+      didTimeout: false,
+      timeRemaining: () => 10,
+    });
+    expect(
+      document.querySelector(`script[src="${BADGE_SCRIPT_URL}"]`),
+    ).toHaveAttribute("nonce", CSP_NONCE);
+
+    unmount();
+    expect(cancelIdleCallbackMock).toHaveBeenCalledWith(17);
+    expect(
+      document.querySelector(`script[src="${BADGE_SCRIPT_URL}"]`),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not load an external script without a CSP nonce", () => {
     render(<AccreditationSeal />);
 
