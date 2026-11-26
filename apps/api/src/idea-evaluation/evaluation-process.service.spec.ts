@@ -758,6 +758,95 @@ describe("EvaluationProcessService", () => {
     expect(port.evaluate).toHaveBeenCalledTimes(1);
   });
 
+  it("gives one retry up to 30 seconds while preserving the original deadline", async () => {
+    vi.useFakeTimers();
+    const invalidDecision = {
+      ...createCompleteDecision(),
+      basis: "unpaired field",
+    };
+    const requestSignals: AbortSignal[] = [];
+    const port: EvaluationPort = {
+      evaluate: vi.fn(({ signal }) => {
+        requestSignals.push(signal);
+        if (requestSignals.length === 1) {
+          return new Promise((resolve) => {
+            setTimeout(() => resolve(invalidDecision), 110_000);
+          });
+        }
+        return new Promise(() => undefined);
+      }),
+    };
+    const service = new EvaluationProcessService(port);
+    const pendingEvaluation = service.evaluate({
+      ideaText: VALID_IDEA,
+      tone: "soft",
+    });
+    const outcome = pendingEvaluation.then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    await vi.advanceTimersByTimeAsync(110_000);
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+    expect(requestSignals).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(requestSignals[1]?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(requestSignals[1]?.aborted).toBe(false);
+    const completedAtOriginalDeadline = await Promise.race([
+      outcome.then(() => true),
+      Promise.resolve(false),
+    ]);
+    expect(completedAtOriginalDeadline).toBe(false);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(requestSignals[1]?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(await outcome).toBeInstanceOf(GatewayTimeoutException);
+    expect(requestSignals[1]?.aborted).toBe(true);
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+  });
+
+  it("accepts a valid retry response that arrives during the grace period", async () => {
+    vi.useFakeTimers();
+    const invalidDecision = {
+      ...createCompleteDecision(),
+      basis: "unpaired field",
+    };
+    const requestSignals: AbortSignal[] = [];
+    const port: EvaluationPort = {
+      evaluate: vi.fn(({ signal }) => {
+        requestSignals.push(signal);
+        if (requestSignals.length === 1) {
+          return new Promise((resolve) => {
+            setTimeout(() => resolve(invalidDecision), 110_000);
+          });
+        }
+        return new Promise((resolve) => {
+          setTimeout(() => resolve(createCompleteDecision()), 15_000);
+        });
+      }),
+    };
+    const service = new EvaluationProcessService(port);
+    const pendingEvaluation = service.evaluate({
+      ideaText: VALID_IDEA,
+      tone: "soft",
+    });
+    const outcome = pendingEvaluation.then(
+      (result) => result,
+      (error: unknown) => error,
+    );
+
+    await vi.advanceTimersByTimeAsync(110_000);
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+    expect(requestSignals[1]?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(15_000);
+
+    expect(await outcome).toMatchObject({ status: "SIN_BLOQUEO_EVIDENTE" });
+    expect(requestSignals[1]?.aborted).toBe(false);
+    expect(port.evaluate).toHaveBeenCalledTimes(2);
+  });
+
   it("uses the timeout configured by the server environment", async () => {
     vi.stubEnv("EVALUATION_TIMEOUT_MS", "25");
     vi.useFakeTimers();

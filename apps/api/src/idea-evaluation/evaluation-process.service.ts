@@ -38,6 +38,7 @@ const POLICY_VERSION = "grumphya-concept-v11";
 const DEFAULT_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_EVALUATION_TIMEOUT_MS = 120_000;
 const MAX_SEMANTIC_RETRIES = 1;
+const EVALUATION_RETRY_GRACE_MS = 30_000;
 const RETRYABLE_VISIBLE_MESSAGE_VALIDATION = "visible_message";
 const RETRYABLE_DECISION_FIELDS_VALIDATION = "decision_fields";
 const EVALUATION_TIMEOUT_ENV = "EVALUATION_TIMEOUT_MS";
@@ -228,24 +229,43 @@ async function evaluateAndValidate(
   port: EvaluationPort,
   ideaText: string,
   tone: "soft" | "hard",
+  logger: Logger,
   userId?: string,
 ): Promise<ModelDecision> {
-  const deadline = Date.now() + getEvaluationTimeoutMs();
+  const startedAt = Date.now();
+  const originalDeadline = startedAt + getEvaluationTimeoutMs();
+  let deadline = originalDeadline;
   let attempt = 0;
 
-  while (attempt <= MAX_SEMANTIC_RETRIES) {
+  while (true) {
     const remainingMs = deadline - Date.now();
     if (remainingMs <= 0) throw new EvaluationTimeoutError();
 
-    const rawDecision = await evaluateWithTimeout(
-      port,
-      ideaText,
-      tone,
-      userId,
-      remainingMs,
-    );
+    let rawDecision: unknown;
     try {
-      return validateModelDecision(rawDecision, ideaText);
+      rawDecision = await evaluateWithTimeout(
+        port,
+        ideaText,
+        tone,
+        userId,
+        remainingMs,
+      );
+    } catch (error) {
+      if (error instanceof EvaluationTimeoutError) {
+        logger.warn(
+          `EVALUATION_TIMEOUT attempt=${attempt + 1} elapsed_ms=${Date.now() - startedAt}`,
+        );
+      }
+      throw error;
+    }
+    try {
+      const decision = validateModelDecision(rawDecision, ideaText);
+      if (attempt > 0) {
+        logger.log(
+          `EVALUATION_RETRY_COMPLETED attempt=${attempt + 1} elapsed_ms=${Date.now() - startedAt}`,
+        );
+      }
+      return decision;
     } catch (error) {
       if (
         !(error instanceof InvalidModelDecisionError) ||
@@ -255,6 +275,10 @@ async function evaluateAndValidate(
         throw error;
       }
       attempt += 1;
+      deadline = Math.max(deadline, Date.now() + EVALUATION_RETRY_GRACE_MS);
+      logger.warn(
+        `EVALUATION_RETRY_SCHEDULED validation=${error.validationCode} attempt=${attempt + 1} elapsed_ms=${Date.now() - startedAt} deadline_extension_ms=${deadline - originalDeadline}`,
+      );
     }
   }
 
@@ -302,6 +326,7 @@ export class EvaluationProcessService {
         this.evaluationPort,
         request.ideaText,
         request.tone,
+        this.logger,
         userId,
       );
       return toPublicResponse(decision, request.tone);

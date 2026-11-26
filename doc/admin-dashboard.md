@@ -118,7 +118,14 @@ comandos de cada entorno.
   ocurrencia y el diagnóstico específico. Cada denominación enlaza al evento
   más reciente del grupo y abre el detalle en otra pestaña. El detalle muestra
   solo estado HTTP, fecha y diagnóstico; no expone texto de ideas ni contexto
-  de entrada, incluidos los registros históricos.
+  de entrada, incluidos los registros históricos. Un grupo `HTTP_503` sin
+  diagnóstico procede de una excepción sin código funcional ni diagnóstico
+  seguro; el panel no conserva ruta ni caso de uso y no permite atribuir su
+  origen. Los errores de auditoría técnica usan códigos propios, como
+  `evidence_unavailable`, por lo que no deberían aparecer en ese grupo genérico.
+  El agregado tampoco indica que se haya activado o eludido un rate limit, ni
+  demuestra que hubiera un ataque. Correlaciona la hora del evento con los
+  registros protegidos de la API antes de atribuirlo o resetear el contador.
 - Los errores 5xx ya no guardan contexto de solicitud: el registro de nuevos
   eventos conserva el código y el diagnóstico seguro, pero no payloads, rutas,
   credenciales, mensajes de excepción ni texto de ideas. La columna histórica

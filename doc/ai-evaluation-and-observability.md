@@ -38,6 +38,8 @@ El roast pide una pulla personalizada, mordaz y fácil de entender, en una frase
 
 Cada operación del adaptador de OpenAI en evaluación, embeddings, equivalencia semántica y roast emite una línea JSON `ai_operation` a stdout. Incluye operación, modelo, resultado, duración, tokens de entrada/salida disponibles y coste estimado. Operación, modelo y `failureCode` se limitan a etiquetas seguras; las etiquetas desconocidas se sustituyen por `other` o se omiten. No se emite identificador por operación. Los fallos clasificados de roast incluyen un código acotado, como `OPENAI_ROAST_TIMEOUT` u `OPENAI_ROAST_HTTP_5XX`, sin el cuerpo del proveedor. El evento se emite una vez por operación lógica, incluso si el roast hace un reintento; por ello no contabiliza ni desglosa todas las solicitudes HTTP del reintento. No incluye texto, cuenta, cookie, IP, token de sesión ni clave API.
 
+La evaluación de ideas permite como máximo un reintento cuando la respuesta del proveedor incumple el contrato visible, estructural o semántico. Las dos llamadas comparten un presupuesto inicial de 120 segundos. Si la primera respuesta inválida llega cuando quedan menos de 30 segundos, la segunda dispone de una gracia acotada: el plazo total puede extenderse como máximo 30 segundos después del límite inicial y nunca se crea una tercera llamada. Los registros seguros `EVALUATION_RETRY_SCHEDULED`, `EVALUATION_RETRY_COMPLETED` y `EVALUATION_TIMEOUT` incluyen validación cuando corresponde, número de intento y tiempo transcurrido, sin texto de idea ni identificadores. Junto a la duración por llamada `ai_operation`, permiten comprobar si la segunda respuesta llegó dentro del plazo inicial o necesitó la gracia.
+
 El panel de costes estima las entradas cacheadas de `gpt-5.4-mini` a 0,075 USD por millón de tokens y el resto de entradas a 0,75 USD; la salida cuesta 4,50 USD por millón. La fuente de precios consultada es la [ficha oficial del modelo](https://developers.openai.com/api/docs/models/gpt-5.4-mini). La migración `035_admin_ai_cached_input_tokens` conserva el contador de caché para llamadas nuevas. Los registros anteriores no incluyen ese dato y su estimación histórica no se puede reconstruir con exactitud. El total del panel es una estimación de uso, no el importe facturado por OpenAI.
 
 El panel admin presenta estos controles en pestañas. **Benchmark de IA**
@@ -80,7 +82,14 @@ por lo que puede afectar a varias personas detrás de una misma salida NAT.
 
 Los errores HTTP 5xx conservan códigos y diagnósticos seguros para las métricas
 del panel, pero los eventos nuevos no guardan contexto de entrada ni texto de
-ideas. El detalle administrativo no devuelve contextos. La migración
+ideas. Un `HTTP_503` sin diagnóstico significa que el filtro recibió una
+excepción sin código funcional ni diagnóstico seguro; el panel no conserva
+ruta ni caso de uso, así que no permite atribuirlo a una función, a
+desarrolloseguro o a un ataque. Los errores de auditoría técnica sí usan códigos
+propios, como `evidence_unavailable`, y no deberían agruparse como `HTTP_503`.
+Para identificar un evento genérico hay que correlacionar su hora con los
+registros de API protegidos; no se debe resetear el contador hasta conocer su
+causa. El detalle administrativo no devuelve contextos. La migración
 `036_redact_application_error_context.sql` pone a `NULL` los contextos ya
 guardados en la base; la columna permanece en el esquema y las copias de
 seguridad históricas no se modifican. La retención física de los eventos sigue
