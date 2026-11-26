@@ -10,6 +10,10 @@
     "requiredCopy": ["Antes de construirla,"],
     "preloadImages": [
       {
+        "href": "/assets/grumphya/home-grumpy-judge.webp",
+        "media": "(min-width: 980px)"
+      },
+      {
         "href": "/assets/grumphya/stage-curtain-v2.webp",
         "media": "(min-width: 641px)"
       }

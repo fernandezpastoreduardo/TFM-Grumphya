@@ -15,8 +15,13 @@ import {
 } from "./shared/components/loading-skeleton";
 import { CookieNotice } from "./features/cookie-notice/cookie-notice";
 import { isPrerenderedPublicPath } from "./shared/prerendered-public-routes";
-import { SectionPage } from "./views/section-page";
 import { recordAnonymousPageView } from "./shared/utils/anonymous-analytics";
+
+const SectionPage = lazy(() =>
+  import("./views/section-page").then((module) => ({
+    default: module.SectionPage,
+  })),
+);
 
 let activeSessionCheck: Promise<AuthenticatedRole | null> | null = null;
 

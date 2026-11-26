@@ -106,7 +106,7 @@ describe("Home", () => {
     expect(badge).toHaveTextContent("Comprobando sello…");
   });
 
-  it("loads the hero illustration at high priority", () => {
+  it("keeps the responsive hero illustration lazy outside its desktop preload", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(() => new Promise(() => undefined)),
@@ -131,8 +131,7 @@ describe("Home", () => {
       ".home-hero-stage-mobile img.home-creature-image",
     );
 
-    expect(desktopHeroImage).not.toHaveAttribute("loading", "lazy");
-    expect(desktopHeroImage).not.toHaveAttribute("fetchpriority", "low");
+    expect(desktopHeroImage).toHaveAttribute("loading", "lazy");
     expect(mobileDecorativeImage).toHaveAttribute("loading", "lazy");
     expect(mobileDecorativeImage).toHaveAttribute("fetchpriority", "low");
     expect(mobileDecorativeImage).toHaveAttribute("decoding", "async");

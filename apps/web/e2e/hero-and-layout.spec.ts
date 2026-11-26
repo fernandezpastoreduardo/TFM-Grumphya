@@ -374,6 +374,16 @@ test("serves crawl metadata and preloads critical fonts and artwork", async ({
   await expect(curtainPreload).toHaveAttribute("fetchpriority", "high");
   await expect(curtainPreload).toHaveAttribute("media", "(min-width: 641px)");
 
+  const desktopMascotPreload = page.locator(
+    'link[rel="preload"][as="image"][href="/assets/grumphya/home-grumpy-judge.webp"]',
+  );
+  await expect(desktopMascotPreload).toHaveCount(1);
+  await expect(desktopMascotPreload).toHaveAttribute("fetchpriority", "high");
+  await expect(desktopMascotPreload).toHaveAttribute(
+    "media",
+    "(min-width: 980px)",
+  );
+
   const fredokaPreload = page.locator(
     'link[rel="preload"][as="font"][href="/assets/fonts/Fredoka-Variable-latin.woff2"]',
   );
