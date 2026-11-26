@@ -1,6 +1,11 @@
-import { useState } from "react";
-import { useNativeDialog } from "../../../shared/hooks/use-native-dialog";
+import { lazy, Suspense, useState } from "react";
 import type { PricingPlan } from "../pricing.constants";
+
+const PricingLessonDialog = lazy(() =>
+  import("./PricingLessonDialog").then((module) => ({
+    default: module.PricingLessonDialog,
+  })),
+);
 
 export function PricingView({
   isAuthenticated,
@@ -16,7 +21,6 @@ export function PricingView({
   onSelectPlan: (plan: PricingPlan) => void;
 }) {
   const [showLesson, setShowLesson] = useState(false);
-  const lessonDialogRef = useNativeDialog(showLesson);
 
   return (
     <>
@@ -109,46 +113,9 @@ export function PricingView({
         gruñones, no una trampa.
       </p>
       {showLesson ? (
-        <dialog
-          ref={lessonDialogRef}
-          className="prototype-dialog"
-          aria-labelledby="ultra-dialog-title"
-          aria-modal="true"
-          onClose={() => setShowLesson(false)}
-          onCancel={(event) => {
-            event.preventDefault();
-            setShowLesson(false);
-          }}
-        >
-          <button
-            className="dialog-close"
-            type="button"
-            aria-label="Cerrar"
-            onClick={() => setShowLesson(false)}
-          >
-            ×
-          </button>
-          <img
-            className="dialog-mascot"
-            src="/assets/grumphya/ultrachachi-reality-check.svg"
-            alt=""
-            aria-hidden="true"
-            loading="lazy"
-            decoding="async"
-          />
-          <span className="eyebrow">Una lección gratis</span>
-          <h2 id="ultra-dialog-title">¿Aún estamos así de verde?</h2>
-          <p>
-            La IA es cara. NADIE te ofrecerá algo potenciado por IA sin cobrarte
-            más al mes o por cada uso.
-          </p>
-          <p>
-            Si lo hacen, será porque venderán tus datos, y aquí no hacemos eso.
-          </p>
-          <strong>
-            Tus buenas ideas, las aprobadas, son tuyas y solo tuyas.
-          </strong>
-        </dialog>
+        <Suspense fallback={null}>
+          <PricingLessonDialog onClose={() => setShowLesson(false)} />
+        </Suspense>
       ) : null}
     </>
   );

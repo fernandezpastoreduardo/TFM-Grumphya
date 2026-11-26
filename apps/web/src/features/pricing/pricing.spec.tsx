@@ -57,7 +57,7 @@ describe("Pricing registration intent", () => {
       screen.getByRole("button", { name: /pulsar para descubrir la trampa/i }),
     );
 
-    const dialog = screen.getByRole("dialog", {
+    const dialog = await screen.findByRole("dialog", {
       name: /¿aún estamos así de verde\?/i,
     });
     expect(dialog).toHaveAttribute("open");

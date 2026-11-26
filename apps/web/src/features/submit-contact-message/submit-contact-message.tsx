@@ -1,11 +1,10 @@
-import { useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useRef, useState, type FormEvent } from "react";
 import {
   retryContactMessageConfirmation,
   submitContactMessage,
   ContactEmailVerificationRequiredError,
 } from "./submit-contact-message.service";
 import { ContactMessageForm } from "./contact-message-form";
-import { EmailVerificationRequiredDialog } from "../../shared/components/email-verification-required-dialog";
 import { usePendingEmailVerification } from "../../shared/hooks/use-pending-email-verification";
 import {
   CONFIRMATION_COPY,
@@ -13,6 +12,12 @@ import {
   SUBMISSION_ERROR,
 } from "./submit-contact-message.constants";
 import { ABUSE_CHALLENGE_NOTICE } from "../../shared/constants/abuse-challenge.constants";
+
+const EmailVerificationRequiredDialog = lazy(() =>
+  import("../../shared/components/email-verification-required-dialog").then(
+    (module) => ({ default: module.EmailVerificationRequiredDialog }),
+  ),
+);
 
 export function SubmitContactMessage() {
   const emailVerification = usePendingEmailVerification();
@@ -104,10 +109,14 @@ export function SubmitContactMessage() {
         <div className="contact-creature" aria-hidden="true" />
         <p>Por fin, alguien al otro lado que sí está tomando nota.</p>
       </aside>
-      <EmailVerificationRequiredDialog
-        open={showVerificationDialog}
-        onClose={() => setShowVerificationDialog(false)}
-      />
+      {showVerificationDialog ? (
+        <Suspense fallback={null}>
+          <EmailVerificationRequiredDialog
+            open
+            onClose={() => setShowVerificationDialog(false)}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

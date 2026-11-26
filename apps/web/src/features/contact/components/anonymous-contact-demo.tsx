@@ -1,7 +1,12 @@
-import { useState } from "react";
-import { EmailVerificationRequiredDialog } from "../../../shared/components/email-verification-required-dialog";
+import { lazy, Suspense, useState } from "react";
 import { useNativeDialog } from "../../../shared/hooks/use-native-dialog";
 import { usePendingEmailVerification } from "../../../shared/hooks/use-pending-email-verification";
+
+const EmailVerificationRequiredDialog = lazy(() =>
+  import("../../../shared/components/email-verification-required-dialog").then(
+    (module) => ({ default: module.EmailVerificationRequiredDialog }),
+  ),
+);
 
 export function AnonymousContactDemo() {
   const [dismissed, setDismissed] = useState(false);
@@ -93,10 +98,14 @@ export function AnonymousContactDemo() {
           </p>
         </dialog>
       ) : null}
-      <EmailVerificationRequiredDialog
-        open={showVerificationDialog}
-        onClose={() => setShowVerificationDialog(false)}
-      />
+      {showVerificationDialog ? (
+        <Suspense fallback={null}>
+          <EmailVerificationRequiredDialog
+            open
+            onClose={() => setShowVerificationDialog(false)}
+          />
+        </Suspense>
+      ) : null}
       <p className="prototype-stamp">
         Vista de demostración; no se envía ningún mensaje.
       </p>

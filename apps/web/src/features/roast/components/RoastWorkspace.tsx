@@ -1,11 +1,24 @@
-import type { ComponentProps, RefObject } from "react";
-import { EmailVerificationRequiredDialog } from "../../../shared/components/email-verification-required-dialog";
-import { UsageLimitDialog } from "../../../shared/components/usage-limit-dialog";
-import { RoastFailureDialog } from "./RoastFailureDialog";
+import { lazy, Suspense, type ComponentProps, type RefObject } from "react";
 import { RoastInput } from "./RoastInput";
 import { RoastRanking, type RoastRankingState } from "./RoastRanking";
 import { RoastThread } from "./RoastThread";
 import type { SentRoastMessage } from "../roast.models";
+
+const EmailVerificationRequiredDialog = lazy(() =>
+  import("../../../shared/components/email-verification-required-dialog").then(
+    (module) => ({ default: module.EmailVerificationRequiredDialog }),
+  ),
+);
+const UsageLimitDialog = lazy(() =>
+  import("../../../shared/components/usage-limit-dialog").then((module) => ({
+    default: module.UsageLimitDialog,
+  })),
+);
+const RoastFailureDialog = lazy(() =>
+  import("./RoastFailureDialog").then((module) => ({
+    default: module.RoastFailureDialog,
+  })),
+);
 
 type RoastWorkspaceProps = {
   threadRef: RefObject<HTMLDivElement | null>;
@@ -126,20 +139,27 @@ export function RoastWorkspace({
         ) : null}
       </div>
       {isDailyQuotaDialogOpen ? (
-        <UsageLimitDialog
-          open
-          scope="roasts"
-          onClose={onDailyQuotaDialogClose}
-        />
+        <Suspense fallback={null}>
+          <UsageLimitDialog
+            open
+            scope="roasts"
+            onClose={onDailyQuotaDialogClose}
+          />
+        </Suspense>
       ) : null}
-      <RoastFailureDialog
-        open={isReplyFailureDialogOpen}
-        onClose={onReplyFailureDialogClose}
-      />
-      <EmailVerificationRequiredDialog
-        open={isEmailVerificationDialogOpen}
-        onClose={onEmailVerificationDialogClose}
-      />
+      {isReplyFailureDialogOpen ? (
+        <Suspense fallback={null}>
+          <RoastFailureDialog open onClose={onReplyFailureDialogClose} />
+        </Suspense>
+      ) : null}
+      {isEmailVerificationDialogOpen ? (
+        <Suspense fallback={null}>
+          <EmailVerificationRequiredDialog
+            open
+            onClose={onEmailVerificationDialogClose}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
