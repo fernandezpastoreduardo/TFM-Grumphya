@@ -1,6 +1,15 @@
-import { useEffect, useRef } from "react";
-import { UsageLimitDialog } from "../../../shared/components/usage-limit-dialog";
-import { EmailVerificationRequiredDialog } from "../../../shared/components/email-verification-required-dialog";
+import { lazy, Suspense, useEffect, useRef } from "react";
+
+const UsageLimitDialog = lazy(() =>
+  import("../../../shared/components/usage-limit-dialog").then((module) => ({
+    default: module.UsageLimitDialog,
+  })),
+);
+const EmailVerificationRequiredDialog = lazy(() =>
+  import("../../../shared/components/email-verification-required-dialog").then(
+    (module) => ({ default: module.EmailVerificationRequiredDialog }),
+  ),
+);
 
 type EvaluationQuotaDialogsProps = {
   isQuotaDialogOpen: boolean;
@@ -34,10 +43,14 @@ export function EvaluationQuotaDialogs({
 
   return (
     <>
-      <EmailVerificationRequiredDialog
-        open={isEmailVerificationDialogOpen}
-        onClose={onEmailVerificationDialogClose}
-      />
+      {isEmailVerificationDialogOpen ? (
+        <Suspense fallback={null}>
+          <EmailVerificationRequiredDialog
+            open
+            onClose={onEmailVerificationDialogClose}
+          />
+        </Suspense>
+      ) : null}
       {isQuotaDialogOpen ? (
         <dialog
           ref={quotaDialogRef}
@@ -71,11 +84,13 @@ export function EvaluationQuotaDialogs({
         </dialog>
       ) : null}
       {isDailyQuotaDialogOpen ? (
-        <UsageLimitDialog
-          open
-          scope="ideas"
-          onClose={onDailyQuotaDialogClose}
-        />
+        <Suspense fallback={null}>
+          <UsageLimitDialog
+            open
+            scope="ideas"
+            onClose={onDailyQuotaDialogClose}
+          />
+        </Suspense>
       ) : null}
     </>
   );
