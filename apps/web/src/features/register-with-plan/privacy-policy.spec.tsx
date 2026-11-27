@@ -12,7 +12,7 @@ describe("PrivacyPolicy", () => {
       screen.getByRole("heading", { name: /política de privacidad/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Versión 6 · 24 de noviembre de 2026/i),
+      screen.getByText(/Versión 8 · 27 de noviembre de 2026/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/borrador/i)).not.toBeInTheDocument();
     expect(
@@ -26,6 +26,38 @@ describe("PrivacyPolicy", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: /tus derechos/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "desarrolloseguro.org" }),
+    ).toHaveLength(1);
+    expect(
+      screen.getAllByText(/consultas autenticadas de solo lectura/i),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(/archivos de auditoría interna/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/no ofrece un endpoint para subirlos/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /No se ha especificado cuánto tiempo se conservan esos archivos ni los informes/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/renueva cada hora/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/retira el sello de la interfaz/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/VPS de IONOS en España y no realiza transferencias/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/publica su código en GitHub/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /No se utilizan cookies de terceros ni servicios de analítica externos/i,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Eduardo Fernández Pastor/i)).toBeInTheDocument();
     expect(

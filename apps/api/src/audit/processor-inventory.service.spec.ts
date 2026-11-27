@@ -203,7 +203,7 @@ describe("ProcessorInventoryService", () => {
       inventoryStatus: "complete",
       privacyPolicy: {
         url: "https://grumphya.com/politica-de-privacidad",
-        revision: "v6",
+        revision: "v8",
       },
       processors: [],
       attestation: { alg: "EdDSA", kid: RELEASE_KID },

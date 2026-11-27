@@ -17,7 +17,7 @@ import type { RegistrationRepository } from "./registration.repository";
 import { runMigrations } from "../infrastructure/database/run-migrations";
 
 const GOOD_IDEAS_LIMIT = 10;
-const PRIVACY_POLICY_VERSION = "v6";
+const PRIVACY_POLICY_VERSION = "v8";
 const PUBLIC_RANKINGS_CONSENT_POLICY_VERSION = "v2";
 const REGISTRATION_INTENT_CLEANUP_BATCH = 500;
 const AUTH_SESSION_CLEANUP_BATCH = 500;

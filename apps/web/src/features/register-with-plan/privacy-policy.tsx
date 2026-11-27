@@ -16,7 +16,7 @@ export function PrivacyPolicy() {
           comparten y durante cuánto tiempo los conservamos.
         </p>
         <p className="privacy-policy-version">
-          Versión 6 · 24 de noviembre de 2026
+          Versión 8 · 27 de noviembre de 2026
         </p>
       </header>
 
@@ -108,6 +108,13 @@ export function PrivacyPolicy() {
             alojamiento, conforme a la configuración y los registros del
             servicio.
           </li>
+          <li>
+            <strong>Evidencias de auditoría:</strong> los informes externos se
+            preparan a partir de señales técnicas estructuradas sobre el
+            servicio. La integración privada expone esas señales mediante
+            consultas autenticadas de solo lectura; no incluye textos de ideas,
+            mensajes, datos de cuentas, cookies, credenciales ni secretos.
+          </li>
         </ul>
         <p>
           Para limitar solicitudes y prevenir abusos, la API calcula un HMAC
@@ -165,6 +172,10 @@ export function PrivacyPolicy() {
           <li>
             Proteger la disponibilidad, seguridad y funcionamiento técnico del
             servicio.
+          </li>
+          <li>
+            Revisar el servicio mediante auditoría externa y compartir informes
+            con evidencias para explicar sus resultados.
           </li>
         </ul>
         <p>
@@ -267,6 +278,54 @@ export function PrivacyPolicy() {
           tratamiento y las ubicaciones de almacenamiento o acceso dependen de
           la configuración y el contrato del servicio.
         </p>
+        <p>
+          Grumphya contrata el servicio de{" "}
+          <a href="https://desarrolloseguro.org/">desarrolloseguro.org</a>, un
+          servicio externo independiente, para auditar partes públicas y
+          privadas de la aplicación. La herramienta permite añadir archivos de
+          auditoría interna para respaldar con evidencias los aspectos
+          revisados. Cuando Grumphya aporta esos archivos, los comparte con el
+          servicio directamente en su herramienta; Grumphya no ofrece un
+          endpoint para subirlos. Su contenido depende de cada evidencia y no
+          forma parte del feed técnico de solo lectura descrito a continuación.
+          No se ha especificado cuánto tiempo se conservan esos archivos ni los
+          informes. Sus informes pueden compartirse de forma transparente con
+          evidencias sobre los niveles observados de legalidad, transparencia,
+          rendimiento y privacidad, de acuerdo con los criterios y capacidades
+          de su herramienta. Son evaluaciones limitadas a esas capacidades: no
+          constituyen asesoramiento jurídico, una garantía de cumplimiento ni
+          una certificación legal.
+        </p>
+        <p>
+          Las pruebas de la parte pública se realizan en un navegador de
+          laboratorio sobre una compilación del servicio; no son mediciones de
+          actividad de las personas usuarias. El flujo de prueba de alta usa
+          datos sintéticos y no envía ideas ni credenciales reales.
+        </p>
+        <p>
+          Para la parte privada, la integración permite consultas autenticadas
+          de solo lectura a un conjunto limitado de evidencias firmadas sobre
+          despliegue, dependencias, autenticación, calidad, privacidad e IA. La
+          estructura compartida contiene criterios, estados, códigos y medidas
+          técnicas; no contiene texto de ideas, mensajes, cuentas, sesiones,
+          cookies, secretos ni credenciales. Según la información facilitada por
+          Grumphya, el servicio de Desarrollo Seguro renueva cada hora los datos
+          y evidencias que sustentan el sello para volver a comprobar su
+          veracidad, vigencia e integridad; si la auditoría deja de superarse,
+          desarrolloseguro.org retira el sello de la interfaz de Grumphya. Para
+          mostrarlo, el navegador carga un script del servicio y comunica el
+          hostname visitado y el identificador público del informe. La conexión
+          transmite además metadatos técnicos habituales, como la dirección IP y
+          el agente de navegador. No se usan para analítica de Grumphya. Según
+          la información facilitada por Grumphya, el servicio se aloja en un VPS
+          de IONOS en España y no realiza transferencias fuera del Espacio
+          Económico Europeo. desarrolloseguro.org publica su código en GitHub y
+          somete su propio servicio al mismo informe de transparencia y
+          auditoría que ofrece a sus clientes. Sus informes reflejan los
+          criterios y capacidades de la herramienta; no constituyen
+          asesoramiento jurídico ni una garantía de cumplimiento o certificación
+          legal.
+        </p>
       </section>
 
       <section aria-labelledby="privacy-retention-title">
@@ -334,28 +393,30 @@ export function PrivacyPolicy() {
         </p>
         <p>
           No se utilizan cookies de terceros ni servicios de analítica externos.
-          En las páginas públicas, Grumphya envía al servidor recuentos propios
-          de vistas por página y tamaño aproximado de pantalla, además de clics
-          para elegir plan. Para las vistas y los clics solo se guardan sumas
-          por día y categoría; la aplicación no consulta ni conserva IP, cuenta,
-          cookie, sesión, agente de navegador, dirección completa ni texto
-          enviado para esta finalidad. Una recarga cuenta otra vista, por lo que
-          estas cifras no identifican personas ni representan visitas únicas.
-          Las páginas con menos de diez vistas se agrupan y solo se muestran
-          como «Otras secciones» si juntas llegan a diez; el reparto de pantalla
-          solo aparece cuando ambas categorías llegan a diez y se redondea a
-          saltos de cinco puntos. Los agregados se eliminan tras trece meses.
-          Las activaciones simuladas se muestran como totales mensuales por
-          plan, sin enlazarlas con las vistas o los clics. El botón «Entendido»
-          registra únicamente que se ha cerrado el aviso informativo; no
-          solicita consentimiento para otros fines. Como en cualquier conexión
-          web, el alojamiento enruta metadatos técnicos de red; estamos
-          verificando sus registros y plazos efectivos para producción. Estas
-          tecnologías se utilizan para prestar funciones solicitadas, mantener
-          la sesión y recordar preferencias; el aviso informativo no sustituye a
-          un consentimiento cuando la normativa lo exige. La presencia de una
-          cookie en el código no determina por sí sola si está exenta de
-          consentimiento.
+          Esto no significa que la página no establezca ninguna conexión con
+          terceros: el sello externo de desarrolloseguro.org se describe en la
+          sección 5, «Quién puede recibir datos». En las páginas públicas,
+          Grumphya envía al servidor recuentos propios de vistas por página y
+          tamaño aproximado de pantalla, además de clics para elegir plan. Para
+          las vistas y los clics solo se guardan sumas por día y categoría; la
+          aplicación no consulta ni conserva IP, cuenta, cookie, sesión, agente
+          de navegador, dirección completa ni texto enviado para esta finalidad.
+          Una recarga cuenta otra vista, por lo que estas cifras no identifican
+          personas ni representan visitas únicas. Las páginas con menos de diez
+          vistas se agrupan y solo se muestran como «Otras secciones» si juntas
+          llegan a diez; el reparto de pantalla solo aparece cuando ambas
+          categorías llegan a diez y se redondea a saltos de cinco puntos. Los
+          agregados se eliminan tras trece meses. Las activaciones simuladas se
+          muestran como totales mensuales por plan, sin enlazarlas con las
+          vistas o los clics. El botón «Entendido» registra únicamente que se ha
+          cerrado el aviso informativo; no solicita consentimiento para otros
+          fines. Como en cualquier conexión web, el alojamiento enruta metadatos
+          técnicos de red; estamos verificando sus registros y plazos efectivos
+          para producción. Estas tecnologías se utilizan para prestar funciones
+          solicitadas, mantener la sesión y recordar preferencias; el aviso
+          informativo no sustituye a un consentimiento cuando la normativa lo
+          exige. La presencia de una cookie en el código no determina por sí
+          sola si está exenta de consentimiento.
         </p>
       </section>
 

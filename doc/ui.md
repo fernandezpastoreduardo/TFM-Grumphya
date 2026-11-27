@@ -224,7 +224,7 @@ detalla instrucciones de implementación para agentes; la lámina maestra está 
   reflejo horizontal para que mire hacia el formulario y no quede cortada.
   El aviso de tratamiento de ideas y dictados ya no aparece en Home; su resumen
   se consulta en `/terminos-y-condiciones`, separado de la política de
-  privacidad versión 6. Las mascotas de hero flotan suavemente, los bloques
+  privacidad versión 8. Las mascotas de hero flotan suavemente, los bloques
   entran al desplazarse y los controles responden al hover; las animaciones se
   desactivan con `prefers-reduced-motion`.
 - Para crear nuevas poses se usan como modelo los SVG aprobados de
@@ -279,7 +279,7 @@ una ilustración de Grumphya pateando una galleta. El texto informa de las cooki
 propias y del almacenamiento local que se usan, y declara que no hay publicidad,
 analítica externa ni cookies de terceros. La app sí cuenta de forma agregada las
 vistas públicas y la selección de planes, según los límites de la política de
-privacidad versión 6. El botón «Entendido» solo confirma la lectura;
+privacidad versión 8. El botón «Entendido» solo confirma la lectura;
 no solicita consentimiento ni altera la configuración. La confirmación se
 recuerda en `localStorage` (`grumphya.privacy-notice.acknowledged.v1`), no en una
 cookie. Un enlace permite abrir la política de privacidad. Si el almacenamiento

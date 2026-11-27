@@ -69,7 +69,7 @@ prohibición de query strings y el mismo proxy a la API. El guard comprueba la
 ACL de `AUDIT_ALLOWED_NETWORKS` antes de validar el JWT; se aplican todos los
 requisitos de identidad técnica anteriores, incluido el scope `audit:privacy`.
 La respuesta usa el esquema `processor-inventory-v1` y se
-firma con `kid=grumphya-release-2026`; `privacyPolicy.revision` declara `v6`.
+firma con `kid=grumphya-release-2026`; `privacyPolicy.revision` declara `v8`.
 El inventario se construye en cada lectura y recibe una firma EdDSA nueva con
 vigencia máxima de 24 horas. Para enlazarlo al release activo, el servicio
 verifica la firma Ed25519 del manifiesto persistido, el `kid` permitido, el
